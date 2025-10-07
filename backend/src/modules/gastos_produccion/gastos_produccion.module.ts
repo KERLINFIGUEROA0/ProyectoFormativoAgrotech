@@ -6,8 +6,10 @@ import { Gasto } from './entities/gastos_produccion.entity';
 import { Produccion } from '../producciones/entities/produccione.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Gasto, Produccion])], // 👈 AÑADIDO
+  imports: [TypeOrmModule.forFeature([Gasto, Produccion])],
   controllers: [GastosProduccionController],
   providers: [GastosProduccionService],
+  exports: [GastosProduccionService],
 })
 export class GastosProduccionModule {}
+

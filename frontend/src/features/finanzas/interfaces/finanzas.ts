@@ -1,22 +1,23 @@
 import type { ReactElement } from 'react';
 
 export interface Transaccion {
-  id: string;
+  id: number; // <-- ID debe ser numérico
   descripcion: string;
   monto: number;
   fecha: string;
-  tipo: 'ingreso' | 'egreso';
+  tipo: string; // <-- Nuevo campo: 'ingreso' o 'egreso'
   cantidad?: number;
   precioUnitario?: number;
+  rutaFacturaPdf?: string; // <-- Nuevo campo
 }
 
 export interface TransaccionData {
-  tipo: 'ingreso' | 'egreso';
   fecha: string;
-  produccionId: number; // <-- AHORA ES REQUERIDO
+  produccionId: number;
   cantidad: number;
-  monto: number; 
-  descripcion: string;
+  monto: number;
+  descripcion?: string;
+  tipo?: string; // Nuevo campo opcional
 }
 
 export interface EstadisticasCardProps {

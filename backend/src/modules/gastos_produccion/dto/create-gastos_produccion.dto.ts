@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsDateString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsDateString, IsNotEmpty } from 'class-validator';
 
 export class CreateGastosProduccionDto {
   @IsString()
@@ -11,18 +11,10 @@ export class CreateGastosProduccionDto {
 
   @IsDateString()
   @IsNotEmpty()
-  fecha: Date;
+  fecha: string;
 
-  @IsString()
-  @IsOptional()
-  @IsIn(['ingreso', 'egreso']) 
-  tipo?: string;
-
-  // --- 👇 INICIO DE LA CORRECCIÓN ---
-  // Se cambia el nombre de la propiedad de 'produccion' a 'produccionId'
-  // para que coincida con el payload que envía el frontend.
   @IsNumber()
   @IsNotEmpty()
-  produccionId: number; 
-  // --- 👆 FIN DE LA CORRECCIÓN ---
+  produccion: number;
 }
+

@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Produccion } from '../../producciones/entities/produccione.entity';
+import { TipoMovimiento } from '../../../common/enums/tipo-movimiento.enum';
 
 @Entity('ventas')
 export class Venta {
@@ -12,8 +13,6 @@ export class Venta {
   @Column({ name: 'Fecha', type: 'date' })
   fecha: string;
 
-  // --- CORRECCIÓN ---
-  // Aseguramos que todas las propiedades usen camelCase (inicio con minúscula).
   @Column({ name: 'Precio_Unitario', type: 'decimal', precision: 10, scale: 2, default: 0 })
   precioUnitario: number;
 
@@ -22,9 +21,14 @@ export class Venta {
 
   @Column({ name: 'Valor_Total_Venta', type: 'decimal', precision: 10, scale: 2 })
   valorTotalVenta: number;
-  
-  @Column({ type: 'varchar', default: 'ingreso' }) 
-  tipo: string;  
+
+  // --- AÑADIR ESTE NUEVO CAMPO ---
+  @Column({ name: 'Ruta_Factura_Pdf', type: 'varchar', length: 255, nullable: true })
+  rutaFacturaPdf: string;
+  // --- FIN DEL CAMPO ---
+
+  @Column({ name: 'Tipo', type: 'enum', enum: TipoMovimiento, default: TipoMovimiento.INGRESO })
+  tipo: TipoMovimiento;
 
   @ManyToOne(() => Produccion, (produccion) => produccion.ventas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'produccionId' })

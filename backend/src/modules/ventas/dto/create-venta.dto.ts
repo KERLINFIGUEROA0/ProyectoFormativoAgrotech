@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, IsInt, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, IsInt, IsEnum } from 'class-validator';
+import { TipoMovimiento } from '../../../common/enums/tipo-movimiento.enum';
 
 export class CreateVentaDto {
   @IsString()
@@ -13,11 +14,6 @@ export class CreateVentaDto {
   @IsNotEmpty({ message: "La fecha es obligatoria." })
   fecha: string;
 
-   @IsString()
-  @IsOptional()
-  @IsIn(['ingreso', 'egreso']) 
-  tipo?: string;
-
   @IsInt()
   @IsNotEmpty({ message: "La cantidad es obligatoria." })
   cantidad: number;
@@ -25,4 +21,8 @@ export class CreateVentaDto {
   @IsInt()
   @IsNotEmpty({ message: "El ID de producción es obligatorio." })
   produccionId: number;
+
+  @IsEnum(TipoMovimiento)
+  @IsOptional()
+  tipo?: TipoMovimiento;
 }

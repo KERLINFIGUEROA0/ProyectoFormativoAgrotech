@@ -5,16 +5,20 @@ import { Venta } from './entities/venta.entity';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { Produccion } from '../producciones/entities/produccione.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { PdfService } from '../pdf/pdf.service';
+import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
+import * as fs from 'fs';
 
 @Injectable()
 export class VentasService {
   constructor(
     @InjectRepository(Venta)
     private readonly ventaRepository: Repository<Venta>,
-    @InjectRepository(Gasto)
-    private readonly gastoRepository: Repository<Gasto>,
     @InjectRepository(Produccion)
     private readonly produccionRepository: Repository<Produccion>,
+    @InjectRepository(Gasto)
+    private readonly gastoRepository: Repository<Gasto>,
+    private readonly pdfService: PdfService,
   ) {}
 
   async create(dto: CreateVentaDto): Promise<Venta> {
@@ -29,110 +33,91 @@ export class VentasService {
       precioUnitario: dto.monto,
       cantidadVenta: dto.cantidad,
       valorTotalVenta: dto.monto * (dto.cantidad || 0),
+      tipo: TipoMovimiento.INGRESO,
       produccion: produccion,
     });
 
-    return this.ventaRepository.save(nuevaVenta);
+    const ventaGuardada = await this.ventaRepository.save(nuevaVenta);
+    const rutaPdf = await this.pdfService.generarFacturaPdf(ventaGuardada);
+    ventaGuardada.rutaFacturaPdf = rutaPdf;
+    return this.ventaRepository.save(ventaGuardada);
   }
 
   async findAll(): Promise<any[]> {
     const ventas = await this.ventaRepository.find({
       relations: ['produccion', 'produccion.cultivo'],
+      order: { fecha: 'DESC' },
     });
 
-    // --- 👇 INICIO DE LA CORRECCIÓN ---
-    // El error estaba aquí. Se pedía una relación anidada ('produccion.cultivo')
-    // que no es necesaria y causaba el fallo. Ahora solo se pide 'produccion'.
-    const gastos = await this.gastoRepository.find({
-        relations: ['produccion'],
-    });
-    // --- 👆 FIN DE LA CORRECCIÓN ---
-
-    const transacciones = [
-      ...ventas.map(v => ({
-        id: `venta-${v.id}`,
-        tipo: 'ingreso' as const,
-        descripcion: v.descripcion || `Venta de ${v.produccion?.cultivo?.nombre || 'producto'}`,
-        monto: parseFloat(v.valorTotalVenta as any),
-        fecha: v.fecha,
-        cantidad: v.cantidadVenta,
-        precioUnitario: parseFloat(v.precioUnitario as any)
-      })),
-      ...gastos.map(g => ({
-        id: `gasto-${g.id}`,
-        tipo: 'egreso' as const,
-        descripcion: g.descripcion,
-        monto: parseFloat(g.monto as any),
-        fecha: g.fecha,
-        cantidad: 1, 
-        precioUnitario: parseFloat(g.monto as any)
-      }))
-    ];
-
-    transacciones.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-
-    return transacciones;
+    return ventas.map(v => ({
+      id: v.id,
+      descripcion: v.descripcion || `Venta de ${v.produccion?.cultivo?.nombre || 'producto'}`,
+      monto: parseFloat(v.valorTotalVenta as any),
+      fecha: v.fecha,
+      cantidad: v.cantidadVenta,
+      precioUnitario: parseFloat(v.precioUnitario as any),
+      tipo: v.tipo,
+      rutaFacturaPdf: v.rutaFacturaPdf,
+    }));
   }
 
-  async getEstadisticas() {
-    const ingresos = await this.ventaRepository.sum('valorTotalVenta') || 0;
-    const egresos = await this.gastoRepository.sum('monto') || 0;
-    const balance = Number(ingresos) - Number(egresos);
-    
-    return { 
-        ingresos: parseFloat(ingresos.toString()), 
-        egresos: parseFloat(egresos.toString()), 
-        balance 
-    };
+  async findFactura(id: number): Promise<string> {
+    const venta = await this.ventaRepository.findOneBy({ id });
+    if (!venta || !venta.rutaFacturaPdf) {
+        throw new NotFoundException(`No se encontró una factura para la venta con ID ${id}.`);
+    }
+    if (!fs.existsSync(venta.rutaFacturaPdf)) {
+        const rutaRegenerada = await this.pdfService.generarFacturaPdf(venta);
+        venta.rutaFacturaPdf = rutaRegenerada;
+        await this.ventaRepository.save(venta);
+        return rutaRegenerada;
+    }
+    return venta.rutaFacturaPdf;
   }
 
   async getFlujoMensual() {
-    const flujoData: { mes: string, ingresos: string, egresos: string }[] = await this.ventaRepository.query(`
+    // Consultas para ingresos y egresos
+    const ingresosData: any[] = await this.ventaRepository.query(`
       SELECT
-        mes,
-        SUM(ingresos) as ingresos,
-        SUM(egresos) as egresos
-      FROM (
-        SELECT
-          TO_CHAR("Fecha", 'YYYY-MM') as mes,
-          "Valor_Total_Venta" as ingresos,
-          0 as egresos
-        FROM ventas
-        UNION ALL
-        SELECT
-          TO_CHAR("Fecha", 'YYYY-MM') as mes,
-          0 as ingresos,
-          "Monto" as egresos
-        FROM gastos
-      ) as transacciones
+        TO_CHAR("Fecha", 'YYYY-MM') as mes,
+        SUM("Valor_Total_Venta") as ingresos
+      FROM ventas
       GROUP BY mes
       ORDER BY mes DESC
       LIMIT 6;
     `);
 
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    
-    return flujoData.map(item => ({
-        mes: monthNames[new Date(item.mes + '-02').getUTCMonth()],
-        ingresos: parseFloat(item.ingresos),
-        egresos: parseFloat(item.egresos)
-    })).reverse();
-  }
-  
-  async getDistribucionEgresos() {
-    const distribucion: { nombre: string, monto: string }[] = await this.gastoRepository.query(`
-      SELECT 
-          "Descripcion" as nombre,
-          SUM("Monto") as monto
+    const egresosData: any[] = await this.gastoRepository.query(`
+      SELECT
+        TO_CHAR("Fecha", 'YYYY-MM') as mes,
+        SUM("Monto") as egresos
       FROM gastos
-      GROUP BY "Descripcion"
-      ORDER BY monto DESC
-      LIMIT 5;
+      GROUP BY mes
+      ORDER BY mes DESC
+      LIMIT 6;
     `);
-    
-    return distribucion.map(item => ({
-        ...item,
-        monto: parseFloat(item.monto)
+
+    // Combinar ingresos y egresos por mes
+    const combined = {};
+    ingresosData.forEach(item => {
+      combined[item.mes] = { mes: item.mes, ingresos: parseFloat(item.ingresos) || 0, egresos: 0 };
+    });
+    egresosData.forEach(item => {
+      if (combined[item.mes]) {
+        combined[item.mes].egresos = parseFloat(item.egresos) || 0;
+      } else {
+        combined[item.mes] = { mes: item.mes, ingresos: 0, egresos: parseFloat(item.egresos) || 0 };
+      }
+    });
+
+    // Convertir a array y ordenar por mes ascendente
+    const result = Object.values(combined).sort((a: any, b: any) => a.mes.localeCompare(b.mes)).slice(-6);
+
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    return result.map((item: any) => ({
+      mes: monthNames[new Date(item.mes + '-02').getUTCMonth()],
+      ingresos: item.ingresos,
+      egresos: item.egresos
     }));
   }
 }

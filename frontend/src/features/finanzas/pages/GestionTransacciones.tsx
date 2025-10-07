@@ -1,12 +1,13 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { FaPlus, FaTrash } from 'react-icons/fa';
-import { obtenerTransacciones, crearTransaccion } from '../api/transaccionesApi'; // 👈 CAMBIO: Se importa crearTransaccion
+import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { obtenerTransacciones } from '../api/transaccionesApi';
 import Modal from '../../../components/Modal';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function GestionTransaccionesPage(): ReactElement {
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
@@ -15,7 +16,15 @@ export default function GestionTransaccionesPage(): ReactElement {
   const fetchData = async () => {
     try {
       const transRes = await obtenerTransacciones();
-      setTransacciones(transRes.data || []);
+
+      const transacciones = (transRes.data || []).map((t: any) => ({
+        ...t,
+        tipo: t.tipo || 'ingreso',
+        cantidad: t.cantidad || 1,
+        precioUnitario: t.precioUnitario || t.monto,
+      }));
+
+      setTransacciones(transacciones);
     } catch (error) {
       toast.error("Error al cargar las transacciones.");
     }
@@ -26,16 +35,33 @@ export default function GestionTransaccionesPage(): ReactElement {
   const handleSave = async (data: TransaccionData) => {
     const toastId = toast.loading("Registrando transacción...");
     try {
-      // 🔽 CAMBIO: Se utiliza la función de API en lugar del fetch manual
-      await crearTransaccion(data);
-      // 🔼 FIN DEL CAMBIO
+      const endpoint = data.tipo === 'egreso' ? '/gastos-produccion' : '/ventas';
+      const payload = data.tipo === 'egreso' ? {
+        descripcion: data.descripcion,
+        monto: data.monto,
+        fecha: data.fecha,
+        produccion: data.produccionId
+      } : data;
 
-      const successMessage = data.tipo === 'ingreso' ? "Venta registrada" : "Gasto registrado";
-      toast.success(successMessage, { id: toastId });
+      const response = await fetch(`${API_URL}${endpoint}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Error del servidor');
+      }
+
+      toast.success("Transacción registrada con éxito", { id: toastId });
       closeModal();
       fetchData();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Error al guardar la transacción";
+      const errorMessage = error.message || "Error al guardar la transacción";
       toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage, { id: toastId });
     }
   };
@@ -58,8 +84,11 @@ export default function GestionTransaccionesPage(): ReactElement {
     <div className="bg-white shadow-xl rounded-xl p-6 w-full flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
-        <button onClick={openModal} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow">
-          <FaPlus /> Nueva Transacción
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
+        >
+          <FaPlus /> Nueva Venta
         </button>
       </div>
       <input 
@@ -74,8 +103,8 @@ export default function GestionTransaccionesPage(): ReactElement {
           <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
             <tr>
               <th className="px-4 py-3 text-left">Fecha</th>
-              <th className="px-4 py-3 text-left">Descripción</th>
               <th className="px-4 py-3 text-left">Tipo</th>
+              <th className="px-4 py-3 text-left">Descripción</th>
               <th className="px-4 py-3 text-right">Cantidad</th>
               <th className="px-4 py-3 text-right">Precio Unitario</th>
               <th className="px-4 py-3 text-right">Valor Total</th>
@@ -83,44 +112,48 @@ export default function GestionTransaccionesPage(): ReactElement {
             </tr>
           </thead>
           <tbody>
-            {filteredTransacciones.map((t) => (
-              t && t.id && (
-                <tr key={t.id} className="border-t hover:bg-blue-50">
-                  <td className="px-4 py-3">{new Date(t.fecha).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 font-medium">{t.descripcion}</td>
-                  <td className="px-4 py-3">
-                    {t.tipo && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        t.tipo === 'ingreso'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">{t.cantidad}</td>
-                  <td className="px-4 py-3 text-right">{currencyFormatter.format(t.precioUnitario || 0)}</td>
-                  <td className="px-4 py-3 font-semibold text-right">
-                    <span className={t.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}>
-                        {currencyFormatter.format(t.monto)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center flex justify-center gap-3">
-                    <button disabled className="text-red-300 cursor-not-allowed"><FaTrash /></button>
-                  </td>
-                </tr>
-              )
+            {filteredTransacciones.map((t, index) => (
+              <tr key={t.id} className={`border-t transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 hover:shadow-sm`}>
+                <td className="px-4 py-3">{new Date(t.fecha).toLocaleDateString('es-ES')}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    t.tipo === 'ingreso' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {t.tipo === 'ingreso' ? <FaArrowUp size={10} /> : <FaArrowDown size={10} />}
+                    {t.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-medium">{t.descripcion}</td>
+                <td className="px-4 py-3 text-right">{t.cantidad}</td>
+                <td className="px-4 py-3 text-right">{currencyFormatter.format(t.precioUnitario || 0)}</td>
+                <td className={`px-4 py-3 font-semibold text-right ${t.tipo === 'egreso' ? 'text-red-600' : 'text-green-600'}`}>
+                  {t.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(t.monto)}
+                </td>
+                <td className="px-4 py-3 text-center flex justify-center gap-4">
+                  {t.rutaFacturaPdf && (
+                    <a
+                      href={`${API_URL}/ventas/${t.id}/factura`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Descargar Factura"
+                    >
+                      <FaDownload />
+                    </a>
+                  )}
+                  <button disabled className="text-red-300 cursor-not-allowed"><FaTrash /></button>
+                </td>
+              </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={''}>
-          <TransaccionForm 
-              onSave={handleSave}
-              onCancel={closeModal}
-          />
-      </Modal>
+       <Modal isOpen={isModalOpen} onClose={closeModal} title={''}>
+           <TransaccionForm
+               onSave={handleSave}
+               onCancel={closeModal}
+           />
+       </Modal>
     </div>
   );
 }

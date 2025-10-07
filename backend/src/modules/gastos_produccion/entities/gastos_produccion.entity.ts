@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Produccion } from '../../producciones/entities/produccione.entity';
+import { TipoMovimiento } from '../../../common/enums/tipo-movimiento.enum';
 
 @Entity('gastos')
 export class Gasto {
@@ -15,8 +16,8 @@ export class Gasto {
   @Column({ name: 'Fecha', type: 'date', nullable: false })
   fecha: Date;
 
-  @Column({ type: 'varchar', default: 'egreso' }) 
-  tipo: string; 
+  @Column({ name: 'Tipo', type: 'enum', enum: TipoMovimiento, default: TipoMovimiento.EGRESO })
+  tipo: TipoMovimiento;
 
   @ManyToOne(() => Produccion, (produccion) => produccion.gastos, { onDelete: 'CASCADE' })
   produccion: Produccion;

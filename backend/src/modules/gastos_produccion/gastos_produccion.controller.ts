@@ -3,32 +3,38 @@ import { GastosProduccionService } from './gastos_produccion.service';
 import { CreateGastosProduccionDto } from './dto/create-gastos_produccion.dto';
 import { UpdateGastosProduccionDto } from './dto/update-gastos_produccion.dto';
 
-@Controller('gastos') // 👈 CAMBIO: de 'gastos-produccion' a 'gastos'
+@Controller('gastos-produccion')
 export class GastosProduccionController {
   constructor(private readonly gastosProduccionService: GastosProduccionService) {}
 
   @Post()
-  create(@Body() createGastosProduccionDto: CreateGastosProduccionDto) {
-    return this.gastosProduccionService.create(createGastosProduccionDto);
+  async create(@Body() createGastosProduccionDto: CreateGastosProduccionDto) {
+    const data = await this.gastosProduccionService.create(createGastosProduccionDto);
+    return { success: true, message: 'Gasto registrado con éxito.', data };
   }
 
   @Get()
-  findAll() {
-    return this.gastosProduccionService.findAll();
+  async findAll() {
+    const data = await this.gastosProduccionService.findAll();
+    return { success: true, data };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.gastosProduccionService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const data = await this.gastosProduccionService.findOne(+id);
+    return { success: true, data };
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateGastosProduccionDto: UpdateGastosProduccionDto) {
-    return this.gastosProduccionService.update(+id, updateGastosProduccionDto);
+  async update(@Param('id') id: string, @Body() updateGastosProduccionDto: UpdateGastosProduccionDto) {
+    const data = await this.gastosProduccionService.update(+id, updateGastosProduccionDto);
+    return { success: true, message: 'Gasto actualizado con éxito.', data };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.gastosProduccionService.remove(+id);
+  async remove(@Param('id') id: string) {
+    await this.gastosProduccionService.remove(+id);
+    return { success: true, message: 'Gasto eliminado con éxito.' };
   }
 }
+
