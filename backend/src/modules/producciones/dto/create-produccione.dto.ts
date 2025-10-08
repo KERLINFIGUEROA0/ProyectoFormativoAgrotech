@@ -1,4 +1,5 @@
-import { IsInt, IsNotEmpty, IsDateString, IsPositive } from 'class-validator';
+// src/modules/producciones/dto/create-produccione.dto.ts
+import { IsInt, IsNotEmpty, IsDateString, IsPositive, IsString, IsOptional, IsIn } from 'class-validator';
 
 export class CreateProduccioneDto {
   @IsInt({ message: 'La cantidad debe ser un número entero.' })
@@ -13,4 +14,10 @@ export class CreateProduccioneDto {
   @IsInt({ message: 'El ID del cultivo debe ser un número entero.' })
   @IsNotEmpty({ message: 'El ID del cultivo es obligatorio.' })
   cultivoId: number;
+
+  // --- ✅ AÑADIDO: Campo de estado opcional ---
+  @IsString()
+  @IsOptional()
+  @IsIn(['Programado', 'En Proceso', 'Cosechado'])
+  estado?: string;
 }

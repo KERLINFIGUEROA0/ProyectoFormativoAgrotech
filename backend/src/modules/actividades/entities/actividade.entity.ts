@@ -30,5 +30,12 @@ usuario: Usuario | null;
 
   @OneToMany(() => ActividadMaterial, (am) => am.actividad)
   actividadMaterial: ActividadMaterial[];
+
+  @Column({
+    type: 'enum',
+    enum: ['pendiente', 'en proceso', 'completado'],
+    default: 'pendiente',
+  })
+  estado: 'pendiente' | 'en proceso' | 'completado';
 }
 

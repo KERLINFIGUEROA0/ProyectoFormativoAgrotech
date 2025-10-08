@@ -68,3 +68,37 @@ export interface StatCardProps {
   value: number | string;
   color: 'blue' | 'red' | 'green' | 'yellow';
 }
+
+export interface Produccion {
+  id: number;
+  cantidad: number;
+  fecha: string;
+  estado: string;
+  cultivo: { id: number; nombre: string; };
+}
+
+export interface Stats {
+  totalCosechado: number;
+  ingresosTotales: number;
+  gastosTotales: number;
+  rentabilidad: number;
+}
+
+export interface Cultivo {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  cantidad: number;
+  Fecha_Plantado: string;
+  Estado: string;
+  img: string;
+  tipoCultivo: {
+    id: number;
+    nombre: string;
+  };
+}
+
+export interface TipoCultivo {
+  id: number;
+  nombre: string;
+}

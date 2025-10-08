@@ -7,26 +7,8 @@ import { listarCultivos, crearCultivo, actualizarCultivo, eliminarCultivo, lista
 import Modal from '../../../components/Modal';
 import CultivoForm from '../components/CultivoForm';
 import { useNavigate } from 'react-router-dom';
+import type { Cultivo, TipoCultivo} from '../interfaces/cultivos';
 
-// Interfaces para tipar los datos
-interface Cultivo {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  cantidad: number;
-  Fecha_Plantado: string;
-  Estado: string;
-  img: string;
-  tipoCultivo: {
-    id: number;
-    nombre: string;
-  };
-}
-
-interface TipoCultivo {
-  id: number;
-  nombre: string;
-}
 
 export default function GestionCultivosPage(): ReactElement {
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
@@ -172,9 +154,9 @@ export default function GestionCultivosPage(): ReactElement {
                     <button onClick={() => openModal(cultivo)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
                       <Edit size={14} /> Editar
                     </button>
-                    <button onClick={() => navigate('/cultivo-dashboard')} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
-                      <DollarSign size={14} /> Producción
-                    </button>
+                    <button onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
+    <DollarSign size={14} /> Producción
+</button>
                 </div>
                 <button onClick={() => handleDelete(cultivo.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
                   <Trash2 size={18} />

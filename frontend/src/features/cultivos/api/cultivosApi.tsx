@@ -1,21 +1,5 @@
 // src/features/cultivos/api/cultivosApi.ts
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_BACKEND_URL;
-
-const api = axios.create({
-  baseURL: API_URL,
-});
-
-// Interceptor para añadir el token a cada petición
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
+import { api } from "../../../lib/axios";
 // --- API para Cultivos ---
 export const listarCultivos = async () => {
   const response = await api.get("/cultivos/listar");

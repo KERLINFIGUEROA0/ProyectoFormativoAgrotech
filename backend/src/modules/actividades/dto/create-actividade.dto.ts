@@ -1,6 +1,6 @@
 import { IsString, IsDateString, IsOptional, IsNumber } from 'class-validator';
 
-export class CreateActividadeDto {
+export class CreateActividadDto {
   @IsString()
   titulo: string;
 

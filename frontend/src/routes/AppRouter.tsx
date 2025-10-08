@@ -18,6 +18,8 @@ import DashboardFinanciero from "../features/finanzas/pages/DashboardFinanciero"
 import GestionTransaccionesPage from "../features/finanzas/pages/GestionTransacciones";
 import GestionCultivosPage from "../features/cultivos/pages/GestionCultivos";
 import GestionSensoresPage from "../features/iot/pages/GestionSensores";
+import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion";
+import GestionActividadesPage from "../features/actividades/pages/GestionActividadesPage";
 
 export default function AppRouter() {
   return (
@@ -53,8 +55,10 @@ export default function AppRouter() {
           <Route path="/gestion-surcos" element={<GestionSurcos />} />
           <Route path="/gestion-sensores" element={<GestionSensoresPage />} />
           <Route path="/gestion-cultivos" element={<GestionCultivosPage />} />
+          <Route path="/cultivos/:cultivoId/produccion" element={<DashboardProduccion />} /> 
           <Route path="/ingresos" element={<DashboardFinanciero />} />
           <Route path="/egresos" element={<GestionTransaccionesPage />} />
+          <Route path="/gestion-actividades" element={<GestionActividadesPage />} />
           
           {/* --- NUEVAS RUTAS DE ACTIVIDADES --- */}
           <Route path="/cronograma" element={
@@ -63,13 +67,6 @@ export default function AppRouter() {
                 <p>Esta sección está en construcción.</p>
               </div>
             } 
-          />
-          <Route path="/tareas" element={
-              <div className="text-center p-8">
-                <h1 className="text-2xl font-bold">Gestión de Tareas</h1>
-                <p>Esta sección está en construcción.</p>
-              </div>
-            }
           />
           {/* ------------------------------------- */}
 

@@ -87,7 +87,7 @@ const menuItems: MenuItemType[] = [
     icon: ClipboardList,
     children: [
       { id: "cronograma", label: "Cronograma", icon: Calendar },
-      { id: "tareas", label: "Tareas", icon: Activity },
+      { id: "gestion-actividades", label: "Tareas", icon: Activity },
     ],
   },
   // ---------------------------------

@@ -1,22 +1,6 @@
-import axios from "axios";
+import { api } from "../../../lib/axios";
 import type { TransaccionData } from "../interfaces/finanzas";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL;
-
-// Creamos una instancia de axios configurada para autenticación
-const api = axios.create({
-  baseURL: API_URL,
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// --- Funciones de la API para Transacciones ---
 
 export const obtenerTransacciones = async () => {
   // Obtener ingresos y egresos por separado y combinarlos
