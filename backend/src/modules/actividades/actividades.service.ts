@@ -13,15 +13,15 @@ export class ActividadesService {
     @InjectRepository(Actividad)
     private readonly actividadRepository: Repository<Actividad>,
   ) {}
-
-  async create(dto: CreateActividadDto) {
-    const actividad = this.actividadRepository.create({
-      ...dto,
-      usuario: dto.usuario ? { identificacion: dto.usuario } : undefined,
-      cultivo: dto.cultivo ? { id: dto.cultivo } : undefined,
-    });
-    return this.actividadRepository.save(actividad);
-  }
+  
+async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
+  const actividad = this.actividadRepository.create({
+    ...dto,
+    usuario: { identificacion: usuarioIdentificacion }, // ✅ se asigna automáticamente
+    cultivo: dto.cultivo ? { id: dto.cultivo } : undefined,
+  });
+  return this.actividadRepository.save(actividad);
+}
 
   async findAll() {
     // Cargar relaciones si las necesitas

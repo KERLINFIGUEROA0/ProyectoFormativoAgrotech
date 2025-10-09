@@ -1,6 +1,6 @@
 // src/features/actividades/components/ActividadCard.tsx
 import React from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Eye } from 'lucide-react'; // Importamos el ícono Eye
 import type { Actividad } from '../interfaces/actividades';  
 import { getEstadoBadgeClass, getEstadoTexto } from '../utils/estadoUtils';
 
@@ -8,14 +8,15 @@ interface ActividadCardProps {
   actividad: Actividad;
   onEdit: (actividad: Actividad) => void;
   onDelete: (id: number) => void;
+  onView: (actividad: Actividad) => void; // ✅ Nueva prop para ver detalles
 }
 
-const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDelete }) => {
+const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDelete, onView }) => {
   const estadoClase = getEstadoBadgeClass(actividad.estado);
   const estadoTexto = getEstadoTexto(actividad.estado);
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 w-full max-w-sm">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 w-full">
       <div className="p-5">
         <div className="flex justify-between items-start">
           <div>
@@ -27,12 +28,17 @@ const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDele
               Asignado a: {actividad.usuario?.nombre || 'N/A'} {actividad.usuario?.apellidos || ''}
             </p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => onEdit(actividad)} className="p-2 text-blue-500 hover:bg-blue-100 rounded-full">
+          
+          {/* ✅ Botones de Acción (Editar, Eliminar, Ver) */}
+          <div className="flex gap-1.5">
+            <button onClick={() => onEdit(actividad)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar">
               <Edit size={16} />
             </button>
-            <button onClick={() => onDelete(actividad.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
+            <button onClick={() => onDelete(actividad.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full" title="Eliminar">
               <Trash2 size={16} />
+            </button>
+            <button onClick={() => onView(actividad)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-full" title="Ver Detalles">
+              <Eye size={16} /> {/* Ícono de Ojo para ver detalles */}
             </button>
           </div>
         </div>

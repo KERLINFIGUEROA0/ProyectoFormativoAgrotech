@@ -47,3 +47,12 @@ export interface CreateActividadPayload {
 export interface UpdateActividadPayload extends Partial<CreateActividadPayload> {
   estado?: EstadoActividad;
 }
+// Refleja AsignarActividadDto del backend
+export interface AsignarActividadPayload {
+  cultivo: number;        // ID del cultivo
+  titulo: string;         // Título de la actividad
+  descripcion: string;    // Descripción de la actividad
+  fecha: string;          // Fecha de la actividad (YYYY-MM-DD)
+  // Array de IDENTIFICACIONES de los aprendices seleccionados
+  aprendices: number[];   
+}

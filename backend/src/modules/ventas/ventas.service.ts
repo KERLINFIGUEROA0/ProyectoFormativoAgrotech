@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository, In } from 'typeorm';
 import { Venta } from './entities/venta.entity';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { Produccion } from '../producciones/entities/produccione.entity';
@@ -12,6 +12,7 @@ import * as fs from 'fs';
 @Injectable()
 export class VentasService {
   constructor(
+    private readonly dataSource: DataSource, // Inyectamos DataSource para transacciones
     @InjectRepository(Venta)
     private readonly ventaRepository: Repository<Venta>,
     @InjectRepository(Produccion)
@@ -22,25 +23,58 @@ export class VentasService {
   ) {}
 
   async create(dto: CreateVentaDto): Promise<Venta> {
-    const produccion = await this.produccionRepository.findOne({ where: { id: dto.produccionId }, relations: ['cultivo'] });
-    if (!produccion) {
-      throw new NotFoundException(`La producción con ID ${dto.produccionId} no fue encontrada.`);
-    }
+    // Usamos una transacción para asegurar que todas las operaciones se completen exitosamente.
+    return this.dataSource.transaction(async (entityManager) => {
+      const produccionRepo = entityManager.getRepository(Produccion);
+      const ventaRepo = entityManager.getRepository(Venta);
 
-    const nuevaVenta = this.ventaRepository.create({
-      descripcion: dto.descripcion || `Venta de ${produccion.cultivo?.nombre || 'producto'}`,
-      fecha: dto.fecha,
-      precioUnitario: dto.monto,
-      cantidadVenta: dto.cantidad,
-      valorTotalVenta: dto.monto * (dto.cantidad || 0),
-      tipo: TipoMovimiento.INGRESO,
-      produccion: produccion,
+      // 1. Buscamos la producción para validar el stock.
+      const produccion = await produccionRepo.findOne({
+        where: { id: dto.produccionId },
+        relations: ['cultivo'],
+      });
+
+      if (!produccion) {
+        throw new NotFoundException(`La producción con ID ${dto.produccionId} no fue encontrada.`);
+      }
+
+      // 2. Validamos que la cantidad a vender no supere la disponible.
+      if (dto.cantidad > produccion.cantidad) {
+        throw new BadRequestException(
+          `No puedes vender ${dto.cantidad} kg. Cantidad disponible: ${produccion.cantidad} kg.`
+        );
+      }
+
+      // 3. Restamos la cantidad vendida a la producción.
+      produccion.cantidad -= dto.cantidad;
+
+      // 4. Si la cantidad llega a 0, actualizamos el estado.
+      if (produccion.cantidad === 0) {
+        produccion.estado = 'Cosechado'; // O un estado 'Agotado' si lo prefieres.
+      }
+      
+      // Guardamos la producción actualizada.
+      await produccionRepo.save(produccion);
+
+      // 5. Si todo fue exitoso, creamos el registro de la venta.
+      const nuevaVenta = ventaRepo.create({
+        descripcion: dto.descripcion || `Venta de ${produccion.cultivo?.nombre || 'producto'}`,
+        fecha: dto.fecha,
+        precioUnitario: dto.monto,
+        cantidadVenta: dto.cantidad,
+        valorTotalVenta: dto.monto * (dto.cantidad || 0),
+        tipo: TipoMovimiento.INGRESO,
+        produccion: produccion,
+      });
+
+      const ventaGuardada = await ventaRepo.save(nuevaVenta);
+      
+      // Generamos el PDF y actualizamos la venta con la ruta del archivo.
+      const rutaPdf = await this.pdfService.generarFacturaPdf(ventaGuardada);
+      ventaGuardada.rutaFacturaPdf = rutaPdf;
+      
+      return ventaRepo.save(ventaGuardada);
     });
-
-    const ventaGuardada = await this.ventaRepository.save(nuevaVenta);
-    const rutaPdf = await this.pdfService.generarFacturaPdf(ventaGuardada);
-    ventaGuardada.rutaFacturaPdf = rutaPdf;
-    return this.ventaRepository.save(ventaGuardada);
   }
 
   async findAll(): Promise<any[]> {
@@ -61,6 +95,18 @@ export class VentasService {
     }));
   }
 
+  async findByProduccionIds(produccionIds: number[]): Promise<Venta[]> {
+    if (produccionIds.length === 0) {
+      return [];
+    }
+    return this.ventaRepository.find({
+      where: {
+        produccion: { id: In(produccionIds) },
+      },
+      relations: ['produccion'],
+    });
+  }
+
   async findFactura(id: number): Promise<string> {
     const venta = await this.ventaRepository.findOneBy({ id });
     if (!venta || !venta.rutaFacturaPdf) {
@@ -76,7 +122,6 @@ export class VentasService {
   }
 
   async getFlujoMensual() {
-    // Consultas para ingresos y egresos
     const ingresosData: any[] = await this.ventaRepository.query(`
       SELECT
         TO_CHAR("Fecha", 'YYYY-MM') as mes,
@@ -97,7 +142,6 @@ export class VentasService {
       LIMIT 6;
     `);
 
-    // Combinar ingresos y egresos por mes
     const combined = {};
     ingresosData.forEach(item => {
       combined[item.mes] = { mes: item.mes, ingresos: parseFloat(item.ingresos) || 0, egresos: 0 };
@@ -110,7 +154,6 @@ export class VentasService {
       }
     });
 
-    // Convertir a array y ordenar por mes ascendente
     const result = Object.values(combined).sort((a: any, b: any) => a.mes.localeCompare(b.mes)).slice(-6);
 
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];

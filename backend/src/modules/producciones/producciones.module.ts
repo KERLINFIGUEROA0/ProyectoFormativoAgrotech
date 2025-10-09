@@ -11,5 +11,6 @@ import { Cultivo } from '../cultivos/entities/cultivo.entity'; // 👈 Importamo
   ],
   controllers: [ProduccionesController],
   providers: [ProduccionesService],
+  exports: [ProduccionesService],
 })
 export class ProduccionesModule {}

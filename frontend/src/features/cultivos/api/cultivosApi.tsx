@@ -1,5 +1,5 @@
-// src/features/cultivos/api/cultivosApi.ts
 import { api } from "../../../lib/axios";
+
 // --- API para Cultivos ---
 export const listarCultivos = async () => {
   const response = await api.get("/cultivos/listar");
@@ -21,17 +21,6 @@ export const eliminarCultivo = async (id: number) => {
   return response.data;
 };
 
-// --- API para Tipos de Cultivo (necesario para el formulario) ---
-export const listarTiposCultivo = async () => {
-    const response = await api.get('/tipo-cultivo/listar');
-    return response.data;
-}
-
-export const crearTipoCultivo = async (data: { nombre: string }) => {
-    const response = await api.post('/tipo-cultivo/crear', data);
-    return response.data;
-}
-
 export const subirImagenCultivo = async (id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -41,5 +30,24 @@ export const subirImagenCultivo = async (id: number, file: File) => {
       'Content-Type': 'multipart/form-data',
     },
   });
+  return response.data;
+}; // 
+
+
+// --- API para Tipos de Cultivo ---
+export const listarTiposCultivo = async () => {
+    const response = await api.get('/tipo-cultivo/listar');
+    return response.data;
+};
+
+export const crearTipoCultivo = async (data: { nombre: string }) => {
+    const response = await api.post('/tipo-cultivo/crear', data);
+    return response.data;
+};
+
+
+// --- FUNCIÓN PARA TRAZABILIDAD ---
+export const obtenerTrazabilidad = async (cultivoId: number) => {
+  const response = await api.get(`/trazabilidad/cultivo/${cultivoId}`);
   return response.data;
 };

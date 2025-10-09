@@ -12,6 +12,7 @@ import { redisStore } from 'cache-manager-redis-store';
 import { ActividadesModule } from './modules/actividades/actividades.module';
 import { ActividadesMaterialesModule } from './modules/actividades_materiales/actividades_materiales.module';
 import { CultivosModule } from './modules/cultivos/cultivos.module';
+import { TrazabilidadModule  } from './modules/trazabilidad/trazabilidad.module';
 import { EpaModule } from './modules/epa/epa.module';
 import { GastosProduccionModule } from './modules/gastos_produccion/gastos_produccion.module';
 import { InformacionSensorModule } from './modules/informacion_sensor/informacion_sensor.module';
@@ -72,6 +73,7 @@ import {NotificationsModule} from './notifications/notifications.module';
     VentasModule,
     EpaTratamientoModule,
     CultivosEpaModule,
+    TrazabilidadModule,
     RolPermisoModule,
     PermisosModule,
     UsuarioPermisoModule,

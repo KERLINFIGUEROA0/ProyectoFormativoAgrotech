@@ -1,9 +1,8 @@
 // src/features/cultivos/pages/GestionCultivos.tsx
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, DollarSign } from 'lucide-react';
-// --- 1. Importa la función para crear el tipo de cultivo ---
-import { listarCultivos, crearCultivo, actualizarCultivo, eliminarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo } from '../api/cultivosApi';
+import { Plus, Edit, DollarSign, BookCheck } from 'lucide-react'; // Trash2
+import { listarCultivos, crearCultivo, actualizarCultivo, /*eliminarCultivo*/ listarTiposCultivo, subirImagenCultivo, crearTipoCultivo } from '../api/cultivosApi';
 import Modal from '../../../components/Modal';
 import CultivoForm from '../components/CultivoForm';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +44,6 @@ export default function GestionCultivosPage(): ReactElement {
     setEditingCultivo(null);
   };
 
-  // --- ✅ LÓGICA DE handleSave CORREGIDA ---
   const handleSave = async (data: any) => {
     const { imageFile, newTipoCultivoName, ...cultivoData } = data;
     const toastId = toast.loading("Guardando cultivo...");
@@ -53,27 +51,23 @@ export default function GestionCultivosPage(): ReactElement {
     try {
       let finalCultivoData = { ...cultivoData };
 
-      // Si el usuario escribió un nuevo tipo, lo creamos primero.
       if (newTipoCultivoName) {
         toast.info("Creando nuevo tipo de cultivo...", { id: toastId });
         const newTipoRes = await crearTipoCultivo({ nombre: newTipoCultivoName });
-        // Usamos el ID del tipo recién creado.
         finalCultivoData.tipoCultivoId = newTipoRes.data.id;
       }
 
       if (editingCultivo) {
-        // Lógica de Actualización
         const res = await actualizarCultivo(editingCultivo.id, finalCultivoData);
         if (imageFile) await subirImagenCultivo(res.data.id, imageFile);
         toast.success("Cultivo actualizado.", { id: toastId });
       } else {
-        // Lógica de Creación
         const res = await crearCultivo(finalCultivoData);
         if (imageFile) await subirImagenCultivo(res.data.id, imageFile);
         toast.success("Cultivo creado.", { id: toastId });
       }
       
-      await fetchData(); // Recarga todos los datos, incluyendo la nueva lista de tipos.
+      await fetchData();
       closeModal();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Error al guardar el cultivo.";
@@ -85,24 +79,24 @@ export default function GestionCultivosPage(): ReactElement {
     }
   };
 
-  const handleDelete = (id: number) => {
-    toast.warning('¿Estás seguro de que quieres eliminar este cultivo?', {
-      action: {
-        label: 'Eliminar',
-        onClick: async () => {
-          const toastId = toast.loading("Eliminando cultivo...");
-          try {
-            await eliminarCultivo(id);
-            toast.success("Cultivo eliminado con éxito.", { id: toastId });
-            await fetchData();
-          } catch (error) {
-            toast.error("No se pudo eliminar el cultivo.", { id: toastId });
-          }
-        }
-      },
-    cancel: { label: 'Cancelar', onClick: () => {} },
-    });
-  };
+  // const handleDelete = (id: number) => {
+  //   toast.warning('¿Estás seguro de que quieres eliminar este cultivo?', {
+  //     action: {
+  //       label: 'Eliminar',
+  //       onClick: async () => {
+  //         const toastId = toast.loading("Eliminando cultivo...");
+  //         try {
+  //           await eliminarCultivo(id);
+  //           toast.success("Cultivo eliminado con éxito.", { id: toastId });
+  //           await fetchData();
+  //         } catch (error) {
+  //           toast.error("No se pudo eliminar el cultivo.", { id: toastId });
+  //         }
+  //       }
+  //     },
+  //   cancel: { label: 'Cancelar', onClick: () => {} },
+  //   });
+  // };
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -149,19 +143,23 @@ export default function GestionCultivosPage(): ReactElement {
                   </div>
               </div>
 
+              {/* --- ✅ INICIO DE LA MODIFICACIÓN --- */}
               <div className="mt-5 pt-4 flex items-center justify-between">
                 <div className="flex gap-2">
-                    <button onClick={() => openModal(cultivo)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
-                      <Edit size={14} /> Editar
-                    </button>
-                    <button onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
-    <DollarSign size={14} /> Producción
-</button>
+                  <button onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
+                    <DollarSign size={14} /> Producción
+                  </button>
+                  <button onClick={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)} className="flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-800">
+                    <BookCheck size={14} /> Trazabilidad
+                  </button>
                 </div>
-                <button onClick={() => handleDelete(cultivo.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
-                  <Trash2 size={18} />
+                {/* Se quita el botón de eliminar y se reemplaza por el de editar */}
+                <button onClick={() => openModal(cultivo)} className="p-2 text-blue-500 hover:bg-blue-100 rounded-full">
+                  <Edit size={18} />
                 </button>
               </div>
+              {/* --- ✅ FIN DE LA MODIFICACIÓN --- */}
+
             </div>
           </div>
         ))}

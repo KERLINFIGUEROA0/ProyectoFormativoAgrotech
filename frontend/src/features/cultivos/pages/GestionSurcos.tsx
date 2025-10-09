@@ -41,11 +41,27 @@ export default function GestionSurcos(): ReactElement {
     const loadInitialData = async () => {
       try {
         const [lotesRes, cultivosRes] = await Promise.all([obtenerLotes(), obtenerCultivos()]);
-        setLotes(lotesRes.data || []);
+        
+        // --- ✅ INICIO DE LA CORRECCIÓN ---
+        // 1. Obtenemos todos los lotes de la API
+        const todosLosLotes: Lote[] = lotesRes.data || [];
+        
+        // 2. Filtramos la lista para quedarnos solo con los que están "Activo"
+        const lotesActivos = todosLosLotes.filter(lote => lote.estado === 'Activo');
+
+        // 3. Guardamos en el estado solo la lista de lotes activos
+        setLotes(lotesActivos);
         setCultivos(cultivosRes.data || []);
-        if (lotesRes.data && lotesRes.data.length > 0) {
-          setSelectedLoteId(lotesRes.data[0].id);
+
+        // 4. Si hay lotes activos, seleccionamos el primero por defecto
+        if (lotesActivos.length > 0) {
+          setSelectedLoteId(lotesActivos[0].id);
+        } else {
+          // Si no hay ninguno, no seleccionamos nada
+          setSelectedLoteId(null);
         }
+        // --- ✅ FIN DE LA CORRECCIÓN ---
+
       } catch (error) {
         toast.error("Error al cargar datos iniciales.");
       }
@@ -56,6 +72,10 @@ export default function GestionSurcos(): ReactElement {
   useEffect(() => {
     if (selectedLoteId !== null) {
       fetchSurcos(selectedLoteId);
+    } else {
+      // Si no hay lote seleccionado, vaciamos la lista de surcos
+      setSurcos([]);
+      setSelectedSurco(null);
     }
   }, [selectedLoteId]);
 
@@ -73,11 +93,10 @@ export default function GestionSurcos(): ReactElement {
     setEditingSurco(null);
   };
 
-const handleSaveSurco = (data: SurcoData) => {
-    // La lógica de guardado sigue funcionando igual
+  const handleSaveSurco = (data: SurcoData) => {
     const promise = editingSurco
       ? actualizarSurco(editingSurco.id, data)
-      : crearSurco({ ...data, loteId: selectedLoteId! }); // Aseguramos loteId al crear
+      : crearSurco({ ...data, loteId: selectedLoteId! });
 
     toast.promise(promise, {
       loading: 'Guardando surco...',
@@ -135,15 +154,15 @@ const handleSaveSurco = (data: SurcoData) => {
   };
 
    const formInitialData = editingSurco
-    ? { // Datos para editar un surco existente
+    ? {
         id: editingSurco.id,
         nombre: editingSurco.nombre,
         descripcion: editingSurco.descripcion,
         cultivoId: editingSurco.cultivo?.id,
         loteId: editingSurco.lote.id,
       }
-    : { // Datos para crear un surco nuevo
-        loteId: selectedLoteId ?? undefined, // Convertimos null a undefined
+    : { 
+        loteId: selectedLoteId ?? undefined,
       };
 
   return (
@@ -155,8 +174,13 @@ const handleSaveSurco = (data: SurcoData) => {
             value={selectedLoteId || ''}
             onChange={handleLoteChange}
             className="border border-gray-300 rounded-lg p-2 bg-white shadow-sm"
+            disabled={lotes.length === 0} // Deshabilitamos si no hay lotes activos
           >
-            {lotes.map(lote => <option key={lote.id} value={lote.id}>{lote.nombre}</option>)}
+            {lotes.length > 0 ? (
+              lotes.map(lote => <option key={lote.id} value={lote.id}>{lote.nombre}</option>)
+            ) : (
+              <option value="">No hay lotes activos</option> // Mensaje informativo
+            )}
           </select>
           <button onClick={() => handleOpenModal()} disabled={!selectedLoteId} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition disabled:bg-gray-400">
             <Plus size={20} /> Nuevo Surco
@@ -164,6 +188,7 @@ const handleSaveSurco = (data: SurcoData) => {
         </div>
       </div>
 
+      {/* ...el resto del componente se mantiene igual... */}
       <div className="bg-white p-6 rounded-xl shadow-md">
         <div className="mb-8 text-center">
           <div>
@@ -237,7 +262,7 @@ const handleSaveSurco = (data: SurcoData) => {
 
        <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingSurco ? 'Editar Surco' : 'Agregar Nuevo Surco'}>
           <SurcoForm
-          initialData={formInitialData} // Pasamos los datos preparados
+          initialData={formInitialData}
           lotes={lotes}
           cultivos={cultivos}
           onSave={handleSaveSurco}

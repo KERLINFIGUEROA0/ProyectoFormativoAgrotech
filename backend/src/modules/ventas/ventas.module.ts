@@ -14,5 +14,6 @@ import { PdfModule } from '../pdf/pdf.module'; // <-- Importar
   ],
   controllers: [VentasController],
   providers: [VentasService],
+  exports: [VentasService],
 })
 export class VentasModule {}

@@ -1,6 +1,6 @@
 // src/features/actividades/api/actividadesapi.ts
 import { api } from "../../../lib/axios";
-import type { CreateActividadPayload, UpdateActividadPayload } from '../interfaces/actividades';
+import type { CreateActividadPayload, UpdateActividadPayload,AsignarActividadPayload} from '../interfaces/actividades';
 
 // --- FUNCIONES EXISTENTES (sin cambios en la lógica, solo en los tipos) ---
 
@@ -38,4 +38,15 @@ export const obtenerUsuariosParaActividades = async () => {
 export const obtenerCultivosParaActividades = async () => {
   const response = await api.get('/cultivos/listar');
   return response.data.data;
+};
+
+
+/**
+ * Asigna una actividad a múltiples aprendices en un solo cultivo.
+ * @param asignacionData - Payload con el cultivo, detalles y un array de identificaciones.
+ */
+export const asignarActividad = async (asignacionData: AsignarActividadPayload) => {
+  // ✅ RUTA CORREGIDA: Apunta a /actividades/asignar
+  const response = await api.post("/actividades/asignar", asignacionData); 
+  return response.data;
 };

@@ -2,45 +2,46 @@ import { useState, useEffect } from 'react';
 import { Button } from "@heroui/react";
 import { toast } from 'sonner';
 
-// Definimos las props para mayor claridad y seguridad de tipos
 interface ProduccionFormProps {
   onSave: (data: any) => void;
   onCancel: () => void;
   initialData?: any;
-  cultivoId: number; // Siempre será un número
+  cultivoId: number;
 }
 
 export default function ProduccionForm({ onSave, onCancel, initialData = {}, cultivoId }: ProduccionFormProps) {
-  // El estado del formulario se inicializa de forma más limpia
   const [formData, setFormData] = useState({
-    cantidad: initialData.cantidad || '',
-    fecha: initialData.fecha ? new Date(initialData.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    estado: initialData.estado || 'En Proceso',
+    cantidad: '',
+    fecha: new Date().toISOString().split('T')[0],
+    estado: 'En Proceso',
   });
 
-  // Efecto para actualizar el form si initialData cambia (al abrir el modal)
-  useEffect(() => {
-    setFormData({
-      cantidad: initialData.cantidad || '',
-      fecha: initialData.fecha ? new Date(initialData.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      estado: initialData.estado || 'En Proceso',
-    });
-  }, [initialData]);
+  // ✅ --- INICIO DE LA CORRECCIÓN --- ✅
+  // 1. Desestructuramos las propiedades de initialData para usarlas como dependencias.
+  const { cantidad, fecha, estado } = initialData;
 
+  useEffect(() => {
+    // 2. Usamos las variables desestructuradas para establecer el estado del formulario.
+    setFormData({
+      cantidad: cantidad || '',
+      fecha: fecha ? new Date(fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      estado: estado || 'En Proceso',
+    });
+  // 3. El array de dependencias ahora usa valores primitivos, lo que rompe el bucle infinito.
+  }, [cantidad, fecha, estado]);
+  // ✅ --- FIN DE LA CORRECCIÓN --- ✅
 
   const handleSubmit = () => {
     if (!formData.cantidad || !formData.fecha) {
       toast.error("La cantidad y la fecha son requeridas.");
       return;
     }
-
-    // --- ✅ CORRECCIÓN CLAVE AQUÍ ---
-    // Creamos un 'payload' limpio solo con los datos que el backend necesita.
+    
     const payload = {
       cantidad: parseInt(String(formData.cantidad), 10),
       fecha: formData.fecha,
       estado: formData.estado,
-      cultivoId: initialData.cultivo?.id || cultivoId, // Usamos el ID del cultivo inicial si estamos editando
+      cultivoId: initialData.cultivo?.id || cultivoId,
     };
     
     onSave(payload);

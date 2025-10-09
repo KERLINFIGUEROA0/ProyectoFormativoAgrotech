@@ -1,15 +1,14 @@
 // src/features/cultivos/pages/DashboardProduccion.tsx
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+// ✅ 1. Importa Link y el icono ArrowLeft
+import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { DollarSign, BarChart, Edit, Trash2, Plus } from 'lucide-react';
+import { DollarSign, BarChart, Edit, Trash2, Plus, ArrowLeft } from 'lucide-react';
 import { getProduccionesPorCultivo, getStatsPorCultivo, deleteProduccion, createProduccion, updateProduccion } from '../api/produccionApi';
 import { listarCultivos } from '../api/cultivosApi';
 import Modal from '../../../components/Modal';
 import ProduccionForm from '../components/ProduccionForm';
 import type { Produccion, Stats} from '../interfaces/cultivos';
-
-
 
 const StatCard = ({ title, value, icon, isCurrency = true }: any) => {
   const formattedValue = isCurrency 
@@ -85,7 +84,7 @@ export default function DashboardProduccion() {
               await createProduccion(data);
           }
           toast.success('Guardado con éxito', { id: toastId });
-          fetchData(); // Recarga todos los datos
+          fetchData(); 
           handleCloseModal();
       } catch {
           toast.error('Error al guardar', { id: toastId });
@@ -111,6 +110,13 @@ export default function DashboardProduccion() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-full space-y-6">
+      
+      {/* ✅ 2. AÑADE EL ENLACE DE "VOLVER" AQUÍ */}
+      <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline mb-4 font-semibold">
+        <ArrowLeft size={18} />
+        Volver a Gestión de Cultivos
+      </Link>
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Dashboard de Producción</h1>
