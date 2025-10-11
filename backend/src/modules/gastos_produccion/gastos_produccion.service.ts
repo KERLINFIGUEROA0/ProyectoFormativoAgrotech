@@ -63,8 +63,11 @@ export class GastosProduccionService {
   }
 
   async remove(id: number): Promise<void> {
-    const gasto = await this.findOne(id);
-    await this.gastoRepository.remove(gasto);
+    const gasto = await this.gastoRepository.findOneBy({ id });
+    if (!gasto) {
+      throw new NotFoundException(`Gasto con ID ${id} no encontrado.`);
+    }
+    await this.gastoRepository.delete(id);
   }
 }
 

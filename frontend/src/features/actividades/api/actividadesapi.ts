@@ -1,11 +1,15 @@
 // src/features/actividades/api/actividadesapi.ts
 import { api } from "../../../lib/axios";
-import type { CreateActividadPayload, UpdateActividadPayload,AsignarActividadPayload} from '../interfaces/actividades';
+import type { UpdateActividadPayload,AsignarActividadPayload} from '../interfaces/actividades';
 
 // --- FUNCIONES EXISTENTES (sin cambios en la lógica, solo en los tipos) ---
 
-export const registrarActividad = async (actividadData: CreateActividadPayload) => {
-  const response = await api.post("/actividades/registrar", actividadData);
+export const registrarActividad = async (formData: FormData) => {
+  const response = await api.post("/actividades/registrar", formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data', // Es importante para el envío de archivos
+    },
+  });
   return response.data;
 };
 

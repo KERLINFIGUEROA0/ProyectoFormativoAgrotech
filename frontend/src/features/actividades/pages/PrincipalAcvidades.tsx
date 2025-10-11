@@ -1,21 +1,20 @@
-// src/pages/DashboardPage.tsx
+// src/features/actividades/pages/PrincipalAcvidades.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { 
-  FileText, ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield, CheckCircle, Plus 
+  ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield, Plus 
 } from 'lucide-react';
 
 import { listarActividades, registrarActividad, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
-import type { Actividad, CreateActividadPayload } from '../interfaces/actividades';
+// ✅ 1. Importamos los tipos que faltaban para los estados
+import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
 
 import Modal from '../../../components/Modal';
 import FormularioActividad from '../components/FormularioActividad';
-// ✅ Importación del componente de formulario de asignación
-import AsignacionActividadForm from '../components/AsignacionActividadForm '; 
+// ✅ 2. Se corrige la ruta de importación (se quita el espacio al final)
+import AsignacionActividadForm from '../components/AsignacionActividadForm';
 
-// ------------------------------------------------------------
-// 1️⃣ Componente de Tarjeta de Acceso Rápido
-// ------------------------------------------------------------
+// --- Componente de Tarjeta de Acceso Rápido (sin cambios) ---
 interface QuickAccessCardProps {
   title: string;
   description: string;
@@ -27,7 +26,6 @@ interface QuickAccessCardProps {
 
 const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, icon, colorClass, action, link }) => (
   <div
-    // Llama a la acción si existe, o navega si hay link.
     onClick={action ? action : (link ? () => window.location.href = link : undefined)} 
     className={`bg-white p-6 rounded-xl shadow-md border-t-4 ${colorClass} flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
   >
@@ -49,9 +47,7 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, i
   </div>
 );
 
-// ------------------------------------------------------------
-// 2️⃣ Función auxiliar para íconos por tipo de actividad (Se mantiene igual)
-// ------------------------------------------------------------
+// --- Función de íconos y componente de item reciente (sin cambios) ---
 const getActivityIcon = (actividad: Actividad) => {
   const titulo = actividad.titulo?.toLowerCase() ?? ''; 
   if (titulo.includes('riego') || titulo.includes('agua')) {
@@ -66,9 +62,6 @@ const getActivityIcon = (actividad: Actividad) => {
   return <ClipboardList className="w-5 h-5 text-green-600" />;
 };
 
-// ------------------------------------------------------------
-// 3️⃣ Componente para mostrar actividad reciente (Se mantiene igual)
-// ------------------------------------------------------------
 const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) => {
   const icon = getActivityIcon(actividad);
 
@@ -114,27 +107,23 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
 };
 
 
-// ------------------------------------------------------------
-// 4️⃣ COMPONENTE PRINCIPAL DEL DASHBOARD
-// ------------------------------------------------------------
-const DashboardPage: React.FC = () => {
+// --- Componente Principal ---
+const ActividadesPrincipal: React.FC = () => {
   const [actividadesRecientes, setActividadesRecientes] = useState<Actividad[]>([]);
-  const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [cultivos, setCultivos] = useState<any[]>([]);
+  // ✅ 3. Se aplican los tipos correctos a los estados
+  const [usuarios, setUsuarios] = useState<UsuarioSimple[]>([]);
+  const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   
-  // ✅ Estados de modales actualizados
   const [isRegistroModalOpen, setIsRegistroModalOpen] = useState(false); 
   const [isAsignacionModalOpen, setIsAsignacionModalOpen] = useState(false); 
-  
   const [cargando, setCargando] = useState(true);
 
-  // --- Cargar actividades recientes ---
   const cargarActividades = useCallback(async () => {
     setCargando(true);
     try {
       const data = await listarActividades();
       const sorted = (data || [])
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+        .sort((a: Actividad, b: Actividad) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
         .slice(0, 3);
       setActividadesRecientes(sorted);
     } catch (err) {
@@ -145,7 +134,6 @@ const DashboardPage: React.FC = () => {
     }
   }, []);
 
-  // --- Cargar usuarios y cultivos para los formularios ---
   const cargarDatosSecundarios = useCallback(async () => {
     try {
       const [usuariosData, cultivosData] = await Promise.all([
@@ -164,14 +152,13 @@ const DashboardPage: React.FC = () => {
     cargarDatosSecundarios();
   }, [cargarActividades, cargarDatosSecundarios]);
 
-  // --- Guardar nueva actividad (Registro individual) ---
-  const handleSaveRegistro = async (payload: any) => {
+  const handleSaveRegistro = async (payload: FormData) => {
     const toastId = toast.loading('Registrando actividad...');
     try {
       await registrarActividad(payload);
       toast.success('Actividad registrada correctamente', { id: toastId });
-      setIsRegistroModalOpen(false); // Cierra modal
-      await cargarActividades(); // Recarga recientes
+      setIsRegistroModalOpen(false);
+      await cargarActividades();
     } catch {
       toast.error('Error al registrar actividad', { id: toastId });
     }
@@ -179,16 +166,15 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen space-y-8">
-      {/* Banner de Bienvenida */}
       <div className="flex items-center justify-between p-6 bg-green-600 text-white rounded-lg shadow-lg">
         <div>
           <h1 className="text-2xl font-bold">¡Bienvenido!</h1>
           <p className="text-lg">Administra eficientemente todas las actividades agrícolas</p>
         </div>
+        {/* Este ícono debe estar en tu carpeta public/ para que funcione */}
         <img src="/tractor-icon.svg" alt="Tractor" className="w-12 h-12 text-white" />
       </div>
 
-      {/* Accesos Rápidos */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -204,7 +190,6 @@ const DashboardPage: React.FC = () => {
             description="Asigna tareas específicas a los aprendices"
             icon={<ClipboardList className="w-6 h-6 text-blue-600" />}
             colorClass="border-blue-500"
-            // ✅ ABRIR MODAL DE ASIGNACIÓN
             action={() => setIsAsignacionModalOpen(true)} 
           />
           <QuickAccessCard
@@ -217,7 +202,6 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Actividades Recientes */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Actividades Recientes</h2>
@@ -242,7 +226,6 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ✅ Modal para REGISTRAR Actividad (Individual) */}
       <Modal
         isOpen={isRegistroModalOpen}
         onClose={() => setIsRegistroModalOpen(false)}
@@ -250,14 +233,12 @@ const DashboardPage: React.FC = () => {
       >
         <FormularioActividad
           actividadInicial={{}}
-          usuarios={usuarios}
           cultivos={cultivos}
           onSubmit={handleSaveRegistro}
           onCancel={() => setIsRegistroModalOpen(false)}
         />
       </Modal>
       
-      {/* ✅ Modal para ASIGNAR Actividad (Múltiple) */}
       <Modal
         isOpen={isAsignacionModalOpen}
         onClose={() => setIsAsignacionModalOpen(false)}
@@ -274,4 +255,5 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-export default DashboardPage;
+// ✅ 4. Renombramos el export para que coincida con el nombre del archivo y las rutas
+export default ActividadesPrincipal;

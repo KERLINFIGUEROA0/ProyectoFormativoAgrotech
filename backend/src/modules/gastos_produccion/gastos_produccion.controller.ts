@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { GastosProduccionService } from './gastos_produccion.service';
 import { CreateGastosProduccionDto } from './dto/create-gastos_produccion.dto';
 import { UpdateGastosProduccionDto } from './dto/update-gastos_produccion.dto';
@@ -20,20 +20,20 @@ export class GastosProduccionController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const data = await this.gastosProduccionService.findOne(+id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const data = await this.gastosProduccionService.findOne(id);
     return { success: true, data };
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateGastosProduccionDto: UpdateGastosProduccionDto) {
-    const data = await this.gastosProduccionService.update(+id, updateGastosProduccionDto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateGastosProduccionDto: UpdateGastosProduccionDto) {
+    const data = await this.gastosProduccionService.update(id, updateGastosProduccionDto);
     return { success: true, message: 'Gasto actualizado con éxito.', data };
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    await this.gastosProduccionService.remove(+id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.gastosProduccionService.remove(id);
     return { success: true, message: 'Gasto eliminado con éxito.' };
   }
 }

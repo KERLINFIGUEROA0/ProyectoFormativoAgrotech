@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Search, Bell, ArrowUp, ArrowDown } from 'lucide-react';
 import { obtenerTransacciones, obtenerFlujoMensual } from '../api/transaccionesApi';
@@ -8,9 +9,11 @@ import type { Transaccion } from '../interfaces/finanzas';
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
 export default function DashboardFinanciero(): ReactElement {
+  const navigate = useNavigate();
   const [recentMovs, setRecentMovs] = useState<Transaccion[]>([]);
   const [flujoData, setFlujoData] = useState([]);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +76,7 @@ export default function DashboardFinanciero(): ReactElement {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-700">Transacciones Recientes</h3>
+              <button onClick={() => navigate('/egresos')} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Ver Todas</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -112,6 +116,7 @@ export default function DashboardFinanciero(): ReactElement {
           </div>
         </>
       )}
+
     </div>
   );
 }

@@ -12,7 +12,7 @@ import * as fs from 'fs';
 @Injectable()
 export class VentasService {
   constructor(
-    private readonly dataSource: DataSource, // Inyectamos DataSource para transacciones
+    private readonly dataSource: DataSource,
     @InjectRepository(Venta)
     private readonly ventaRepository: Repository<Venta>,
     @InjectRepository(Produccion)
@@ -23,12 +23,10 @@ export class VentasService {
   ) {}
 
   async create(dto: CreateVentaDto): Promise<Venta> {
-    // Usamos una transacción para asegurar que todas las operaciones se completen exitosamente.
     return this.dataSource.transaction(async (entityManager) => {
       const produccionRepo = entityManager.getRepository(Produccion);
       const ventaRepo = entityManager.getRepository(Venta);
 
-      // 1. Buscamos la producción para validar el stock.
       const produccion = await produccionRepo.findOne({
         where: { id: dto.produccionId },
         relations: ['cultivo'],
@@ -38,25 +36,20 @@ export class VentasService {
         throw new NotFoundException(`La producción con ID ${dto.produccionId} no fue encontrada.`);
       }
 
-      // 2. Validamos que la cantidad a vender no supere la disponible.
       if (dto.cantidad > produccion.cantidad) {
         throw new BadRequestException(
           `No puedes vender ${dto.cantidad} kg. Cantidad disponible: ${produccion.cantidad} kg.`
         );
       }
 
-      // 3. Restamos la cantidad vendida a la producción.
       produccion.cantidad -= dto.cantidad;
 
-      // 4. Si la cantidad llega a 0, actualizamos el estado.
       if (produccion.cantidad === 0) {
-        produccion.estado = 'Cosechado'; // O un estado 'Agotado' si lo prefieres.
+        produccion.estado = 'Cosechado';
       }
       
-      // Guardamos la producción actualizada.
       await produccionRepo.save(produccion);
 
-      // 5. Si todo fue exitoso, creamos el registro de la venta.
       const nuevaVenta = ventaRepo.create({
         descripcion: dto.descripcion || `Venta de ${produccion.cultivo?.nombre || 'producto'}`,
         fecha: dto.fecha,
@@ -69,7 +62,6 @@ export class VentasService {
 
       const ventaGuardada = await ventaRepo.save(nuevaVenta);
       
-      // Generamos el PDF y actualizamos la venta con la ruta del archivo.
       const rutaPdf = await this.pdfService.generarFacturaPdf(ventaGuardada);
       ventaGuardada.rutaFacturaPdf = rutaPdf;
       
@@ -142,7 +134,7 @@ export class VentasService {
       LIMIT 6;
     `);
 
-    const combined = {};
+    const combined: Record<string, { mes: string, ingresos: number, egresos: number }> = {};
     ingresosData.forEach(item => {
       combined[item.mes] = { mes: item.mes, ingresos: parseFloat(item.ingresos) || 0, egresos: 0 };
     });
@@ -154,13 +146,32 @@ export class VentasService {
       }
     });
 
-    const result = Object.values(combined).sort((a: any, b: any) => a.mes.localeCompare(b.mes)).slice(-6);
+    const result = Object.values(combined).sort((a, b) => a.mes.localeCompare(b.mes)).slice(-6);
 
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    return result.map((item: any) => ({
+    return result.map((item) => ({
       mes: monthNames[new Date(item.mes + '-02').getUTCMonth()],
       ingresos: item.ingresos,
       egresos: item.egresos
     }));
+  }
+
+  // --- 👇 CORRECCIÓN 5: Se añade el método 'remove' que faltaba ---
+  async remove(id: number): Promise<void> {
+    const venta = await this.ventaRepository.findOneBy({ id });
+    if (!venta) {
+      throw new NotFoundException(`La venta con ID ${id} no fue encontrada.`);
+    }
+
+    // Eliminar el archivo PDF si existe
+    if (venta.rutaFacturaPdf && fs.existsSync(venta.rutaFacturaPdf)) {
+      try {
+        fs.unlinkSync(venta.rutaFacturaPdf);
+      } catch (error) {
+        console.error(`Error al eliminar el archivo PDF: ${error.message}`);
+      }
+    }
+
+    await this.ventaRepository.delete(id);
   }
 }

@@ -3,8 +3,6 @@ import { toast } from "sonner";
 import { Upload, Plus } from "lucide-react";
 import type {
   Actividad,
-  CreateActividadPayload,
-  UpdateActividadPayload,
   EstadoActividad,
   CultivoSimple,
 } from "../interfaces/actividades";

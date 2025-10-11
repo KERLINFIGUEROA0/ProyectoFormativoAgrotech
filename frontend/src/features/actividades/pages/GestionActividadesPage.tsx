@@ -8,7 +8,6 @@ import FormularioActividad from '../components/FormularioActividad';
 import Modal from '../../../components/Modal';
 import type { 
   Actividad, 
-  CreateActividadPayload, 
   UpdateActividadPayload, 
   EstadoActividad,
   UsuarioSimple,
@@ -22,12 +21,9 @@ import {
   obtenerUsuariosParaActividades,
   obtenerCultivosParaActividades
 } from '../api/actividadesapi';
-import { getEstadoBadgeClass, getEstadoTexto } from '../utils/estadoUtils';
+import { getEstadoTexto } from '../utils/estadoUtils';
 
-
-// ------------------------------------------------------------
-// NUEVO: Componente para mostrar Detalles de la Actividad (simulando la imagen)
-// ------------------------------------------------------------
+// --- Componente para mostrar Detalles de la Actividad ---
 interface ModalDetallesProps {
     actividad: Actividad | null;
     onClose: () => void;
@@ -37,16 +33,15 @@ interface ModalDetallesProps {
 const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdit }) => {
     if (!actividad) return null;
 
-    const estadoClase = getEstadoBadgeClass(actividad.estado).replace('bg-', 'bg-');
     const estadoTexto = getEstadoTexto(actividad.estado);
     const fechaProgramada = new Date(actividad.fecha).toLocaleDateString();
     const nombreCompleto = `${actividad.usuario?.nombre || 'N/A'} ${actividad.usuario?.apellidos || ''}`;
 
     return (
-        <Modal isOpen={!!actividad} onClose={onClose} title="Detalles de Actividad" size="large">
+        // ✅ CORRECCIÓN: Se eliminó la propiedad "size" que no existe en el componente Modal.
+        <Modal isOpen={!!actividad} onClose={onClose} title="Detalles de Actividad">
             <div className="space-y-6">
                 
-                {/* Encabezado y Estado */}
                 <div className={`p-4 rounded-t-lg flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'}`}>
                     <h2 className="text-xl">Detalles de Actividad</h2>
                     <span className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800`}>
@@ -55,29 +50,24 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-                    {/* Columna 1: Información Básica */}
                     <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
-                        <h3 className="font-bold text-gray-700 flex items-center gap-2">Información Básica</h3>
+                        <h3 className="font-bold text-gray-700">Información Básica</h3>
                         <p className="text-sm"><strong>Nombre:</strong> {actividad.titulo}</p>
                         <p className="text-sm"><strong>Cultivo/Lote:</strong> {actividad.cultivo?.nombre || 'No especificado'}</p>
                     </div>
 
-                    {/* Columna 2: Programación y Responsable */}
                     <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
-                        <h3 className="font-bold text-gray-700 flex items-center gap-2">Programación y Responsable</h3>
+                        <h3 className="font-bold text-gray-700">Programación y Responsable</h3>
                         <p className="text-sm flex items-center gap-2"><Calendar size={14} className="text-blue-500" /> <strong>Fecha Programada:</strong> {fechaProgramada}</p>
-                        {/* No tenemos Fecha Realizada en la interfaz, lo omitimos si no existe */}
                         <p className="text-sm flex items-center gap-2"><User size={14} className="text-blue-500" /> <strong>Aprendiz Asignado:</strong> {nombreCompleto}</p>
                     </div>
                 </div>
 
-                {/* Descripción Completa */}
                 <div className="p-4 border-t pt-4">
                     <h3 className="font-bold text-gray-700 mb-2">Descripción Completa</h3>
                     <p className="text-gray-600 text-sm">{actividad.descripcion || 'No hay descripción detallada.'}</p>
                 </div>
                 
-                {/* Botón de Editar */}
                 <div className="flex justify-end p-4 border-t">
                     <button 
                         onClick={() => onEdit(actividad)}
@@ -86,7 +76,6 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                         <Edit size={16} /> Editar
                     </button>
                 </div>
-
             </div>
         </Modal>
     );
@@ -112,7 +101,7 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 
 const GestionActividadesPage: React.FC = () => {
   const [actividades, setActividades] = useState<Actividad[]>([]);
-  const [usuarios, setUsuarios] = useState<UsuarioSimple[]>([]);
+  const [, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<EstadoActividad | 'Todos'>('Todos');
   
@@ -165,14 +154,17 @@ const GestionActividadesPage: React.FC = () => {
   };
   
   // Lógica para guardar (Crear o Actualizar)
-  const handleSave = async (payload: CreateActividadPayload | UpdateActividadPayload) => {
+  const handleSave = async (payload: FormData | UpdateActividadPayload) => { // Acepta FormData
     const isEditing = actividadAEditar && actividadAEditar.id;
     const toastId = toast.loading(isEditing ? 'Actualizando...' : 'Creando...');
+    
     try {
       if (isEditing) {
+        // La edición no maneja archivos por ahora, así que sigue enviando JSON
         await actualizarActividad(actividadAEditar.id!, payload as UpdateActividadPayload);
       } else {
-        await registrarActividad(payload as CreateActividadPayload);
+        // ✅ La creación ahora envía el FormData directamente
+        await registrarActividad(payload as FormData);
       }
       toast.success('Actividad guardada', { id: toastId });
       handleCloseEditModal();
@@ -280,7 +272,6 @@ const GestionActividadesPage: React.FC = () => {
       >
           <FormularioActividad
             actividadInicial={actividadAEditar || {}}
-            usuarios={usuarios}
             cultivos={cultivos}
             onSubmit={handleSave}
             onCancel={handleCloseEditModal}

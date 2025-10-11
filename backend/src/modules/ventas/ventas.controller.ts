@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Res, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res, ParseIntPipe, Delete} from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import type { Response } from 'express';
@@ -34,5 +34,12 @@ export class VentasController {
   async getFlujoMensual() {
     const data = await this.ventasService.getFlujoMensual();
     return { success: true, data };
+  }
+
+
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.ventasService.remove(id);
+    return { success: true, message: 'Venta eliminada con éxito.' };
   }
 }

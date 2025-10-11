@@ -6,10 +6,12 @@ import { Actividad } from './entities/actividade.entity';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Usuario } from '../usuarios/entities/usuario.entity';
+import { Cultivo } from '../cultivos/entities/cultivo.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Actividad]),
+    TypeOrmModule.forFeature([Actividad,Usuario,Cultivo]),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/actividades',

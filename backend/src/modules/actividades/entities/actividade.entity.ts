@@ -18,7 +18,7 @@ export class Actividad {
   @Column({ name: 'Descripcion', length: 250, nullable: true })
   descripcion: string;
 
-  @Column({ name: 'Img', length: 255, nullable: true })
+   @Column({ name: 'Img', type: 'text', nullable: true })
   img: string;
 
 @ManyToOne(() => Usuario, (u) => u.actividades, { nullable: true })

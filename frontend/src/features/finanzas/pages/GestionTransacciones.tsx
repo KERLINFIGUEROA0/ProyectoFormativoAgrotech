@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown } from 'react-icons/fa';
-import { obtenerTransacciones } from '../api/transaccionesApi';
+import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import Modal from '../../../components/Modal';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
@@ -12,6 +12,7 @@ const API_URL = import.meta.env.VITE_BACKEND_URL;
 export default function GestionTransaccionesPage(): ReactElement {
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number; tipo: string } | null }>({ isOpen: false, item: null });
 
   const fetchData = async () => {
     try {
@@ -31,6 +32,29 @@ export default function GestionTransaccionesPage(): ReactElement {
   };
 
   useEffect(() => { fetchData() }, []);
+
+  const handleDelete = (id: number, tipo: string) => {
+    setDeleteModal({ isOpen: true, item: { id, tipo } });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.item) return;
+    const { id, tipo } = deleteModal.item;
+    try {
+      await eliminarTransaccion(id);
+      toast.success(`${tipo === 'ingreso' ? 'Venta' : 'Gasto'} eliminada con éxito.`);
+      fetchData();
+    } catch (error) {
+      toast.error(`Error al eliminar la ${tipo === 'ingreso' ? 'venta' : 'gasto'}.`);
+      console.error('Error al eliminar:', error);
+    } finally {
+      setDeleteModal({ isOpen: false, item: null });
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModal({ isOpen: false, item: null });
+  };
 
   const handleSave = async (data: TransaccionData) => {
     const toastId = toast.loading("Registrando transacción...");
@@ -141,7 +165,13 @@ export default function GestionTransaccionesPage(): ReactElement {
                       <FaDownload />
                     </a>
                   )}
-                  <button disabled className="text-red-300 cursor-not-allowed"><FaTrash /></button>
+                  <button
+                    onClick={() => handleDelete(t.id, t.tipo)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 transition-colors"
+                    title={`Eliminar ${t.tipo === 'ingreso' ? 'venta' : 'gasto'}`}
+                  >
+                    <FaTrash />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -154,6 +184,26 @@ export default function GestionTransaccionesPage(): ReactElement {
                onCancel={closeModal}
            />
        </Modal>
-    </div>
-  );
+
+       <Modal isOpen={deleteModal.isOpen} onClose={cancelDelete} title="Confirmar Eliminación">
+         <p className="text-center mb-4">
+           ¿Estás seguro de que quieres eliminar esta {deleteModal.item?.tipo === 'ingreso' ? 'venta' : 'gasto'}?
+         </p>
+         <div className="flex justify-center gap-4">
+           <button
+             onClick={cancelDelete}
+             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+           >
+             Cancelar
+           </button>
+           <button
+             onClick={confirmDelete}
+             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+           >
+             Eliminar
+           </button>
+         </div>
+       </Modal>
+   </div>
+ );
 }

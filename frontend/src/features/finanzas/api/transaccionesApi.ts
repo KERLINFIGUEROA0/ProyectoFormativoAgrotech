@@ -11,6 +11,7 @@ export const obtenerTransacciones = async () => {
 
   const ingresos = (ventasRes.data?.data || []).map((v: any) => ({
     ...v,
+    id: v.id,
     tipo: 'ingreso',
     cantidad: v.cantidad || 1,
     precioUnitario: v.precioUnitario || v.monto,
@@ -18,6 +19,7 @@ export const obtenerTransacciones = async () => {
 
   const egresos = (gastosRes.data?.data || []).map((g: any) => ({
     ...g,
+    id: `gasto-${g.id}`,
     tipo: 'egreso',
     cantidad: 1,
     precioUnitario: g.monto,
