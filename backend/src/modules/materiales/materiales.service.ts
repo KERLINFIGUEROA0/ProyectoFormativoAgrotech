@@ -2,10 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateMaterialeDto } from './dto/create-materiale.dto';
-import { UpdateMaterialeDto } from './dto/update-materiale.dto';
 import { Material } from './entities/materiale.entity';
-
-@Injectable()
+import { UpdateMaterialeDto } from './dto/update-materiale.dto';
 export class MaterialesService {
   constructor(
     @InjectRepository(Material)
@@ -23,20 +21,25 @@ export class MaterialesService {
 
   async findOne(id: number): Promise<Material> {
     const material = await this.materialRepository.findOne({ where: { id } });
-    if (!material) {
-      throw new NotFoundException(`El material con ID ${id} no fue encontrado.`);
-    }
+    if (!material) throw new NotFoundException(`El material con ID ${id} no fue encontrado.`);
     return material;
   }
 
-  async update(id: number, updateMaterialeDto: UpdateMaterialeDto): Promise<Material> {
-    const material = await this.findOne(id);
-    this.materialRepository.merge(material, updateMaterialeDto);
-    return this.materialRepository.save(material);
-  }
+
 
   async remove(id: number): Promise<void> {
     const material = await this.findOne(id);
     await this.materialRepository.remove(material);
+  }
+
+  async actualizarImagen(id: number, imgUrl: string): Promise<Material> {
+    const material = await this.findOne(id);
+    (material as any).img = imgUrl;
+    return this.materialRepository.save(material);
+  }
+  async update(id: number, updateMaterialeDto: UpdateMaterialeDto): Promise<Material> {
+    const material = await this.findOne(id);
+    Object.assign(material, updateMaterialeDto);
+    return this.materialRepository.save(material);
   }
 }
