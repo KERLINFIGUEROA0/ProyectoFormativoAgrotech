@@ -88,11 +88,25 @@ export class MaterialesController {
     return { success: true, message: 'Imagen del producto actualizada.', data: material };
   }
 
-  // --- ELIMINAR UN MATERIAL ---
-  @Delete(':id')
-  @Permission('Inventario.Eliminar')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.materialesService.remove(id);
-    return { success: true, message: `Material con ID ${id} eliminado correctamente.` };
+  @Patch(':id/desactivar')
+  @Permission('Inventario.Editar') // Reutilizamos el permiso de editar
+  async desactivar(@Param('id', ParseIntPipe) id: number) {
+    const material = await this.materialesService.desactivar(id);
+    return {
+      success: true,
+      message: `Material "${material.nombre}" ha sido desactivado.`,
+      data: material,
+    };
+  }
+
+  @Patch(':id/reactivar')
+  @Permission('Inventario.Editar') // Reutilizamos el permiso de editar
+  async reactivar(@Param('id', ParseIntPipe) id: number) {
+    const material = await this.materialesService.reactivar(id);
+    return {
+      success: true,
+      message: `Material "${material.nombre}" ha sido reactivado.`,
+      data: material,
+    };
   }
 }

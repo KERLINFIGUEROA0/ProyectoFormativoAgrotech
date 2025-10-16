@@ -52,7 +52,13 @@ export class Material {
 
   @Column({ name: 'fecha_vencimiento', type: 'date', nullable: true })
   fechaVencimiento: Date | null;
+  
+  @Column({ name: 'estado', type: 'boolean', default: true })
+  estado: boolean;
+
 
   @OneToMany(() => ActividadMaterial, (am) => am.material)
   actividadMaterial: ActividadMaterial[];
+  
+
 }

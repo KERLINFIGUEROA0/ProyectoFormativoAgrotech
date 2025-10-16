@@ -54,6 +54,7 @@ export interface Material {
   ubicacion: string | null;
   proveedor: string | null;
   fechaVencimiento: string | null;
+  estado: boolean;
 }
 
 export interface MaterialData {

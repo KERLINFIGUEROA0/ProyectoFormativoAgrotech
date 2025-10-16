@@ -16,6 +16,17 @@ export class MaterialesService {
     const material = this.materialRepository.create(createMaterialeDto);
     return this.materialRepository.save(material);
   }
+  async desactivar(id: number): Promise<Material> {
+    const material = await this.findOne(id);
+    material.estado = false;
+    return this.materialRepository.save(material);
+  }
+
+  async reactivar(id: number): Promise<Material> {
+    const material = await this.findOne(id);
+    material.estado = true;
+    return this.materialRepository.save(material);
+  }
 
   async findAll(): Promise<Material[]> {
     return this.materialRepository.find();

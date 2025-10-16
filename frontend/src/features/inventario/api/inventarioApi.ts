@@ -31,11 +31,18 @@ export const subirImagenMaterial = async (id: number, file: File) => {
   return response.data;
 };
 
-export const eliminarMaterial = async (id: number) => {
-    const response = await api.delete(`/materiales/${id}`);
+export const desactivarMaterial = async (id: number) => {
+    // Asumimos un endpoint PATCH para cambiar el estado a inactivo
+    const response = await api.patch(`/materiales/${id}/desactivar`);
     return response.data;
 }
 
+// Y creamos una función para reactivarlo
+export const reactivarMaterial = async (id: number) => {
+    // Asumimos un endpoint PATCH para cambiar el estado a activo
+    const response = await api.patch(`/materiales/${id}/reactivar`);
+    return response.data;
+}
 // --- API para Movimientos de Inventario ---
 
 export const listarMovimientos = async () => {
