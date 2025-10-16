@@ -168,6 +168,16 @@ export default function GestionInventarioPage() {
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* ... */}
       </div>
+        {/* --- ✅ SECCIÓN DE BOTONES SIMPLIFICADA --- */}
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+       
+         <div className="flex flex-wrap gap-2">
+            <button onClick={() => openModal()} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-orange-600 shadow-sm">
+              <Plus size={16}/> Añadir Producto
+            </button>
+         </div>
+      </div>
+      {/* --- FIN DE LA CORRECCIÓN --- */}
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingMaterial ? 'Editar Material' : 'Registrar Nuevo Material'}>
         {/* ✅ CORRECCIÓN: Pasamos el objeto ya transformado */}
