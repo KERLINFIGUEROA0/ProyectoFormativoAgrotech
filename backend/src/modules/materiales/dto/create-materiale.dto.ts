@@ -1,4 +1,6 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, MaxLength, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, MaxLength, IsDateString, IsEnum } from 'class-validator';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+import { TipoMaterial } from '../../../common/enums/tipo-material.enum'; // 👈 Asegúrate que esta importación esté
 
 export class CreateMaterialeDto {
   @IsString()
@@ -6,18 +8,25 @@ export class CreateMaterialeDto {
   @MaxLength(50)
   nombre: string;
 
-  @IsString()
+  // --- ✅ CORRECCIÓN AQUÍ ---
+  @IsEnum(TipoMaterial, { message: 'El tipo de material no es válido.' })
   @IsNotEmpty({ message: 'La categoría es obligatoria.' })
-  tipoMaterial: string;
+  tipoMaterial: TipoMaterial;
 
-  @IsString()
+  // --- ✅ Y AQUÍ ---
+  @IsEnum(UnidadMedida, { message: 'La unidad de medida no es válida.' })
   @IsNotEmpty({ message: 'La unidad de medida es obligatoria.' })
-  tipoMedida: string;
-
+  tipoMedida: UnidadMedida;
+  
   @IsNumber()
   @IsNotEmpty({ message: 'La cantidad inicial es obligatoria.' })
   @Min(0)
   cantidad: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  pesoPorUnidad?: number;
 
   @IsNumber()
   @IsOptional()
@@ -29,8 +38,6 @@ export class CreateMaterialeDto {
   @MaxLength(255)
   descripcion?: string;
 
-  // --- ✅ INICIO DE LA CORRECCIÓN ---
-  // Añadimos las propiedades que estaban causando el error
   @IsString()
   @IsOptional()
   ubicacion?: string;
@@ -41,11 +48,5 @@ export class CreateMaterialeDto {
 
   @IsDateString()
   @IsOptional()
-  fechaVencimiento?: string; // Se usa IsDateString para aceptar el formato "YYYY-MM-DD"
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  img?: string;
-  // --- FIN DE LA CORRECCIÓN ---
+  fechaVencimiento?: string;
 }

@@ -8,7 +8,7 @@ import NuevaContraseñaPage from "../features/auth/pages/NuevaContraseña";
 import Layout from "../components/Layout";
 import HomePage from "../pages/home";
 import PrivateRoute from "./PrivateRoute";
-import PublicRoute from "./PublicRoute"; // 👈 1. Importa el nuevo componente
+import PublicRoute from "./PublicRoute";
 import UsuarioPage from "../features/user/pages/Usuario";
 import GestionRolesPage from "../features/user/pages/GestionRoles";
 import GestionUsuariosPage from "../features/user/pages/GestionUsuario";
@@ -22,12 +22,16 @@ import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion"
 import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCultivoPage";
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
+import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
+
+// --- ✅ 1. AÑADE LA IMPORTACIÓN QUE FALTA ---
+import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 👇 2. Envuelve tus rutas públicas con el nuevo componente */}
+        {/* Rutas públicas (sin cambios) */}
         <Route element={
             <PublicRoute>
               <Outlet />
@@ -40,8 +44,7 @@ export default function AppRouter() {
           <Route path="/restablecer" element={<NuevaContraseñaPage />} />
         </Route>
 
-
-        {/* Rutas privadas (esto se mantiene igual) */}
+        {/* Rutas privadas */}
         <Route
           element={
             <PrivateRoute>
@@ -64,16 +67,18 @@ export default function AppRouter() {
           <Route path="/cultivos/:cultivoId/trazabilidad" element={<TrazabilidadCultivoPage />} />
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
           
-          {/* --- NUEVAS RUTAS DE ACTIVIDADES --- */}
-          <Route path="/cronograma" element={
+          <Route path="/stock" element={<GestionInventarioPage />} />
+          
+          {/* --- ✅ 2. AÑADE LA RUTA PARA EL DETALLE DEL MATERIAL --- */}
+          <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
+
+          <Route path="/movimientos" element={
               <div className="text-center p-8">
-                <h1 className="text-2xl font-bold">Cronograma de Actividades</h1>
+                <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>
                 <p>Esta sección está en construcción.</p>
               </div>
             } 
           />
-          {/* ------------------------------------- */}
-
         </Route>
 
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
@@ -81,6 +86,3 @@ export default function AppRouter() {
     </BrowserRouter>
   );
 }
-
-// Nota: Es posible que necesites importar `Outlet` de `react-router-dom`
-// import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";

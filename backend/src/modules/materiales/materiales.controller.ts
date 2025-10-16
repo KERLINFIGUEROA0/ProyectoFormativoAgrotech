@@ -1,11 +1,12 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards,
-  UseInterceptors, UploadedFile, BadRequestException
+  UseInterceptors, UploadedFile, BadRequestException, Query
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { MaterialesService } from './materiales.service';
 import { CreateMaterialeDto } from './dto/create-materiale.dto';
+import { UpdateMaterialeDto } from './dto/update-materiale.dto';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
@@ -15,6 +16,19 @@ import { Permission } from '../../authorization/permission.decorator';
 export class MaterialesController {
   constructor(private readonly materialesService: MaterialesService) {}
 
+  // --- OBTENER REPORTE DE STOCK BAJO ---
+  @Get('reportes/stock-bajo')
+  @Permission('Inventario.Ver')
+  async getLowStockReport(@Query('limite', new ParseIntPipe({ optional: true })) limite?: number) {
+    const data = await this.materialesService.findLowStock(limite);
+    return {
+      success: true,
+      message: `Se encontraron ${data.length} materiales con stock bajo.`,
+      data,
+    };
+  }
+
+  // --- CREAR UN NUEVO MATERIAL (SOLO DATOS) ---
   @Post()
   @Permission('Inventario.Crear')
   async create(@Body() createMaterialeDto: CreateMaterialeDto) {
@@ -26,6 +40,7 @@ export class MaterialesController {
     };
   }
 
+  // --- LISTAR TODOS LOS MATERIALES ---
   @Get()
   @Permission('Inventario.Ver')
   async findAll() {
@@ -33,6 +48,7 @@ export class MaterialesController {
     return { success: true, total: materiales.length, data: materiales };
   }
 
+  // --- OBTENER UN MATERIAL POR SU ID ---
   @Get(':id')
   @Permission('Inventario.Ver')
   async findOne(@Param('id', ParseIntPipe) id: number) {
@@ -40,47 +56,19 @@ export class MaterialesController {
     return { success: true, data: material };
   }
 
- 
-  @Delete(':id')
-  @Permission('Inventario.Eliminar')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.materialesService.remove(id);
-    return { success: true, message: `Material con ID ${id} eliminado.` };
-  }
-
-  @Post('upload/:id')
+  // --- ACTUALIZAR UN MATERIAL (MÉTODO QUE FALTABA) ---
+  @Patch(':id')
   @Permission('Inventario.Editar')
-  @UseInterceptors(FileInterceptor('img', {
-    storage: diskStorage({
-      destination: './uploads/materiales',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, `${uniqueSuffix}-${file.originalname}`);
-      }
-    }),
-    fileFilter: (req, file, cb) => {
-      if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-        return cb(new BadRequestException('Solo se permiten archivos de imagen (jpg, jpeg, png)'), false);
-      }
-      cb(null, true);
-    }
-  }))
-  async uploadImage(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File
-  ) {
-    if (!file) {
-      throw new BadRequestException('No se ha enviado ninguna imagen');
-    }
-    const imageUrl = file.filename;
-    const material = await this.materialesService.actualizarImagen(id, imageUrl);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateMaterialeDto: UpdateMaterialeDto) {
+    const material = await this.materialesService.update(id, updateMaterialeDto);
     return {
       success: true,
-      message: 'Imagen subida correctamente',
-      data: material
+      message: `Material con ID ${id} actualizado correctamente.`,
+      data: material,
     };
   }
-
+  
+  // --- SUBIR O ACTUALIZAR LA IMAGEN DE UN MATERIAL ---
   @Post(':id/imagen')
   @Permission('Inventario.Editar')
   @UseInterceptors(FileInterceptor('file', {
@@ -94,8 +82,17 @@ export class MaterialesController {
   }))
   async subirImagen(@Param('id', ParseIntPipe) id: number, @UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No se recibió ningún archivo.');
+    
     const relativePath = `materiales-pic/${file.filename}`;
     const material = await this.materialesService.actualizarImagen(id, relativePath);
     return { success: true, message: 'Imagen del producto actualizada.', data: material };
+  }
+
+  // --- ELIMINAR UN MATERIAL ---
+  @Delete(':id')
+  @Permission('Inventario.Eliminar')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.materialesService.remove(id);
+    return { success: true, message: `Material con ID ${id} eliminado correctamente.` };
   }
 }

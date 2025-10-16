@@ -2,8 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateMaterialeDto } from './dto/create-materiale.dto';
-import { Material } from './entities/materiale.entity';
 import { UpdateMaterialeDto } from './dto/update-materiale.dto';
+import { Material } from './entities/materiale.entity';
+
+@Injectable()
 export class MaterialesService {
   constructor(
     @InjectRepository(Material)
@@ -25,7 +27,11 @@ export class MaterialesService {
     return material;
   }
 
-
+  async update(id: number, updateMaterialeDto: UpdateMaterialeDto): Promise<Material> {
+    const material = await this.findOne(id);
+    this.materialRepository.merge(material, updateMaterialeDto);
+    return this.materialRepository.save(material);
+  }
 
   async remove(id: number): Promise<void> {
     const material = await this.findOne(id);
@@ -34,12 +40,16 @@ export class MaterialesService {
 
   async actualizarImagen(id: number, imgUrl: string): Promise<Material> {
     const material = await this.findOne(id);
-    (material as any).img = imgUrl;
+    material.img = imgUrl;
     return this.materialRepository.save(material);
   }
-  async update(id: number, updateMaterialeDto: UpdateMaterialeDto): Promise<Material> {
-    const material = await this.findOne(id);
-    Object.assign(material, updateMaterialeDto);
-    return this.materialRepository.save(material);
+
+  // --- NUEVO MÉTODO PARA REPORTE DE STOCK BAJO ---
+  async findLowStock(limite = 5): Promise<Material[]> {
+    return this.materialRepository
+      .createQueryBuilder('material')
+      .where('material.cantidad <= :limite', { limite })
+      .orderBy('material.cantidad', 'ASC')
+      .getMany();
   }
 }
