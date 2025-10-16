@@ -22,6 +22,8 @@ import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion"
 import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCultivoPage";
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
+import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFitosanitarioPage";
+import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
 
 export default function AppRouter() {
   return (
@@ -63,17 +65,9 @@ export default function AppRouter() {
           <Route path="/gestion-actividades" element={<ActividadesPrincipal />} />
           <Route path="/cultivos/:cultivoId/trazabilidad" element={<TrazabilidadCultivoPage />} />
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
+          <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
+          <Route path="/tratamientos" element={<GestionTratamientosPage />} />
           
-          {/* --- NUEVAS RUTAS DE ACTIVIDADES --- */}
-          <Route path="/cronograma" element={
-              <div className="text-center p-8">
-                <h1 className="text-2xl font-bold">Cronograma de Actividades</h1>
-                <p>Esta sección está en construcción.</p>
-              </div>
-            } 
-          />
-          {/* ------------------------------------- */}
-
         </Route>
 
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />

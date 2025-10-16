@@ -18,6 +18,11 @@ export class Tratamiento {
   @Column({ name: 'Tipo_Tratamiento', type: 'varchar', length: 50, nullable: true })
   tipo: string;
 
+   // --- ✅ CAMBIO AÑADIDO ---
+  @Column({ name: 'Estado', type: 'varchar', length: 50, default: 'Planificado' })
+  estado: string; // Puede ser 'Planificado', 'En Curso', 'Finalizado'
+  // --- FIN DEL CAMBIO ---
+
   @OneToMany(() => EpaTratamiento, (et) => et.tratamiento)
   epaTratamientos: EpaTratamiento[];
 }

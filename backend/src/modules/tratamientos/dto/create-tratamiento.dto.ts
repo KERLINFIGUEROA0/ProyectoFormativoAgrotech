@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsNotEmpty, IsIn } from 'class-validator';
 
 export class CreateTratamientoDto {
   @IsString()
@@ -16,5 +16,12 @@ export class CreateTratamientoDto {
   @IsString()
   @IsNotEmpty()
   tipo: string;
+
+  // --- ✅ CAMBIO AÑADIDO ---
+  @IsString()
+  @IsOptional()
+  @IsIn(['Planificado', 'En Curso', 'Finalizado'])
+  estado?: string;
+  // --- FIN DEL CAMBIO ---
 }
 
