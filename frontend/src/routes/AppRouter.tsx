@@ -8,7 +8,7 @@ import NuevaContraseñaPage from "../features/auth/pages/NuevaContraseña";
 import Layout from "../components/Layout";
 import HomePage from "../pages/home";
 import PrivateRoute from "./PrivateRoute";
-import PublicRoute from "./PublicRoute"; // 👈 1. Importa el nuevo componente
+import PublicRoute from "./PublicRoute";
 import UsuarioPage from "../features/user/pages/Usuario";
 import GestionRolesPage from "../features/user/pages/GestionRoles";
 import GestionUsuariosPage from "../features/user/pages/GestionUsuario";
@@ -24,12 +24,14 @@ import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidad
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
 import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFitosanitarioPage";
 import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
+import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
+import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 👇 2. Envuelve tus rutas públicas con el nuevo componente */}
+        {/* Rutas públicas (sin cambios) */}
         <Route element={
             <PublicRoute>
               <Outlet />
@@ -42,8 +44,7 @@ export default function AppRouter() {
           <Route path="/restablecer" element={<NuevaContraseñaPage />} />
         </Route>
 
-
-        {/* Rutas privadas (esto se mantiene igual) */}
+        {/* Rutas privadas */}
         <Route
           element={
             <PrivateRoute>
@@ -67,7 +68,15 @@ export default function AppRouter() {
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
           <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
           <Route path="/tratamientos" element={<GestionTratamientosPage />} />
-          
+          <Route path="/stock" element={<GestionInventarioPage />} />
+          <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
+          <Route path="/movimientos" element={
+              <div className="text-center p-8">
+                <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>
+                <p>Esta sección está en construcción.</p>
+              </div>
+            }
+          />
         </Route>
 
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
@@ -75,6 +84,3 @@ export default function AppRouter() {
     </BrowserRouter>
   );
 }
-
-// Nota: Es posible que necesites importar `Outlet` de `react-router-dom`
-// import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";

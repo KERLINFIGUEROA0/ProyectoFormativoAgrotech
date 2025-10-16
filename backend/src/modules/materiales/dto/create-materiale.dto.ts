@@ -1,14 +1,37 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, MaxLength, IsDateString, IsEnum } from 'class-validator';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+import { TipoMaterial } from '../../../common/enums/tipo-material.enum'; // 👈 Asegúrate que esta importación esté
+
 export class CreateMaterialeDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'El nombre del producto es obligatorio.' })
   @MaxLength(50)
   nombre: string;
 
+  // --- ✅ CORRECCIÓN AQUÍ ---
+  @IsEnum(TipoMaterial, { message: 'El tipo de material no es válido.' })
+  @IsNotEmpty({ message: 'La categoría es obligatoria.' })
+  tipoMaterial: TipoMaterial;
+
+  // --- ✅ Y AQUÍ ---
+  @IsEnum(UnidadMedida, { message: 'La unidad de medida no es válida.' })
+  @IsNotEmpty({ message: 'La unidad de medida es obligatoria.' })
+  tipoMedida: UnidadMedida;
+  
   @IsNumber()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'La cantidad inicial es obligatoria.' })
   @Min(0)
-  precio: number;
+  cantidad: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  pesoPorUnidad?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  precio?: number;
 
   @IsString()
   @IsOptional()
@@ -16,17 +39,14 @@ export class CreateMaterialeDto {
   descripcion?: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  tipoMaterial: string;
+  @IsOptional()
+  ubicacion?: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  tipoMedida: string;
+  @IsOptional()
+  proveedor?: string;
 
-  @IsNumber()
-  @IsNotEmpty()
-  @Min(0)
-  cantidad: number;
+  @IsDateString()
+  @IsOptional()
+  fechaVencimiento?: string;
 }

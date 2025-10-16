@@ -16,6 +16,17 @@ export class MaterialesService {
     const material = this.materialRepository.create(createMaterialeDto);
     return this.materialRepository.save(material);
   }
+  async desactivar(id: number): Promise<Material> {
+    const material = await this.findOne(id);
+    material.estado = false;
+    return this.materialRepository.save(material);
+  }
+
+  async reactivar(id: number): Promise<Material> {
+    const material = await this.findOne(id);
+    material.estado = true;
+    return this.materialRepository.save(material);
+  }
 
   async findAll(): Promise<Material[]> {
     return this.materialRepository.find();
@@ -23,9 +34,7 @@ export class MaterialesService {
 
   async findOne(id: number): Promise<Material> {
     const material = await this.materialRepository.findOne({ where: { id } });
-    if (!material) {
-      throw new NotFoundException(`El material con ID ${id} no fue encontrado.`);
-    }
+    if (!material) throw new NotFoundException(`El material con ID ${id} no fue encontrado.`);
     return material;
   }
 
@@ -38,5 +47,20 @@ export class MaterialesService {
   async remove(id: number): Promise<void> {
     const material = await this.findOne(id);
     await this.materialRepository.remove(material);
+  }
+
+  async actualizarImagen(id: number, imgUrl: string): Promise<Material> {
+    const material = await this.findOne(id);
+    material.img = imgUrl;
+    return this.materialRepository.save(material);
+  }
+
+  // --- NUEVO MÉTODO PARA REPORTE DE STOCK BAJO ---
+  async findLowStock(limite = 5): Promise<Material[]> {
+    return this.materialRepository
+      .createQueryBuilder('material')
+      .where('material.cantidad <= :limite', { limite })
+      .orderBy('material.cantidad', 'ASC')
+      .getMany();
   }
 }
