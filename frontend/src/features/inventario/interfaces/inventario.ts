@@ -1,67 +1,126 @@
-// --- 1. SE CAMBIA 'enum' POR UN OBJETO CON 'as const' ---
+// --- 1. DEFINICIÓN DE NUEVOS TIPOS ---
+
+export const TipoCategoria = {
+  INSUMOS_AGRICOLAS: 'Insumos agrícolas',
+  AGROQUIMICOS: 'Agroquímicos y fitosanitarios',
+  RIEGO_Y_SUMINISTRO: 'Materiales de riego y suministro',
+  HERRAMIENTAS_MANUALES: 'Herramientas manuales',
+  MAQUINARIA_Y_EQUIPOS: 'Maquinaria y equipos',
+  PROTECCION_Y_SEGURIDAD: 'Materiales de protección y seguridad',
+  EMPAQUE_Y_ALMACENAMIENTO: 'Materiales de empaque / almacenamiento',
+  OTROS: 'Otros materiales varios',
+} as const;
+export type TipoCategoria = typeof TipoCategoria[keyof typeof TipoCategoria];
+
 export const TipoMaterial = {
   SEMILLA: 'Semilla',
   PLANTULA: 'Plántula',
   ABONO_ORGANICO: 'Abono orgánico',
   ABONO_QUIMICO: 'Abono químico',
   FERTILIZANTE: 'Fertilizante',
+  ENMIENDA: 'Enmienda',
+  COMPOST: 'Compost',
   SUSTRATO: 'Sustrato',
   HERBICIDA: 'Herbicida',
   INSECTICIDA: 'Insecticida',
   FUNGICIDA: 'Fungicida',
-  PALA: 'Pala',
-  RASTRILLO: 'Rastrillo',
-  TIJERA_PODA: 'Tijera de poda',
-  GUANTES: 'Guantes',
-  BOTAS: 'Botas',
+  BACTERICIDA: 'Bactericida',
+  NEMATICIDA: 'Nematicida',
+  REGULADOR_CRECIMIENTO: 'Regulador de crecimiento',
+  ADHERENTE: 'Adherente / Surfactante',
+  FERTIRRIGACION: 'Fertirrigación',
+  AGUA: 'Agua',
+  TUBERIA: 'Tubería',
+  MANGUERA: 'Manguera',
+  GOTERO: 'Gotero',
+  ASPERSOR: 'Aspersor',
+  TANQUE: 'Tanque',
   SACO: 'Saco',
   BOLSA: 'Bolsa',
   CAJA: 'Caja',
+  ENVASE: 'Envase',
+  BIDON: 'Bidón',
+  TAMBO: 'Tambo',
+  FRASCO: 'Frasco',
+  CABLE: 'Cable',
+  CLAVO: 'Clavo',
+  TORNILLO: 'Tornillo',
+  PINTURA: 'Pintura',
+  MADERA: 'Madera',
+  PLASTICO: 'Plástico',
+  METAL: 'Metal',
   OTRO: 'Otro',
 } as const;
-
-// --- 2. SE CREA EL TIPO A PARTIR DEL OBJETO ---
 export type TipoMaterial = typeof TipoMaterial[keyof typeof TipoMaterial];
 
-// Este ya estaba bien
-export const UnidadesDeMedida = {
-  UNIDAD: 'Unidad', // ✅
-  CAJA: 'Caja',
+export const MedidasDeContenido = {
+  KILOGRAMO: 'kg',
+  GRAMO: 'g',
+  LIBRA: 'lb',
+  MILIGRAMO: 'mg',
+  LITRO: 'L',
+  MILILITRO: 'ml',
+  UNIDADES: 'unidades',
+} as const;
+export type MedidaDeContenido = typeof MedidasDeContenido[keyof typeof MedidasDeContenido];
+
+export const TipoEmpaque = {
+  UNIDAD: 'Unidad',
   PAQUETE: 'Paquete',
+  CAJA: 'Caja',
+  BOTELLA: 'Botella',
+  BOLSA: 'Bolsa',
+  TARRO: 'Tarro',
+  FRASCO: 'Frasco',
+  ENVASE: 'Envase',
   SACO: 'Saco',
   BULTO: 'Bulto',
   ROLLO: 'Rollo',
-  GRAMO: 'Gramo',
-  KILOGRAMO: 'Kilogramo',
-  LIBRA: 'Libra',
-  MILILITRO: 'Mililitro',
-  LITRO: 'Litro',
+  BIDON: 'Bidón',
+  TAMBOR: 'Tambor',
 } as const;
+export type TipoEmpaque = typeof TipoEmpaque[keyof typeof TipoEmpaque];
 
-export type UnidadMedida = typeof UnidadesDeMedida[keyof typeof UnidadesDeMedida];
+// --- 2. RELACIÓN LÓGICA ENTRE CATEGORÍAS Y MATERIALES ---
+export const categoriasYMateriales: Record<TipoCategoria, TipoMaterial[]> = {
+  [TipoCategoria.INSUMOS_AGRICOLAS]: [TipoMaterial.SEMILLA, TipoMaterial.PLANTULA, TipoMaterial.ABONO_ORGANICO, TipoMaterial.ABONO_QUIMICO, TipoMaterial.FERTILIZANTE, TipoMaterial.ENMIENDA, TipoMaterial.COMPOST, TipoMaterial.SUSTRATO],
+  [TipoCategoria.AGROQUIMICOS]: [TipoMaterial.HERBICIDA, TipoMaterial.INSECTICIDA, TipoMaterial.FUNGICIDA, TipoMaterial.BACTERICIDA, TipoMaterial.NEMATICIDA, TipoMaterial.REGULADOR_CRECIMIENTO, TipoMaterial.ADHERENTE, TipoMaterial.FERTIRRIGACION],
+  [TipoCategoria.RIEGO_Y_SUMINISTRO]: [TipoMaterial.AGUA, TipoMaterial.TUBERIA, TipoMaterial.MANGUERA, TipoMaterial.GOTERO, TipoMaterial.ASPERSOR, TipoMaterial.TANQUE],
+  [TipoCategoria.EMPAQUE_Y_ALMACENAMIENTO]: [TipoMaterial.SACO, TipoMaterial.BOLSA, TipoMaterial.CAJA, TipoMaterial.ENVASE, TipoMaterial.BIDON, TipoMaterial.TAMBO, TipoMaterial.FRASCO],
+  [TipoCategoria.OTROS]: [TipoMaterial.CABLE, TipoMaterial.CLAVO, TipoMaterial.TORNILLO, TipoMaterial.PINTURA, TipoMaterial.MADERA, TipoMaterial.PLASTICO, TipoMaterial.METAL, TipoMaterial.OTRO],
+  [TipoCategoria.HERRAMIENTAS_MANUALES]: [],
+  [TipoCategoria.MAQUINARIA_Y_EQUIPOS]: [],
+  [TipoCategoria.PROTECCION_Y_SEGURIDAD]: [],
+};
 
-// Las interfaces no necesitan cambios, ya que ahora usan los nuevos tipos
+
+// --- 3. INTERFACES ACTUALIZADAS ---
 export interface Material {
   id: number;
   nombre: string;
+  cantidad: number;
   precio: number;
   descripcion: string;
-  tipoMaterial: TipoMaterial;
-  tipoMedida: UnidadMedida;
-  cantidad: number;
-  pesoPorUnidad: number | null;
-  img: string | null;
   ubicacion: string | null;
   proveedor: string | null;
   fechaVencimiento: string | null;
+  img: string | null;
   estado: boolean;
+  tipoCategoria: TipoCategoria;
+  tipoMaterial?: TipoMaterial;
+  tipoEmpaque: TipoEmpaque;
+  medidasDeContenido?: MedidaDeContenido;
+  pesoPorUnidad: number | null;
 }
 
 export interface MaterialData {
+  id?: number; // ✅ <-- AÑADE ESTA LÍNEA
   nombre: string;
-  tipoMaterial: TipoMaterial;
-  tipoMedida: UnidadMedida;
   cantidad: number;
+  tipoCategoria: TipoCategoria;
+  tipoMaterial?: TipoMaterial;
+  tipoEmpaque: TipoEmpaque;
+  medidasDeContenido?: MedidaDeContenido;
   pesoPorUnidad?: number;
   precio?: number;
   descripcion?: string;
@@ -69,32 +128,4 @@ export interface MaterialData {
   proveedor?: string | null;
   fechaVencimiento?: string | null;
   imageFile?: File | null;
-}
-
-export interface Movimiento {
-    id: number;
-    cantidad: number;
-    tipo: 'Entrada' | 'Salida';
-    fecha: string;
-    descripcion: string;
-    usuario: {
-        nombre: string;
-        apellidos: string;
-    };
-    material: {
-        id: number;
-        nombre: string;
-    };
-    actividad?: {
-        id: number;
-        titulo: string;
-    } | null;
-}
-
-export interface MovimientoData {
-    materialId: number;
-    tipo: 'Entrada' | 'Salida';
-    cantidad: number;
-    descripcion?: string;
-    actividadId?: number;
 }

@@ -1,21 +1,34 @@
 import { IsString, IsOptional, IsNumber, Min, MaxLength, IsDateString, IsEnum } from 'class-validator';
-import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+import { TipoCategoria } from '../../../common/enums/tipo-categoria.enum';
 import { TipoMaterial } from '../../../common/enums/tipo-material.enum';
+import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum';
+import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateMaterialeDto } from './create-materiale.dto';
 
-export class UpdateMaterialeDto {
+export class UpdateMaterialeDto extends PartialType(CreateMaterialeDto) {  
   @IsString()
   @IsOptional()
   @MaxLength(50)
   nombre?: string;
 
-  // --- ✅ CORRECCIÓN AQUÍ ---
   @IsEnum(TipoMaterial, { message: 'El tipo de material no es válido.' })
   @IsOptional()
   tipoMaterial?: TipoMaterial;
 
-  @IsEnum(UnidadMedida, { message: 'La unidad de medida no es válida.' })
+  // ✅ CORRECCIÓN 1: 'tipoMedida' se cambia a 'tipoEmpaque'
+  @IsEnum(TipoEmpaque, { message: 'el tipo de empaque no es válida.' })
   @IsOptional()
-  tipoMedida?: UnidadMedida;
+  tipoEmpaque?: TipoEmpaque;
+
+  // ✅ CORRECCIÓN 2: 'MedidaDeContenido' se cambia a 'medidasDeContenido' (minúscula)
+  @IsEnum(MedidasDeContenido, { message: 'La unidad de contenido no es válida.' })
+  @IsOptional()
+  medidasDeContenido?: MedidasDeContenido;
+ 
+  @IsEnum(TipoCategoria, { message: 'La categoría principal no es válida.' })
+  @IsOptional()
+  tipoCategoria?: TipoCategoria;
 
   // ... (el resto de las propiedades no cambian)
   @IsNumber()
