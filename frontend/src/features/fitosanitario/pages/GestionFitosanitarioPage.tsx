@@ -69,15 +69,20 @@ export default function GestionFitosanitarioPage() {
     fetchLocalData();
   }, []);
   
-  // ✅ --- INICIO DE LA CORRECCIÓN CLAVE --- ✅
+  // ✅ --- CÓDIGO CORREGIDO --- ✅
   // Efecto para manejar TODA la lógica de filtrado y búsqueda
   useEffect(() => {
     const updateDisplay = async () => {
+      const lowercasedSearchTerm = debouncedSearchTerm.toLowerCase();
+
+      // Función segura para filtrar por nombre, manejando valores nulos
+      const filterByName = (epa: Epa) => (epa.nombre ?? '').toLowerCase().includes(lowercasedSearchTerm);
+
       // Si la búsqueda se borra o es muy corta, filtramos solo los locales
-      if (debouncedSearchTerm.length < 3) {
+      if (lowercasedSearchTerm.length < 3) {
         const filtered = allLocalEpas.filter(epa => 
           (filterType === 'Todos' || epa.tipoEnfermedad === filterType) &&
-          epa.nombre.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          filterByName(epa) // Usamos la función segura
         );
         setEpasToShow(filtered);
         return;
@@ -87,13 +92,14 @@ export default function GestionFitosanitarioPage() {
       setLoadingExternal(true);
       try {
         const externalData = await buscarEpasExternas(debouncedSearchTerm);
-        const localMatches = allLocalEpas.filter(epa => 
-          epa.nombre.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-        );
+        const localMatches = allLocalEpas.filter(filterByName); // Usamos la función segura
 
         const combinedMap = new Map<string, Epa>();
+        // Combinamos datos, asegurándonos de que solo entren elementos con nombre
         [...externalData, ...localMatches].forEach(epa => {
-          combinedMap.set(epa.nombre.toLowerCase(), epa);
+          if (epa && epa.nombre) {
+            combinedMap.set(epa.nombre.toLowerCase(), epa);
+          }
         });
 
         const combined = Array.from(combinedMap.values());
@@ -114,7 +120,7 @@ export default function GestionFitosanitarioPage() {
 
     updateDisplay();
   }, [debouncedSearchTerm, allLocalEpas, filterType]); // Este efecto se ejecuta si cambia la búsqueda, los datos locales o el filtro de tipo
-  // ✅ --- FIN DE LA CORRECCIÓN CLAVE --- ✅
+  // ✅ --- FIN DE LA CORRECCIÓN --- ✅
 
   const handleCardClick = (epa: Epa) => {
     if (epa.id < 0) {
@@ -132,7 +138,8 @@ export default function GestionFitosanitarioPage() {
 
   const handleNavigateToPlanificar = () => {
     handleCloseModal();
-    navigate('/tratamientos');
+    // Navegamos indicando que queremos abrir el modal de "Planificar" al cargar la página
+    navigate('/tratamientos', { state: { openNew: true } });
   };
 
   return (
@@ -219,4 +226,3 @@ export default function GestionFitosanitarioPage() {
     </div>
   );
 }
-

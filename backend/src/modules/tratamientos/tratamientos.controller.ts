@@ -27,8 +27,24 @@ export class TratamientosController {
     return this.tratamientosService.update(id, updateTratamientoDto);
   }
 
+  // Endpoint temporal sin DTO para probar
+  @Patch('test-update/:id')
+  testUpdate(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    console.log('Test update - Body received:', body);
+    console.log('Test update - ID:', id);
+    return { message: 'Test successful', received: body, id: id };
+  }
+
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.tratamientosService.remove(id);
+  }
+
+  // Endpoint de prueba sin DTO
+  @Patch('test-update/:id')
+  testUpdateWithoutDto(@Param('id', ParseIntPipe) id: number, @Body() body: any) {
+    console.log('Test endpoint - Body received:', body);
+    console.log('Test endpoint - ID:', id);
+    return { message: 'Test successful', received: body, id: id };
   }
 }

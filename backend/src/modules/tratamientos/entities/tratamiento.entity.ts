@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne,JoinColumn } from 'typeorm';
 import { EpaTratamiento } from "../../epa_tratamiento/entities/epa_tratamiento.entity";
+import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 
 @Entity('tratamientos')
 export class Tratamiento {
@@ -22,8 +23,12 @@ export class Tratamiento {
   @Column({ name: 'Estado', type: 'varchar', length: 50, default: 'Planificado' })
   estado: string; // Puede ser 'Planificado', 'En Curso', 'Finalizado'
   // --- FIN DEL CAMBIO ---
+  @ManyToOne(() => Cultivo, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cultivoId' }) // Especificamos el nombre de la columna de clave foránea
+  cultivo: Cultivo | null;
 
   @OneToMany(() => EpaTratamiento, (et) => et.tratamiento)
   epaTratamientos: EpaTratamiento[];
+
 }
 

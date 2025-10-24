@@ -20,10 +20,13 @@ export const crearTratamiento = async (data: Partial<Tratamiento>): Promise<Trat
   return response.data;
 };
 
+
 export const actualizarTratamiento = async (id: number, data: Partial<Tratamiento>): Promise<Tratamiento> => {
+  // 'data' aquí ya debería ser el payload limpio sin el objeto 'cultivo'
   const response = await api.patch(`/tratamientos/${id}`, data);
   return response.data;
 };
+
 
 export const eliminarTratamiento = async (id: number): Promise<void> => {
   await api.delete(`/tratamientos/${id}`);

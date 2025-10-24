@@ -1,29 +1,34 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Tratamiento } from '../interfaces/fitosanitario';
+import type { Cultivo } from '../../cultivos/interfaces/cultivos'; // ✅ 1. Importamos la interfaz de Cultivo
 
+// ✅ 2. Añadimos 'cultivos' a las props que el componente espera recibir
 interface TratamientoFormProps {
   initialData?: Partial<Tratamiento>;
   onSave: (data: Partial<Tratamiento>) => void;
   onCancel: () => void;
+  cultivos: Cultivo[]; // <--- NUEVA PROP
 }
 
-export default function TratamientoForm({ initialData = {}, onSave, onCancel }: TratamientoFormProps) {
+export default function TratamientoForm({ initialData = {}, onSave, onCancel, cultivos }: TratamientoFormProps) {
   const [formData, setFormData] = useState<Partial<Tratamiento>>({});
 
   useEffect(() => {
-    // Aseguramos que las fechas se formateen correctamente para el input type="date"
+    // ✅ 3. Preparamos los datos iniciales, incluyendo el ID del cultivo si estamos editando
     const formattedData = {
       ...initialData,
       fechaInicio: initialData.fechaInicio ? new Date(initialData.fechaInicio).toISOString().split('T')[0] : '',
       fechaFinal: initialData.fechaFinal ? new Date(initialData.fechaFinal).toISOString().split('T')[0] : '',
+      cultivoId: initialData.cultivo?.id, // <-- Obtenemos el ID del objeto cultivo
     };
     setFormData(formattedData);
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // ✅ 4. Convertimos el valor del cultivo a número si es seleccionado
+    setFormData(prev => ({ ...prev, [name]: name === 'cultivoId' ? (value ? Number(value) : undefined) : value }));
   };
 
   const handleSubmit = () => {
@@ -36,6 +41,25 @@ export default function TratamientoForm({ initialData = {}, onSave, onCancel }: 
 
   return (
     <div className="p-4 space-y-4">
+      {/* --- ✅ 5. AÑADIMOS EL CAMPO DE SELECCIÓN PARA CULTIVO --- */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Cultivo Afectado (Opcional)</label>
+        <select
+          name="cultivoId"
+          value={formData.cultivoId || ''}
+          onChange={handleChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white"
+        >
+          <option value="">Tratamiento General</option>
+          {cultivos.map((cultivo) => (
+            <option key={cultivo.id} value={cultivo.id}>
+              {cultivo.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+      {/* -------------------------------------------------------- */}
+
       <div>
         <label className="block text-sm font-medium text-gray-700">Descripción</label>
         <textarea
@@ -111,3 +135,4 @@ export default function TratamientoForm({ initialData = {}, onSave, onCancel }: 
     </div>
   );
 }
+
