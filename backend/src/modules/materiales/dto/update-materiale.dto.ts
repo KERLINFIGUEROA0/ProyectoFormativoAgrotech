@@ -29,6 +29,7 @@ export class UpdateMaterialeDto extends PartialType(CreateMaterialeDto) {
   @IsEnum(TipoCategoria, { message: 'La categoría principal no es válida.' })
   @IsOptional()
   tipoCategoria?: TipoCategoria;
+  
 
   // ... (el resto de las propiedades no cambian)
   @IsNumber()

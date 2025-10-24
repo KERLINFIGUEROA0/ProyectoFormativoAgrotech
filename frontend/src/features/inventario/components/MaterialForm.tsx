@@ -280,7 +280,7 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
             icon={Ruler}
             label="Unidad de Medida"
             value={medidaContenido}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setMedidaContenido(e.target.value as any)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setMedidaContenido(e.target.value as MedidaDeContenido)}
           >
             {Object.values(MedidasDeContenido).map(med => (<option key={med} value={med}>{med}</option>))}
           </FormSelect>
