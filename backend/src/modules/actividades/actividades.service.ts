@@ -1,4 +1,3 @@
-// src/modules/actividades/actividades.service.ts
 import { Injectable,NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
@@ -7,7 +6,7 @@ import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
-import { Usuario } from '../usuarios/entities/usuario.entity'; // <-- Importar Usuario
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
 
 @Injectable()
@@ -26,8 +25,11 @@ export class ActividadesService {
       ...dto,
       usuario: { identificacion: usuarioIdentificacion },
       cultivo: dto.cultivo ? { id: dto.cultivo } : undefined,
+      estado: dto.estado || 'pendiente', 
     });
-    return this.actividadRepository.save(actividad);
+
+    const saved = await this.actividadRepository.save(actividad);
+    return saved;
   }
 
   async findAll() {
@@ -44,11 +46,25 @@ export class ActividadesService {
   }
 
   async update(id: number, dto: UpdateActividadDto) {
-    const updateData = {
-      ...dto,
-      usuario: dto.usuario ? { identificacion: dto.usuario } : undefined,
-      cultivo: dto.cultivo ? { id: dto.cultivo } : undefined,
-    };
+    const updateData: any = {};
+
+    if (dto.titulo !== undefined) updateData.titulo = dto.titulo;
+    if (dto.fecha !== undefined) updateData.fecha = dto.fecha;
+    if (dto.descripcion !== undefined) updateData.descripcion = dto.descripcion;
+    if (dto.img !== undefined) updateData.img = dto.img;
+    if (dto.estado !== undefined) updateData.estado = dto.estado;
+
+    if (dto.usuario !== undefined) {
+      updateData.usuario = { identificacion: dto.usuario };
+    }
+    if (dto.cultivo !== undefined) {
+      updateData.cultivo = { id: dto.cultivo };
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('No hay campos válidos para actualizar');
+    }
+
     await this.actividadRepository.update(id, updateData);
     return this.findOne(id);
   }
@@ -63,10 +79,7 @@ export class ActividadesService {
   }
 
   async search(dto: SearchActividadDto) {
-    // ... (este método no necesita cambios)
   }
-
-  // ✅ --- FUNCIÓN CORREGIDA --- ✅
  async asignarActividad(dto: AsignarActividadDto) {
     const { cultivo: cultivoId, aprendices, titulo, descripcion, fecha } = dto;
 
