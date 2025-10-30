@@ -520,9 +520,6 @@ const GestionActividadesPage: React.FC = () => {
           >
             <FileText size={16} /> Exportar PDF
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow" onClick={() => handleOpenEditModal()}>
-            <Plus /> Nueva Actividad
-          </button>
         </div>
       </div>
 
