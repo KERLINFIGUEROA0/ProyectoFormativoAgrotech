@@ -40,7 +40,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
         img: actividad.img,
         imgPresente: !!actividad.img,
         imgTipo: typeof actividad.img,
-        urlConstruida: actividad.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/${actividad.img}` : null,
+        urlConstruida: actividad.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}` : null,
         backendUrl: import.meta.env.VITE_BACKEND_URL,
         backendUrlDefinido: !!import.meta.env.VITE_BACKEND_URL
     });
@@ -53,7 +53,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
             if (Array.isArray(imagenes)) {
                 // Es un array de imágenes
                 imagenes.forEach((img: string, index: number) => {
-                    const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/${img}`;
+                    const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`;
                     console.log(`🔍 Intentando verificar URL de imagen ${index + 1}:`, imageUrl);
                     fetch(imageUrl, { method: 'HEAD' })
                         .then(response => {
@@ -80,7 +80,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                 });
             } else {
                 // Es una sola imagen
-                const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/${actividad.img}`;
+                const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`;
                 console.log("🔍 Intentando verificar URL de imagen única:", imageUrl);
                 fetch(imageUrl, { method: 'HEAD' })
                     .then(response => {
@@ -107,7 +107,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
             }
         } catch (parseError) {
             // No es JSON, tratar como string único
-            const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/${actividad.img}`;
+            const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`;
             console.log("🔍 Intentando verificar URL de imagen (string único):", imageUrl);
             fetch(imageUrl, { method: 'HEAD' })
                 .then(response => {
@@ -179,37 +179,37 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                                     const imagenes = JSON.parse(actividad.img);
                                     return imagenes.map((img: string, index: number) => (
                                         <div key={index} className="relative">
-                                            <img
-                                                src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${img}`}
-                                                alt={`Imagen ${index + 1} de ${actividad.titulo}`}
-                                                className="w-full h-48 object-cover rounded-lg border"
-                                                onLoad={() => console.log("✅ Imagen cargada exitosamente:", {
-                                                    src: `${import.meta.env.VITE_BACKEND_URL}/uploads/${img}`,
-                                                    actividadId: actividad.id,
-                                                    index
-                                                })}
-                                                onError={(e) => {
-                                                    console.error("❌ Error cargando imagen:", {
-                                                        src: e.currentTarget.src,
+                                                <img
+                                                    src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
+                                                    alt={`Imagen ${index + 1} de ${actividad.titulo}`}
+                                                    className="w-full h-48 object-cover rounded-lg border"
+                                                    onLoad={() => console.log("✅ Imagen cargada exitosamente:", {
+                                                        src: `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`,
                                                         actividadId: actividad.id,
-                                                        img,
-                                                        backendUrl: import.meta.env.VITE_BACKEND_URL,
-                                                        index,
-                                                        errorEvent: e,
-                                                        naturalWidth: e.currentTarget.naturalWidth,
-                                                        naturalHeight: e.currentTarget.naturalHeight
-                                                    });
-                                                    // Verificar si el error es ERR_NAME_NOT_RESOLVED
-                                                    if (e.currentTarget.src.includes('data:image') || e.currentTarget.src.includes('placeholder')) {
-                                                        console.warn("⚠️ Ya se está usando un placeholder local. Error persistente en la carga de imagen.");
-                                                    } else {
-                                                        console.log("🔄 Aplicando fallback a placeholder local debido a error de carga.");
-                                                        // Usar data URL para evitar dependencias externas
-                                                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
-                                                    }
-                                                }}
-                                            />
-                                        </div>
+                                                        index
+                                                    })}
+                                                    onError={(e) => {
+                                                        console.error("❌ Error cargando imagen:", {
+                                                            src: e.currentTarget.src,
+                                                            actividadId: actividad.id,
+                                                            img,
+                                                            backendUrl: import.meta.env.VITE_BACKEND_URL,
+                                                            index,
+                                                            errorEvent: e,
+                                                            naturalWidth: e.currentTarget.naturalWidth,
+                                                            naturalHeight: e.currentTarget.naturalHeight
+                                                        });
+                                                        // Verificar si el error es ERR_NAME_NOT_RESOLVED
+                                                        if (e.currentTarget.src.includes('data:image') || e.currentTarget.src.includes('placeholder')) {
+                                                            console.warn("⚠️ Ya se está usando un placeholder local. Error persistente en la carga de imagen.");
+                                                        } else {
+                                                            console.log("🔄 Aplicando fallback a placeholder local debido a error de carga.");
+                                                            // Usar data URL para evitar dependencias externas
+                                                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
                                     ));
                                 } catch (error) {
                                     console.error("❌ Error parseando imágenes:", {
@@ -221,11 +221,11 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                                         return (
                                             <div key={0} className="relative">
                                                 <img
-                                                    src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${actividad.img}`}
+                                                    src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`}
                                                     alt={`Imagen de ${actividad.titulo}`}
                                                     className="w-full h-48 object-cover rounded-lg border"
                                                     onLoad={() => console.log("✅ Imagen única cargada exitosamente:", {
-                                                        src: `${import.meta.env.VITE_BACKEND_URL}/uploads/${actividad.img}`,
+                                                        src: `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`,
                                                         actividadId: actividad.id
                                                     })}
                                                     onError={(e) => {
@@ -321,7 +321,7 @@ const GestionActividadesPage: React.FC = () => {
         imgTipo: typeof act.img,
         imgLength: act.img ? act.img.length : 0,
         backendUrl: import.meta.env.VITE_BACKEND_URL,
-        urlConstruida: act.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/${act.img}` : null
+        urlConstruida: act.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${act.img}` : null
       })));
       setActividades(actividadesData || []);
       setUsuarios(usuariosData || []);
