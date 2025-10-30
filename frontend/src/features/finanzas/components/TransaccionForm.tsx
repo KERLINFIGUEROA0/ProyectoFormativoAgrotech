@@ -30,7 +30,6 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
    });
    const [productions, setProductions] = useState<Produccion[]>([]);
    const [selectedProduction, setSelectedProduction] = useState<Produccion | null>(null);
-   const [unidad, setUnidad] = useState<'kg' | 'lb'>('kg');
 
   useEffect(() => {
     const fetchAvailableProductions = async () => {
@@ -71,16 +70,26 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
       return;
     }
 
-    // Convertir cantidad a kg si está en libras
-    const cantidadEnKg = unidad === 'lb' ? formData.cantidad / 2.20462 : formData.cantidad;
-
-    // Validar que no se venda más de lo disponible
-    if (selectedProduction && cantidadEnKg > selectedProduction.cantidad) {
-      toast.error(`No puedes vender más de ${selectedProduction.cantidad} ${unidad} disponibles.`);
+    // Validar que la cantidad no sea negativa o cero
+    if (formData.cantidad <= 0) {
+      toast.error("La cantidad debe ser un número positivo mayor a cero.");
       return;
     }
 
-    onSave({ ...formData, cantidad: cantidadEnKg } as TransaccionData);
+    // Validar que el precio no sea negativo o cero
+    if (formData.monto <= 0) {
+      toast.error("El precio unitario debe ser un número positivo mayor a cero.");
+      return;
+    }
+
+    // Convertir cantidad a kg si está en libras
+    // Validar que no se venda más de lo disponible
+    if (selectedProduction && formData.cantidad > selectedProduction.cantidad) {
+      toast.error(`No puedes vender más de ${selectedProduction.cantidad} kg disponibles.`);
+      return;
+    }
+
+    onSave({ ...formData } as TransaccionData);
   };
 
   return (
@@ -105,34 +114,40 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
             <Hash size={16} className="text-green-600" />
-            Cantidad Vendida
+            Cantidad Vendida (kg)
           </label>
           <div className="flex gap-2">
             <input
               name="cantidad"
               type="number"
+              min="0.01"
+              step="0.01"
               value={formData.cantidad || ''}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, cantidad: Number(e.target.value) }))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                const value = Number(e.target.value);
+                if (value >= 0) {
+                  setFormData(prev => ({ ...prev, cantidad: value }));
+                }
+              }}
               placeholder="Ej: 150"
-              className="flex-1 border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
+              className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
             />
-            <select
-              value={unidad}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setUnidad(e.target.value as 'kg' | 'lb')}
-              className="border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
-            >
-              <option value="kg">kg</option>
-              <option value="lb">lb</option>
-            </select>
           </div>
         </div>
-        <FormInput 
+          <FormInput 
           icon={DollarSign}
           label="Precio Unitario"
           name="monto"
           type="number"
+          min="0.01"
+          step="0.01"
           value={formData.monto || ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, monto: Number(e.target.value) }))}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            const value = Number(e.target.value);
+            if (value >= 0) {
+              setFormData(prev => ({ ...prev, monto: value }));
+            }
+          }}
           placeholder="Precio por unidad"
         />
         <FormInput 
@@ -162,7 +177,7 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
             <option value="">Seleccione una producción</option>
             {productions.map(prod => (
               <option key={prod.id} value={prod.id}>
-                {`${prod.cultivo.nombre} - Disponible: ${prod.cantidad} ${unidad}`}
+                {`${prod.cultivo.nombre} - Disponible: ${prod.cantidad} kg`}
               </option>
             ))}
           </select>
