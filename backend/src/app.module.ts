@@ -1,5 +1,6 @@
 // app.module.ts
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios'; 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppDataSource } from '../typeorm.config';
@@ -38,6 +39,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import {NotificationsModule} from './notifications/notifications.module';
 @Module({
   imports: [
+    HttpModule,
     MulterModule.register(multerConfig),
     ConfigModule.forRoot({ isGlobal: true }),
     CacheModule.registerAsync({

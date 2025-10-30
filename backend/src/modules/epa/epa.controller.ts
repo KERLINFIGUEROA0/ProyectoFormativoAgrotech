@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query} from '@nestjs/common';
 import { EpaService } from './epa.service';
 import { CreateEpaDto } from './dto/create-epa.dto';
 import { UpdateEpaDto } from './dto/update-epa.dto';
@@ -12,24 +12,33 @@ export class EpaController {
     return this.epaService.create(createEpaDto);
   }
 
+  @Get('buscar-externo')
+  searchExternal(@Query('q') query: string) {
+    return this.epaService.searchExternal(query);
+  }
+
   @Get()
   findAll() {
     return this.epaService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.epaService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.epaService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEpaDto: UpdateEpaDto) {
-    return this.epaService.update(+id, updateEpaDto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateEpaDto: UpdateEpaDto) {
+    return this.epaService.update(id, updateEpaDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.epaService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.epaService.remove(id);
+  }
+
+  @Get(':id/tratamientos')
+  findTratamientos(@Param('id', ParseIntPipe) id: number) {
+    return this.epaService.findTratamientosByEpaId(id);
   }
 }
-

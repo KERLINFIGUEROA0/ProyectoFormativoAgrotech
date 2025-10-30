@@ -1,4 +1,5 @@
-import { IsString, IsDateString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsNumber, IsIn } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateActividadDto {
   @IsString()
@@ -15,10 +16,16 @@ export class CreateActividadDto {
   @IsOptional()
   img?: string;
 
+  @Transform(({ value }) => parseInt(value))
   @IsNumber()
   usuario: number;
 
+  @Transform(({ value }) => parseInt(value))
   @IsNumber()
   cultivo: number;
+
+  @IsIn(['pendiente', 'en proceso', 'completado'])
+  @IsOptional()
+  estado?: 'pendiente' | 'en proceso' | 'completado';
 }
 

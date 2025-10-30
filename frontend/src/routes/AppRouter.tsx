@@ -22,9 +22,9 @@ import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion"
 import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCultivoPage";
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
+import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFitosanitarioPage";
+import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
 import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
-
-// --- ✅ 1. AÑADE LA IMPORTACIÓN QUE FALTA ---
 import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
 
 export default function AppRouter() {
@@ -66,18 +66,16 @@ export default function AppRouter() {
           <Route path="/gestion-actividades" element={<ActividadesPrincipal />} />
           <Route path="/cultivos/:cultivoId/trazabilidad" element={<TrazabilidadCultivoPage />} />
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
-          
+          <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
+          <Route path="/tratamientos" element={<GestionTratamientosPage />} />
           <Route path="/stock" element={<GestionInventarioPage />} />
-          
-          {/* --- ✅ 2. AÑADE LA RUTA PARA EL DETALLE DEL MATERIAL --- */}
           <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
-
           <Route path="/movimientos" element={
               <div className="text-center p-8">
                 <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>
                 <p>Esta sección está en construcción.</p>
               </div>
-            } 
+            }
           />
         </Route>
 
