@@ -1,22 +1,23 @@
 // src/features/actividades/pages/GestionActividadesPage.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, ClipboardList, Loader2, CheckCircle, Edit, Calendar, User } from 'lucide-react';
+import { Plus, ClipboardList, Loader2, CheckCircle, Edit, Calendar, User, FileText, Bell } from 'lucide-react';
 
 import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
 import Modal from '../../../components/Modal';
-import type { 
-  Actividad, 
-  UpdateActividadPayload, 
+import { useAuth } from '../../../context/AuthContext';
+import type {
+  Actividad,
+  UpdateActividadPayload,
   EstadoActividad,
   UsuarioSimple,
   CultivoSimple
 } from '../interfaces/actividades';
-import { 
-  listarActividades, 
-  registrarActividad, 
-  actualizarActividad, 
+import {
+  listarActividades,
+  registrarActividad,
+  actualizarActividad,
   eliminarActividad,
   obtenerUsuariosParaActividades,
   obtenerCultivosParaActividades
@@ -291,17 +292,18 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 
 
 const GestionActividadesPage: React.FC = () => {
+  const { userData } = useAuth();
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<EstadoActividad | 'Todos'>('Todos');
-  
+
   const [cargando, setCargando] = useState<boolean>(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false); // Modal para Editar/Crear
   const [actividadAEditar, setActividadAEditar] = useState<Partial<Actividad> | null>(null);
-  
+
   // ✅ Nuevo estado para ver detalles
-  const [actividadAVer, setActividadAVer] = useState<Actividad | null>(null); 
+  const [actividadAVer, setActividadAVer] = useState<Actividad | null>(null);
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -334,6 +336,40 @@ const GestionActividadesPage: React.FC = () => {
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
+
+  // Función para mostrar notificaciones de actividades pendientes
+  const mostrarNotificacionesPendientes = useCallback(() => {
+    if (!userData || !actividades.length) return;
+
+    const actividadesPendientesUsuario = actividades.filter(act =>
+      act.estado === 'pendiente' &&
+      act.usuario?.identificacion === userData.identificacion
+    );
+
+    if (actividadesPendientesUsuario.length > 0) {
+      toast.warning(
+        `Tienes ${actividadesPendientesUsuario.length} actividad(es) pendiente(s) por completar.`,
+        {
+          description: 'Revisa tus actividades asignadas.',
+          duration: 8000,
+          action: {
+            label: 'Ver Actividades',
+            onClick: () => {
+              // Filtrar por pendientes para mostrar solo las del usuario
+              setFiltroEstado('pendiente');
+            }
+          }
+        }
+      );
+    }
+  }, [actividades, userData]);
+
+  // Mostrar notificaciones cuando se cargan las actividades
+  useEffect(() => {
+    if (!cargando && actividades.length > 0) {
+      mostrarNotificacionesPendientes();
+    }
+  }, [cargando, actividades, mostrarNotificacionesPendientes]);
 
   // Lógica para abrir/cerrar modal de EDICIÓN/CREACIÓN
   const handleOpenEditModal = (actividad?: Actividad) => {
@@ -414,15 +450,80 @@ const GestionActividadesPage: React.FC = () => {
     return actividades.filter(a => a.estado === filtroEstado);
   }, [actividades, filtroEstado]);
 
+  // Función para exportar PDF
+  const exportarPDF = useCallback(async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+
+      // Título
+      doc.setFontSize(20);
+      doc.text('Reporte de Actividades', 20, 20);
+
+      // Fecha de generación
+      doc.setFontSize(12);
+      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+
+      // Estadísticas
+      doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
+      doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
+      doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
+      doc.text(`Completadas: ${stats.completadas}`, 20, 80);
+
+      // Tabla de actividades
+      const tableData = filteredActividades.map(act => [
+        act.titulo,
+        act.cultivo?.nombre || 'No especificado',
+        `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
+        new Date(act.fecha).toLocaleDateString('es-ES'),
+        getEstadoTexto(act.estado),
+        act.descripcion || 'Sin descripción'
+      ]);
+
+      // Importar autoTable dinámicamente
+      const { default: autoTable } = await import('jspdf-autotable');
+      autoTable(doc, {
+        head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
+        body: tableData,
+        startY: 90,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      // Guardar el PDF
+      doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF generado correctamente');
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      toast.error('Error al generar el PDF');
+    }
+  }, [actividades, filteredActividades, stats]);
+
   if (cargando) return <div className="text-center mt-8">Cargando...</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-full space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Actividades</h1>
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow" onClick={() => handleOpenEditModal()}>
-          <Plus /> Nueva Actividad
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow"
+            onClick={mostrarNotificacionesPendientes}
+            title="Mostrar notificaciones de actividades pendientes"
+          >
+            <Bell size={16} /> Notificaciones
+          </button>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow"
+            onClick={exportarPDF}
+          >
+            <FileText size={16} /> Exportar PDF
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow" onClick={() => handleOpenEditModal()}>
+            <Plus /> Nueva Actividad
+          </button>
+        </div>
       </div>
 
       {/* Sección de Estadísticas */}
