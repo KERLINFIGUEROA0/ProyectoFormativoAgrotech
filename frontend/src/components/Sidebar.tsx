@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
   Calendar, // Icono para el submenú de Cronograma
+  Ghost, // Icono para Dracula
 } from "lucide-react";
 
 import logoAgroFull from "../assets/logo.png";
@@ -108,6 +109,11 @@ const menuItems: MenuItemType[] = [
       { id: "gestion-usuarios", label: "Gestion Usuarios", icon: User },
       { id: "gestion-roles", label: "Gestion Roles", icon: Settings },
     ],
+  },
+  {
+    id: "gestion-dracula",
+    label: "Dracula",
+    icon: Ghost,
   },
 ];
 
