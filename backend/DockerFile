@@ -1,0 +1,37 @@
+# backend/Dockerfile
+
+# --- Etapa de Build ---
+# Usamos una imagen de Node.js más completa para instalar dependencias y construir el proyecto
+FROM node:18-alpine AS builder
+
+# Establecemos el directorio de trabajo dentro del contenedor
+WORKDIR /usr/src/app
+
+# Copiamos los archivos de dependencias y las instalamos
+COPY package*.json ./
+RUN npm install
+
+# Copiamos todo el código fuente del backend
+COPY . .
+
+# Construimos la aplicación para producción
+RUN npm run build
+
+# --- Etapa de Producción ---
+# Usamos una imagen de Node.js más ligera para ejecutar la aplicación ya construida
+FROM node:18-alpine
+
+WORKDIR /usr/src/app
+
+# Copiamos solo las dependencias de producción
+COPY package*.json ./
+RUN npm install --only=production
+
+# Copiamos la aplicación construida desde la etapa anterior
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Exponemos el puerto 3000, que es donde corre tu backend
+EXPOSE 3000
+
+# El comando para iniciar la aplicación
+CMD ["node", "dist/main"]

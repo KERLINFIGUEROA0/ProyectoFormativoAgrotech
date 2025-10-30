@@ -1,5 +1,5 @@
 import { api } from "../../../lib/axios";
-import type { MaterialData, MovimientoData } from '../interfaces/inventario';
+import type { MaterialData } from '../interfaces/inventario';
 
 // --- API para Materiales (Productos de Inventario) ---
 
@@ -56,16 +56,7 @@ export const listarMovimientosPorMaterial = async (materialId: number) => {
   return response.data;
 };
 
-export const registrarMovimiento = async (data: MovimientoData) => {
-  // El backend necesita el usuarioId. Asumimos que el objeto 'user' con su 'id'
-  // se guarda en localStorage después del login.
-  const userString = localStorage.getItem("user"); 
-  const user = userString ? JSON.parse(userString) : {};
-  
-  const payload = { ...data, usuarioId: user.id };
-  const response = await api.post('/inventario/movimientos/registrar', payload);
-  return response.data;
-};
+
 
 // --- ✅ FUNCIÓN AÑADIDA ---
 // API para Reportes

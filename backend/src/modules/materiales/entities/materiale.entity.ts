@@ -1,7 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { ActividadMaterial } from '../../actividades_materiales/entities/actividades_materiale.entity';
-import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+// Importamos los nuevos enums que debes crear en tu backend
+import { TipoCategoria } from '../../../common/enums/tipo-categoria.enum';
 import { TipoMaterial } from '../../../common/enums/tipo-material.enum';
+import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum';
+import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
 
 @Entity('materiales')
 export class Material {
@@ -17,30 +20,9 @@ export class Material {
   @Column({ name: 'Descripcion', type: 'varchar', length: 255, nullable: true })
   descripcion: string;
 
-  @Column({
-    name: 'Tipo_Material',
-    type: 'enum',
-    enumName: 'tipo_material_enum', // Asegura que TypeORM use el tipo de la DB
-    enum: TipoMaterial,
-    nullable: true,
-  })
-  tipoMaterial: TipoMaterial;
-
-  @Column({
-    name: 'Tipo_Medida_Material',
-    type: 'enum',
-    enumName: 'unidad_medida_enum', // Asegura que TypeORM use el tipo de la DB
-    enum: UnidadMedida,
-    nullable: true,
-  })
-  tipoMedida: UnidadMedida;
-
-  @Column({ name: 'peso_por_unidad_kg', type: 'numeric', precision: 10, scale: 3, nullable: true })
-  pesoPorUnidad: number | null;
-
   @Column({ name: 'Cantidad', type: 'integer', default: 0 })
   cantidad: number;
-  
+
   @Column({ name: 'img', type: 'varchar', length: 255, nullable: true })
   img: string | null;
 
@@ -52,13 +34,51 @@ export class Material {
 
   @Column({ name: 'fecha_vencimiento', type: 'date', nullable: true })
   fechaVencimiento: Date | null;
+
+  @Column({ name: 'peso_por_unidad_kg', type: 'numeric', precision: 10, scale: 3, nullable: true })
+  pesoPorUnidad: number | null;
   
   @Column({ name: 'estado', type: 'boolean', default: true })
   estado: boolean;
+  
 
+  // --- NUEVAS COLUMNAS ---
+  @Column({
+    name: 'Tipo_Categoria',
+    type: 'enum',
+    enumName: 'tipo_categoria_enum',
+    enum: TipoCategoria,
+    nullable: true,
+  })
+  tipoCategoria: TipoCategoria;
+
+  @Column({
+    name: 'Tipo_Material',
+    type: 'enum',
+    enumName: 'tipo_material_enum',
+    enum: TipoMaterial,
+    nullable: true,
+  })
+  tipoMaterial: TipoMaterial;
+
+  @Column({
+    name: 'Medidas_De_Contenido',
+    type: 'enum',
+    enumName: 'medidas_de_contenido_enum',
+    enum: MedidasDeContenido,
+    nullable: true,
+  })
+  medidasDeContenido: MedidasDeContenido;
+
+  @Column({
+    name: 'Tipo_Empaque',
+    type: 'enum',
+    enumName: 'tipo_empaque_enum',
+    enum: TipoEmpaque,
+    nullable: true,
+  })
+  tipoEmpaque: TipoEmpaque;
 
   @OneToMany(() => ActividadMaterial, (am) => am.material)
   actividadMaterial: ActividadMaterial[];
-  
-
 }

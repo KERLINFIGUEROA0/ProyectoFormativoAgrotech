@@ -1,5 +1,5 @@
 export enum TipoMaterial {
-  // --- Insumos agrícolas ---
+  // --- Insumos agrícolas ---                                                                                                                                                                                                                                                                              
   SEMILLA = 'Semilla',
   PLANTULA = 'Plántula',
   ABONO_ORGANICO = 'Abono orgánico',
@@ -7,16 +7,20 @@ export enum TipoMaterial {
   FERTILIZANTE = 'Fertilizante',
   ENMIENDA = 'Enmienda',
   COMPOST = 'Compost',
-  SUSTRATO = 'Sustrato',
+  SUSTRATO = 'Sustrato', 
+  
+
 
   // --- Agroquímicos y fitosanitarios ---
-  HERBICIDA = 'Herbicida',
+  HERBICIDA = 'Herbicida',   
   INSECTICIDA = 'Insecticida',
   FUNGICIDA = 'Fungicida',
   BACTERICIDA = 'Bactericida',
   NEMATICIDA = 'Nematicida',
   REGULADOR_CRECIMIENTO = 'Regulador de crecimiento',
   ADHERENTE = 'Adherente / Surfactante',
+  FERTIRRIGACION = 'Fertirrigación',
+
 
   // --- Materiales de riego y suministro ---
   AGUA = 'Agua',
@@ -25,33 +29,6 @@ export enum TipoMaterial {
   GOTERO = 'Gotero',
   ASPERSOR = 'Aspersor',
   TANQUE = 'Tanque',
-
-  // --- Herramientas manuales ---
-  PALA = 'Pala',
-  AZADON = 'Azadón',
-  RASTRILLO = 'Rastrillo',
-  MACHETE = 'Machete',
-  TIJERA_PODA = 'Tijera de poda',
-  MARTILLO = 'Martillo',
-  DESTORNILLADOR = 'Destornillador',
-  LLAVE_INGLES = 'Llave inglesa',
-
-  // --- Maquinaria y equipos ---
-  TRACTOR = 'Tractor',
-  FUMIGADORA = 'Fumigadora',
-  DESMALEZADORA = 'Desmalezadora',
-  BOMBA_AGUA = 'Bomba de agua',
-  MOTOSIERRA = 'Motosierra',
-  GENERADOR = 'Generador',
-  PULVERIZADOR = 'Pulverizador',
-
-  // --- Materiales de protección y seguridad ---
-  GUANTES = 'Guantes',
-  MASCARILLA = 'Mascarilla',
-  BOTAS = 'Botas',
-  GAFAS_PROTECCION = 'Gafas de protección',
-  ROPA_PROTECTORA = 'Ropa protectora',
-  CASCO = 'Casco',
 
   // --- Materiales de empaque / almacenamiento ---
   SACO = 'Saco',
