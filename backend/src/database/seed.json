@@ -1,0 +1,16 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "nombre": "Juan",
+      "apellido": "Perez",
+      "identificacion": "123456789",
+      "email": "juan.perez@example.com",
+      "telefono": "3001234567",
+      "tipo_usuario": 1,
+      "estado": true
+    }
+  ],
+  "lotes": [],
+  "cultivos": []
+}
