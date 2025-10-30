@@ -131,7 +131,7 @@ export default function DashboardProduccion() {
         <StatCard title="Total Cosechado" value={stats?.totalCosechado || 0} icon={<BarChart/>} isCurrency={false}/>
         <StatCard title="Ingresos Totales" value={stats?.ingresosTotales || 0} icon={<DollarSign/>}/>
         <StatCard title="Gastos Totales" value={stats?.gastosTotales || 0} icon={<DollarSign/>}/>
-        <StatCard title="Rentabilidad" value={stats?.rentabilidad || 0} icon={<DollarSign/>}/>
+        <StatCard title="Cosecha Vendida" value={stats?.cosechaVendida || 0} icon={<DollarSign/>} isCurrency={false}/>
       </div>
 
       <div className="bg-white shadow-xl rounded-xl p-6 w-full">
@@ -143,27 +143,38 @@ export default function DashboardProduccion() {
                 <th className="px-4 py-3 text-left">ID Registro</th>
                 <th className="px-4 py-3 text-left">Fecha Cosecha</th>
                 <th className="px-4 py-3 text-center">Estado</th>
-                <th className="px-4 py-3 text-right">Cantidad (kg)</th>
+                <th className="px-4 py-3 text-right">Cosecha Total (kg)</th>
+                <th className="px-4 py-3 text-right">Cosecha Vendida (kg)</th>
+                <th className="px-4 py-3 text-right">Disponible (kg)</th>
                 <th className="px-4 py-3 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {producciones.map((p) => (
-                <tr key={p.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">PROD-{p.id}</td>
-                  <td className="px-4 py-3">{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estado)}`}>
-                        {p.estado}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold">{p.cantidad.toLocaleString('es-CO')} kg</td>
-                  <td className="px-4 py-3 text-center flex justify-center items-center gap-4">
-                    <button onClick={() => handleOpenModal(p)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                    <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
-                  </td>
-                </tr>
-              ))}
+              {producciones.map((p) => {
+                const cosechaVendida = (p.cantidadOriginal || 0) - p.cantidad;
+                const disponible = p.cantidad;
+                const isSoldOut = disponible === 0;
+
+                return (
+                  <tr key={p.id} className={`border-t hover:bg-gray-50 ${isSoldOut ? 'bg-red-50' : ''}`}>
+                    <td className="px-4 py-3 font-medium">PROD-{p.id}</td>
+                    <td className="px-4 py-3">{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estado)}`}>
+                          {p.estado}
+                      </span>
+                      {isSoldOut && <span className="ml-2 text-red-600 text-xs">VENDIDO</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold">{(p.cantidadOriginal || p.cantidad).toLocaleString('es-CO')} kg</td>
+                    <td className="px-4 py-3 text-right font-semibold">{cosechaVendida.toLocaleString('es-CO')} kg</td>
+                    <td className="px-4 py-3 text-right font-semibold">{disponible.toLocaleString('es-CO')} kg</td>
+                    <td className="px-4 py-3 text-center flex justify-center items-center gap-4">
+                      <button onClick={() => handleOpenModal(p)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
+                      <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

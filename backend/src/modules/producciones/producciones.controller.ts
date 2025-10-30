@@ -54,4 +54,11 @@ export class ProduccionesController {
     await this.produccionesService.remove(id);
     return { success: true, message: 'Producción eliminada con éxito.' };
   }
+
+  // --- ✅ NUEVO: Endpoint para obtener producciones disponibles para venta ---
+  @Get('available-for-sale')
+  async findAvailableForSale() {
+    const data = await this.produccionesService.findAvailableForSale();
+    return { success: true, data };
+  }
 }

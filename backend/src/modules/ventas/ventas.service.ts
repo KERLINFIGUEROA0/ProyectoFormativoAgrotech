@@ -42,10 +42,17 @@ export class VentasService {
         );
       }
 
+      // Restamos la cantidad vendida de la cantidad disponible
       produccion.cantidad -= dto.cantidad;
 
+      // Si la cantidad llega a 0, marcamos la producción como vendida
       if (produccion.cantidad === 0) {
-        produccion.estado = 'Cosechado';
+        produccion.estado = 'Vendido';
+      }
+
+      // Mantenemos el cantidadOriginal como estaba
+      if (!produccion.cantidadOriginal) {
+        produccion.cantidadOriginal = produccion.cantidad + dto.cantidad;
       }
       
       await produccionRepo.save(produccion);

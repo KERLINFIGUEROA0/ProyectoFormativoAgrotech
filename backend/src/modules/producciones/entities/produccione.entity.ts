@@ -12,6 +12,10 @@ export class Produccion {
   @Column({ name: 'Cantidad', type: 'int', nullable: true })
   cantidad: number;
 
+  // --- ✅ AÑADIDO: Campo para mantener la cantidad original cosechada ---
+  @Column({ name: 'Cantidad_Original', type: 'int', nullable: true })
+  cantidadOriginal: number;
+
   @Column({ name: 'Fecha', type: 'timestamp', nullable: true })
   fecha: Date;
 

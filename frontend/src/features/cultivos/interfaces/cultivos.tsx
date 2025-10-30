@@ -72,16 +72,18 @@ export interface StatCardProps {
 export interface Produccion {
   id: number;
   cantidad: number;
+  cantidadOriginal: number;
   fecha: string;
   estado: string;
   cultivo: { id: number; nombre: string; };
+  ventas: Venta[];
 }
 
 export interface Stats {
   totalCosechado: number;
+  cosechaVendida: number;
   ingresosTotales: number;
   gastosTotales: number;
-  rentabilidad: number;
 }
 
 export interface Cultivo {
@@ -101,4 +103,11 @@ export interface Cultivo {
 export interface TipoCultivo {
   id: number;
   nombre: string;
+}
+
+export interface Venta {
+  id: number;
+  cantidadVenta: number;
+  valorTotalVenta: number;
+  fecha: string;
 }
