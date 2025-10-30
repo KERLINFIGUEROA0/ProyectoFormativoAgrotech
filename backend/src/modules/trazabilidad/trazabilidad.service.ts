@@ -66,7 +66,7 @@ export class TrazabilidadService {
           tipo: 'Cosecha',
           fecha: prod.fecha,
           titulo: 'Registro de Cosecha',
-          descripcion: `Se cosecharon ${prod.cantidad} kg.`,
+          descripcion: `Se cosecharon ${prod.cantidadOriginal || prod.cantidad} kg.`,
           icono: 'Package',
         });
       }
@@ -79,8 +79,8 @@ export class TrazabilidadService {
           tipo: 'Venta',
           fecha: venta.fecha,
           titulo: `Venta registrada (Factura #${venta.id})`,
-          // Usamos 'valorTotalVenta' que viene de la entidad
-          descripcion: `${venta.descripcion}. Total: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(venta.valorTotalVenta))}`,
+          // Usamos 'valorTotalVenta' que viene de la entidad e incluimos cantidad vendida
+          descripcion: `${venta.descripcion}. Cantidad vendida: ${venta.cantidadVenta} kg. Total: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(venta.valorTotalVenta))}`,
           icono: 'DollarSign',
         });
       }
