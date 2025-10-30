@@ -56,10 +56,14 @@ export default function DetalleMaterialPage() {
   if (!material) return <div className="text-center p-8">Material no encontrado.</div>;
 
   const stockMinimo = 50; // Valor de ejemplo
-  const stockPercentage = Math.min((material.cantidad / stockMinimo) * 100, 100);
+    const stockPercentage = Math.min((material.cantidad / stockMinimo) * 100, 100);
 
-  const textoContenido = formatarContenido(material.pesoPorUnidad, material.tipoEmpaque );
-      return (
+
+  const unidadesPorContenido =  100 ; // Ejemplo: 100 unidades por contenido
+  const stockPercentage1 =  Math.min ((material.cantidad / unidadesPorContenido) * material.cantidad);
+
+  const textoContenido = formatarContenido(material.pesoPorUnidad, material.tipoEmpaque);
+  return (
     <div className="p-2 sm:p-6 bg-gray-50 min-h-full space-y-6">
       <Link to="/stock" className="flex items-center gap-2 text-green-600 hover:underline font-semibold">
         <ArrowLeft size={18} />
@@ -133,24 +137,24 @@ export default function DetalleMaterialPage() {
               </div>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-md">
-                <h3 className="font-semibold text-gray-700 mb-2">Estado de Inventario</h3>
-                <div className="grid grid-cols-2 gap-4 mb-2">
-                  <div>
-                    <p className="font-bold text-lg">{material.cantidad}</p>
-                    <p className="text-xs text-gray-500">Stock Actual ({material.tipoMaterial || material.tipoCategoria})</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{stockMinimo}</p>
-                    <p className="text-xs text-gray-500">Stock Mínimo</p>
-                  </div>
+              <h3 className="font-semibold text-gray-700 mb-2">Estado de Inventario</h3>
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <p className="font-bold text-lg">{material.cantidad}</p>
+                  <p className="text-xs text-gray-500">Stock Actual ({material.tipoMaterial || material.tipoCategoria})</p>
                 </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg">{stockMinimo}</p>
+                  <p className="text-xs text-gray-500">Stock Mínimo</p>
+                </div>
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div className="bg-green-600 h-2.5 rounded-full" style={{ width: `${stockPercentage}%` }}></div>
               </div>
 
 
               <p className="text-xs text-center mt-1 font-semibold text-green-700">Stock Estable</p>
-          
+
 
               <div className="bg-white p-4 rounded-xl shadow-md">
                 <h3 className="font-semibold text-gray-700 mb-2">Estado por Unidad </h3>
@@ -162,8 +166,16 @@ export default function DetalleMaterialPage() {
                   <div className="text-right">
                     <p className="font-bold text-lg">{stockMinimo}</p>
                     <p className="text-xs text-gray-500">Stock Mínimo</p>
+
                   </div>
+
                 </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className="bg-green-600 h-2.5 rounded-full" style={{ width: `${stockPercentage1}%` }}></div>
+                </div>
+                <p className="text-xs text-center mt-1 font-semibold text-green-700">Stock Estable</p>
+
+
               </div>
             </div>
           </div>

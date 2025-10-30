@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 // --- 1. Importa lo necesario ---
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+
 
 async function bootstrap() {
   // --- 2. Especifica el tipo de la app ---
@@ -29,7 +31,20 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.MQTT,
+    options: {
+      // 👇 REEMPLAZA ESTO con la URL de tu broker MQTT
+      // Ejemplo: 'mqtt://localhost:1883' o 'mqtt://test.mosquitto.org'
+      url: 'mqtt://test.mosquitto.org:1883',
+      // Opciones adicionales si tu broker requiere autenticación
+      // username: 'tu_usuario',
+      // password: 'tu_password',
+    },
+  });
 
+  // --- 3. Inicia AMBOS servicios ---
+  await app.startAllMicroservices();
   await app.listen(3000);
 }
 bootstrap();
