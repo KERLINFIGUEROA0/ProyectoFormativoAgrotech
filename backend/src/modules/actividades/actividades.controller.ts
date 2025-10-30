@@ -34,17 +34,25 @@ export class ActividadesController {
     @Req() req,
   ) {
     try {
+      console.log('📨 Request body recibido:', dto);
+      console.log('📁 Files recibidos:', files?.length || 0);
+
       // ✅ Obtener usuario autenticado desde el token
       const usuarioIdentificacion = req.user.identificacion;
+      console.log('👤 Usuario autenticado ID:', usuarioIdentificacion);
 
       // ✅ Procesar imágenes (guardar nombres)
       const imagenes = files?.map((file) => file.filename) ?? [];
+      console.log('🖼️ Imágenes procesadas:', imagenes);
 
       // ✅ Pasar al servicio incluyendo imágenes
-      return this.actividadesService.create(
+      const result = await this.actividadesService.create(
         { ...dto, img: JSON.stringify(imagenes) },
         usuarioIdentificacion,
       );
+
+      console.log('✅ Actividad creada exitosamente:', result);
+      return result;
     } catch (error) {
       console.error('❌ Error al crear actividad:', error);
       throw error;
@@ -70,8 +78,14 @@ export class ActividadesController {
   }
 
   // ✅ Actualizar actividad
+  @UseInterceptors(AnyFilesInterceptor())
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateActividadDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateActividadDto, @UploadedFiles() files?: Express.Multer.File[]) {
+    // Si hay archivos, procesarlos (aunque para update probablemente no se usen)
+    if (files && files.length > 0) {
+      const imagenes = files.map((file) => file.filename);
+      dto.img = JSON.stringify(imagenes);
+    }
     return this.actividadesService.update(Number(id), dto);
   }
 
