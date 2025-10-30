@@ -2,14 +2,14 @@
 import { useState, useEffect, type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Bell, Thermometer, Droplet, Clock, AlertTriangle } from 'lucide-react'; // Importar AlertTriangle
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'; // --- 1. Importar Recharts ---
-import { 
-  listarSensores, 
-  crearSensor, 
-  actualizarSensor, 
-  eliminarSensor, 
+import {
+  listarSensores,
+  crearSensor,
+  actualizarSensor,
+  eliminarSensor,
   listarTiposSensor,
   listarInformacionSensores
 } from '../api/sensoresApi';
@@ -73,7 +73,7 @@ function SensorCard({ sensor, latestReading, onEdit, onDelete }: SensorCardProps
   // --- ✅ 2. LÓGICA DE ALERTA ---
   const min = parseFloat(String(sensor.valor_minimo_alerta));
   const max = parseFloat(String(sensor.valor_maximo_alerta));
-  
+
   let valorColor = "text-gray-900"; // Color normal
   let alertMessage: string | null = null;
   let cardBorderColor = "border-transparent"; // Borde normal
@@ -111,7 +111,7 @@ function SensorCard({ sensor, latestReading, onEdit, onDelete }: SensorCardProps
           <button onClick={() => onDelete(sensor.id)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
         </div>
       </div>
-      
+
       <div className="my-6 text-center">
         {valor !== null ? (
           // --- ✅ 4. APLICAR COLOR DE VALOR ---
@@ -134,8 +134,19 @@ function SensorCard({ sensor, latestReading, onEdit, onDelete }: SensorCardProps
       <div className="flex items-center justify-center text-sm text-gray-500 border-t pt-3 mt-4">
         <Clock size={14} className="mr-2" />
         {/* --- ✅ CORRECCIÓN DE ZONA HORARIA (TARJETA) --- */}
-        Última lectura: {latestReading ? new Date(latestReading.fechaRegistro).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Bogota' }) : 'Nunca'}
+        Última lectura:{' '}
+        {latestReading ? (() => {
+          const utcDate = new Date(latestReading.fechaRegistro);
+          const bogotaTime = new Date(utcDate.getTime() - 5 * 60 * 60 * 1000); // UTC-5
+          return bogotaTime.toLocaleTimeString('es-CO', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+        })() : 'Nunca'}
       </div>
+
     </div>
   );
 }
@@ -156,9 +167,9 @@ function SensorHistoryChart({ title, data, color, unit }: SensorHistoryChartProp
         <ResponsiveContainer>
           <LineChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-            
+
             <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-            
+
             <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}${unit}`} />
             <Tooltip
               formatter={(value: number) => [`${value.toFixed(1)} ${unit}`, "Valor"]}
@@ -191,9 +202,9 @@ export default function GestionSensoresPage(): ReactElement {
         listarTiposSensor(),
         listarInformacionSensores()
       ]);
-      
+
       setSensores(sensoresRes.data || []);
-      setInformacionSensores(infoRes || []); 
+      setInformacionSensores(infoRes || []);
       setLotes(lotesRes.data || []);
       setTiposSensor(tiposRes.data || []);
 
@@ -223,7 +234,7 @@ export default function GestionSensoresPage(): ReactElement {
     };
     const intervalId = setInterval(fetchSensorData, 5000);
     return () => clearInterval(intervalId);
-  }, []); 
+  }, []);
 
   // --- 6. Procesar datos para tarjetas y gráficos ---
   const processedSensorData = useMemo(() => {
@@ -233,25 +244,29 @@ export default function GestionSensoresPage(): ReactElement {
     return targetSensores.map(sensor => {
       // Filtramos todas las lecturas para este sensor
       const allReadings = informacionSensores.filter(info => info.sensor.id === sensor.id);
-      
+
       // La data ya viene ordenada (la más nueva primero)
-      const latestReading = allReadings[0]; 
+      const latestReading = allReadings[0];
 
       // Preparamos datos para el gráfico (invertidos y formateados)
       const history = allReadings
-        .slice(0, 20) // Tomamos los últimos 20 puntos
-        .reverse()   // Los invertimos para que sean cronológicos
-        .map(reading => ({
-          // --- ✅ CORRECCIÓN DE ZONA HORARIA (GRÁFICO) ---
-          time: new Date(reading.fechaRegistro).toLocaleTimeString('en-US', { // Cambiado de 'es-CO' a 'en-US'
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZone: 'America/Bogota' 
-          }),
-          valor: parseFloat(String(reading.valor)),
-        }));
+        .slice(0, 20)
+        .reverse()
+        .map(reading => {
+          const utcDate = new Date(reading.fechaRegistro);
+          // Convertimos la hora UTC a Bogotá (-5 horas)
+          const bogotaTime = new Date(utcDate.getTime() - 5 * 60 * 60 * 1000);
 
+          return {
+            time: bogotaTime.toLocaleTimeString('es-CO', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            }),
+            valor: parseFloat(String(reading.valor)),
+          };
+        });
       return {
         sensor,
         latestReading,
@@ -260,7 +275,7 @@ export default function GestionSensoresPage(): ReactElement {
     });
   }, [sensores, informacionSensores]);
 
-  
+
   // --- Lógica de Modales y CRUD (sin cambios) ---
   const handleSave = async (data: any) => {
     const toastId = toast.loading("Guardando sensor...");
@@ -278,11 +293,11 @@ export default function GestionSensoresPage(): ReactElement {
       toast.error(error.response?.data?.message || "Error al guardar el sensor.", { id: toastId });
     }
   };
-  
+
   const handleDelete = (id: number) => {
     toast.warning('¿Estás seguro de que quieres eliminar este sensor?', {
-      action: { 
-        label: 'Eliminar', 
+      action: {
+        label: 'Eliminar',
         onClick: async () => {
           const toastId = toast.loading("Eliminando sensor...");
           try {
@@ -294,7 +309,7 @@ export default function GestionSensoresPage(): ReactElement {
           }
         }
       },
-      cancel: { label: 'Cancelar', onClick: () => {} },
+      cancel: { label: 'Cancelar', onClick: () => { } },
     });
   };
 
@@ -320,7 +335,7 @@ export default function GestionSensoresPage(): ReactElement {
       {/* Sección de Tarjetas (Cuadrados) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {processedSensorData.map(data => (
-          <SensorCard 
+          <SensorCard
             key={data.sensor.id}
             sensor={data.sensor}
             latestReading={data.latestReading}
@@ -329,7 +344,7 @@ export default function GestionSensoresPage(): ReactElement {
           />
         ))}
       </div>
-      
+
       {/* Sección de Gráficos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {processedSensorData.map(data => {
@@ -348,23 +363,23 @@ export default function GestionSensoresPage(): ReactElement {
 
       {/* Modal para agregar/editar (sin cambios) */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'}>
-        <SensorForm 
-            // --- ✅ 2. CORRECCIÓN DE INITIALDATA ---
-            // Pasamos solo los valores planos que el formulario necesita,
-            // evitando pasar los objetos 'surco' y 'tipoSensor'.
-            initialData={editingSensor ? {
-                nombre: editingSensor.nombre,
-                estado: editingSensor.estado,
-                fecha_instalacion: editingSensor.fecha_instalacion,
-                valor_minimo_alerta: editingSensor.valor_minimo_alerta,
-                valor_maximo_alerta: editingSensor.valor_maximo_alerta,
-                surcoId: editingSensor.surco?.id,
-                tipoSensorId: editingSensor.tipoSensor?.id,
-            } : {}}
-            surcos={surcos}
-            tiposSensor={tiposSensor}
-            onSave={handleSave} 
-            onCancel={closeModal} 
+        <SensorForm
+          // --- ✅ 2. CORRECCIÓN DE INITIALDATA ---
+          // Pasamos solo los valores planos que el formulario necesita,
+          // evitando pasar los objetos 'surco' y 'tipoSensor'.
+          initialData={editingSensor ? {
+            nombre: editingSensor.nombre,
+            estado: editingSensor.estado,
+            fecha_instalacion: editingSensor.fecha_instalacion,
+            valor_minimo_alerta: editingSensor.valor_minimo_alerta,
+            valor_maximo_alerta: editingSensor.valor_maximo_alerta,
+            surcoId: editingSensor.surco?.id,
+            tipoSensorId: editingSensor.tipoSensor?.id,
+          } : {}}
+          surcos={surcos}
+          tiposSensor={tiposSensor}
+          onSave={handleSave}
+          onCancel={closeModal}
         />
       </Modal>
     </div>
