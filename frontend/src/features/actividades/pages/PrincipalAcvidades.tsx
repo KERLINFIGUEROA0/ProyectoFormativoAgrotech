@@ -172,7 +172,7 @@ const ActividadesPrincipal: React.FC = () => {
           <p className="text-lg">Administra eficientemente todas las actividades agrícolas</p>
         </div>
         {/* Este ícono debe estar en tu carpeta public/ para que funcione */}
-        <img src="/tractor-icon.svg" alt="Tractor" className="w-12 h-12 text-white" />
+        <img src="/tractor-icon.svg" alt="Tractor" className="w-18 h-18 text-white" />
       </div>
 
       <div className="space-y-4">

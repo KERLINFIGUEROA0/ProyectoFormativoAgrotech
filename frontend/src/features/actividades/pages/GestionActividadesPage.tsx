@@ -1,22 +1,23 @@
 // src/features/actividades/pages/GestionActividadesPage.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, ClipboardList, Loader2, CheckCircle, Edit, Calendar, User } from 'lucide-react';
+import { Plus, ClipboardList, Loader2, CheckCircle, Edit, Calendar, User, FileText, Bell } from 'lucide-react';
 
 import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
 import Modal from '../../../components/Modal';
-import type { 
-  Actividad, 
-  UpdateActividadPayload, 
+import { useAuth } from '../../../context/AuthContext';
+import type {
+  Actividad,
+  UpdateActividadPayload,
   EstadoActividad,
   UsuarioSimple,
   CultivoSimple
 } from '../interfaces/actividades';
-import { 
-  listarActividades, 
-  registrarActividad, 
-  actualizarActividad, 
+import {
+  listarActividades,
+  registrarActividad,
+  actualizarActividad,
   eliminarActividad,
   obtenerUsuariosParaActividades,
   obtenerCultivosParaActividades
@@ -32,6 +33,106 @@ interface ModalDetallesProps {
 
 const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdit }) => {
     if (!actividad) return null;
+
+    console.log("🔍 Diagnóstico de imagen en actividad:", {
+        id: actividad.id,
+        titulo: actividad.titulo,
+        img: actividad.img,
+        imgPresente: !!actividad.img,
+        imgTipo: typeof actividad.img,
+        urlConstruida: actividad.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}` : null,
+        backendUrl: import.meta.env.VITE_BACKEND_URL,
+        backendUrlDefinido: !!import.meta.env.VITE_BACKEND_URL
+    });
+
+    // 🔍 Log adicional: Verificar accesibilidad de la URL
+    if (actividad.img) {
+        try {
+            // Intentar parsear como JSON array primero
+            const imagenes = JSON.parse(actividad.img);
+            if (Array.isArray(imagenes)) {
+                // Es un array de imágenes
+                imagenes.forEach((img: string, index: number) => {
+                    const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`;
+                    console.log(`🔍 Intentando verificar URL de imagen ${index + 1}:`, imageUrl);
+                    fetch(imageUrl, { method: 'HEAD' })
+                        .then(response => {
+                            console.log(`🔍 Respuesta del servidor para imagen ${index + 1}:`, {
+                                url: imageUrl,
+                                status: response.status,
+                                statusText: response.statusText,
+                                headers: Object.fromEntries(response.headers.entries()),
+                                ok: response.ok
+                            });
+                        })
+                        .catch(error => {
+                            console.error(`🔍 Error al verificar imagen ${index + 1}:`, {
+                                url: imageUrl,
+                                error: error.message,
+                                backendUrl: import.meta.env.VITE_BACKEND_URL,
+                                img: img
+                            });
+                            // Verificar si el error es de resolución de nombre (DNS)
+                            if (error.message.includes('ERR_NAME_NOT_RESOLVED') || error.message.includes('Name resolution failure')) {
+                                console.error("🚨 ERROR DE DNS: No se puede resolver el dominio del backend. Verificar configuración de VITE_BACKEND_URL.");
+                            }
+                        });
+                });
+            } else {
+                // Es una sola imagen
+                const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`;
+                console.log("🔍 Intentando verificar URL de imagen única:", imageUrl);
+                fetch(imageUrl, { method: 'HEAD' })
+                    .then(response => {
+                        console.log("🔍 Respuesta del servidor para imagen única:", {
+                            url: imageUrl,
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: Object.fromEntries(response.headers.entries()),
+                            ok: response.ok
+                        });
+                    })
+                    .catch(error => {
+                        console.error("🔍 Error al verificar imagen única:", {
+                            url: imageUrl,
+                            error: error.message,
+                            backendUrl: import.meta.env.VITE_BACKEND_URL,
+                            img: actividad.img
+                        });
+                        // Verificar si el error es de resolución de nombre (DNS)
+                        if (error.message.includes('ERR_NAME_NOT_RESOLVED') || error.message.includes('Name resolution failure')) {
+                            console.error("🚨 ERROR DE DNS: No se puede resolver el dominio del backend. Verificar configuración de VITE_BACKEND_URL.");
+                        }
+                    });
+            }
+        } catch (parseError) {
+            // No es JSON, tratar como string único
+            const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`;
+            console.log("🔍 Intentando verificar URL de imagen (string único):", imageUrl);
+            fetch(imageUrl, { method: 'HEAD' })
+                .then(response => {
+                    console.log("🔍 Respuesta del servidor para imagen string:", {
+                        url: imageUrl,
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Object.fromEntries(response.headers.entries()),
+                        ok: response.ok
+                    });
+                })
+                .catch(error => {
+                    console.error("🔍 Error al verificar imagen string:", {
+                        url: imageUrl,
+                        error: error.message,
+                        backendUrl: import.meta.env.VITE_BACKEND_URL,
+                        img: actividad.img
+                    });
+                    // Verificar si el error es de resolución de nombre (DNS)
+                    if (error.message.includes('ERR_NAME_NOT_RESOLVED') || error.message.includes('Name resolution failure')) {
+                        console.error("🚨 ERROR DE DNS: No se puede resolver el dominio del backend. Verificar configuración de VITE_BACKEND_URL.");
+                    }
+                });
+        }
+    }
 
     const estadoTexto = getEstadoTexto(actividad.estado);
     const fechaProgramada = new Date(actividad.fecha).toLocaleDateString();
@@ -67,6 +168,97 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
                     <h3 className="font-bold text-gray-700 mb-2">Descripción Completa</h3>
                     <p className="text-gray-600 text-sm">{actividad.descripcion || 'No hay descripción detallada.'}</p>
                 </div>
+
+                {/* Sección de Imágenes */}
+                {actividad.img && (
+                    <div className="p-4 border-t pt-4">
+                        <h3 className="font-bold text-gray-700 mb-2">Imágenes de la Actividad</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(() => {
+                                try {
+                                    const imagenes = JSON.parse(actividad.img);
+                                    return imagenes.map((img: string, index: number) => (
+                                        <div key={index} className="relative">
+                                                <img
+                                                    src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
+                                                    alt={`Imagen ${index + 1} de ${actividad.titulo}`}
+                                                    className="w-full h-48 object-cover rounded-lg border"
+                                                    onLoad={() => console.log("✅ Imagen cargada exitosamente:", {
+                                                        src: `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`,
+                                                        actividadId: actividad.id,
+                                                        index
+                                                    })}
+                                                    onError={(e) => {
+                                                        console.error("❌ Error cargando imagen:", {
+                                                            src: e.currentTarget.src,
+                                                            actividadId: actividad.id,
+                                                            img,
+                                                            backendUrl: import.meta.env.VITE_BACKEND_URL,
+                                                            index,
+                                                            errorEvent: e,
+                                                            naturalWidth: e.currentTarget.naturalWidth,
+                                                            naturalHeight: e.currentTarget.naturalHeight
+                                                        });
+                                                        // Verificar si el error es ERR_NAME_NOT_RESOLVED
+                                                        if (e.currentTarget.src.includes('data:image') || e.currentTarget.src.includes('placeholder')) {
+                                                            console.warn("⚠️ Ya se está usando un placeholder local. Error persistente en la carga de imagen.");
+                                                        } else {
+                                                            console.log("🔄 Aplicando fallback a placeholder local debido a error de carga.");
+                                                            // Usar data URL para evitar dependencias externas
+                                                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                    ));
+                                } catch (error) {
+                                    console.error("❌ Error parseando imágenes:", {
+                                        img: actividad.img,
+                                        error: error instanceof Error ? error.message : String(error)
+                                    });
+                                    // Si el parseo falla, intentar tratar img como string único
+                                    if (typeof actividad.img === 'string' && actividad.img.trim()) {
+                                        return (
+                                            <div key={0} className="relative">
+                                                <img
+                                                    src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`}
+                                                    alt={`Imagen de ${actividad.titulo}`}
+                                                    className="w-full h-48 object-cover rounded-lg border"
+                                                    onLoad={() => console.log("✅ Imagen única cargada exitosamente:", {
+                                                        src: `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}`,
+                                                        actividadId: actividad.id
+                                                    })}
+                                                    onError={(e) => {
+                                                        console.error("❌ Error cargando imagen única:", {
+                                                            src: e.currentTarget.src,
+                                                            actividadId: actividad.id,
+                                                            img: actividad.img,
+                                                            backendUrl: import.meta.env.VITE_BACKEND_URL,
+                                                            errorEvent: e
+                                                        });
+                                                        // Verificar si el error es ERR_NAME_NOT_RESOLVED
+                                                        if (e.currentTarget.src.includes('data:image') || e.currentTarget.src.includes('placeholder')) {
+                                                            console.warn("⚠️ Ya se está usando un placeholder local. Error persistente en la carga de imagen.");
+                                                        } else {
+                                                            console.log("🔄 Aplicando fallback a placeholder local debido a error de carga.");
+                                                            // Usar data URL para evitar dependencias externas
+                                                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div className="col-span-full text-center text-red-500">
+                                            Error al cargar las imágenes: formato inválido
+                                        </div>
+                                    );
+                                }
+                            })()}
+                        </div>
+                    </div>
+                )}
                 
                 <div className="flex justify-end p-4 border-t">
                     <button 
@@ -100,17 +292,18 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 
 
 const GestionActividadesPage: React.FC = () => {
+  const { userData } = useAuth();
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<EstadoActividad | 'Todos'>('Todos');
-  
+
   const [cargando, setCargando] = useState<boolean>(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false); // Modal para Editar/Crear
   const [actividadAEditar, setActividadAEditar] = useState<Partial<Actividad> | null>(null);
-  
+
   // ✅ Nuevo estado para ver detalles
-  const [actividadAVer, setActividadAVer] = useState<Actividad | null>(null); 
+  const [actividadAVer, setActividadAVer] = useState<Actividad | null>(null);
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -120,6 +313,16 @@ const GestionActividadesPage: React.FC = () => {
         obtenerUsuariosParaActividades(),
         obtenerCultivosParaActividades()
       ]);
+      console.log("🔍 Diagnóstico de actividades cargadas:", actividadesData?.map((act: Actividad) => ({
+        id: act.id,
+        titulo: act.titulo,
+        img: act.img,
+        imgPresente: !!act.img,
+        imgTipo: typeof act.img,
+        imgLength: act.img ? act.img.length : 0,
+        backendUrl: import.meta.env.VITE_BACKEND_URL,
+        urlConstruida: act.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${act.img}` : null
+      })));
       setActividades(actividadesData || []);
       setUsuarios(usuariosData || []);
       setCultivos(cultivosData || []);
@@ -133,6 +336,40 @@ const GestionActividadesPage: React.FC = () => {
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
+
+  // Función para mostrar notificaciones de actividades pendientes
+  const mostrarNotificacionesPendientes = useCallback(() => {
+    if (!userData || !actividades.length) return;
+
+    const actividadesPendientesUsuario = actividades.filter(act =>
+      act.estado === 'pendiente' &&
+      act.usuario?.identificacion === userData.identificacion
+    );
+
+    if (actividadesPendientesUsuario.length > 0) {
+      toast.warning(
+        `Tienes ${actividadesPendientesUsuario.length} actividad(es) pendiente(s) por completar.`,
+        {
+          description: 'Revisa tus actividades asignadas.',
+          duration: 8000,
+          action: {
+            label: 'Ver Actividades',
+            onClick: () => {
+              // Filtrar por pendientes para mostrar solo las del usuario
+              setFiltroEstado('pendiente');
+            }
+          }
+        }
+      );
+    }
+  }, [actividades, userData]);
+
+  // Mostrar notificaciones cuando se cargan las actividades
+  useEffect(() => {
+    if (!cargando && actividades.length > 0) {
+      mostrarNotificacionesPendientes();
+    }
+  }, [cargando, actividades, mostrarNotificacionesPendientes]);
 
   // Lógica para abrir/cerrar modal de EDICIÓN/CREACIÓN
   const handleOpenEditModal = (actividad?: Actividad) => {
@@ -213,15 +450,77 @@ const GestionActividadesPage: React.FC = () => {
     return actividades.filter(a => a.estado === filtroEstado);
   }, [actividades, filtroEstado]);
 
+  // Función para exportar PDF
+  const exportarPDF = useCallback(async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+
+      // Título
+      doc.setFontSize(20);
+      doc.text('Reporte de Actividades', 20, 20);
+
+      // Fecha de generación
+      doc.setFontSize(12);
+      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+
+      // Estadísticas
+      doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
+      doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
+      doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
+      doc.text(`Completadas: ${stats.completadas}`, 20, 80);
+
+      // Tabla de actividades
+      const tableData = filteredActividades.map(act => [
+        act.titulo,
+        act.cultivo?.nombre || 'No especificado',
+        `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
+        new Date(act.fecha).toLocaleDateString('es-ES'),
+        getEstadoTexto(act.estado),
+        act.descripcion || 'Sin descripción'
+      ]);
+
+      // Importar autoTable dinámicamente
+      const { default: autoTable } = await import('jspdf-autotable');
+      autoTable(doc, {
+        head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
+        body: tableData,
+        startY: 90,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      // Guardar el PDF
+      doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF generado correctamente');
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      toast.error('Error al generar el PDF');
+    }
+  }, [actividades, filteredActividades, stats]);
+
   if (cargando) return <div className="text-center mt-8">Cargando...</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-full space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Actividades</h1>
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow" onClick={() => handleOpenEditModal()}>
-          <Plus /> Nueva Actividad
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow"
+            onClick={mostrarNotificacionesPendientes}
+            title="Mostrar notificaciones de actividades pendientes"
+          >
+            <Bell size={16} /> Notificaciones
+          </button>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow"
+            onClick={exportarPDF}
+          >
+            <FileText size={16} /> Exportar PDF
+          </button>
+        </div>
       </div>
 
       {/* Sección de Estadísticas */}

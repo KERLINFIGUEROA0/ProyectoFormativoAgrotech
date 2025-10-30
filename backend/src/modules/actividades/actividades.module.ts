@@ -14,11 +14,19 @@ import { Cultivo } from '../cultivos/entities/cultivo.entity';
     TypeOrmModule.forFeature([Actividad,Usuario,Cultivo]),
     MulterModule.register({
       storage: diskStorage({
-        destination: './uploads/actividades',
+        destination: (req, file, cb) => {
+          console.log('📁 Configurando destino para archivo:', file.originalname);
+          const dest = './uploads/actividades';
+          console.log('📁 Destino configurado:', dest);
+          cb(null, dest);
+        },
         filename: (req, file, cb) => {
+          console.log('📝 Generando nombre para archivo:', file.originalname);
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
-          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+          const filename = `imagenes-${uniqueSuffix}${ext}`;
+          console.log('📝 Nombre generado:', filename);
+          cb(null, filename);
         },
       }),
     }),

@@ -18,7 +18,8 @@ export class CreateActividadDto {
 
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
-  usuario: number;
+  @IsOptional()
+  usuario?: number;
 
   @Transform(({ value }) => parseInt(value))
   @IsNumber()

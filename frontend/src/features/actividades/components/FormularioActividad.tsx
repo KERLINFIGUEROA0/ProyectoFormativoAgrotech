@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Upload, Plus } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
 import type {
   Actividad,
   EstadoActividad,
@@ -22,6 +23,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   onSubmit,
   onCancel,
 }) => {
+  const { userData, token } = useAuth();
   const isEditing = Boolean(actividadInicial?.id);
 
   const [formData, setFormData] = useState({
@@ -29,24 +31,28 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     descripcion: "",
     fecha: new Date().toISOString().substring(0, 10),
     cultivo: "",
-    estado: "pendiente" as EstadoActividad,
+    estado: "completado" as EstadoActividad,
     imagenes: [] as File[],
   });
 
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
 
-  // 🔐 Obtener usuario autenticado desde localStorage
+  // 🔐 Obtener usuario autenticado desde AuthContext
   useEffect(() => {
-    const tokenData = localStorage.getItem("usuario");
-    if (tokenData) {
-      try {
-        const user = JSON.parse(tokenData);
-        if (user?.id) setUsuarioId(user.id);
-      } catch {
-        console.warn("Error leyendo el usuario guardado en localStorage");
-      }
+    console.log("🔍 Diagnóstico de autenticación:");
+    console.log("Token presente:", !!token);
+    console.log("UserData presente:", !!userData);
+    console.log("UserData completo:", userData);
+
+    if (userData && userData.identificacion) {
+      // userData.identificacion ya es number según types/auth.ts
+      setUsuarioId(userData.identificacion);
+      console.log("Usuario ID establecido:", userData.identificacion);
+    } else {
+      console.warn("No se pudo obtener el usuario desde AuthContext");
+      setUsuarioId(null);
     }
-  }, []);
+  }, [userData, token]);
 
   // 🧩 Si estamos editando, precargar datos
   useEffect(() => {

@@ -35,8 +35,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
+      console.log("🔍 Debug: Fetching user profile...");
       const userProfile = await obtenerPerfil();
-      if (userProfile && userProfile.id) {
+      console.log("🔍 Debug: User profile response:", userProfile);
+
+      if (userProfile && userProfile.identificacion) {
+        console.log("✅ User profile has identificacion:", userProfile.identificacion);
 
         const usuario: UsuarioData = {
           tipo: userProfile.tipoIdentificacion || "CC",
@@ -47,11 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           telefono: userProfile.telefono || "",
           fotoUrl: userProfile.fotoUrl || "",
         };
+        console.log("✅ Setting userData:", usuario);
         setUserData(usuario);
-        
 
         setUserPermissions(userProfile.permisos || []);
         localStorage.setItem('permissions', JSON.stringify(userProfile.permisos || []));
+      } else {
+        console.warn("⚠️ User profile missing identificacion:", userProfile);
       }
     } catch (error) {
       console.error("Error fetching user data or permissions:", error);
