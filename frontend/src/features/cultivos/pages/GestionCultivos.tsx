@@ -112,22 +112,22 @@ export default function GestionCultivosPage(): ReactElement {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {cultivos.map((cultivo) => (
-          <div key={cultivo.id} className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
-            <div className="relative">
-              <img 
-                className="w-full h-40 object-cover" 
-                src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${cultivo.img}`} 
-                alt={cultivo.nombre} 
-                onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/150'; }} 
+          <div key={cultivo.id} className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 flex flex-col h-[450px]">
+            <div className="relative w-full h-48">
+              <img
+                className="w-full h-full object-cover"
+                src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${cultivo.img}`}
+                alt={cultivo.nombre}
+                onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x160/cccccc/000000?text=Sin+Imagen'; }}
               />
               <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full text-white ${cultivo.Estado === 'Activo' ? 'bg-green-500' : 'bg-yellow-500'}`}>
                 {cultivo.Estado}
               </span>
             </div>
-            <div className="p-4">
+            <div className="p-4 flex flex-col h-full">
               <h3 className="text-lg font-bold text-gray-900">{cultivo.nombre}</h3>
               <p className="text-sm text-gray-600 mt-1 truncate">{cultivo.descripcion}</p>
-              
+
               <div className="grid grid-cols-2 gap-x-4 mt-4 text-sm">
                   <div>
                       <p className="text-gray-500">Cantidad:</p>
@@ -144,19 +144,32 @@ export default function GestionCultivosPage(): ReactElement {
               </div>
 
               {/* --- ✅ INICIO DE LA MODIFICACIÓN --- */}
-              <div className="mt-5 pt-4 flex items-center justify-between">
-                <div className="flex gap-2">
-                  <button onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800">
-                    <DollarSign size={14} /> Producción
-                  </button>
-                  <button onClick={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)} className="flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-800">
-                    <BookCheck size={14} /> Trazabilidad
+              <div className="mt-auto p-3 border-t">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex-1 flex gap-1 min-w-0">
+                    <button 
+                      onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} 
+                      className="flex-1 flex items-center justify-center gap-1 bg-green-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-green-600 whitespace-nowrap min-w-0"
+                    >
+                      <DollarSign size={14} />
+                      <span className="truncate">Producción</span>
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)} 
+                      className="flex-1 flex items-center justify-center gap-1 bg-blue-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-blue-600 whitespace-nowrap min-w-0"
+                    >
+                      <BookCheck size={14} />
+                      <span className="truncate">Trazabilidad</span>
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => openModal(cultivo)} 
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center text-blue-500 hover:bg-blue-100 rounded-full"
+                    title="Editar cultivo"
+                  >
+                    <Edit size={14} />
                   </button>
                 </div>
-                {/* Se quita el botón de eliminar y se reemplaza por el de editar */}
-                <button onClick={() => openModal(cultivo)} className="p-2 text-blue-500 hover:bg-blue-100 rounded-full">
-                  <Edit size={18} />
-                </button>
               </div>
               {/* --- ✅ FIN DE LA MODIFICACIÓN --- */}
 
