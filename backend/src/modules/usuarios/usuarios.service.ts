@@ -265,8 +265,15 @@ export class UsuariosService {
     const usuarios = await this.usuarioRepository.find({
       relations: ['tipoUsuario', 'usuarioPermisos', 'usuarioPermisos.permiso', 'ficha'],
     });
-    // Ya no es necesario filtrar los permisos del usuario aquí
-    return usuarios;
+
+    // Transformar el estado para mejor presentación en la tabla
+    return usuarios.map(usuario => ({
+      ...usuario,
+      estadoFormateado: usuario.estado ? 'Activo' : 'Inactivo',
+      estadoColor: usuario.estado ? 'success' : 'danger',
+      fichaNombre: usuario.ficha ? usuario.ficha.nombre : 'Sin ficha',
+      fichaId: usuario.ficha ? usuario.ficha.id_ficha : null,
+    }));
   }
 
   async buscarPorId(id: number) {
@@ -299,19 +306,38 @@ export class UsuariosService {
   }
   
     async actualizar(id: number, data: UpdateUsuarioDto): Promise<Usuario> {
-      const usuario = await this.usuarioRepository.findOne({ where: { id } });
+      const usuario = await this.usuarioRepository.findOne({
+        where: { id },
+        relations: ['tipoUsuario']
+      });
       if (!usuario) throw new NotFoundException('Usuario no encontrado');
-  
+
       if (data.password) {
         const salt = await bcrypt.genSalt(10);
         usuario.passwordHash = await bcrypt.hash(data.password, salt);
         delete data.password;
       }
-  
+
       if (data.tipoUsuario) {
         usuario.tipoUsuario = { id: data.tipoUsuario } as any;
       }
-  
+
+      // Si el rol cambió y ya no es aprendiz ni pasante, quitar la ficha automáticamente
+      if (data.tipoUsuario) {
+        const nuevoRol = await this.tipoUsuarioRepository.findOne({ where: { id: data.tipoUsuario } });
+        if (nuevoRol && nuevoRol.nombre.toLowerCase() !== 'aprendiz' && nuevoRol.nombre.toLowerCase() !== 'pasante') {
+          usuario.ficha = null as any;
+          console.log(`Ficha removida automáticamente para usuario ${usuario.nombre} - nuevo rol: ${nuevoRol.nombre}`);
+        }
+      }
+
+      // Si el rol cambió, actualizar los permisos del usuario
+      if (data.tipoUsuario) {
+        // Los permisos se actualizan automáticamente en el token cuando el usuario haga login nuevamente
+        // o cuando se refresque la aplicación, ya que el JWT contiene los permisos del rol actual
+        console.log(`Rol actualizado para usuario ${usuario.nombre} - nuevo rol ID: ${data.tipoUsuario}`);
+      }
+
       // Manejar actualización de ficha
       if (data.id_ficha !== undefined) {
         if (data.id_ficha) {
@@ -327,9 +353,9 @@ export class UsuariosService {
         }
         delete data.id_ficha; // Remover del data para no interferir con Object.assign
       }
-  
+
       Object.assign(usuario, data);
-  
+
       return await this.usuarioRepository.save(usuario);
     }
 

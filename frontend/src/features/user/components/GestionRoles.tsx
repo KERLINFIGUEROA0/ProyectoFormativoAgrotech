@@ -1,8 +1,7 @@
 // s/features/user/components/GestionRoles.tsx
 
 import { useState, type ReactElement, useEffect } from "react";
-import { FaPlus, FaSearch, FaEdit, FaTrash, FaUserCog, FaExclamationTriangle } from "react-icons/fa";
-import { Input } from "@heroui/react";
+import { FaPlus, FaSearch, FaEdit, FaTrash, FaUserCog, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
 import { toast } from "sonner";
 import { getRoles, createRole, updateRole, deleteRole } from "../api/roles";
 import { getUsuariosTodos as getUsuarios } from "../../auth/api/auth";
@@ -112,56 +111,95 @@ export default function GestionRoles(): ReactElement {
   };
 
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 w-full flex flex-col h-full">
+    <div className="bg-white shadow-xl rounded-xl p-6 w-full flex flex-col h-full animate-in fade-in-0 duration-300">
       <div className="flex items-center justify-between mb-6 flex-shrink-0">
-        <h2 className="text-2xl font-bold text-gray-700">Gestión de Roles</h2>
-        <button onClick={() => { setEditingId(null); setForm({}); setIsModalOpen(true); }} className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg">
-          <FaPlus /> Nuevo Rol
+        <div>
+          <h2 className="text-2xl font-bold text-gray-700">Gestión de Roles</h2>
+          <p className="text-sm text-gray-500 mt-1">Administra los roles y sus permisos en el sistema</p>
+        </div>
+        <button
+          onClick={() => { setEditingId(null); setForm({}); setIsModalOpen(true); }}
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+        >
+          <FaPlus size={16} /> Nuevo Rol
         </button>
       </div>
-      <div className="mb-4 flex items-center gap-3 flex-shrink-0">
-        <div className="flex items-center border border-gray-200 rounded-lg px-3 py-2 w-80 gap-2">
-          <FaSearch className="text-gray-400" />
+      <div className="mb-6 flex items-center gap-3 flex-shrink-0">
+        <div className="relative flex-1 max-w-md">
+          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
-            className="flex-1 text-sm focus:outline-none"
+            type="text"
+            className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
             placeholder="Buscar rol..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
-      <div className="overflow-auto flex-grow min-h-0">
+      <div className="overflow-auto flex-grow min-h-0 rounded-lg border border-gray-200">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
-            <tr>
-              <th className="px-4 py-3 text-left">Nombre del Rol</th>
-              <th className="px-4 py-3 text-left">Descripción</th>
-              <th className="px-4 py-3 text-left">Usuarios Asignados</th>
-              <th className="px-4 py-3 text-center">Acciones</th>
-              <th className="px-4 py-3 text-center">Permisos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRoles.map((r) => (
-              <tr key={r.id} className="border-t hover:bg-blue-50">
-                <td className="px-4 py-3 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-md bg-gray-100 flex items-center justify-center text-sm font-semibold">{r.nombre[0]}</div>
-                  <div className="font-medium text-gray-700">{r.nombre}</div>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{r.descripcion}</td>
-                <td className="px-4 py-3">{r.usuariosAsignados || 0} usuarios</td>
-                <td className="px-4 py-3 text-center flex justify-center gap-3">
-                  <button onClick={() => { setEditingId(r.id); setForm(r); setIsModalOpen(true); }} className="text-yellow-600 hover:text-yellow-800"><FaEdit /></button>
-                  <button onClick={() => openDeleteModal(r)} className="text-red-600 hover:text-red-800"><FaTrash /></button>
-                </td>
-                <td className="px-4 py-3 text-center">
-                    <button onClick={() => openPermModal(r)} className="text-gray-700 hover:text-blue-700" title="Gestionar Permisos">
-                        <FaUserCog size={18}/>
-                    </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+           <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 uppercase text-xs sticky top-0 z-10 border-b border-gray-200">
+             <tr>
+               <th className="px-4 py-4 text-left font-semibold">Nombre del Rol</th>
+               <th className="px-4 py-4 text-left font-semibold">Descripción</th>
+               <th className="px-4 py-4 text-left font-semibold">Usuarios Asignados</th>
+               <th className="px-4 py-4 text-center font-semibold">Acciones</th>
+               <th className="px-4 py-4 text-center font-semibold">Permisos</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y divide-gray-100">
+             {filteredRoles.map((r, index) => (
+               <tr key={r.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                 <td className="px-4 py-4 flex items-center gap-3">
+                   <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                     <FaShieldAlt size={14} />
+                   </div>
+                   <div>
+                     <div className="font-semibold text-gray-900">{r.nombre}</div>
+                   </div>
+                 </td>
+                 <td className="px-4 py-4 text-gray-700 max-w-xs">
+                   <span className="line-clamp-2" title={r.descripcion}>
+                     {r.descripcion || 'Sin descripción'}
+                   </span>
+                 </td>
+                 <td className="px-4 py-4">
+                   <div className="flex items-center gap-2">
+                     <FaUsers className="text-gray-400" size={14} />
+                     <span className="font-medium text-gray-900">{r.usuariosAsignados || 0}</span>
+                     <span className="text-sm text-gray-500">usuario{(r.usuariosAsignados || 0) !== 1 ? 's' : ''}</span>
+                   </div>
+                 </td>
+                 <td className="px-4 py-4 text-center">
+                   <div className="flex justify-center gap-2">
+                     <button
+                       onClick={() => { setEditingId(r.id); setForm(r); setIsModalOpen(true); }}
+                       className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                       title="Editar rol"
+                     >
+                       <FaEdit size={16} />
+                     </button>
+                     <button
+                       onClick={() => openDeleteModal(r)}
+                       className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                       title="Eliminar rol"
+                     >
+                       <FaTrash size={16} />
+                     </button>
+                   </div>
+                 </td>
+                 <td className="px-4 py-4 text-center">
+                     <button
+                       onClick={() => openPermModal(r)}
+                       className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                       title="Gestionar permisos del rol"
+                     >
+                         <FaUserCog size={18}/>
+                     </button>
+                 </td>
+               </tr>
+             ))}
+           </tbody>
         </table>
       </div>
       {isModalOpen && (
@@ -171,23 +209,40 @@ export default function GestionRoles(): ReactElement {
               <span className="text-gray-600">✕</span>
             </button>
             <h3 className="text-center text-xl font-semibold mb-4">{editingId ? 'Actualizar rol' : 'Registrar rol'}</h3>
-            <div className="grid grid-cols-1 gap-4">
-              <Input
-                label="Nombre"
-                value={String(form.nombre ?? "")}
-                onChange={(e) => setForm((s) => ({ ...s, nombre: (e.target as HTMLInputElement).value }))}
-                className="text-sm"
-              />
-              <label className="text-sm block">
-                <div className="text-xs text-gray-500 mb-1">Descripción</div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Rol</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={String(form.nombre ?? "")}
+                  onChange={(e) => setForm((s) => ({ ...s, nombre: e.target.value }))}
+                  placeholder="Ingrese el nombre del rol"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                  rows={3}
                   value={String(form.descripcion ?? "")}
                   onChange={(e) => setForm((s) => ({ ...s, descripcion: e.target.value }))}
+                  placeholder="Ingrese una descripción para el rol"
                 />
-              </label>
-              <div className="flex justify-center mt-2">
-                <button onClick={handleSave} className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-medium">{editingId ? 'Actualizar' : 'Registrar'}</button>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  {editingId ? 'Actualizar Rol' : 'Crear Rol'}
+                </button>
               </div>
             </div>
           </div>

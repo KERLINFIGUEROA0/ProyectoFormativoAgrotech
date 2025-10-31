@@ -33,7 +33,6 @@ import { CambiarPasswordDto } from './dto/cambiar-password.dto';
 import { FichasService } from '../../fichas/fichas.service';
 
 
-
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class UsuariosController {
@@ -182,7 +181,7 @@ export class UsuariosController {
   }
   @Put('actualizar/:id')
   @Permission('Usuarios.Editar')
-  
+
   async actualizar(@Param('id') id: number, @Body() data: UpdateUsuarioDto) {
     try {
       const usuario = await this.usuariosService.actualizar(id, data);
@@ -190,6 +189,7 @@ export class UsuariosController {
         success: true,
         message: `Usuario con id ${id} actualizado exitosamente`,
         data: usuario,
+        note: data.tipoUsuario ? 'Los permisos del usuario se actualizarán en el próximo login' : undefined,
       };
     } catch (error) {
       throw new HttpException(
