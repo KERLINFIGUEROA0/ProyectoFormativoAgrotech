@@ -1,10 +1,10 @@
 // src/features/iot/pages/GestionSensores.tsx
 import { useState, useEffect, type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Bell, Thermometer, Droplet, Clock, AlertTriangle } from 'lucide-react'; // Importar AlertTriangle
+import { Plus, Edit, Trash2, Bell, Thermometer, Droplet, Clock, AlertTriangle, X } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts'; // --- 1. Importar Recharts ---
+} from 'recharts';
 import {
   listarSensores,
   crearSensor,
@@ -223,34 +223,60 @@ export default function GestionSensoresPage(): ReactElement {
     fetchData();
   }, []);
 
+  // --- ✅ MODIFICACIÓN ---
+  // Pausar el refresco de datos (setInterval) cuando el modal está abierto
+  // para no interrumpir al usuario mientras registra un sensor.
   useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
     const fetchSensorData = async () => {
       try {
+        console.log("Refrescando datos de sensores...");
         const infoRes = await listarInformacionSensores();
         setInformacionSensores(infoRes || []);
       } catch (error) {
         console.error("Error al refrescar los datos del sensor:", error);
       }
     };
-    const intervalId = setInterval(fetchSensorData, 5000);
-    return () => clearInterval(intervalId);
-  }, []);
+
+    // Solo activar el intervalo si el modal NO está abierto
+    if (!isModalOpen) {
+      intervalId = setInterval(fetchSensorData, 5000);
+    }
+
+    // La función de limpieza se ejecuta cada vez que 'isModalOpen' cambia
+    // o cuando el componente se desmonta.
+    return () => {
+      if (intervalId) {
+        console.log("Pausando refresco de datos.");
+        clearInterval(intervalId);
+      }
+    };
+  }, [isModalOpen]); // <-- Se re-ejecuta cuando el modal se abre/cierra
 
   // --- 6. Procesar datos para tarjetas y gráficos ---
   const processedSensorData = useMemo(() => {
-    // Tomamos solo los sensores 1 (Temp) y 2 (Hum)
-    const targetSensores = sensores.filter(s => s.id === 1 || s.id === 2);
+    // --- ✅ CORRECCIÓN 1: Eliminar el filtro de ID 1 y 2 ---
+    // Esto permite que los sensores nuevos (ID 3, 4, etc.) aparezcan.
+    const targetSensores = sensores;
 
     return targetSensores.map(sensor => {
       // Filtramos todas las lecturas para este sensor
       const allReadings = informacionSensores.filter(info => info.sensor.id === sensor.id);
 
+      // --- ✅ CORRECCIÓN 2: Asegurar el ordenamiento ---
+      // Ordenamos manualmente los datos (más nuevo primero)
+      const sortedReadings = allReadings.sort((a, b) => {
+        return new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime();
+      });
+
       // La data ya viene ordenada (la más nueva primero)
-      const latestReading = allReadings[0];
+      const latestReading = sortedReadings[0];
 
       // Preparamos datos para el gráfico (invertidos y formateados)
-      const history = allReadings
-        .slice(0, 20)
+      // --- ✅ CORRECCIÓN 3: Tu solicitud (limitar a 10) ---
+      const history = sortedReadings
+        .slice(0, 10) // <-- Cambiado de 20 a 10
         .reverse()
         .map(reading => {
           const utcDate = new Date(reading.fechaRegistro);
@@ -324,7 +350,7 @@ export default function GestionSensoresPage(): ReactElement {
 
   // --- 7. Nuevo Renderizado (JSX) ---
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Monitor de Sensores</h1>
         <button onClick={() => openModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
