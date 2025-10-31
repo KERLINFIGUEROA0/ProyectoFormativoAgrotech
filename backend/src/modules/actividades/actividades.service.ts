@@ -33,24 +33,19 @@ export class ActividadesService {
   }
 
   async findAll() {
-    console.log('🔍 Consultando todas las actividades en BD');
     const actividades = await this.actividadRepository.find({
       relations: ['usuario', 'cultivo'],
     });
-    console.log('📄 Actividades encontradas:', actividades.length);
     actividades.forEach((act, index) => {
-      console.log(`📄 Actividad ${index + 1}: ID=${act.id}, Imágenes=${act.img}`);
     });
     return actividades;
   }
 
   async findOne(id: number) {
-    console.log('🔍 Consultando actividad específica en BD:', id);
     const actividad = await this.actividadRepository.findOne({
       where: { id },
       relations: ['usuario', 'cultivo'],
     });
-    console.log('📄 Actividad encontrada:', actividad ? `ID=${actividad.id}, Imágenes=${actividad.img}` : 'No encontrada');
     return actividad;
   }
 

@@ -34,21 +34,15 @@ export class ActividadesController {
     @Req() req,
   ) {
     try {
-      console.log('📨 Request body recibido:', dto);
-      console.log('📁 Files recibidos:', files?.length || 0);
 
       // ✅ Obtener usuario autenticado desde el token
-      console.log('🔍 req.user completo:', req.user);
       const usuarioIdentificacion = req.user?.identificacion;
-      console.log('👤 Usuario autenticado ID:', usuarioIdentificacion);
       if (!usuarioIdentificacion) {
         throw new Error('No se pudo identificar el usuario autenticado. Verifica que el token JWT sea válido.');
       }
 
       // ✅ Procesar imágenes (guardar nombres)
       const imagenes = files?.map((file) => file.filename) ?? [];
-      console.log('🖼️ Imágenes procesadas:', imagenes);
-      console.log('📁 Archivos subidos:', files?.map(f => ({ originalname: f.originalname, filename: f.filename, path: f.path })));
 
       // ✅ Pasar al servicio incluyendo imágenes
       const result = await this.actividadesService.create(
@@ -56,10 +50,8 @@ export class ActividadesController {
         usuarioIdentificacion,
       );
 
-      console.log('✅ Actividad creada exitosamente:', result);
       return result;
     } catch (error) {
-      console.error('❌ Error al crear actividad:', error);
       throw error;
     }
   }
@@ -67,7 +59,6 @@ export class ActividadesController {
   // ✅ Listar todas las actividades (con relaciones)
   @Get('listar')
   findAll() {
-    console.log('🔍 Listando todas las actividades');
     return this.actividadesService.findAll();
   }
 
@@ -80,9 +71,7 @@ export class ActividadesController {
   // ✅ Buscar una sola actividad por ID
   @Get('listar/:id')
   findOne(@Param('id') id: string) {
-    console.log('🔍 Buscando actividad por ID:', id);
     const result = this.actividadesService.findOne(Number(id));
-    console.log('📄 Actividad encontrada:', result);
     return result;
   }
 

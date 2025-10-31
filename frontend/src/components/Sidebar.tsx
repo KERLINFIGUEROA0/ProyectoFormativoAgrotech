@@ -77,8 +77,8 @@ const menuItems: MenuItemType[] = [
     label: "Fitosanitario",
     icon: Activity,
     children: [
-      { id: "aplicaciones", label: "Aplicaciones", icon: Activity },
-      { id: "historial", label: "Historial", icon: TrendingUp },
+      { id: "fitosanitario", label: "Fitosanitario", icon: Activity },
+      { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
     ],
   },
   // --- NUEVO MENÚ DE ACTIVIDADES ---

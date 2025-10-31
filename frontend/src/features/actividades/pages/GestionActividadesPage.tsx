@@ -1,7 +1,7 @@
 // src/features/actividades/pages/GestionActividadesPage.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, ClipboardList, Loader2, CheckCircle, Edit, Calendar, User, FileText, Bell } from 'lucide-react';
+import { ClipboardList, Loader2, CheckCircle, Edit, Calendar, User, FileText, Bell } from 'lucide-react';
 
 import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
@@ -34,17 +34,6 @@ interface ModalDetallesProps {
 const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdit }) => {
     if (!actividad) return null;
 
-    console.log("🔍 Diagnóstico de imagen en actividad:", {
-        id: actividad.id,
-        titulo: actividad.titulo,
-        img: actividad.img,
-        imgPresente: !!actividad.img,
-        imgTipo: typeof actividad.img,
-        urlConstruida: actividad.img ? `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${actividad.img}` : null,
-        backendUrl: import.meta.env.VITE_BACKEND_URL,
-        backendUrlDefinido: !!import.meta.env.VITE_BACKEND_URL
-    });
-
     // 🔍 Log adicional: Verificar accesibilidad de la URL
     if (actividad.img) {
         try {
@@ -53,8 +42,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({ actividad, onClose, onEdi
             if (Array.isArray(imagenes)) {
                 // Es un array de imágenes
                 imagenes.forEach((img: string, index: number) => {
-                    const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`;
-                    console.log(`🔍 Intentando verificar URL de imagen ${index + 1}:`, imageUrl);
+                    const imageUrl = `${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`
                     fetch(imageUrl, { method: 'HEAD' })
                         .then(response => {
                             console.log(`🔍 Respuesta del servidor para imagen ${index + 1}:`, {
