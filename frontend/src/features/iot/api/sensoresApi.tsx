@@ -1,4 +1,4 @@
-// src/features/cultivos/api/sensoresApi.ts
+// src/features/iot/api/sensoresApi.ts
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -37,14 +37,22 @@ export const eliminarSensor = async (id: number) => {
   return response.data;
 };
 
-// --- API para Tipos de Sensor (necesario para el formulario) ---
+// --- API para Tipos de Sensor ---
 export const listarTiposSensor = async () => {
     const response = await api.get('/tipo-sensor/listar');
     return response.data;
 }
 
 // --- API para Información de Sensores ---
+
+// ✅ NUEVA: Esta función trae TODAS las últimas lecturas
+export const listarInformacionSensores = async () => {
+  const response = await api.get("/informacion-sensor"); // Llama al findAll() del backend
+  return response.data;
+};
+
+// ✅ CORREGIDA: Esta función estaba apuntando a /sensor/id en lugar de /id
 export const obtenerInformacionSensor = async (sensorId: number) => {
-    const response = await api.get(`/informacion-sensor/sensor/${sensorId}`);
+    const response = await api.get(`/informacion-sensor/${sensorId}`); // Llama al findOne(id)
     return response.data;
 }

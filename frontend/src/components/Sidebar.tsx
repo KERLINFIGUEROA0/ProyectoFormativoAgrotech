@@ -48,13 +48,14 @@ const menuItems: MenuItemType[] = [
     label: "IoT",
     icon: Cpu,
     children: [
-      { id: "sensores", label: "Sensores", icon: Cpu },
-      { id: "gestion-sensores", label: "Gestión de Sensores", icon: Activity },
+      // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
+      { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity }, // <-- RENOMBRADO
     ],
   },
   {
     id: "cultivos",
     label: "Cultivos",
+// ... (El resto del archivo no cambia) ...
     icon: Sprout,
     children: [
       { id: "gestion-cultivos", label: "Gestion de cultivos", icon: Sprout },
@@ -76,8 +77,8 @@ const menuItems: MenuItemType[] = [
     label: "Fitosanitario",
     icon: Activity,
     children: [
-      { id: "fitosanitario", label: "Fitosanitario", icon: Activity },
-      { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
+      { id: "aplicaciones", label: "Aplicaciones", icon: Activity },
+      { id: "historial", label: "Historial", icon: TrendingUp },
     ],
   },
   // --- NUEVO MENÚ DE ACTIVIDADES ---

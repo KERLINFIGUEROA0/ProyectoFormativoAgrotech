@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Filter, Plus, Bell, Edit, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+// --- ✅ 1. Importamos AlertTriangle ---
+import { Filter, Plus, Bell, Edit, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
 
 
 import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial } from '../api/inventarioApi';
@@ -20,7 +21,7 @@ const getStatusInfo = (cantidad: number) => {
 
 
 
-const formatarContenido = (peso: number | string | null, tipoMedida: string): string | null => {
+const formatarContenido = (peso: number | string | null, tipoMedida: string | null | undefined): string | null => {
   const pesoNumerico = Number(peso);
   if (!pesoNumerico || pesoNumerico <= 0) return null;
 
@@ -28,11 +29,11 @@ const formatarContenido = (peso: number | string | null, tipoMedida: string): st
 
   if (pesoNumerico < 1) {
     const valorPequeño = Number((pesoNumerico * 1000).toFixed(3));
-    return esLiquido ? `${valorPequeño} ` : `${valorPequeño} `;
+    return esLiquido ? `${valorPequeño} ml` : `${valorPequeño} g`;
   }
 
   const valorGrande = Number(pesoNumerico.toFixed(3));
-  return esLiquido ? `${valorGrande} ` : `${valorGrande} `;
+  return esLiquido ? `${valorGrande} L` : `${valorGrande} kg`;
 }
 
 export default function GestionInventarioPage() {
@@ -50,7 +51,8 @@ export default function GestionInventarioPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  // --- ✅ CAMBIO AQUÍ ---
+  const [itemsPerPage] = useState(10); // Cambiado de 20 a 10
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Material | null; direction: 'ascending' | 'descending' }>({ key: 'nombre', direction: 'ascending' });
 
@@ -131,6 +133,12 @@ export default function GestionInventarioPage() {
     }
   };
 
+  // --- ✅ 2. Añadimos un Memo para contar los items críticos ---
+  const itemsCriticos = useMemo(() => {
+    // Contamos solo los materiales activos que están en estado crítico (<= 10)
+    return materiales.filter(mat => mat.estado && mat.cantidad <= 10);
+  }, [materiales]);
+
   const materialesFiltrados = useMemo(() => {
     let filtrados = [...materiales].filter(mat => {
       const busquedaLower = filtroBusqueda.toLowerCase();
@@ -198,7 +206,8 @@ export default function GestionInventarioPage() {
   // --- ✅ INICIO DE LA CORRECCIÓN: Componente de icono de ordenamiento ---
   const SortIcon = ({ columnKey }: { columnKey: keyof Material }) => {
     if (sortConfig.key !== columnKey) {
-      return <ArrowUpDown size={0} className="text-gray-400" />;
+      // Devolvemos un ícono invisible para mantener el espacio
+      return <ArrowUpDown size={12} className="text-transparent" />;
     }
     if (sortConfig.direction === 'ascending') {
       return <ArrowUp size={12} className="text-blue-600" />;
@@ -221,6 +230,29 @@ export default function GestionInventarioPage() {
           </button>
         </div>
       </header>
+
+      {/* --- ✅ 3. NUEVO BANNER DE ALERTA --- */}
+      {itemsCriticos.length > 0 && (
+        <div className="flex items-center justify-between gap-4 p-4 mb-6 bg-red-100 border-l-4 border-red-500 rounded-lg">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div>
+              <h4 className="font-bold text-red-800">Stock Crítico</h4>
+              <p className="text-sm text-red-700">
+                Tienes {itemsCriticos.length} material(es) que necesitan reabastecimiento urgente.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setFiltroEstadoStock('Crítico')}
+            className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow-sm"
+          >
+            Ver Críticos
+          </button>
+        </div>
+      )}
+      {/* --- FIN DE BANNER DE ALERTA --- */}
+
 
       <div className="flex items-center gap-4 mb-6 flex-shrink-0">
         <input
@@ -305,7 +337,7 @@ export default function GestionInventarioPage() {
           <tbody className="divide-y divide-gray-200">
             {currentMateriales.map((mat) => {
               const status = getStatusInfo(mat.cantidad);
-              const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.tipoEmpaque );
+              const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.medidasDeContenido);
 
               return (
                 <tr key={mat.id} className={`hover:bg-gray-50 ${!mat.estado ? 'bg-red-50 text-red-400' : ''}`}>
@@ -332,7 +364,7 @@ export default function GestionInventarioPage() {
                   <td className="px-6 py-4">
                     <div className="font-semibold text-center text-gray-800">{mat.cantidad} {mat.tipoEmpaque}</div>
                     {textoContenido && (
-                      <div className="text-center text-xs text-gray-500">{textoContenido} {mat.medidasDeContenido}</div>
+                      <div className="text-center text-xs text-gray-500">{textoContenido}</div>
                     )}
                   </td>
                   <td className="px-6 py-4">{mat.ubicacion}</td>
@@ -343,7 +375,8 @@ export default function GestionInventarioPage() {
                         {status.text}
                       </span>
                     </div>
-                  </td>                  <td className="px-6 py-4 text-center">
+                  </td>
+                  <td className="px-6 py-4 text-center">
                     <label className="flex items-center justify-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                       <div className="relative">
                         <input type="checkbox" className="sr-only" checked={mat.estado} onChange={() => handleToggleEstado(mat)} />
@@ -353,9 +386,24 @@ export default function GestionInventarioPage() {
                     </label>
                   </td>
                   <td className="px-6 py-4">
+                    {/* --- ✅ 4. MODIFICACIÓN EN ACCIONES --- */}
                     <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => openModal(mat)} className="p-1.5 text-gray-500 hover:text-blue-600"><Edit size={16} /></button>
+                      <button onClick={() => openModal(mat)} className="p-1.5 text-gray-500 hover:text-blue-600" title="Editar">
+                        <Edit size={16} />
+                      </button>
+                      
+                      {/* Esta es la nueva opción que pediste */}
+                      {mat.estado && mat.cantidad <= 10 && (
+                        <button 
+                          onClick={() => navigate(`/stock/${mat.id}`)} 
+                          className="p-1.5 text-red-600 hover:bg-red-100 rounded-full animate-pulse"
+                          title="Stock Crítico - Ver Detalles"
+                        >
+                          <AlertTriangle size={16} />
+                        </button>
+                      )}
                     </div>
+                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                   </td>
                 </tr>
               );
@@ -397,3 +445,4 @@ export default function GestionInventarioPage() {
     </div>
   );
 }
+
