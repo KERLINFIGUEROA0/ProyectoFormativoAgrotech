@@ -27,7 +27,6 @@ import { RolPermiso } from './src/modules/rol_permiso/entities/rol_permiso.entit
 import { Permiso } from './src/modules/permisos/entities/permiso.entity';
 import { UsuarioPermiso } from './src/modules/usuarios_permisos/entities/usuarios_permiso.entity';
 import { Modulo } from './src/modules/modulos/entities/modulo.entity';
-import { Dracula } from './src/modules/dracula/entities/dracula.entity';
 
 const isCompiled = __dirname.includes('dist');
 
@@ -62,7 +61,6 @@ export const AppDataSource = new DataSource({
     Permiso,
     UsuarioPermiso,
     Modulo,
-    Dracula,
   ],
   migrations: [
     isCompiled
