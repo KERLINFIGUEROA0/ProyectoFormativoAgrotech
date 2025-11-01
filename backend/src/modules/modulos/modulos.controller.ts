@@ -21,7 +21,7 @@ export class ModulosController {
     return this.modulosService.crear(data);
   }
 
-  @Get("listar")
+  @Get()
   listar() {
     return this.modulosService.listar();
   }
