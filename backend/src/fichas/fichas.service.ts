@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Ficha } from './entities/ficha.entity';
@@ -13,12 +13,20 @@ export class FichasService {
   ) {}
 
   async create(createFichaDto: CreateFichaDto): Promise<Ficha> {
+    const existingFicha = await this.fichaRepository.findOne({
+      where: { id_ficha: createFichaDto.id_ficha },
+    });
+    if (existingFicha) {
+      throw new ConflictException(`La ficha con el número ${createFichaDto.id_ficha} ya existe en el sistema`);
+    }
     const ficha = this.fichaRepository.create(createFichaDto);
     return await this.fichaRepository.save(ficha);
   }
 
   async findAll(): Promise<Ficha[]> {
-    return await this.fichaRepository.find();
+    return await this.fichaRepository.find({
+      relations: ['usuarios'],
+    });
   }
 
   async getOpciones(): Promise<{ value: string; label: string }[]> {
@@ -46,7 +54,6 @@ export class FichasService {
   async remove(id: number): Promise<void> {
     const ficha = await this.findOne(id);
 
-    // Verificar si la ficha tiene usuarios asignados
     const usuariosAsignados = await this.fichaRepository.findOne({
       where: { id },
       relations: ['usuarios'],

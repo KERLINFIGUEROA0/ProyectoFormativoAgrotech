@@ -45,6 +45,37 @@ export class RolPermisoService {
     }));
   }
 
+  async getPermissionsByRoleDetallado(roleId: number) {
+    const role = await this.tipoUsuarioRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Rol con id ${roleId} no encontrado.`);
+    }
+
+    const allPermissions = await this.permisoRepo.find({
+      relations: ['modulo']
+    });
+    const assignedPermissions = await this.rolPermisoRepo.find({
+      where: { tipoUsuario: { id: roleId } },
+      relations: ['permiso'],
+    });
+
+    const assignedPermissionIds = new Set(
+      assignedPermissions.map((rp) => rp.permiso.id),
+    );
+
+    return allPermissions.map((permiso) => ({
+      permisoId: permiso.id,
+      nombre: permiso.nombre,
+      descripcion: permiso.descripcion,
+      activo: assignedPermissionIds.has(permiso.id),
+      modulo: permiso.modulo ? {
+        id: permiso.modulo.id,
+        nombre: permiso.modulo.nombre,
+        descripcion: permiso.modulo.descripcion
+      } : null
+    }));
+  }
+
   async togglePermission(dto: {
     rolId: number;
     permisoId: number;

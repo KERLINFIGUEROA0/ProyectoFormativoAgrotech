@@ -2,6 +2,7 @@
 
 import { useState, type ReactElement, useEffect } from "react";
 import { FaPlus, FaSearch, FaEdit, FaTrash, FaUserCog, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { getRoles, createRole, updateRole, deleteRole } from "../api/roles";
 import { getUsuariosTodos as getUsuarios } from "../../auth/api/auth";
@@ -137,8 +138,8 @@ export default function GestionRoles(): ReactElement {
         </div>
       </div>
       <div className="overflow-auto flex-grow min-h-0 rounded-lg border border-gray-200">
-        <table className="min-w-full text-sm">
-           <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 uppercase text-xs sticky top-0 z-10 border-b border-gray-200">
+        <table className="min-w-full text-sm border-collapse">
+            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 uppercase text-xs sticky top-0 z-10">
              <tr>
                <th className="px-4 py-4 text-left font-semibold">Nombre del Rol</th>
                <th className="px-4 py-4 text-left font-semibold">Descripción</th>
@@ -147,7 +148,7 @@ export default function GestionRoles(): ReactElement {
                <th className="px-4 py-4 text-center font-semibold">Permisos</th>
              </tr>
            </thead>
-           <tbody className="divide-y divide-gray-100">
+           <tbody>
              {filteredRoles.map((r, index) => (
                <tr key={r.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                  <td className="px-4 py-4 flex items-center gap-3">
@@ -203,12 +204,19 @@ export default function GestionRoles(): ReactElement {
         </table>
       </div>
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-full max-w-lg bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg">
-            <button onClick={closeModal} className="absolute top-4 right-4 bg-white border border-gray-200 h-9 w-9 rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-gray-600">✕</span>
-            </button>
-            <h3 className="text-center text-xl font-semibold mb-4">{editingId ? 'Actualizar rol' : 'Registrar rol'}</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
+          <div className="w-full max-w-lg bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingId ? 'Editar Rol' : 'Crear Nuevo Rol'}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Rol</label>
@@ -249,8 +257,8 @@ export default function GestionRoles(): ReactElement {
         </div>
       )}
       {isDeleteOpen && deletingRole && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 duration-300">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <FaExclamationTriangle className="text-red-600" />
@@ -259,19 +267,34 @@ export default function GestionRoles(): ReactElement {
               <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">{deletingRole.nombre}</div>
               <p className="text-xs text-gray-500">Esta acción no se puede deshacer. Se eliminará permanentemente el rol.</p>
               <div className="flex gap-3 mt-4 w-full">
-                <button onClick={closeDeleteModal} className="flex-1 px-4 py-2 bg-gray-100 rounded">Cancelar</button>
-                <button onClick={handleDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded">Eliminar</button>
+                <button onClick={closeDeleteModal} className="flex-1 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Cancelar</button>
+                <button onClick={handleDelete} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Eliminar</button>
               </div>
             </div>
           </div>
         </div>
       )}
       {isPermOpen && permRole && (
-        <PermissionsModal
-          isOpen={isPermOpen}
-          onClose={() => setIsPermOpen(false)}
-          target={{ id: permRole.id, nombre: permRole.nombre, type: "rol" }}
-        />
+        <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] transition-all duration-300 ${isPermOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg transform transition-all duration-300 z-[60] ${isPermOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Gestionar Permisos - {permRole.nombre}
+              </h3>
+              <button
+                onClick={() => setIsPermOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <PermissionsModal
+              isOpen={isPermOpen}
+              onClose={() => setIsPermOpen(false)}
+              target={{ id: permRole.id, nombre: permRole.nombre, type: "rol" }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

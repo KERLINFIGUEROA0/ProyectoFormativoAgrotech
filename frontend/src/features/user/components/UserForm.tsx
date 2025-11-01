@@ -1,8 +1,12 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { Input } from "@heroui/react";
+import { Plus, HelpCircle } from 'lucide-react';
 import type { UsuarioForm, Rol } from '../interfaces/usuarios';
 import type { FichaOption } from '../../fichas/interfaces/fichas';
-import { getFichasOpcionesFromUsuarios } from '../../fichas/api/fichas';
+import { getFichasOpcionesFromUsuarios, createFicha } from '../../fichas/api/fichas';
+import Modal from '../../../components/Modal';
+import FichaFormComponent from '../../fichas/components/FichaForm';
+import type { FichaForm } from '../../fichas/interfaces/fichas';
 
 interface UserFormProps {
   initialData: Partial<UsuarioForm>;
@@ -10,18 +14,18 @@ interface UserFormProps {
   onSave: (data: UsuarioForm) => Promise<void>;
   onCancel: () => void;
   editingId: number | null;
-  isAdmin?: boolean;
 }
 
-export default function UserForm({ initialData, roles, onSave, onCancel, editingId, isAdmin = false }: UserFormProps): ReactElement {
+export default function UserForm({ initialData, roles, onSave, onCancel, editingId }: UserFormProps): ReactElement {
   const [form, setForm] = useState(initialData);
   const [errors, setErrors] = useState<string[]>([]);
   const [fichasOpciones, setFichasOpciones] = useState<FichaOption[]>([]);
   const [loadingFichas, setLoadingFichas] = useState(false);
+  const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
+  const [fichaFormData, setFichaFormData] = useState<Partial<FichaForm>>({});
 
-  // Determinar si el rol seleccionado requiere ficha
   const rolSeleccionado = roles.find(rol => rol.id === form.rolId);
-  const requiereFicha = rolSeleccionado?.nombre.toLowerCase() === 'aprendiz';
+  const requiereFicha = rolSeleccionado?.nombre.toLowerCase() === 'aprendiz' || rolSeleccionado?.nombre.toLowerCase() === 'pasante';
 
   useEffect(() => {
     setForm(initialData);
@@ -42,6 +46,22 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
       console.error('Error cargando opciones de fichas:', error);
     } finally {
       setLoadingFichas(false);
+    }
+  };
+
+  const handleCreateFicha = async (fichaData: FichaForm) => {
+    try {
+      const nuevaFicha = await createFicha({
+        nombre: fichaData.nombre!,
+        id_ficha: fichaData.id_ficha!
+      });
+      await loadFichasOpciones();
+      setForm(prev => ({ ...prev, id_ficha: nuevaFicha.id_ficha }));
+      setIsFichaModalOpen(false);
+      setFichaFormData({});
+    } catch (error) {
+      console.error('Error creando ficha:', error);
+      throw error; 
     }
   };
 
@@ -131,19 +151,30 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           <div className="md:col-span-2">
             <label className="block text-sm">
                 <span className="text-xs text-gray-500">Seleccione la ficha</span>
-                <select
-                className="w-full border border-gray-300 rounded-md p-2 text-sm bg-white"
-                onChange={(e) => handleFormChange('id_ficha', e.target.value)}
-                value={form.id_ficha ?? ""}
-                disabled={loadingFichas}
-                >
-                <option value="" disabled>
-                  {loadingFichas ? "Cargando fichas..." : "Seleccione una ficha"}
-                </option>
-                {fichasOpciones.map((ficha) => (
-                    <option key={ficha.value} value={ficha.value}>{ficha.label}</option>
-                ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                  className="flex-1 border border-gray-300 rounded-md p-2 text-sm bg-white"
+                  onChange={(e) => handleFormChange('id_ficha', e.target.value)}
+                  value={form.id_ficha ?? ""}
+                  disabled={loadingFichas}
+                  >
+                  <option value="" disabled>
+                    {loadingFichas ? "Cargando fichas..." : "Seleccione una ficha"}
+                  </option>
+                  {fichasOpciones.map((ficha) => (
+                      <option key={ficha.value} value={ficha.value}>{ficha.label}</option>
+                  ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsFichaModalOpen(true)}
+                    className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                    title="Crear nueva ficha"
+                  >
+                    <Plus size={14} />
+                    <HelpCircle size={14} />
+                  </button>
+                </div>
             </label>
           </div>
         )}
@@ -163,6 +194,27 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
         </button>
         <button onClick={onCancel} className="bg-gray-200 text-gray-700 px-4 py-2 rounded">Cancelar</button>
       </div>
+
+      {isFichaModalOpen && (
+        <Modal
+          isOpen={isFichaModalOpen}
+          onClose={() => {
+            setIsFichaModalOpen(false);
+            setFichaFormData({});
+          }}
+          title="Crear Nueva Ficha"
+        >
+          <FichaFormComponent
+            initialData={fichaFormData}
+            onSave={handleCreateFicha}
+            onCancel={() => {
+              setIsFichaModalOpen(false);
+              setFichaFormData({});
+            }}
+            editingId={null}
+          />
+        </Modal>
+      )}
     </>
   );
 }

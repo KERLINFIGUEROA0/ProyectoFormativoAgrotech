@@ -2,6 +2,8 @@ export interface Ficha {
   id: number;
   nombre: string;
   id_ficha: string;
+  usuarios?: any[];
+  usuariosCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
