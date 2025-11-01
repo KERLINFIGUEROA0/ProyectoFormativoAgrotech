@@ -204,8 +204,8 @@ export default function GestionRoles(): ReactElement {
         </table>
       </div>
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
-          <div className="w-full max-w-lg bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-lg bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editingId ? 'Editar Rol' : 'Crear Nuevo Rol'}
@@ -217,37 +217,54 @@ export default function GestionRoles(): ReactElement {
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Rol</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={String(form.nombre ?? "")}
-                  onChange={(e) => setForm((s) => ({ ...s, nombre: e.target.value }))}
-                  placeholder="Ingrese el nombre del rol"
-                />
+            <div className="space-y-6">
+              {/* Información del Rol */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 animate-in slide-in-from-left-2 duration-400 delay-200">
+                <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2 animate-in slide-in-from-top-1 duration-300 delay-100">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-in scale-in duration-200 delay-50"></div>
+                  Información del Rol
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre del Rol
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={String(form.nombre ?? "")}
+                      onChange={(e) => setForm((s) => ({ ...s, nombre: e.target.value }))}
+                      placeholder="Ej: Administrador, Instructor, Aprendiz"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Descripción del Rol
+                    </label>
+                    <textarea
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                      rows={3}
+                      value={String(form.descripcion ?? "")}
+                      onChange={(e) => setForm((s) => ({ ...s, descripcion: e.target.value }))}
+                      placeholder="Describa las responsabilidades y funciones de este rol en el sistema"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Proporcione una descripción clara de las funciones del rol
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-                  rows={3}
-                  value={String(form.descripcion ?? "")}
-                  onChange={(e) => setForm((s) => ({ ...s, descripcion: e.target.value }))}
-                  placeholder="Ingrese una descripción para el rol"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t">
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-400 delay-600">
                 <button
                   onClick={closeModal}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                  className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors animate-in slide-in-from-left-3 duration-300 delay-700"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm animate-in slide-in-from-right-3 duration-300 delay-800"
                 >
                   {editingId ? 'Actualizar Rol' : 'Crear Rol'}
                 </button>
@@ -257,8 +274,8 @@ export default function GestionRoles(): ReactElement {
         </div>
       )}
       {isDeleteOpen && deletingRole && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <FaExclamationTriangle className="text-red-600" />
@@ -275,8 +292,8 @@ export default function GestionRoles(): ReactElement {
         </div>
       )}
       {isPermOpen && permRole && (
-        <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] transition-all duration-300 ${isPermOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg transform transition-all duration-300 z-[60] ${isPermOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in-0 duration-500 ease-out ${isPermOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out z-[60] ${isPermOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Gestionar Permisos - {permRole.nombre}

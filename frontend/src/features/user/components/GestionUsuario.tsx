@@ -930,46 +930,51 @@ export default function GestionUsuarios(): ReactElement {
         </div>
       </div>
 
-      <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ${
-          isModalOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <div
-          className={`w-full max-w-2xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg transform transition-all duration-300 ${
-            isModalOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {editingId ? "Actualizar Usuario" : "Información de Registro"}
-            </h3>
-            <button
-              onClick={closeModal}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X size={20} className="text-gray-500" />
-            </button>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-[85vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <UserPlus className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {editingId ? "Actualizar Usuario" : "Registrar Nuevo Usuario"}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Complete toda la información requerida
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <UserForm
+                initialData={formInitialData}
+                roles={roles}
+                onSave={handleSave}
+                onCancel={closeModal}
+                editingId={editingId}
+              />
+            </div>
           </div>
-          <UserForm
-            initialData={formInitialData}
-            roles={roles}
-            onSave={handleSave}
-            onCancel={closeModal}
-            editingId={editingId}
-            isAdmin={isCurrentUserAdmin()}
-          />
         </div>
-      </div>
+      )}
 
       {isPermOpen && permUser && (
         <div
-          className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] transition-all duration-300 ${
+          className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in-0 duration-500 ease-out ${
             isPermOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
           <div
-            className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg transform transition-all duration-300 z-[60] ${
+            className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out z-[60] ${
               isPermOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
             }`}
           >

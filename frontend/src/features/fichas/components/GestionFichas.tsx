@@ -118,16 +118,8 @@ export default function GestionFichas(): ReactElement {
     setFormData({});
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 w-full h-full flex flex-col animate-in fade-in-0 duration-300">
+    <div className="bg-white shadow-xl rounded-xl p-6 w-full h-full flex flex-col">
       <div className="flex-shrink-0">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>
@@ -172,8 +164,8 @@ export default function GestionFichas(): ReactElement {
       )}
 
       {showDeleteModal && fichaToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <Trash2 className="text-red-600" size={20} />
@@ -236,7 +228,7 @@ export default function GestionFichas(): ReactElement {
                 </tr>
               ) : (
                 filteredFichas.map((ficha, index) => (
-                  <tr key={ficha.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <tr key={ficha.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-white shadow-sm">
@@ -261,14 +253,14 @@ export default function GestionFichas(): ReactElement {
                       <div className="flex justify-center gap-2">
                         <button
                           onClick={() => handleEdit(ficha)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg"
                           title="Editar ficha"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           onClick={() => handleDeleteClick(ficha)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg"
                           title="Eliminar ficha"
                         >
                           <Trash2 size={16} />
