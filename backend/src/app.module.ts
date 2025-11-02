@@ -37,6 +37,7 @@ import { ModulosModule } from './modules/modulos/modulos.module';
 import { AuthModule } from './auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
 import {NotificationsModule} from './notifications/notifications.module';
+import { FichasModule } from './fichas/fichas.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import {NotificationsModule} from './notifications/notifications.module';
     ModulosModule,
     AuthModule,
     NotificationsModule,
+    FichasModule,
   ],
   providers:[],
   controllers:[]

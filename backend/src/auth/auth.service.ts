@@ -58,17 +58,23 @@ export class AuthService {
     };
   }
 
-  async login(identificacion: string | number, password: string) {
+  async login(identificacion: string | number, password: string, id_ficha?: string) {
     const usuario = await this.usuariosService.findByIdentificacion(identificacion);
     if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
     if (usuario.estado === false) {
       throw new UnauthorizedException('El usuario se encuentra inactivo.');
     }
 
-    
+    // Solo validar ficha si el usuario tiene una asignada (no es admin)
+    if (usuario.ficha && id_ficha) {
+      if (usuario.ficha.id_ficha !== id_ficha) {
+        throw new UnauthorizedException('La ficha proporcionada no coincide con la del usuario.');
+      }
+    }
+
     const ok = await bcrypt.compare(password, usuario.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
-    
+
     // Usamos el nuevo método para generar la respuesta
     return this._createToken(usuario);
   }

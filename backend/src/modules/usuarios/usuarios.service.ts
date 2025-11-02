@@ -17,6 +17,7 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import { CorreoService } from 'src/correo/correo.service';
 import { TipoUsuario } from '../tipo_usuario/entities/tipo_usuario.entity';
+import { Ficha } from '../../fichas/entities/ficha.entity';
 
 @Injectable()
 export class UsuariosService {
@@ -25,6 +26,8 @@ export class UsuariosService {
     private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(TipoUsuario)
     private readonly tipoUsuarioRepository: Repository<TipoUsuario>,
+    @InjectRepository(Ficha)
+    private readonly fichaRepository: Repository<Ficha>,
     private readonly correoService: CorreoService,
   ) {}
 
@@ -34,7 +37,7 @@ export class UsuariosService {
 
     const worksheetData = [
       // Encabezados que coinciden con la solicitud
-      ['Tipo Identificacion', 'Identificacion', 'Nombre', 'Apellidos','Correo', 'Telefono','Estado', 'Rol'],
+      ['Tipo Identificacion', 'Identificacion', 'Nombre', 'Apellidos','Correo', 'Telefono','Estado', 'Rol', 'Id Ficha'],
       ...usuarios.map((u) => [
         u.Tipo_Identificacion,
         u.identificacion,
@@ -44,12 +47,75 @@ export class UsuariosService {
         u.telefono,
         u.estado ? 'Activo' : 'Inactivo',
         u.tipoUsuario ? u.tipoUsuario.nombre : 'N/A',
+        u.ficha ? u.ficha.id_ficha : '',
       ]),
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: 'xlsx',
+      type: 'buffer',
+    });
+
+    return excelBuffer;
+  }
+
+  async exportarExcelFiltrado(filtros: any): Promise<Buffer> {
+    let usuarios = await this.buscarTodos();
+
+    // Aplicar filtros de búsqueda
+    if (filtros.searchTerm && filtros.searchTerm.trim() !== '') {
+      const lowercasedTerm = filtros.searchTerm.toLowerCase();
+      usuarios = usuarios.filter(user => {
+        const nombreCompleto = `${user.nombre} ${user.apellidos || ''}`.toLowerCase();
+        const identificacion = String(user.identificacion).toLowerCase();
+        const rol = user.tipoUsuario?.nombre.toLowerCase() || '';
+        const ficha = user.ficha?.id_ficha?.toLowerCase() || '';
+        return nombreCompleto.includes(lowercasedTerm) ||
+               identificacion.includes(lowercasedTerm) ||
+               rol.includes(lowercasedTerm) ||
+               ficha.includes(lowercasedTerm);
+      });
+    }
+
+    // Aplicar filtro de estado
+    if (filtros.filterStatus === 'active') {
+      usuarios = usuarios.filter(user => user.estado);
+    } else if (filtros.filterStatus === 'inactive') {
+      usuarios = usuarios.filter(user => !user.estado);
+    }
+
+    // Aplicar filtro de rol
+    if (filtros.filterRol !== null) {
+      usuarios = usuarios.filter(user => user.tipoUsuario?.id === filtros.filterRol);
+    }
+
+    // Aplicar filtro de ficha
+    if (filtros.filterFicha !== null) {
+      usuarios = usuarios.filter(user => user.ficha?.id_ficha === filtros.filterFicha);
+    }
+
+    const worksheetData = [
+      ['Tipo Identificacion', 'Identificacion', 'Nombre', 'Apellidos','Correo', 'Telefono','Estado', 'Rol', 'Id Ficha'],
+      ...usuarios.map((u) => [
+        u.Tipo_Identificacion,
+        u.identificacion,
+        u.nombre,
+        u.apellidos,
+        u.correo,
+        u.telefono,
+        u.estado ? 'Activo' : 'Inactivo',
+        u.tipoUsuario ? u.tipoUsuario.nombre : 'N/A',
+        u.ficha ? u.ficha.id_ficha : '',
+      ]),
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios Filtrados');
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: 'xlsx',
@@ -94,7 +160,8 @@ export class UsuariosService {
           'rol',
           'correo',
           'telefono',
-          'estado'
+          'estado',
+          'id_ficha'
         ];
         for (const campo of camposRequeridos) {
           if (!usuarioData[campo]) {
@@ -104,6 +171,32 @@ export class UsuariosService {
 
         const rol = await this.tipoUsuarioRepository.findOne({ where: { nombre: usuarioData.rol } });
         if (!rol) throw new Error(`El rol '${usuarioData.rol}' no existe.`);
+
+        // Validar que no se cree más de un administrador
+        if (usuarioData.rol.toLowerCase() === 'admin') {
+          const adminExistente = await this.usuarioRepository.findOne({
+            where: { tipoUsuario: { nombre: 'Admin' } },
+            relations: ['tipoUsuario']
+          });
+          if (adminExistente) {
+            throw new Error('Ya existe un administrador. No se puede crear otro.');
+          }
+        }
+
+        // Para aprendices, ficha es requerida; para otros roles, opcional
+        if (usuarioData.rol.toLowerCase() === 'aprendiz') {
+          // Validar que la ficha existe (solo para aprendices)
+          const ficha = await this.fichaRepository.findOne({ where: { id_ficha: usuarioData['id_ficha'] } });
+          if (!ficha) {
+            throw new Error(`La ficha con id_ficha ${usuarioData['id_ficha']} no existe. Por favor cree una nueva ficha.`);
+          }
+        }
+
+        // Validar que la ficha existe
+        const ficha = await this.fichaRepository.findOne({ where: { id_ficha: usuarioData['id_ficha'] } });
+        if (!ficha) {
+          throw new Error(`La ficha con id_ficha ${usuarioData['id_ficha']} no existe. Por favor cree una nueva ficha.`);
+        }
 
         const existe = await this.usuarioRepository.findOne({
             where: [ { correo: usuarioData.correo }, { identificacion: usuarioData.identificacion } ]
@@ -122,6 +215,8 @@ export class UsuariosService {
           telefono: usuarioData.telefono,
           password: String(usuarioData.identificacion),
           tipoUsuario: rol.id,
+          // Para aprendices, ficha es requerida; para otros roles, opcional
+          ...(usuarioData.rol.toLowerCase() === 'aprendiz' && usuarioData['id_ficha'] && { id_ficha: usuarioData['id_ficha'] }),
         };
 
         await this.crear(createDto);
@@ -168,10 +263,17 @@ export class UsuariosService {
 
   async buscarTodos() {
     const usuarios = await this.usuarioRepository.find({
-      relations: ['tipoUsuario', 'usuarioPermisos', 'usuarioPermisos.permiso'],
+      relations: ['tipoUsuario', 'usuarioPermisos', 'usuarioPermisos.permiso', 'ficha'],
     });
-    // Ya no es necesario filtrar los permisos del usuario aquí
-    return usuarios;
+
+    // Transformar el estado para mejor presentación en la tabla
+    return usuarios.map(usuario => ({
+      ...usuario,
+      estadoFormateado: usuario.estado ? 'Activo' : 'Inactivo',
+      estadoColor: usuario.estado ? 'success' : 'danger',
+      fichaNombre: usuario.ficha ? usuario.ficha.nombre : 'Sin ficha',
+      fichaId: usuario.ficha ? usuario.ficha.id_ficha : null,
+    }));
   }
 
   async buscarPorId(id: number) {
@@ -204,23 +306,58 @@ export class UsuariosService {
   }
   
     async actualizar(id: number, data: UpdateUsuarioDto): Promise<Usuario> {
-    const usuario = await this.usuarioRepository.findOne({ where: { id } });
-    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+      const usuario = await this.usuarioRepository.findOne({
+        where: { id },
+        relations: ['tipoUsuario']
+      });
+      if (!usuario) throw new NotFoundException('Usuario no encontrado');
 
-    if (data.password) {
-      const salt = await bcrypt.genSalt(10);
-      usuario.passwordHash = await bcrypt.hash(data.password, salt);
-      delete data.password;
+      if (data.password) {
+        const salt = await bcrypt.genSalt(10);
+        usuario.passwordHash = await bcrypt.hash(data.password, salt);
+        delete data.password;
+      }
+
+      if (data.tipoUsuario) {
+        usuario.tipoUsuario = { id: data.tipoUsuario } as any;
+      }
+
+      // Si el rol cambió y ya no es aprendiz ni pasante, quitar la ficha automáticamente
+      if (data.tipoUsuario) {
+        const nuevoRol = await this.tipoUsuarioRepository.findOne({ where: { id: data.tipoUsuario } });
+        if (nuevoRol && nuevoRol.nombre.toLowerCase() !== 'aprendiz' && nuevoRol.nombre.toLowerCase() !== 'pasante') {
+          usuario.ficha = null as any;
+          console.log(`Ficha removida automáticamente para usuario ${usuario.nombre} - nuevo rol: ${nuevoRol.nombre}`);
+        }
+      }
+
+      // Si el rol cambió, actualizar los permisos del usuario
+      if (data.tipoUsuario) {
+        // Los permisos se actualizan automáticamente en el token cuando el usuario haga login nuevamente
+        // o cuando se refresque la aplicación, ya que el JWT contiene los permisos del rol actual
+        console.log(`Rol actualizado para usuario ${usuario.nombre} - nuevo rol ID: ${data.tipoUsuario}`);
+      }
+
+      // Manejar actualización de ficha
+      if (data.id_ficha !== undefined) {
+        if (data.id_ficha) {
+          // Si se proporciona id_ficha, validar que exista
+          const ficha = await this.fichaRepository.findOne({ where: { id_ficha: data.id_ficha } });
+          if (!ficha) {
+            throw new BadRequestException(`La ficha con id_ficha ${data.id_ficha} no existe`);
+          }
+          usuario.ficha = ficha;
+        } else {
+          // Si se envía vacío, quitar la ficha
+          usuario.ficha = null as any;
+        }
+        delete data.id_ficha; // Remover del data para no interferir con Object.assign
+      }
+
+      Object.assign(usuario, data);
+
+      return await this.usuarioRepository.save(usuario);
     }
-
-    if (data.tipoUsuario) {
-      usuario.tipoUsuario = { id: data.tipoUsuario } as any;
-    }
-
-    Object.assign(usuario, data);
-
-    return await this.usuarioRepository.save(usuario);
-  }
 
   async eliminar(id: number): Promise<void> {
     const usuario = await this.usuarioRepository.findOne({ where: { id } });
@@ -262,15 +399,26 @@ export class UsuariosService {
 
 
   async crear(data: CreateUsuarioDto): Promise<Usuario> {
-    const { tipoUsuario, password, ...resto } = data;
+    const { tipoUsuario, password, id_ficha, ...resto } = data;
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
+    let ficha: Ficha | undefined = undefined;
+    if (id_ficha) {
+      // Validar que la ficha existe si se proporciona
+      const fichaEncontrada = await this.fichaRepository.findOne({ where: { id_ficha } });
+      if (!fichaEncontrada) {
+        throw new BadRequestException(`La ficha con id_ficha ${id_ficha} no existe`);
+      }
+      ficha = fichaEncontrada;
+    }
 
     const nuevo = this.usuarioRepository.create({
       ...resto,
       passwordHash: hashedPassword,
       tipoUsuario: { id: tipoUsuario },
+      ...(ficha && { ficha }),
     });
 
     return await this.usuarioRepository.save(nuevo);

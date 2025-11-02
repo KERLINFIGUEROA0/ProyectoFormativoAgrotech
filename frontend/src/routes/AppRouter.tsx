@@ -26,6 +26,7 @@ import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFit
 import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
 import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
 import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
+import GestionFichasPage from "../features/fichas/pages/GestionFichas";
 
 export default function AppRouter() {
   return (
@@ -70,6 +71,7 @@ export default function AppRouter() {
           <Route path="/tratamientos" element={<GestionTratamientosPage />} />
           <Route path="/stock" element={<GestionInventarioPage />} />
           <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
+           <Route path="/gestion-fichas" element={<GestionFichasPage />} />
           <Route path="/movimientos" element={
               <div className="text-center p-8">
                 <h1 className="text-2xl font-bold">Movimientos de Inventario</h1>

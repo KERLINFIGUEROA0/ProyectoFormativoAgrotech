@@ -108,6 +108,7 @@ const menuItems: MenuItemType[] = [
     children: [
       { id: "gestion-usuarios", label: "Gestion Usuarios", icon: User },
       { id: "gestion-roles", label: "Gestion Roles", icon: Settings },
+        {id: "gestion-fichas", label: "Gestion Fichas", icon: Package },
     ],
   },
 ];

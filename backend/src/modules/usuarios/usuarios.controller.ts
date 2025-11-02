@@ -30,13 +30,16 @@ import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { CambiarPasswordDto } from './dto/cambiar-password.dto';
-
+import { FichasService } from '../../fichas/fichas.service';
 
 
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly fichasService: FichasService,
+  ) {}
   @Post('crear')
   @Permission('Usuarios.Crear')
   
@@ -178,7 +181,7 @@ export class UsuariosController {
   }
   @Put('actualizar/:id')
   @Permission('Usuarios.Editar')
-  
+
   async actualizar(@Param('id') id: number, @Body() data: UpdateUsuarioDto) {
     try {
       const usuario = await this.usuariosService.actualizar(id, data);
@@ -186,6 +189,7 @@ export class UsuariosController {
         success: true,
         message: `Usuario con id ${id} actualizado exitosamente`,
         data: usuario,
+        note: data.tipoUsuario ? 'Los permisos del usuario se actualizarán en el próximo login' : undefined,
       };
     } catch (error) {
       throw new HttpException(
@@ -362,9 +366,50 @@ export class UsuariosController {
     return this.usuariosService.updateProfilePic(userId, file.filename);
   }
   @Get('fotoperfil')
-  
+
   async getProfilePic(@Req() req: any, @Res() res: any) {
     const userId = req.user.id;
     return this.usuariosService.getProfilePic(userId, res);
+  }
+
+  @Get('fichas/opciones')
+  @Permission('Usuarios.Ver')
+  async getFichasOpciones() {
+    try {
+      const opciones = await this.fichasService.getOpciones();
+      return {
+        success: true,
+        message: 'Opciones de fichas obtenidas',
+        data: opciones,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Error al obtener opciones de fichas',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('exportar-excel-filtrado')
+  @Permission('Usuarios.Ver')
+  async exportarExcelFiltrado(@Body() filtros: any, @Res() res: Response) {
+    try {
+      const buffer = await this.usuariosService.exportarExcelFiltrado(filtros);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', 'attachment; filename=usuarios_filtrados.xlsx');
+      res.send(buffer);
+    } catch (error) {
+      throw new HttpException(
+        'Error al generar el archivo Excel filtrado.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

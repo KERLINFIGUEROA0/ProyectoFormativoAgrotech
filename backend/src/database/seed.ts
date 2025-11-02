@@ -244,6 +244,7 @@ async function seed() {
       correo: adminEmail,
       passwordHash,
       tipoUsuario: roles.admin,
+      // Nota: El administrador no tiene ficha asignada (ficha: null)
     });
     console.log('  - Usuario administrador creado.');
   } else {

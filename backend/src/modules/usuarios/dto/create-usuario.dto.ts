@@ -6,6 +6,8 @@ import {
   MinLength,
   Length,
   IsIn,
+  Matches,
+  IsOptional,
 } from 'class-validator';
 import * as seed from '../../../database/seed.json';
 
@@ -46,4 +48,10 @@ export class CreateUsuarioDto {
   @IsNumber({}, { message: 'El ID del rol debe ser un número.' })
   @IsNotEmpty({ message: 'El rol es obligatorio.' })
   tipoUsuario: number;
+
+  @IsString({ message: 'El id_ficha debe ser un texto.' })
+  @IsOptional()
+  @Length(6, 8, { message: 'El id_ficha debe tener entre 6 y 8 caracteres.' })
+  @Matches(/^\d+$/, { message: 'El id_ficha debe contener solo números.' })
+  id_ficha?: string;
 }
