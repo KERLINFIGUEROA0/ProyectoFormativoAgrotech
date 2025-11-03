@@ -33,38 +33,50 @@ export class UsuariosService {
 
   // ... (otros métodos como exportarExcel, cargarDesdeExcel, etc., no necesitan cambios)
     async exportarExcel(): Promise<Buffer> {
-    const usuarios = await this.buscarTodos();
-
-    const worksheetData = [
-      // Encabezados que coinciden con la solicitud
-      ['Tipo Identificacion', 'Identificacion', 'Nombre', 'Apellidos','Correo', 'Telefono','Estado', 'Rol', 'Id Ficha'],
-      ...usuarios.map((u) => [
-        u.Tipo_Identificacion,
-        u.identificacion,
-        u.nombre,
-        u.apellidos,
-        u.correo,
-        u.telefono,
-        u.estado ? 'Activo' : 'Inactivo',
-        u.tipoUsuario ? u.tipoUsuario.nombre : 'N/A',
-        u.ficha ? u.ficha.id_ficha : '',
-      ]),
-    ];
-
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
-
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: 'xlsx',
-      type: 'buffer',
-    });
-
-    return excelBuffer;
-  }
+      const usuarios = await this.buscarTodos();
+  
+      // Filtrar usuarios: excluir administrador, incluir solo instructor, pasante, aprendiz, invitado
+      const rolesPermitidos = ['instructor', 'pasante', 'aprendiz', 'invitado'];
+      const usuariosFiltrados = usuarios.filter((u) =>
+        u.tipoUsuario && rolesPermitidos.includes(u.tipoUsuario.nombre.toLowerCase())
+      );
+  
+      const worksheetData = [
+        // Encabezados que coinciden con la solicitud
+        ['Tipo Identificacion', 'Identificacion', 'Nombre', 'Apellidos','Correo', 'Telefono','Estado', 'Rol', 'Id Ficha'],
+        ...usuariosFiltrados.map((u) => [
+          u.Tipo_Identificacion,
+          u.identificacion,
+          u.nombre,
+          u.apellidos,
+          u.correo,
+          u.telefono,
+          u.estado ? 'Activo' : 'Inactivo',
+          u.tipoUsuario ? u.tipoUsuario.nombre : 'N/A',
+          u.ficha ? u.ficha.id_ficha : '',
+        ]),
+      ];
+  
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
+  
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        type: 'buffer',
+      });
+  
+      return excelBuffer;
+    }
 
   async exportarExcelFiltrado(filtros: any): Promise<Buffer> {
     let usuarios = await this.buscarTodos();
+
+    // Filtrar usuarios: excluir administrador, incluir solo instructor, pasante, aprendiz, invitado
+    const rolesPermitidos = ['instructor', 'pasante', 'aprendiz', 'invitado'];
+    usuarios = usuarios.filter((u) =>
+      u.tipoUsuario && rolesPermitidos.includes(u.tipoUsuario.nombre.toLowerCase())
+    );
 
     // Aplicar filtros de búsqueda
     if (filtros.searchTerm && filtros.searchTerm.trim() !== '') {
@@ -75,9 +87,9 @@ export class UsuariosService {
         const rol = user.tipoUsuario?.nombre.toLowerCase() || '';
         const ficha = user.ficha?.id_ficha?.toLowerCase() || '';
         return nombreCompleto.includes(lowercasedTerm) ||
-               identificacion.includes(lowercasedTerm) ||
-               rol.includes(lowercasedTerm) ||
-               ficha.includes(lowercasedTerm);
+                identificacion.includes(lowercasedTerm) ||
+                rol.includes(lowercasedTerm) ||
+                ficha.includes(lowercasedTerm);
       });
     }
 
@@ -152,58 +164,66 @@ export class UsuariosService {
       }
 
       try {
-        const camposRequeridos = [
-          'nombre',
-          'apellidos',
+        // Campos obligatorios: tipo_identidad, identificacion, nombre, apellido, correo, rol
+        // ficha solo obligatoria para aprendices
+        const camposObligatorios = [
           'tipo identificacion',
           'identificacion',
-          'rol',
+          'nombre',
+          'apellidos',
           'correo',
-          'telefono',
-          'estado',
-          'id_ficha'
+          'rol'
         ];
-        for (const campo of camposRequeridos) {
-          if (!usuarioData[campo]) {
-            throw new Error(`Fila omitida. Falta el campo requerido: '${campo}'`);
+
+        // Agregar ficha como obligatoria para aprendices y pasantes
+        if (usuarioData.rol && (usuarioData.rol.toLowerCase() === 'aprendiz' || usuarioData.rol.toLowerCase() === 'pasante')) {
+          camposObligatorios.push('id ficha');
+        }
+
+        // Campos opcionales: telefono
+        const camposOpcionales = ['telefono'];
+
+        // Validar campos obligatorios
+        for (const campo of camposObligatorios) {
+          if (!usuarioData[campo] || usuarioData[campo] === '') {
+            throw new Error(`Campo obligatorio faltante: '${campo}'`);
           }
+        }
+
+        // Validar rol permitido
+        const rolesPermitidos = ['instructor', 'pasante', 'aprendiz', 'invitado'];
+        if (!rolesPermitidos.includes(usuarioData.rol.toLowerCase())) {
+          throw new Error(`Rol no permitido: '${usuarioData.rol}'. Solo se permiten: ${rolesPermitidos.join(', ')}`);
         }
 
         const rol = await this.tipoUsuarioRepository.findOne({ where: { nombre: usuarioData.rol } });
         if (!rol) throw new Error(`El rol '${usuarioData.rol}' no existe.`);
 
-        // Validar que no se cree más de un administrador
-        if (usuarioData.rol.toLowerCase() === 'admin') {
-          const adminExistente = await this.usuarioRepository.findOne({
-            where: { tipoUsuario: { nombre: 'Admin' } },
-            relations: ['tipoUsuario']
-          });
-          if (adminExistente) {
-            throw new Error('Ya existe un administrador. No se puede crear otro.');
+        // Validar ficha para aprendices y pasantes
+        if (usuarioData.rol.toLowerCase() === 'aprendiz' || usuarioData.rol.toLowerCase() === 'pasante') {
+          if (!usuarioData['id ficha'] || usuarioData['id ficha'] === '') {
+            throw new Error(`La ficha es obligatoria para el rol de ${usuarioData.rol.charAt(0).toUpperCase() + usuarioData.rol.slice(1)}.`);
           }
-        }
-
-        // Para aprendices, ficha es requerida; para otros roles, opcional
-        if (usuarioData.rol.toLowerCase() === 'aprendiz') {
-          // Validar que la ficha existe (solo para aprendices)
-          const ficha = await this.fichaRepository.findOne({ where: { id_ficha: usuarioData['id_ficha'] } });
+          const ficha = await this.fichaRepository.findOne({ where: { id_ficha: usuarioData['id ficha'] } });
           if (!ficha) {
-            throw new Error(`La ficha con id_ficha ${usuarioData['id_ficha']} no existe. Por favor cree una nueva ficha.`);
+            throw new Error(`La ficha con id_ficha '${usuarioData['id ficha']}' no existe.`);
           }
         }
 
-        // Validar que la ficha existe
-        const ficha = await this.fichaRepository.findOne({ where: { id_ficha: usuarioData['id_ficha'] } });
-        if (!ficha) {
-          throw new Error(`La ficha con id_ficha ${usuarioData['id_ficha']} no existe. Por favor cree una nueva ficha.`);
+        // Validar unicidad de correo
+        const existeCorreo = await this.usuarioRepository.findOne({
+          where: { correo: usuarioData.correo }
+        });
+        if (existeCorreo) {
+          throw new Error(`El correo '${usuarioData.correo}' ya está registrado.`);
         }
 
-        const existe = await this.usuarioRepository.findOne({
-            where: [ { correo: usuarioData.correo }, { identificacion: usuarioData.identificacion } ]
+        // Validar unicidad de identificación
+        const existeIdentificacion = await this.usuarioRepository.findOne({
+          where: { identificacion: usuarioData.identificacion }
         });
-        if (existe) {
-          // Si el usuario ya existe, lo omitimos silenciosamente y continuamos con el siguiente.
-          continue;
+        if (existeIdentificacion) {
+          throw new Error(`La identificación '${usuarioData.identificacion}' ya está registrada.`);
         }
 
         const createDto: CreateUsuarioDto = {
@@ -212,11 +232,10 @@ export class UsuariosService {
           correo: usuarioData.correo,
           identificacion: usuarioData.identificacion,
           Tipo_Identificacion: usuarioData['tipo identificacion'],
-          telefono: usuarioData.telefono,
+          telefono: usuarioData.telefono || '', // Opcional, usar vacío si no se proporciona
           password: String(usuarioData.identificacion),
           tipoUsuario: rol.id,
-          // Para aprendices, ficha es requerida; para otros roles, opcional
-          ...(usuarioData.rol.toLowerCase() === 'aprendiz' && usuarioData['id_ficha'] && { id_ficha: usuarioData['id_ficha'] }),
+          ...((usuarioData.rol.toLowerCase() === 'aprendiz' || usuarioData.rol.toLowerCase() === 'pasante') && { id_ficha: usuarioData['id ficha'] }), // Para aprendices y pasantes
         };
 
         await this.crear(createDto);
@@ -319,6 +338,17 @@ export class UsuariosService {
       }
 
       if (data.tipoUsuario) {
+        // Validar que no se cambie a rol admin si ya existe uno
+        const nuevoRol = await this.tipoUsuarioRepository.findOne({ where: { id: data.tipoUsuario } });
+        if (nuevoRol && nuevoRol.nombre.toLowerCase() === 'admin') {
+          const adminExistente = await this.usuarioRepository.findOne({
+            where: { tipoUsuario: { nombre: 'Admin' } },
+            relations: ['tipoUsuario']
+          });
+          if (adminExistente && adminExistente.id !== id) {
+            throw new BadRequestException('Ya existe un administrador. No se puede asignar este rol.');
+          }
+        }
         usuario.tipoUsuario = { id: data.tipoUsuario } as any;
       }
 
@@ -400,6 +430,18 @@ export class UsuariosService {
 
   async crear(data: CreateUsuarioDto): Promise<Usuario> {
     const { tipoUsuario, password, id_ficha, ...resto } = data;
+
+    // Validar que no se cree más de un administrador
+    const rol = await this.tipoUsuarioRepository.findOne({ where: { id: tipoUsuario } });
+    if (rol && rol.nombre.toLowerCase() === 'admin') {
+      const adminExistente = await this.usuarioRepository.findOne({
+        where: { tipoUsuario: { nombre: 'Admin' } },
+        relations: ['tipoUsuario']
+      });
+      if (adminExistente) {
+        throw new BadRequestException('Ya existe un administrador. No se puede crear otro.');
+      }
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);

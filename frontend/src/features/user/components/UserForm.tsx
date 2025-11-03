@@ -4,7 +4,6 @@ import { Plus, HelpCircle } from 'lucide-react';
 import type { UsuarioForm, Rol } from '../interfaces/usuarios';
 import type { FichaOption } from '../../fichas/interfaces/fichas';
 import { getFichasOpcionesFromUsuarios, createFicha } from '../../fichas/api/fichas';
-import Modal from '../../../components/Modal';
 import FichaFormComponent from '../../fichas/components/FichaForm';
 import type { FichaForm } from '../../fichas/interfaces/fichas';
 
@@ -101,7 +100,10 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
     if (!form.rolId) errs.push("Debe seleccionar un rol.");
     if (!form.nombre) errs.push("El nombre es requerido.");
     if (!form.apellidos) errs.push("Los apellidos son requeridos.");
-    if (requiereFicha && !form.id_ficha) errs.push("Debe seleccionar una ficha para el rol de Aprendiz.");
+    if (requiereFicha && !form.id_ficha) {
+      const rolName = rolSeleccionado?.nombre.charAt(0).toUpperCase() + rolSeleccionado?.nombre.slice(1);
+      errs.push(`La ficha es obligatoria para el rol de ${rolName}.`);
+    }
 
     if (errs.length > 0) {
       setErrors(errs);
