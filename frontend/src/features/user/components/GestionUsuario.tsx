@@ -217,7 +217,7 @@ export default function GestionUsuarios(): ReactElement {
       ]);
       const loggedInUserIdentificacion = perfilData?.identificacion;
 
-      let allUsers: Usuario[] =
+      const allUsers: Usuario[] =
         usuariosData?.data && Array.isArray(usuariosData.data)
           ? usuariosData.data
           : Array.isArray(usuariosData)

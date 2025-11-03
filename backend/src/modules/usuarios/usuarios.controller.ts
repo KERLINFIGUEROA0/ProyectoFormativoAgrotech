@@ -321,34 +321,35 @@ export class UsuariosController {
     }
   }
   @Get('perfil')
-  
-  async obtenerPerfil(@Req() req) {
-    try {
-      const usuarioId = req.user.id;
-      const usuario = await this.usuariosService.buscarPorId(usuarioId);
-      return {
-        success: true,
-        message: 'Perfil obtenido correctamente',
-        data: {
-          tipoIdentificacion: usuario.Tipo_Identificacion,
-          identificacion: usuario.identificacion,
-          nombres: usuario.nombre,
-          apellidos: usuario.apellidos,
-          correo: usuario.correo,
-          telefono: usuario.telefono,
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error al obtener perfil',
-          error: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
+
+   async obtenerPerfil(@Req() req) {
+     try {
+       const usuarioId = req.user.id;
+       const usuario = await this.usuariosService.buscarPorId(usuarioId);
+       return {
+         success: true,
+         message: 'Perfil obtenido correctamente',
+         data: {
+           tipoIdentificacion: usuario.Tipo_Identificacion,
+           identificacion: usuario.identificacion,
+           nombres: usuario.nombre,
+           apellidos: usuario.apellidos,
+           correo: usuario.correo,
+           telefono: usuario.telefono,
+           rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
+         },
+       };
+     } catch (error) {
+       throw new HttpException(
+         {
+           success: false,
+           message: 'Error al obtener perfil',
+           error: error.message,
+         },
+         HttpStatus.BAD_REQUEST,
+       );
+     }
+   }
   @Put('editarperfil')
 
   async editarPerfil(@Req() req, @Body() data: UpdatePerfilDto) {
