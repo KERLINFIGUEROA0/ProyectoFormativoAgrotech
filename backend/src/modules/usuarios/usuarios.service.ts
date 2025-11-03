@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, Not } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { join } from 'path';
@@ -407,6 +407,14 @@ export class UsuariosService {
     await this.usuarioRepository.save(usuario);
   }
 
+  async deleteUsuario(id: number): Promise<void> {
+    const usuario = await this.usuarioRepository.findOne({ where: { id } });
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con id ${id} no encontrado`);
+    }
+    await this.usuarioRepository.delete(id);
+  }
+
   async findByIdentificacion(identificacion: string | number) {
     return this.usuarioRepository.findOne({
       where: { identificacion: Number(identificacion) as any },
@@ -556,10 +564,30 @@ export class UsuariosService {
 }
 
 
-// editar perfil logueado 
+// editar perfil logueado
 async actualizarPerfil(id: number, data: UpdatePerfilDto): Promise<Usuario> {
   const usuario = await this.usuarioRepository.findOne({ where: { id } });
   if (!usuario) throw new NotFoundException('Usuario no encontrado');
+
+  // Validar unicidad de identificación si se está cambiando
+  if (data.identificacion !== undefined && data.identificacion !== usuario.identificacion) {
+    const existeIdentificacion = await this.usuarioRepository.findOne({
+      where: { identificacion: data.identificacion, id: Not(usuario.id) }
+    });
+    if (existeIdentificacion) {
+      throw new BadRequestException(`La identificación '${data.identificacion}' ya está registrada.`);
+    }
+  }
+
+  // Validar unicidad de correo si se está cambiando
+  if (data.correo !== undefined && data.correo !== usuario.correo) {
+    const existeCorreo = await this.usuarioRepository.findOne({
+      where: { correo: data.correo, id: Not(usuario.id) }
+    });
+    if (existeCorreo) {
+      throw new BadRequestException(`El correo '${data.correo}' ya está registrado.`);
+    }
+  }
 
   // solo datos basicos
   if (data.tipoIdentificacion !== undefined) usuario.Tipo_Identificacion = data.tipoIdentificacion;

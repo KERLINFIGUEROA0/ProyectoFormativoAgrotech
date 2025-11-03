@@ -225,7 +225,7 @@ export class UsuariosController {
   }
   @Patch('reactivar/:id')
   @Permission('Usuarios.Editar')
-  
+
   async reactivar(@Param('id') id: number) {
     try {
       await this.usuariosService.reactivar(id);
@@ -238,6 +238,28 @@ export class UsuariosController {
         {
           success: false,
           message: `Error al reactivar el usuario con id ${id}`,
+          error: error.message,
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  @Delete('eliminar-permanente/:id')
+  @Permission('Usuarios.Eliminar')
+
+  async eliminarPermanente(@Param('id') id: number) {
+    try {
+      await this.usuariosService.deleteUsuario(id);
+      return {
+        success: true,
+        message: `Usuario con id ${id} eliminado permanentemente`,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: `Error al eliminar permanentemente el usuario con id ${id}`,
           error: error.message,
         },
         HttpStatus.NOT_FOUND,
@@ -328,7 +350,7 @@ export class UsuariosController {
     }
   }
   @Put('editarperfil')
-  
+
   async editarPerfil(@Req() req, @Body() data: UpdatePerfilDto) {
     try {
       const usuarioId = req.user.id;
@@ -354,7 +376,7 @@ export class UsuariosController {
   }
   @Post('fotoperfil')
   @UseInterceptors(FileInterceptor('file', multerConfig))
-  
+
   async uploadProfilePic(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,

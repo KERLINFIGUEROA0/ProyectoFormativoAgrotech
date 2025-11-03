@@ -139,6 +139,12 @@ export const deleteUsuario = async (id: number) => {
   return res.data;
 };
 
+// Eliminar usuario permanentemente
+export const deleteUsuarioPermanente = async (id: number) => {
+  const res = await api.delete(`/usuarios/eliminar-permanente/${id}`);
+  return res.data;
+};
+
 // Reactivar usuario
 export const reactivarUsuario = async (id: number) => {
   const res = await api.patch(`/usuarios/reactivar/${id}`);

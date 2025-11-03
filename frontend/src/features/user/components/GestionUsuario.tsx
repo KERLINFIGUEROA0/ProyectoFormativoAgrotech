@@ -1,4 +1,4 @@
-
+ 
 import { useState, useEffect, type ReactElement, useRef } from "react";
 import {
   ChevronLeft,
@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
   Search,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Usuario, Rol } from "../interfaces/usuarios";
@@ -23,6 +24,7 @@ import {
   updateUsuario,
   obtenerPerfil,
   deleteUsuario,
+  deleteUsuarioPermanente,
   reactivarUsuario,
   exportarUsuariosExcel,
   cargarUsuariosExcel,
@@ -359,6 +361,26 @@ export default function GestionUsuarios(): ReactElement {
       console.error("Error cambiando estado:", error);
       const errorMessage =
         (error as any).response?.data?.message || "Error al cambiar estado.";
+      toast.error(errorMessage, { id: toastId });
+    }
+  };
+
+  const handleDeletePermanent = async (usuario: Usuario) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar permanentemente al usuario "${usuario.nombre} ${usuario.apellidos || ''}"? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmDelete) return;
+
+    const toastId = toast.loading("Eliminando usuario permanentemente...");
+    try {
+      await deleteUsuarioPermanente(usuario.id);
+      toast.success("Usuario eliminado permanentemente", { id: toastId });
+      await fetchData();
+    } catch (error: unknown) {
+      console.error("Error eliminando usuario:", error);
+      const errorMessage =
+        (error as any).response?.data?.message || "Error al eliminar usuario.";
       toast.error(errorMessage, { id: toastId });
     }
   };
@@ -836,6 +858,13 @@ export default function GestionUsuarios(): ReactElement {
                         title="Editar usuario"
                       >
                         <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePermanent(usuario)}
+                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                        title="Eliminar usuario permanentemente"
+                      >
+                        <Trash2 size={16} />
                       </button>
                       <label
                         className="flex items-center cursor-pointer"
