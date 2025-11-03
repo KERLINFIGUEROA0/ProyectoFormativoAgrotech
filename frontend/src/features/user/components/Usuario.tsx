@@ -54,8 +54,8 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
           currentAvatarUrl = picUrl;
           setAvatarUrl(picUrl);
         } catch (picError) {
-          console.error("No se pudo cargar la foto de perfil, usando avatar por defecto.", picError);
-          setAvatarUrl(avatarImg); 
+          // Silently use default avatar without logging error
+          setAvatarUrl(avatarImg);
         }
       } catch (error) {
         console.error("Error al obtener el perfil:", error);
