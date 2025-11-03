@@ -53,8 +53,12 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
           const picUrl = URL.createObjectURL(picBlob);
           currentAvatarUrl = picUrl;
           setAvatarUrl(picUrl);
-        } catch (picError) {
+        } catch (picError: any) {
           // Silently use default avatar without logging error
+          // Check if it's our specific "no profile pic" error
+          if (picError.message !== 'NO_PROFILE_PIC') {
+            console.error("Error al cargar foto de perfil:", picError);
+          }
           setAvatarUrl(avatarImg);
         }
       } catch (error) {
