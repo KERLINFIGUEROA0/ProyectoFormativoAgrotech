@@ -146,9 +146,10 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
       setIsEditing(false);
       toast.success("Perfil actualizado con éxito.");
       setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al guardar el perfil:", error);
-      toast.error("Error al guardar el perfil. Inténtelo de nuevo.");
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || "Error al guardar el perfil. Inténtelo de nuevo.";
+      toast.error(errorMessage);
     }
   };
 
