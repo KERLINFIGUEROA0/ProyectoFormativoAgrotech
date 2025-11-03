@@ -32,9 +32,9 @@ export const eliminarActividad = async (id: number) => {
 
 // --- NUEVAS FUNCIONES NECESARIAS PARA EL FORMULARIO ---
 
-// Función para obtener la lista de todos los usuarios
+// Función para obtener la lista de todos los usuarios con datos de ficha
 export const obtenerUsuariosParaActividades = async () => {
-  const response = await api.get('/usuarios'); // Asumiendo que esta es la ruta correcta
+  const response = await api.get('/usuarios?include=ficha'); // Incluir datos de ficha
   return response.data.data; // Usualmente los datos están en una propiedad 'data'
 };
 

@@ -9,6 +9,12 @@ export interface UsuarioSimple {
   identificacion: number;
   nombre: string;
   apellidos: string;
+  // Información de ficha para filtrado y agrupación
+  ficha?: {
+    id: number;
+    nombre: string;
+    id_ficha: string;
+  };
 }
 
 // Interfaz para un cultivo simple

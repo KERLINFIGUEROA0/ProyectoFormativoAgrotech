@@ -1,9 +1,10 @@
 // src/features/actividades/components/AsignacionActividadForm.tsx
-import React, { useState } from 'react';
+// src/features/actividades/components/AsignacionActividadForm.tsx
+import React, { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { ClipboardList, UserCheck, Loader2 } from 'lucide-react';
+import { ClipboardList, UserCheck, Loader2, Search, Users, Filter } from 'lucide-react';
 import { asignarActividad } from '../api/actividadesapi';
-import type { AsignarActividadPayload, UsuarioSimple, CultivoSimple } from '../interfaces/actividades'; 
+import type { AsignarActividadPayload, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
 
 interface AsignacionFormProps {
     usuarios: UsuarioSimple[];
@@ -16,8 +17,11 @@ interface AsignacionFormState {
   titulo: string;
   descripcion: string;
   fecha: string;
-  cultivo: string; 
-  aprendices: number[]; 
+  cultivo: string;
+  aprendices: number[];
+  // Filtros de búsqueda
+  searchTerm: string;
+  selectedFicha: string;
 }
 
 const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({ usuarios, cultivos, onCancel, onSuccess }) => {
@@ -28,9 +32,68 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({ usuarios, cult
     fecha: new Date().toISOString().substring(0, 10),
     cultivo: '',
     aprendices: [],
+    searchTerm: '',
+    selectedFicha: '',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
+const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Obtener fichas únicas de los usuarios para el filtro
+  const fichasUnicas = useMemo(() => {
+    const fichas = usuarios
+      .filter(u => u.ficha && u.ficha.id_ficha)
+      .map(u => u.ficha!)
+      .filter((ficha, index, self) =>
+        index === self.findIndex(f => f.id_ficha === ficha.id_ficha)
+      )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return fichas;
+  }, [usuarios]);
+
+  // Filtrar usuarios según búsqueda y ficha seleccionada
+  const usuariosFiltrados = useMemo(() => {
+    return usuarios.filter(usuario => {
+      // Filtro por nombre/apellido/identificación
+      const matchesSearch = formData.searchTerm === '' ||
+        usuario.nombre.toLowerCase().includes(formData.searchTerm.toLowerCase()) ||
+        usuario.apellidos.toLowerCase().includes(formData.searchTerm.toLowerCase()) ||
+        usuario.identificacion.toString().includes(formData.searchTerm);
+
+      // Filtro por ficha seleccionada
+      const matchesFicha = formData.selectedFicha === '' ||
+        usuario.ficha?.id_ficha === formData.selectedFicha;
+
+      return matchesSearch && matchesFicha;
+    });
+  }, [usuarios, formData.searchTerm, formData.selectedFicha]);
+
+  // Función para seleccionar todos los aprendices de una ficha específica
+  const seleccionarTodosDeFicha = (fichaId: string) => {
+    const aprendicesDeFicha = usuarios
+      .filter(u => u.ficha?.id_ficha === fichaId)
+      .map(u => Number(u.identificacion));
+    
+    setFormData(prev => ({
+      ...prev,
+      aprendices: [...new Set([...prev.aprendices, ...aprendicesDeFicha])]
+    }));
+    
+    toast.success(`Se seleccionaron todos los aprendices de la ficha ${fichaId}`);
+  };
+
+  // Función para deseleccionar todos los aprendices de una ficha específica
+  const deseleccionarTodosDeFicha = (fichaId: string) => {
+    const aprendicesDeFicha = usuarios
+      .filter(u => u.ficha?.id_ficha === fichaId)
+      .map(u => Number(u.identificacion));
+    
+    setFormData(prev => ({
+      ...prev,
+      aprendices: prev.aprendices.filter(id => !aprendicesDeFicha.includes(id))
+    }));
+    
+    toast.success(`Se deseleccionaron todos los aprendices de la ficha ${fichaId}`);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -164,28 +227,111 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({ usuarios, cult
         
         {/* Columna 2: Aprendices Disponibles (Lista de selección) */}
         <div className="p-4 border rounded-lg shadow-inner bg-white max-h-[70vh] overflow-y-auto">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Aprendices Disponibles</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Aprendices Disponibles ({usuariosFiltrados.length} de {usuarios.length})
+          </h2>
           
+          {/* Controles de búsqueda y filtrado */}
+          <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
+            {/* Búsqueda por nombre/identificación */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre o identificación..."
+                value={formData.searchTerm}
+                onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
+                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm"
+              />
+            </div>
+
+            {/* Filtro por ficha */}
+            <div className="relative">
+              <Filter className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <select
+                value={formData.selectedFicha}
+                onChange={(e) => setFormData(prev => ({ ...prev, selectedFicha: e.target.value }))}
+                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm bg-white"
+              >
+                <option value="">Todas las fichas</option>
+                {fichasUnicas.map(ficha => (
+                  <option key={ficha.id_ficha} value={ficha.id_ficha}>
+                    {ficha.nombre} ({ficha.id_ficha})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Botones de acción rápida */}
+            {formData.selectedFicha && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => seleccionarTodosDeFicha(formData.selectedFicha)}
+                  className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
+                >
+                  Seleccionar Todo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deseleccionarTodosDeFicha(formData.selectedFicha)}
+                  className="flex-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition-colors"
+                >
+                  Deseleccionar Todo
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Lista de aprendices filtrados */}
           <div className="space-y-2">
-            {usuarios.map(u => (
-              <label key={u.identificacion} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                     checked={formData.aprendices.includes(Number(u.identificacion))}
-                    onChange={(e) => handleAprendicesChange(Number(u.identificacion), e.target.checked)}
-                    className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-800">{u.nombre} {u.apellidos}</p>
-                    <p className="text-xs text-gray-500">Aprendiz (ID: {u.identificacion})</p>
+            {usuariosFiltrados.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No se encontraron aprendices con los filtros aplicados.
+              </p>
+            ) : (
+              usuariosFiltrados
+                .sort((a, b) => {
+                  // Ordenar por ficha, luego por nombre
+                  const fichaA = a.ficha?.nombre || '';
+                  const fichaB = b.ficha?.nombre || '';
+                  if (fichaA !== fichaB) {
+                    return fichaA.localeCompare(fichaB);
+                  }
+                  return a.nombre.localeCompare(b.nombre);
+                })
+                .map(u => (
+                  <div key={u.identificacion} className="border rounded-lg">
+                    {/* Encabezado de ficha (solo mostrar si cambió) */}
+                    {u.ficha && (
+                      <div className="bg-blue-50 px-3 py-2 border-b">
+                        <p className="text-sm font-medium text-blue-800">
+                          {u.ficha.nombre} ({u.ficha.id_ficha})
+                        </p>
+                      </div>
+                    )}
+                    
+                    <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-blue-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.aprendices.includes(Number(u.identificacion))}
+                          onChange={(e) => handleAprendicesChange(Number(u.identificacion), e.target.checked)}
+                          className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-800">{u.nombre} {u.apellidos}</p>
+                          <p className="text-xs text-gray-500">ID: {u.identificacion}</p>
+                        </div>
+                      </div>
+                      {formData.aprendices.includes(Number(u.identificacion)) && (
+                          <UserCheck className="w-4 h-4 text-green-500" />
+                      )}
+                    </label>
                   </div>
-                </div>
-                {formData.aprendices.includes(Number(u.identificacion)) && (
-                    <UserCheck className="w-4 h-4 text-green-500" />
-                )}
-              </label>
-            ))}
+                ))
+            )}
           </div>
         </div>
       </div>
