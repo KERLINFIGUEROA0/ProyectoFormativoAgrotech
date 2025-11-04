@@ -1,7 +1,8 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
+import { exportarExcelCultivo } from '../api/excelApi';
 import Modal from '../../../components/Modal';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
@@ -9,10 +10,17 @@ import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
+interface Cultivo {
+  id: number;
+  nombre: string;
+}
+
 export default function GestionTransaccionesPage(): ReactElement {
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number; tipo: string } | null }>({ isOpen: false, item: null });
+  const [cultivos, setCultivos] = useState<Cultivo[]>([]);
+  const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -31,7 +39,27 @@ export default function GestionTransaccionesPage(): ReactElement {
     }
   };
 
-  useEffect(() => { fetchData() }, []);
+  useEffect(() => { 
+    fetchData();
+    cargarCultivos();
+  }, []);
+
+  const cargarCultivos = async () => {
+    try {
+      const response = await fetch(`${API_URL}/cultivos/listar`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCultivos(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error al cargar cultivos:', error);
+      toast.error("Error al cargar los cultivos");
+    }
+  };
 
   const handleDelete = (id: number, tipo: string) => {
     setDeleteModal({ isOpen: true, item: { id, tipo } });
@@ -108,20 +136,54 @@ export default function GestionTransaccionesPage(): ReactElement {
     <div className="bg-white shadow-xl rounded-xl p-6 w-full flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
-        <button
-          onClick={openModal}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
-        >
-          <FaPlus /> Nueva Venta
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={async () => {
+              if (selectedCultivoId) {
+                try {
+                  await exportarExcelCultivo(selectedCultivoId);
+                  toast.success('Reporte Excel generado con éxito');
+                } catch (error) {
+                  toast.error('Error al generar el reporte Excel');
+                }
+              } else {
+                toast.error("Por favor seleccione un cultivo primero");
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm text-sm hover:bg-blue-700"
+          >
+            <FaFileExcel /> Exportar Excel
+          </button>
+          <button
+            onClick={openModal}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
+          >
+            <FaPlus /> Nueva Venta
+          </button>
+        </div>
       </div>
-      <input 
-        type="text" 
-        placeholder="Buscar por descripción..." 
-        className="border border-gray-300 rounded-lg px-4 py-2 w-72 mb-4"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-      />
+      <div className="flex gap-4 mb-4">
+        <select
+          className="border border-gray-300 rounded-lg px-4 py-2 w-64"
+          value={selectedCultivoId || ''}
+          onChange={(e) => setSelectedCultivoId(e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">Seleccionar Cultivo</option>
+          {cultivos.map(cultivo => (
+            <option key={cultivo.id} value={cultivo.id}>
+              {cultivo.nombre}
+            </option>
+          ))}
+        </select>
+
+        <input 
+          type="text" 
+          placeholder="Buscar por descripción..." 
+          className="border border-gray-300 rounded-lg px-4 py-2 w-72"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
       <div className="overflow-auto flex-grow">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">

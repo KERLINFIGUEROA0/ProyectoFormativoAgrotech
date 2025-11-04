@@ -1,9 +1,10 @@
 import {
   Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe,
-  UseInterceptors, UploadedFile, BadRequestException
+  UseInterceptors, UploadedFile, BadRequestException, Res
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { Response } from 'express';
 import { CultivosService } from './cultivos.service';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
 import { UpdateCultivoDto } from './dto/update-cultivo.dto';
@@ -64,5 +65,21 @@ export class CultivosController {
     
     const cultivo = await this.cultivosService.actualizarImagen(id, relativePath);
     return { success: true, message: 'Imagen subida con éxito', data: cultivo };
+  }
+
+  @Get(':id/exportar-excel')
+  async exportarExcel(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response
+  ) {
+    const excelBuffer = await this.cultivosService.generarExcelCultivo(id);
+    
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename=cultivo-${id}-reporte.xlsx`,
+      'Content-Length': excelBuffer.length,
+    });
+    
+    res.send(excelBuffer);
   }
 }
