@@ -1,4 +1,4 @@
-
+ 
 import { useState, useEffect, type ReactElement, useRef } from "react";
 import {
   ChevronLeft,
@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
   Search,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Usuario, Rol } from "../interfaces/usuarios";
@@ -23,6 +24,7 @@ import {
   updateUsuario,
   obtenerPerfil,
   deleteUsuario,
+  deleteUsuarioPermanente,
   reactivarUsuario,
   exportarUsuariosExcel,
   cargarUsuariosExcel,
@@ -215,7 +217,7 @@ export default function GestionUsuarios(): ReactElement {
       ]);
       const loggedInUserIdentificacion = perfilData?.identificacion;
 
-      let allUsers: Usuario[] =
+      const allUsers: Usuario[] =
         usuariosData?.data && Array.isArray(usuariosData.data)
           ? usuariosData.data
           : Array.isArray(usuariosData)
@@ -276,12 +278,7 @@ export default function GestionUsuarios(): ReactElement {
     setIsModalOpen(true);
   };
 
-  const isCurrentUserAdmin = () => {
-    // Verificar si el usuario actual es admin basado en sus permisos o rol
-    // Por ahora, asumiremos que si puede acceder a esta página, NO es admin
-    // para que aparezca el campo de ficha
-    return false;
-  };
+  // Función removida ya que no se usa
 
   const openEditModal = (usuario: Usuario) => {
     setEditingId(usuario.id);
@@ -368,6 +365,26 @@ export default function GestionUsuarios(): ReactElement {
     }
   };
 
+  const handleDeletePermanent = async (usuario: Usuario) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar permanentemente al usuario "${usuario.nombre} ${usuario.apellidos || ''}"? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmDelete) return;
+
+    const toastId = toast.loading("Eliminando usuario permanentemente...");
+    try {
+      await deleteUsuarioPermanente(usuario.id);
+      toast.success("Usuario eliminado permanentemente", { id: toastId });
+      await fetchData();
+    } catch (error: unknown) {
+      console.error("Error eliminando usuario:", error);
+      const errorMessage =
+        (error as any).response?.data?.message || "Error al eliminar usuario.";
+      toast.error(errorMessage, { id: toastId });
+    }
+  };
+
   const handleExportExcel = async () => {
     const toastId = toast.loading("Exportando a Excel...");
     try {
@@ -442,11 +459,11 @@ export default function GestionUsuarios(): ReactElement {
         link.parentNode?.removeChild(link);
         window.URL.revokeObjectURL(url);
         toast.success(
-          `${usuariosFiltrados.length} usuarios filtrados exportados.`,
+          `${usuariosFiltrados.length} usuarios filtrados exportados exitosamente.`,
           { id: toastId }
         );
       } else {
-        // Sin filtros, exportar todos
+        // Sin filtros, exportar todos (filtrados por roles permitidos)
         const blob = await exportarUsuariosExcel();
         const url = window.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement("a");
@@ -456,11 +473,11 @@ export default function GestionUsuarios(): ReactElement {
         link.click();
         link.parentNode?.removeChild(link);
         window.URL.revokeObjectURL(url);
-        toast.success("Todos los usuarios exportados.", { id: toastId });
+        toast.success("Usuarios exportados exitosamente.", { id: toastId });
       }
     } catch (error) {
       console.error("Error al exportar:", error);
-      toast.error("No se pudo exportar.", { id: toastId });
+      toast.error("Error al exportar usuarios. Intente nuevamente.", { id: toastId });
     }
   };
 
@@ -469,35 +486,59 @@ export default function GestionUsuarios(): ReactElement {
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Validación local: formato del archivo
     if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
-      toast.error("Por favor, seleccione un archivo Excel.");
+      toast.error("Por favor, seleccione un archivo Excel válido (.xlsx o .xls).");
       return;
     }
-    const toastId = toast.loading("Cargando desde Excel...");
+
+    // Validación local: tamaño del archivo (máximo 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error("El archivo es demasiado grande. Máximo 10MB permitido.");
+      return;
+    }
+
+    const toastId = toast.loading("Validando y cargando desde Excel...");
     try {
       const resultado = await cargarUsuariosExcel(file);
       const { creados = 0, errores = [] } = resultado.data || {};
-      const successMessage = `Carga completada. Creados: ${creados}. Errores: ${errores.length}.`;
+
       if (errores.length > 0) {
-        console.error("Errores en carga Excel:", errores);
-        toast.warning(
-          <div>
-            <p>{successMessage}</p>
-            <p className="text-xs mt-1">
-              Revise la consola para ver los errores.
+        // Mostrar errores detallados con Sonner
+        const errorMessages = errores.map((err: any) =>
+          `Fila ${err.fila}: ${err.mensaje}`
+        ).join('\n');
+
+        toast.error(
+          <div className="max-w-md">
+            <p className="font-semibold text-red-800 mb-2">⚠️ Errores en la carga del Excel</p>
+            <div className="bg-red-50 border border-red-200 rounded p-3 max-h-40 overflow-y-auto">
+              <div className="text-sm text-red-700 whitespace-pre-wrap">
+                {errorMessages}
+              </div>
+            </div>
+            {creados > 0 && (
+              <p className="text-green-700 font-medium mt-2 text-sm">
+                ✅ Usuarios creados exitosamente: {creados}
+              </p>
+            )}
+            <p className="text-xs text-gray-600 mt-2">
+              Revisa el archivo Excel y corrige los errores antes de volver a intentar.
             </p>
           </div>,
-          { id: toastId }
+          { id: toastId, duration: 10000 }
         );
       } else {
-        toast.success(successMessage, { id: toastId });
+        toast.success(`Carga completada exitosamente. Usuarios creados: ${creados}.`, { id: toastId });
       }
       await fetchData();
     } catch (error: unknown) {
       console.error("Error al cargar Excel:", error);
       const errorMessage =
         (error as any).response?.data?.message ||
-        "Error al procesar el archivo.";
+        "Error al procesar el archivo. Verifique el formato y los datos.";
       toast.error(errorMessage, { id: toastId });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -647,7 +688,7 @@ export default function GestionUsuarios(): ReactElement {
 
         <div className="flex-grow overflow-x-auto relative rounded-lg border border-gray-200">
           <table className="min-w-full text-sm border-collapse">
-            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 uppercase text-xs sticky top-0 z-10">
+            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 capitalize text-xs sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-4 text-left font-semibold whitespace-nowrap">
                   <button
@@ -749,12 +790,10 @@ export default function GestionUsuarios(): ReactElement {
               </tr>
             </thead>
             <tbody>
-              {currentUsuarios.map((usuario, index) => (
+              {currentUsuarios.map((usuario) => (
                 <tr
                   key={usuario.id}
-                  className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
-                  }`}
+                  className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 bg-white"
                 >
                   <td className="px-4 py-4 whitespace-nowrap font-mono text-sm text-gray-800">
                     {usuario.identificacion}
@@ -819,6 +858,13 @@ export default function GestionUsuarios(): ReactElement {
                         title="Editar usuario"
                       >
                         <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePermanent(usuario)}
+                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                        title="Eliminar usuario permanentemente"
+                      >
+                        <Trash2 size={16} />
                       </button>
                       <label
                         className="flex items-center cursor-pointer"

@@ -94,7 +94,26 @@ async function seed() {
     }
   }
 
-  // 🚀 --- INICIO DEL CAMBIO --- 🚀
+  // Permisos específicos para Perfil
+  const permisosPerfil = [
+    {
+      nombre: 'Perfil.Editar',
+      descripcion: 'Permite editar la información del perfil del usuario',
+      modulo: modulosByName['Perfil'],
+    },
+    {
+      nombre: 'Perfil.Foto',
+      descripcion: 'Permite subir y actualizar la foto de perfil',
+      modulo: modulosByName['Perfil'],
+    },
+  ];
+
+  for (const perm of permisosPerfil) {
+    if (!permissionsMap.has(perm.nombre)) {
+      permissionsToCreate.push(perm);
+    }
+  }
+
   // Permisos específicos que no son CRUD
   const permisosEspecificos = [
     {
@@ -114,7 +133,6 @@ async function seed() {
       permissionsToCreate.push(perm);
     }
   }
-  // 🚀 --- FIN DEL CAMBIO --- 🚀
 
   if (permissionsToCreate.length > 0) {
     console.log(`  - Creando ${permissionsToCreate.length} nuevos permisos...`);
@@ -188,6 +206,7 @@ async function seed() {
     'Actividades.Ver',
     'Perfil.Ver',
     'Perfil.Editar',
+    'Perfil.Foto',
     'Usuarios.Ver',
     'Iot.Ver',
     'Finanzas.Ver',
@@ -202,6 +221,7 @@ async function seed() {
   const permisosAprendiz = [
     'Perfil.Ver',
     'Perfil.Editar',
+    'Perfil.Foto',
     'Cultivos.Ver',
     'Actividades.Ver',
     'Inicio.Ver',
@@ -213,6 +233,7 @@ async function seed() {
     'Inicio.Ver',
     'Perfil.Ver',
     'Perfil.Editar',
+    'Perfil.Foto',
   ];
   assignPermissions(roles.invitado, permisosInvitado);
 

@@ -84,10 +84,18 @@ export const uploadProfilePic = async (file: File) => {
 
 // Ver foto de perfil
 export const getProfilePic = async () => {
-  const res = await api.get("/usuarios/fotoperfil", {
-    responseType: 'blob',
-  });
-  return res.data;
+  try {
+    const res = await api.get("/usuarios/fotoperfil", {
+      responseType: 'blob',
+    });
+    return res.data;
+  } catch (error: any) {
+    // Si es 404, significa que no hay foto de perfil, lanzamos un error específico
+    if (error.response?.status === 404) {
+      throw new Error('NO_PROFILE_PIC');
+    }
+    throw error;
+  }
 };
 
 // Crear rol
@@ -136,6 +144,12 @@ export const updateUsuario = async (id: number, data: any) => {
 // Eliminar usuario (desactivar)
 export const deleteUsuario = async (id: number) => {
   const res = await api.delete(`/usuarios/eliminar/${id}`);
+  return res.data;
+};
+
+// Eliminar usuario permanentemente
+export const deleteUsuarioPermanente = async (id: number) => {
+  const res = await api.delete(`/usuarios/eliminar-permanente/${id}`);
   return res.data;
 };
 
