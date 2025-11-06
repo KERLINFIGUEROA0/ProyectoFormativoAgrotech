@@ -19,6 +19,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
   });
 
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
+  const [initialCoordinates, setInitialCoordinates] = useState<[number, number][]>([]);
 
   useEffect(() => {
     if (initialData) {
@@ -28,6 +29,13 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
             : `${(initialData.coordenadas.coordinates as Coordenada).lng}, ${(initialData.coordenadas.coordinates as Coordenada).lat}`)
         : '';
 
+      const coordsArray: [number, number][] = textoCoordenadas.trim().split('\n').map(line => {
+        const parts = line.split(',').map(part => part.trim());
+        const lng = parseFloat(parts[0]);
+        const lat = parseFloat(parts[1]);
+        return [lat, lng] as [number, number];
+      }).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+
       setFormData({
         nombre: initialData.nombre || '',
         // Convertir a string con coma para la edición
@@ -35,6 +43,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         estado: initialData.estado || 'En preparación',
         coordenadasTexto: textoCoordenadas
       });
+      setInitialCoordinates(coordsArray);
     } else {
       setFormData({
         nombre: '',
@@ -42,6 +51,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         estado: 'En preparación',
         coordenadasTexto: ''
       });
+      setInitialCoordinates([]);
     }
   }, [initialData]);
 
@@ -103,7 +113,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         name="nombre"
         value={formData.nombre}
         onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-        placeholder="Ej: Lote Norte A1"
+        placeholder="Ej: Lote A1"
         fullWidth
       />
       <Input
@@ -135,7 +145,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
           className="w-full h-32 border border-gray-300 rounded-md p-2 mt-1 text-sm"
         />
         <p className="text-xs text-gray-500 mt-1">
-          Puedes copiar las coordenadas directamente del archivo KML o usar la herramienta de dibujo.
+          Usa las herramienta de Dibujar en mi Mapa para crear tu lote.
         </p>
       </div>
 
@@ -148,6 +158,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         isOpen={isDrawModalOpen}
         onClose={() => setIsDrawModalOpen(false)}
         onConfirm={handleDrawConfirm}
+        initialCoordinates={initialCoordinates}
       />
     </div>
   );
