@@ -9,7 +9,7 @@ import {
 import { TipoUsuario } from '../../tipo_usuario/entities/tipo_usuario.entity';
 import { Actividad } from '../../actividades/entities/actividade.entity';
 import { UsuarioPermiso } from '../../usuarios_permisos/entities/usuarios_permiso.entity';
-import { Ficha } from '../../../fichas/entities/ficha.entity';
+import { Ficha } from '../../../modules/fichas/entities/ficha.entity';
 
 @Entity('usuarios')
 export class Usuario {

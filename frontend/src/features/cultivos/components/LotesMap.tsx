@@ -53,16 +53,16 @@ export default function LotesMap({
 
   useEffect(() => {
     // CORRECCIÓN 1: Condicionamos la ejecución a que isLoaded sea true
-    if (isLoaded && mapRef.current && selectedLote?.coordenadasPoligono) {
-      const center = getPolygonCenter(selectedLote.coordenadasPoligono);
+    if (isLoaded && mapRef.current && selectedLote?.coordenadas && selectedLote.coordenadas.type === 'polygon') {
+      const center = getPolygonCenter(selectedLote.coordenadas.coordinates as Coordenada[]);
       mapRef.current.panTo(center);
       mapRef.current.setZoom(18);
     }
   }, [selectedLote, isLoaded]); // Añadimos isLoaded a las dependencias
 
   // CORRECCIÓN 2: También condicionamos este cálculo
-  const centerForInfoWindow = isLoaded && selectedLote?.coordenadasPoligono
-    ? getPolygonCenter(selectedLote.coordenadasPoligono)
+  const centerForInfoWindow = isLoaded && selectedLote?.coordenadas && selectedLote.coordenadas.type === 'polygon'
+    ? getPolygonCenter(selectedLote.coordenadas.coordinates as Coordenada[])
     : undefined;
 
   return isLoaded ? (
@@ -82,11 +82,12 @@ export default function LotesMap({
     >
       {lotes.map(
         (lote) =>
-          lote.coordenadasPoligono &&
-          lote.coordenadasPoligono.length > 0 && (
+          lote.coordenadas &&
+          lote.coordenadas.type === 'polygon' &&
+          (lote.coordenadas.coordinates as Coordenada[]).length > 0 && (
             <Polygon
               key={lote.id}
-              paths={lote.coordenadasPoligono}
+              paths={lote.coordenadas.coordinates as Coordenada[]}
               options={{
                 fillColor: selectedLote?.id === lote.id ? "#F59E0B" : "#4CAF50",
                 fillOpacity: 0.5,

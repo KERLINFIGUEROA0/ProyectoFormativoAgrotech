@@ -17,7 +17,7 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import { CorreoService } from 'src/correo/correo.service';
 import { TipoUsuario } from '../tipo_usuario/entities/tipo_usuario.entity';
-import { Ficha } from '../../fichas/entities/ficha.entity';
+import { Ficha } from '../../modules/fichas/entities/ficha.entity';
 
 @Injectable()
 export class UsuariosService {
