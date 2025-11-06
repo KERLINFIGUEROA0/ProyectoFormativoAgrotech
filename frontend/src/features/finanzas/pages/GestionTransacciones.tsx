@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
-import { exportarExcelCultivo } from '../api/excelApi';
+import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
 import Modal from '../../../components/Modal';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
@@ -150,9 +150,22 @@ export default function GestionTransaccionesPage(): ReactElement {
                 toast.error("Por favor seleccione un cultivo primero");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm text-sm hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-sm text-sm hover:bg-blue-600"
           >
-            <FaFileExcel /> Exportar Excel
+            <FaFileExcel /> Exportar Excel por Cultivo
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await exportarExcelGeneral();
+                toast.success('Reporte Excel general generado con éxito');
+              } catch (error) {
+                toast.error('Error al generar el reporte Excel general');
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg shadow-sm text-sm hover:bg-blue-800"
+          >
+            <FaFileExcel /> Exportar Excel General
           </button>
           <button
             onClick={openModal}
