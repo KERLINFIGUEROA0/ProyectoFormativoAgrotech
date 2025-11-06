@@ -260,7 +260,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
       title="Dibujar Área en el Mapa"
     >
            {" "}
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[30rem] overflow-y-auto">
                {" "}
         <div className="flex gap-2">
                    {" "}
@@ -309,13 +309,13 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
                        {" "}
             <li>
                             Usa la herramienta de dibujo (polígono) para trazar
-              el área               deseada (mínimo 3 puntos, máximo 8 puntos)  
+              el área deseada (mínimo 3 puntos, máximo 8 puntos)  
                        {" "}
             </li>
                        {" "}
             <li>
-                            Puedes editar el polígono después de dibujarlo
-              usando las               herramientas de edición            {" "}
+              Puedes editar el polígono después de dibujarlo usando las
+              herramientas de edición {" "}
             </li>
                        {" "}
             <li>
@@ -330,22 +330,22 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
         </div>
                {" "}
         <div className="flex justify-end gap-3">
-                   {" "}
+          {" "}
           <button
             onClick={handleCancel}
-            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-center"
           >
-                        Cancelar          {" "}
+            Cancelar{" "}
           </button>
-                   {" "}
+          {" "}
           <button
             onClick={handleConfirm}
             disabled={coordinates.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-center"
           >
-                        Confirmar          {" "}
+            Confirmar{" "}
           </button>
-                 {" "}
+          {" "}
         </div>
              {" "}
       </div>
