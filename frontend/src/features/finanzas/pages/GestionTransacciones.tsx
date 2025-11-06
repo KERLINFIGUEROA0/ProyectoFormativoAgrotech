@@ -150,7 +150,7 @@ export default function GestionTransaccionesPage(): ReactElement {
                 toast.error("Por favor seleccione un cultivo primero");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-sm text-sm hover:bg-blue-600"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
           >
             <FaFileExcel /> Exportar Excel por Cultivo
           </button>
@@ -163,7 +163,7 @@ export default function GestionTransaccionesPage(): ReactElement {
                 toast.error('Error al generar el reporte Excel general');
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg shadow-sm text-sm hover:bg-blue-800"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
           >
             <FaFileExcel /> Exportar Excel General
           </button>

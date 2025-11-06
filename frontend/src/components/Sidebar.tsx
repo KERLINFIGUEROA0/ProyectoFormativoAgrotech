@@ -97,8 +97,8 @@ const menuItems: MenuItemType[] = [
     label: "Finanzas",
     icon: TrendingUp,
     children: [
-      { id: "ingresos", label: "Ingresos", icon: TrendingUp },
-      { id: "egresos", label: "Egresos", icon: Package },
+      { id: "ingresos", label: "Inicio", icon: TrendingUp },
+      { id: "egresos", label: "Transacciones", icon: Package },
     ],
   },
   {
