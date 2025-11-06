@@ -12,11 +12,20 @@ import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
 import { MaterialesModule } from '../materiales/materiales.module';
 import { ActividadesMaterialesModule } from '../actividades_materiales/actividades_materiales.module';
+import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Actividad, Usuario, Cultivo, Material, ActividadMaterial]),
+    TypeOrmModule.forFeature([
+      Actividad, 
+      Usuario, 
+      Cultivo, 
+      Material, 
+      ActividadMaterial, 
+      Gasto // <-- 2. AÑADIR GASTO AQUÍ
+    ]),
     MulterModule.register({
+      // ... (configuración de multer)
       storage: diskStorage({
         destination: (req, file, cb) => {
           console.log('📁 Configurando destino para archivo:', file.originalname);
@@ -42,10 +51,3 @@ import { ActividadesMaterialesModule } from '../actividades_materiales/actividad
   exports: [ActividadesService],
 })
 export class ActividadesModule {}
-
-
-
-
-
-
-

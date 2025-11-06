@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsDateString, IsNotEmpty, IsOptional } from 'class-validator'; // <-- AÑADIR IsOptional
 
 export class CreateGastosProduccionDto {
   @IsString()
@@ -13,8 +13,12 @@ export class CreateGastosProduccionDto {
   @IsNotEmpty()
   fecha: string;
 
+  // --- MODIFICACIONES ---
   @IsNumber()
-  @IsNotEmpty()
-  produccion: number;
-}
+  @IsOptional() // <-- Hacer opcional
+  produccion?: number;
 
+  @IsNumber()
+  @IsOptional() // <-- Añadir cultivo como opcional
+  cultivo?: number;
+}
