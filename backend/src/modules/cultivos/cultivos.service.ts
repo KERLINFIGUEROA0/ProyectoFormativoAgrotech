@@ -68,8 +68,10 @@ export class CultivosService {
       ]
     });
 
-    // Crear libro de Excel con múltiples hojas
-    const workbook = XLSX.utils.book_new();
+  // Crear libro de Excel con múltiples hojas
+  const workbook = XLSX.utils.book_new();
+
+  
 
     // 1. Hoja de Resumen General
     const resumenGeneral = cultivos.map(cultivo => {
@@ -193,8 +195,14 @@ export class CultivosService {
       throw new NotFoundException(`Cultivo con ID ${id} no encontrado`);
     }
 
-    // Crear libro de Excel con múltiples hojas
-    const workbook = XLSX.utils.book_new();
+  // Crear libro de Excel con múltiples hojas
+  const workbook = XLSX.utils.book_new();
+
+  // Añadir hoja de metadatos con la fecha de generación del reporte
+  const fechaGeneracion = new Date().toLocaleString('es-CO');
+  const metadatos = [{ 'Reporte generado el': fechaGeneracion }];
+  const metadatosSheet = XLSX.utils.json_to_sheet(metadatos);
+  XLSX.utils.book_append_sheet(workbook, metadatosSheet, 'Metadatos');
 
     // Calcular totales y estadísticas
     const totalVentas = cultivo.producciones

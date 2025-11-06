@@ -74,9 +74,14 @@ export class CultivosController {
   ) {
     const excelBuffer = await this.cultivosService.generarExcelCultivo(id);
     
+    // Añadir fecha al nombre del archivo: YYYY-MM-DD_HHMM
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename=cultivo-${id}-reporte.xlsx`,
+      'Content-Disposition': `attachment; filename=cultivo-${id}-reporte-${dateStr}.xlsx`,
       'Content-Length': excelBuffer.length,
     });
     
@@ -87,9 +92,14 @@ export class CultivosController {
   async exportarExcelGeneral(@Res() res: Response) {
     const excelBuffer = await this.cultivosService.exportarExcelGeneral();
     
+    // Añadir fecha al nombre del archivo: YYYY-MM-DD_HHMM
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': 'attachment; filename=cultivos-reporte-general.xlsx',
+      'Content-Disposition': `attachment; filename=cultivos-reporte-general-${dateStr}.xlsx`,
       'Content-Length': excelBuffer.length,
     });
     
