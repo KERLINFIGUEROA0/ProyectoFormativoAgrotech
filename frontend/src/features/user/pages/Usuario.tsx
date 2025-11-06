@@ -3,6 +3,7 @@ import Usuario from "../components/Usuario";
 import { cambiarPassword } from "../../auth/api/auth";
 import { toast } from "sonner";
 import { useOutletContext } from "react-router-dom";
+import { Input, Button } from "@heroui/react";
 
 interface UsuarioPageProps {
   initialSection?: string;
@@ -91,8 +92,14 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
               <h2 className="text-xl font-semibold mb-4">Cambiar Contraseña</h2>
 
               {errores.length > 0 && (
-                <div className="bg-red-100 text-red-700 p-3 rounded mb-3 text-sm">
-                  <ul className="list-disc pl-5">
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-semibold">Errores en el formulario</span>
+                  </div>
+                  <ul className="list-disc pl-5 text-sm space-y-1">
                     {errores.map((error, index) => (
                       <li key={index}>{error}</li>
                     ))}
@@ -101,47 +108,52 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
               )}
 
               <form className="space-y-4" onSubmit={handleSubmit}>
-                <div>
-                  <label className="block text-sm font-medium">Contraseña Actual</label>
-                  <input
-                    type="password"
-                    value={contrasenaActual}
-                    onChange={(e) => setContrasenaActual(e.target.value)}
-                    className="w-full border rounded-md p-2 mt-1 focus:outline-none focus:ring-2"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <Input
+                  label="Contraseña Actual"
+                  type="password"
+                  value={contrasenaActual}
+                  onValueChange={setContrasenaActual}
+                  placeholder="••••••••"
+                  classNames={{
+                    input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
+                    label: "text-sm font-semibold text-gray-700"
+                  }}
+                />
 
                 <div>
-                  <label className="block text-sm font-medium">Nueva Contraseña</label>
-                  <input
+                  <Input
+                    label="Nueva Contraseña"
                     type="password"
                     value={nuevaContrasena}
-                    onChange={(e) => setNuevaContrasena(e.target.value)}
-                    className="w-full border rounded-md p-2 mt-1 focus:outline-none focus:ring-2"
+                    onValueChange={setNuevaContrasena}
                     placeholder="Nueva contraseña"
+                    classNames={{
+                      input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
+                      label: "text-sm font-semibold text-gray-700"
+                    }}
                   />
                   <p className="text-xs text-gray-500 mt-1">La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números.</p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium">Confirmar Nueva Contraseña</label>
-                  <input
-                    type="password"
-                    value={confirmarContrasena}
-                    onChange={(e) => setConfirmarContrasena(e.target.value)}
-                    className="w-full border rounded-md p-2 mt-1 focus:outline-none focus:ring-2"
-                    placeholder="Confirmar contraseña"
-                  />
-                </div>
+                <Input
+                  label="Confirmar Nueva Contraseña"
+                  type="password"
+                  value={confirmarContrasena}
+                  onValueChange={setConfirmarContrasena}
+                  placeholder="Confirmar contraseña"
+                  classNames={{
+                    input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
+                    label: "text-sm font-semibold text-gray-700"
+                  }}
+                />
 
                 <div className="flex justify-end">
-                  <button
+                  <Button
                     type="submit"
-                    className="ml-auto bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                    className="ml-auto bg-[#4CAF50] hover:bg-[#45a049] text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     Cambiar Contraseña
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
