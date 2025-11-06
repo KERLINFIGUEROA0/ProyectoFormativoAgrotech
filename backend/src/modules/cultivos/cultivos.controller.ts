@@ -82,4 +82,17 @@ export class CultivosController {
     
     res.send(excelBuffer);
   }
+
+  @Get('exportar-excel/general')
+  async exportarExcelGeneral(@Res() res: Response) {
+    const excelBuffer = await this.cultivosService.exportarExcelGeneral();
+    
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename=cultivos-reporte-general.xlsx',
+      'Content-Length': excelBuffer.length,
+    });
+    
+    res.send(excelBuffer);
+  }
 }
