@@ -1,5 +1,15 @@
-import { IsString, IsDateString, IsOptional, IsNumber, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsDateString, IsOptional, IsNumber, IsIn,IsArray,IsPositive,ValidateNested } from 'class-validator';
+import { Transform , Type} from 'class-transformer';
+
+export class MaterialUsadoDto {
+  @IsNumber()
+  @IsPositive()
+  materialId: number;
+
+  @IsNumber()
+  @IsPositive()
+  cantidadUsada: number;
+}
 
 export class CreateActividadDto {
   @IsString()
@@ -11,6 +21,12 @@ export class CreateActividadDto {
   @IsString()
   @IsOptional()
   descripcion?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => MaterialUsadoDto)
+  materiales?: MaterialUsadoDto[]; // Ej: [{ materialId: 1, cantidadUsada: 5 }, { materialId: 3, cantidadUsada: 10 }]
 
   @IsString()
   @IsOptional()

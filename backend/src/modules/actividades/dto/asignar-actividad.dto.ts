@@ -1,4 +1,6 @@
-import { IsNumber, IsString, IsDateString, IsArray, ArrayNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsNumber, IsString, IsDateString, IsArray, ArrayNotEmpty, IsOptional, IsIn,ValidateNested } from 'class-validator';
+import { MaterialUsadoDto } from './create-actividade.dto';
+import { Type } from 'class-transformer';
 
 export class AsignarActividadDto {
   @IsNumber()
@@ -12,6 +14,12 @@ export class AsignarActividadDto {
 
   @IsDateString()
   fecha: string; // Fecha de la actividad
+
+  @IsArray()
+    @IsOptional()
+    @ValidateNested({ each: true })
+    @Type(() => MaterialUsadoDto)
+    materiales?: MaterialUsadoDto[];
 
   @IsArray()
   @ArrayNotEmpty()

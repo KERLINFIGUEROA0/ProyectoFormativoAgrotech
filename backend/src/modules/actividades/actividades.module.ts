@@ -8,10 +8,14 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { Material } from '../materiales/entities/materiale.entity';
+import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
+import { MaterialesModule } from '../materiales/materiales.module';
+import { ActividadesMaterialesModule } from '../actividades_materiales/actividades_materiales.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Actividad,Usuario,Cultivo]),
+    TypeOrmModule.forFeature([Actividad, Usuario, Cultivo, Material, ActividadMaterial]),
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, cb) => {
@@ -30,6 +34,8 @@ import { Cultivo } from '../cultivos/entities/cultivo.entity';
         },
       }),
     }),
+    MaterialesModule,
+    ActividadesMaterialesModule,
   ],
   controllers: [ActividadesController],
   providers: [ActividadesService],

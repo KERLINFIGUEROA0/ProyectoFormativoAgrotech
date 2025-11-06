@@ -1,21 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Upload, Plus } from "lucide-react";
+// --- AÑADIR IMPORTS ---
+import { Upload, Plus, X, Package, Hash } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import type {
   Actividad,
   EstadoActividad,
   CultivoSimple,
+  // --- AÑADIR IMPORT ---
+  MaterialUsado,
 } from "../interfaces/actividades";
+// --- AÑADIR IMPORTS ---
+import { obtenerMaterialesDisponibles } from "../api/actividadesapi";
+import type { Material } from "../../inventario/interfaces/inventario";
 
 interface FormularioActividadProps {
   actividadInicial?: Partial<Actividad>;
   cultivos: CultivoSimple[];
-  onSubmit: (formData: FormData) => void; // 👈 ahora enviamos FormData
+  onSubmit: (formData: FormData) => void;
   onCancel: () => void;
 }
 
 const estados: EstadoActividad[] = ["pendiente", "en proceso", "completado"];
+
+// --- AÑADIR ESTADO INICIAL PARA MATERIALES ---
+interface MaterialSeleccionado extends MaterialUsado {
+  nombre: string;
+  stockDisponible: number;
+}
 
 const FormularioActividad: React.FC<FormularioActividadProps> = ({
   actividadInicial,
@@ -37,24 +49,25 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
 
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
 
-  // 🔐 Obtener usuario autenticado desde AuthContext
-  useEffect(() => {
-    console.log("🔍 Diagnóstico de autenticación:");
-    console.log("Token presente:", !!token);
-    console.log("UserData presente:", !!userData);
-    console.log("UserData completo:", userData);
+  // --- AÑADIR ESTADOS PARA MATERIALES ---
+  const [materialesDisponibles, setMaterialesDisponibles] = useState<Material[]>([]);
+  const [materialesSeleccionados, setMaterialesSeleccionados] = useState<
+    MaterialSeleccionado[]
+  >([]);
+  const [materialActual, setMaterialActual] = useState<string>(''); // ID del material
+  const [cantidadMaterial, setCantidadMaterial] = useState<number | string>(1);
+  // --- FIN DE ESTADOS PARA MATERIALES ---
 
+  // 🔐 Obtener usuario autenticado (sin cambios)
+  useEffect(() => {
     if (userData && userData.identificacion) {
-      // userData.identificacion ya es number según types/auth.ts
       setUsuarioId(userData.identificacion);
-      console.log("Usuario ID establecido:", userData.identificacion);
     } else {
-      console.warn("No se pudo obtener el usuario desde AuthContext");
       setUsuarioId(null);
     }
   }, [userData, token]);
 
-  // 🧩 Si estamos editando, precargar datos
+  // 🧩 Precargar datos de edición (sin cambios)
   useEffect(() => {
     if (isEditing && actividadInicial) {
       setFormData({
@@ -67,21 +80,37 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         estado: actividadInicial.estado || "pendiente",
         imagenes: [],
       });
+      // (Nota: no se precargan materiales en modo edición por simplicidad)
     }
   }, [actividadInicial, isEditing]);
 
-  // 🔄 Manejar cambios en inputs
+  // --- AÑADIR USEEFFECT PARA CARGAR MATERIALES ---
+  useEffect(() => {
+    const cargarMateriales = async () => {
+      try {
+        const materiales = await obtenerMaterialesDisponibles();
+        setMaterialesDisponibles(materiales);
+      } catch (error) {
+        toast.error('No se pudieron cargar los materiales del inventario.');
+      }
+    };
+    cargarMateriales();
+  }, []);
+  // --- FIN DE USEEFFECT ---
+
+  // 🔄 Manejar cambios en inputs (sin cambios)
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🖼️ Manejar carga de imágenes
+  // 🖼️ Manejar carga de imágenes (sin cambios)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ... (código sin cambios)
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setFormData((prev) => ({
@@ -91,15 +120,73 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     }
   };
 
-  // ❌ Eliminar imagen de la vista previa
+  // ❌ Eliminar imagen de la vista previa (sin cambios)
   const handleRemoveImage = (index: number) => {
+    // ... (código sin cambios)
     setFormData((prev) => ({
       ...prev,
       imagenes: prev.imagenes.filter((_, i) => i !== index),
     }));
   };
 
-  // 🧾 Enviar formulario
+  // --- AÑADIR LÓGICA PARA GESTIONAR MATERIALES ---
+  const handleAddMaterial = () => {
+    const id = parseInt(materialActual);
+    const cantidad = Number(cantidadMaterial);
+
+    if (!id || !cantidad || cantidad <= 0) {
+      toast.error('Seleccione un material y una cantidad válida.');
+      return;
+    }
+
+    const material = materialesDisponibles.find((m) => m.id === id);
+    if (!material) return;
+
+    if (cantidad > material.cantidad) {
+      toast.error(
+        `Stock insuficiente. Disponible: ${material.cantidad} ${material.tipoEmpaque}`,
+      );
+      return;
+    }
+    
+    // Evitar duplicados, en su lugar, sumar cantidad
+    const existente = materialesSeleccionados.find(m => m.materialId === id);
+    if (existente) {
+        const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
+        if (nuevaCantidadTotal > material.cantidad) {
+            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${material.cantidad}`);
+            return;
+        }
+        setMaterialesSeleccionados(
+            materialesSeleccionados.map(m => 
+                m.materialId === id ? { ...m, cantidadUsada: nuevaCantidadTotal } : m
+            )
+        );
+    } else {
+        setMaterialesSeleccionados([
+          ...materialesSeleccionados,
+          {
+            materialId: material.id,
+            nombre: material.nombre,
+            cantidadUsada: cantidad,
+            stockDisponible: material.cantidad,
+          },
+        ]);
+    }
+
+    // Limpiar inputs
+    setMaterialActual('');
+    setCantidadMaterial(1);
+  };
+
+  const handleRemoveMaterial = (materialId: number) => {
+    setMaterialesSeleccionados(
+      materialesSeleccionados.filter((m) => m.materialId !== materialId),
+    );
+  };
+  // --- FIN DE LÓGICA DE MATERIALES ---
+
+  // 🧾 Enviar formulario (MODIFICADO)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -107,13 +194,11 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       toast.error("Los campos Título, Fecha y Cultivo son obligatorios.");
       return;
     }
-
     if (!usuarioId) {
       toast.error("No se pudo identificar el usuario autenticado.");
       return;
     }
 
-    // 🔧 Construir FormData para envío al backend
     const dataToSend = new FormData();
     dataToSend.append("titulo", formData.titulo.trim());
     dataToSend.append("descripcion", formData.descripcion.trim());
@@ -122,16 +207,28 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     dataToSend.append("cultivo", formData.cultivo);
     dataToSend.append("estado", formData.estado);
 
-    // 📸 Añadir imágenes al FormData
     formData.imagenes.forEach((file) => {
-      dataToSend.append("imagenes", file);
+      dataToSend.append("imagenes", file); // 'imagenes' debe coincidir con el backend
     });
 
-    onSubmit(dataToSend); // 👈 enviamos el FormData directamente
+    // --- AÑADIR MATERIALES AL FORMDATA ---
+    // El backend (controlador) debe estar preparado para recibir un string JSON
+    // y parsearlo antes de pasarlo al servicio.
+    if (materialesSeleccionados.length > 0) {
+      const materialesPayload = materialesSeleccionados.map(m => ({
+        materialId: m.materialId,
+        cantidadUsada: m.cantidadUsada
+      }));
+      dataToSend.append('materiales', JSON.stringify(materialesPayload));
+    }
+    // --- FIN DE AÑADIR MATERIALES ---
+
+    onSubmit(dataToSend);
   };
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md p-8 border border-gray-200">
+      {/* ... (Título del formulario sin cambios) ... */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
           {isEditing ? "Editar Actividad" : "Registrar Actividad"}
@@ -142,7 +239,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Columna izquierda */}
+        {/* Columna izquierda (Datos de la actividad) */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Plus className="text-green-600" />
@@ -150,7 +247,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               {isEditing ? "Editar Actividad" : "Nueva Actividad"}
             </h3>
           </div>
-
+          {/* ... (Inputs de Nombre, Fecha, Cultivo y Estado sin cambios) ... */}
           {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -219,12 +316,27 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               </select>
             </div>
           )}
+
+          {/* Descripción */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción
+            </label>
+            <textarea
+              name="descripcion"
+              value={formData.descripcion}
+              onChange={handleChange}
+              placeholder="Describe la actividad realizada..."
+              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none h-24"
+            />
+          </div>
         </div>
 
-        {/* Columna derecha */}
+        {/* Columna derecha (Imágenes y Materiales) */}
         <div className="space-y-4">
-          {/* Imágenes */}
+          {/* Imágenes (código sin cambios) */}
           <div>
+            {/* ... (Label e input de imágenes) ... */}
             <label className="block text-sm font-medium text-gray-700 mb-1">Imágenes</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50">
               <Upload className="mx-auto text-gray-400" size={32} />
@@ -242,8 +354,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                 />
               </label>
             </div>
-
-            {/* Vista previa */}
+            {/* ... (Vista previa de imágenes) ... */}
             {formData.imagenes.length > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {formData.imagenes.map((img, i) => (
@@ -266,22 +377,80 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             )}
           </div>
 
-          {/* Descripción */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción
+          {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Materiales Utilizados
             </label>
-            <textarea
-              name="descripcion"
-              value={formData.descripcion}
-              onChange={handleChange}
-              placeholder="Describe la actividad realizada..."
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none h-24"
-            />
+            <div className="p-4 border rounded-lg bg-gray-50 space-y-3">
+              <div className="flex items-end gap-2">
+                {/* Select de Material */}
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Package size={14}/> Material</label>
+                  <select
+                    value={materialActual}
+                    onChange={(e) => setMaterialActual(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {materialesDisponibles.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre} (Disp: {m.cantidad} {m.tipoEmpaque})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Input de Cantidad */}
+                <div className="w-1/3">
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
+                  <input
+                    type="number"
+                    value={cantidadMaterial}
+                    onChange={(e) => setCantidadMaterial(Number(e.target.value))}
+                    min="1"
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                {/* Botón Añadir */}
+                <button
+                  type="button"
+                  onClick={handleAddMaterial}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              {/* Lista de materiales seleccionados */}
+              <div className="space-y-2">
+                {materialesSeleccionados.map((m) => (
+                  <div
+                    key={m.materialId}
+                    className="flex justify-between items-center bg-white p-2 border rounded-md"
+                  >
+                    <div className="text-sm">
+                      <p className="font-medium">{m.nombre}</p>
+                      <p className="text-xs text-gray-500">
+                        Cantidad: {m.cantidadUsada}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMaterial(m.materialId)}
+                      className="p-1 text-red-500 hover:bg-red-100 rounded-full"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+          {/* --- FIN DE SECCIÓN DE MATERIALES --- */}
+
         </div>
 
-        {/* Botones */}
+        {/* Botones (sin cambios) */}
         <div className="col-span-1 md:col-span-2 flex justify-end gap-4 mt-6">
           <button
             type="button"
