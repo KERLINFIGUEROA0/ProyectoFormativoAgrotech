@@ -1,12 +1,32 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsArray, ValidateNested, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, IsArray, ValidateNested, IsIn, IsObject, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-// Clase para validar cada objeto de coordenada
-export class CoordenadaDto {
+
+// Clase para validar coordenadas puntuales
+export class PointCoordenadaDto {
   @IsNumber({}, { message: 'La latitud debe ser un número.' })
   lat: number;
 
   @IsNumber({}, { message: 'La longitud debe ser un número.' })
   lng: number;
+}
+
+// Clase para validar coordenadas de polígono
+export class PolygonCoordenadaDto {
+  @IsNumber({}, { message: 'La latitud debe ser un número.' })
+  lat: number;
+
+  @IsNumber({}, { message: 'La longitud debe ser un número.' })
+  lng: number;
+}
+
+// Clase para validar el objeto de coordenadas
+export class CoordenadasDto {
+  @IsString()
+  @IsIn(['point', 'polygon'], { message: 'El tipo debe ser "point" o "polygon".' })
+  type: 'point' | 'polygon';
+
+  @IsOptional()
+  coordinates?: PointCoordenadaDto | PolygonCoordenadaDto[];
 }
 
 export class CreateLoteDto {
@@ -16,6 +36,7 @@ export class CreateLoteDto {
 
   @IsNumber({}, { message: 'El área debe ser un valor numérico.' })
   @IsNotEmpty({ message: 'El área es requerida.' })
+  @Max(3000, { message: 'El área del lote no puede superar los 3000 m².' })
   area: number;
 
   @IsString()
@@ -23,9 +44,9 @@ export class CreateLoteDto {
   @IsIn(['Activo', 'Inactivo', 'En preparación'])
   estado?: string;
 
-  @IsArray()
-  @ValidateNested({ each: true }) // Valida cada objeto dentro del array
-  @Type(() => CoordenadaDto) // Le dice a class-transformer qué clase usar para la validación anidada
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CoordenadasDto)
   @IsOptional()
-  coordenadasPoligono?: CoordenadaDto[];
+  coordenadas?: CoordenadasDto;
 }

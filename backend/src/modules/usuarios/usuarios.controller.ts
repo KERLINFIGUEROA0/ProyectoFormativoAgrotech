@@ -30,7 +30,7 @@ import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { CambiarPasswordDto } from './dto/cambiar-password.dto';
-import { FichasService } from '../../fichas/fichas.service';
+import { FichasService } from '../../modules/fichas/fichas.service';
 
 
 @Controller('usuarios')

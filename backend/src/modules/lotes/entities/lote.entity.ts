@@ -32,13 +32,16 @@ export class Lote {
   })
   estado: string;
 
-  // --- NUEVO CAMPO PARA EL POLÍGONO ---
+  // --- CAMPO PARA COORDENADAS GEOESPACIALES ---
   @Column({
-    name: 'coordenadas_poligono',
-    type: 'json', // Usamos JSON para almacenar el arreglo de coordenadas
+    name: 'coordenadas',
+    type: 'jsonb', // Usamos JSONB para mejor rendimiento y consultas
     nullable: true,
   })
-  coordenadasPoligono?: Array<{ lat: number; lng: number }>;
+  coordenadas?: {
+    type: 'point' | 'polygon';
+    coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
+  };
 
   @OneToMany(() => Surco, (surco) => surco.lote)
   surcos: Surco[];
