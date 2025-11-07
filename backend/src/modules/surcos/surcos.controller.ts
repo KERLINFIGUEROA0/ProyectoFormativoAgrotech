@@ -13,6 +13,7 @@ import { SurcosService } from './surcos.service';
 import { CreateSurcoDto } from './dto/create-surco.dto';
 import { UpdateSurcoDto } from './dto/update-surco.dto';
 import { UpdateSurcoEstadoDto } from './dto/update-surco-estado.dto';
+import { UpdateSurcoMqttDto } from './dto/update-surco-mqtt.dto';
 
 @Controller('surcos')
 export class SurcosController {
@@ -88,6 +89,19 @@ export class SurcosController {
     return {
       success: true,
       message: `El estado del surco se actualizó a "${actualizado.estado}"`,
+      data: actualizado,
+    };
+  }
+
+  @Patch('actualizar/:id/mqtt')
+  async actualizarMqtt(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: UpdateSurcoMqttDto,
+  ) {
+    const actualizado = await this.surcosService.actualizarMqtt(id, data);
+    return {
+      success: true,
+      message: `La recepción de datos MQTT del surco se ${actualizado.activo_mqtt ? 'activó' : 'desactivó'}`,
       data: actualizado,
     };
   }

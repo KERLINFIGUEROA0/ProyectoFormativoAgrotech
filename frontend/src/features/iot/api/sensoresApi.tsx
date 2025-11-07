@@ -1,20 +1,6 @@
 // src/features/iot/api/sensoresApi.ts
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_BACKEND_URL;
-
-const api = axios.create({
-  baseURL: API_URL,
-});
-
-// Interceptor para añadir el token a cada petición
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import { api } from "../../../lib/axios"; // Importamos la instancia de axios configurada
+import type { LatestSensorData, SensorDataLog } from "../interfaces/iot";
 
 // --- API para Sensores ---
 export const listarSensores = async () => {
@@ -37,22 +23,40 @@ export const eliminarSensor = async (id: number) => {
   return response.data;
 };
 
-// --- API para Tipos de Sensor ---
-export const listarTiposSensor = async () => {
-    const response = await api.get('/tipo-sensor/listar');
-    return response.data;
-}
-
-// --- API para Información de Sensores ---
-
-// ✅ NUEVA: Esta función trae TODAS las últimas lecturas
-export const listarInformacionSensores = async () => {
-  const response = await api.get("/informacion-sensor"); // Llama al findAll() del backend
+export const actualizarEstadoSensor = async (id: number, estado: 'Activo' | 'Inactivo' | 'Mantenimiento') => {
+  const response = await api.patch(`/sensores/actualizar/${id}/estado`, { estado });
   return response.data;
 };
 
-// ✅ CORREGIDA: Esta función estaba apuntando a /sensor/id en lugar de /id
-export const obtenerInformacionSensor = async (sensorId: number) => {
-    const response = await api.get(`/informacion-sensor/${sensorId}`); // Llama al findOne(id)
-    return response.data;
-}
+// --- API para Tipos de Sensor ---
+export const listarTiposSensor = async () => {
+  const response = await api.get('/tipo-sensor/listar');
+  return response.data;
+};
+
+// --- API para Información de Sensores ---
+
+/**
+ * ✅ NUEVA: Obtiene el ÚLTIMO valor reportado de CADA sensor.
+ * (Ideal para el dashboard principal)
+ */
+export const getLatestSensorData = async (): Promise<LatestSensorData[]> => {
+  const response = await api.get("/informacion-sensor/latest");
+  return response.data.data; // Los datos están en response.data.data
+};
+
+/**
+ * ✅ NUEVA: Obtiene el historial de un sensor específico.
+ */
+export const getSensorHistory = async (sensorId: number): Promise<SensorDataLog[]> => {
+  const response = await api.get(`/informacion-sensor/sensor/${sensorId}`);
+  return response.data.data;
+};
+
+/**
+ * ✅ RENOMBRADA: Obtiene el log global de los últimos 50 registros.
+ */
+export const getSensorDataLog = async (): Promise<SensorDataLog[]> => {
+  const response = await api.get("/informacion-sensor");
+  return response.data.data;
+};

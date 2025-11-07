@@ -55,8 +55,10 @@ export interface LoteData {
 export interface SurcoData {
   nombre: string;
   descripcion?: string;
-  cultivoId?: number;
+  cultivoId?: number | null;
   loteId?: number; // Es opcional porque no se necesita al actualizar.
+  brokerId?: number | null;
+  activo_mqtt?: boolean;
 }
 
 /**

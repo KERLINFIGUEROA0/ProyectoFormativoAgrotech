@@ -14,7 +14,9 @@ import {
   LogOut,
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
-  Calendar, // Icono para el submenú de Cronograma
+  Calendar,
+  CirclePause,
+  WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
 
 import logoAgroFull from "../assets/logo.png";
@@ -49,7 +51,8 @@ const menuItems: MenuItemType[] = [
     icon: Cpu,
     children: [
       // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
-      { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity }, // <-- RENOMBRADO
+      { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity },
+  { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
     ],
   },
   {

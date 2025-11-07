@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { SensoresService } from './sensores.service';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
+import { UpdateSensoreEstadoDto } from './dto/update-sensore-estado.dto';
 
 @Controller('sensores')
 export class SensoresController {
@@ -27,6 +28,17 @@ export class SensoresController {
     return {
       success: true,
       message: `Sensor con ID ${id} actualizado.`,
+      data: actualizado,
+    };
+  }
+
+  // --- ENDPOINT PARA ACTIVAR/DESACTIVAR SENSOR ---
+  @Patch('actualizar/:id/estado')
+  async updateEstado(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSensoreEstadoDto) {
+    const actualizado = await this.sensoresService.updateEstado(id, dto.estado);
+    return {
+      success: true,
+      message: `El estado del sensor se actualizó a "${dto.estado}"`,
       data: actualizado,
     };
   }

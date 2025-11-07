@@ -18,32 +18,73 @@ export class InformacionSensorService {
   ) {}
 
   /**
-   * Crea un nuevo registro de información de sensor.
+   * Crea un registro a partir de un mensaje MQTT.
+   * Busca TODOS los sensores con ese tópico y guarda los datos en cada uno que esté activo.
+   * Esto permite que múltiples sensores compartan el mismo tópico pero guarden datos en diferentes surcos/lotes.
    */
+  async createFromMqtt(topic: string, payload: string): Promise<void> {
+    const valor = parseFloat(payload);
+    if (isNaN(valor)) {
+      this.logger.warn(`Payload no numérico [${payload}] en topic [${topic}]. Descartado.`);
+      return;
+    }
+
+    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el surco, lote y su broker
+    const sensores = await this.sensorRepo.find({
+      where: { topic: topic, estado: 'Activo' }, // Solo sensores activos
+      relations: ['surco', 'surco.lote', 'surco.broker'],
+    });
+
+    if (sensores.length === 0) {
+      this.logger.warn(`Mensaje en [${topic}], pero no hay sensores activos registrados en la DB para ese topic.`);
+      return;
+    }
+
+    // Guardar el dato en cada sensor que cumpla las condiciones
+    let guardados = 0;
+    for (const sensor of sensores) {
+      // Verificar que el surco tenga un broker configurado
+      if (!sensor.surco.broker) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] no tiene broker configurado. Mensaje descartado para este sensor.`);
+        continue;
+      }
+
+      // Verificar que el surco esté activo para recibir datos MQTT
+      if (!sensor.surco.activo_mqtt) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
+        continue;
+      }
+
+      try {
+        const nuevaInfo = this.infoRepo.create({
+          valor,
+          sensor, // Asocia la entidad Sensor completa
+        });
+
+        await this.infoRepo.save(nuevaInfo);
+        guardados++;
+        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco.nombre}, Lote: ${sensor.surco.lote?.nombre || 'N/A'}, Broker: ${sensor.surco.broker.nombre}) desde topic [${topic}].`);
+      } catch (error) {
+        this.logger.error(`Error guardando dato para Sensor ID [${sensor.id}]: ${error.message}`);
+      }
+    }
+
+    if (guardados > 0) {
+      this.logger.log(`✅ Dato [${valor}] guardado en ${guardados} sensor(es) desde topic [${topic}].`);
+    }
+  }
+
   async create(createDto: CreateInformacionSensorDto): Promise<InformacionSensor> {
     const { sensorId, valor } = createDto;
-
-    // 1. Busca el sensor al que pertenecen los datos
     const sensor = await this.sensorRepo.findOneBy({ id: sensorId });
     if (!sensor) {
       this.logger.error(`Sensor con ID ${sensorId} no fue encontrado.`);
       throw new NotFoundException(`Sensor con ID ${sensorId} no fue encontrado.`);
     }
-
-    // 2. Crea la nueva entrada de información
-    const nuevaInfo = this.infoRepo.create({
-      valor,
-      sensor,
-      // fechaRegistro se llena automáticamente gracias a @CreateDateColumn
-    });
-
-    // 3. Guarda en la base de datos
+    const nuevaInfo = this.infoRepo.create({ valor, sensor });
     return this.infoRepo.save(nuevaInfo);
   }
 
-  /**
-   * Devuelve los últimos 50 registros (para la API REST)
-   */
   async findAll(): Promise<InformacionSensor[]> {
     return this.infoRepo.find({
       relations: ['sensor'],
@@ -52,16 +93,77 @@ export class InformacionSensorService {
     });
   }
 
-  // --- Métodos placeholder que ya tenías ---
+  async findAllBySensor(sensorId: number, take: number = 100): Promise<InformacionSensor[]> {
+    return this.infoRepo.find({
+      where: { sensor: { id: sensorId } },
+      relations: ['sensor'],
+      order: { fechaRegistro: 'DESC' },
+      take: take,
+    });
+  }
 
+  /**
+   * ✅ NUEVO: Devuelve el último dato registrado de CADA sensor.
+   * (Esta es la consulta que necesitas para "mostrar en pantalla" el estado actual).
+   */
+  async getLatestData(): Promise<any[]> {
+    this.logger.log('🔍 Iniciando getLatestData...');
+    
+    // Usamos TypeORM QueryBuilder para obtener todos los sensores activos
+    const sensores = await this.sensorRepo.find({
+      where: { estado: 'Activo' },
+      relations: ['surco', 'surco.broker'],
+    });
+
+    this.logger.log(`✅ Encontrados ${sensores.length} sensores activos`);
+
+    if (sensores.length === 0) {
+      this.logger.warn('⚠️ No hay sensores activos');
+      return [];
+    }
+
+    // Para cada sensor, obtenemos su último dato
+    const resultados = await Promise.all(
+      sensores.map(async (sensor) => {
+        this.logger.debug(`🔎 Buscando último dato para sensor ID: ${sensor.id}, Nombre: ${sensor.nombre}`);
+        
+        // Intentamos buscar el último dato usando la relación
+        const ultimoDato = await this.infoRepo.findOne({
+          where: { sensor: { id: sensor.id } },
+          order: { fechaRegistro: 'DESC' },
+        });
+
+        if (ultimoDato) {
+          this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${ultimoDato.valor}, Fecha=${ultimoDato.fechaRegistro}`);
+        } else {
+          this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Sin datos en informacion_sensor`);
+        }
+
+        const resultado = {
+          id: sensor.id,
+          nombre: sensor.nombre,
+          topic: sensor.topic,
+          valorMinimo: sensor.valor_minimo_alerta,
+          valorMaximo: sensor.valor_maximo_alerta,
+          valor: ultimoDato ? Number(ultimoDato.valor) : null,
+          fechaRegistro: ultimoDato ? ultimoDato.fechaRegistro.toISOString() : null,
+        };
+
+        return resultado;
+      })
+    );
+
+    this.logger.log(`✅ Devolviendo ${resultados.length} resultados`);
+    return resultados;
+  }
+
+  // --- Métodos placeholder ---
   findOne(id: number) {
     return `This action returns a #${id} informacionSensor`;
   }
-
   update(id: number, updateDto: UpdateInformacionSensorDto) {
     return `This action updates a #${id} informacionSensor`;
   }
-
   remove(id: number) {
     return `This action removes a #${id} informacionSensor`;
   }

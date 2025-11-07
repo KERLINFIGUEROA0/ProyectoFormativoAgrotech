@@ -27,6 +27,8 @@ import { RolPermiso } from './src/modules/rol_permiso/entities/rol_permiso.entit
 import { Permiso } from './src/modules/permisos/entities/permiso.entity';
 import { UsuarioPermiso } from './src/modules/usuarios_permisos/entities/usuarios_permiso.entity';
 import { Modulo } from './src/modules/modulos/entities/modulo.entity';
+import { Broker } from './src/modules/mqtt-config/entities/broker.entity';
+import { Subscripcion } from './src/modules/mqtt-config/entities/subscripcion.entity';
 
 const isCompiled = __dirname.includes('dist');
 
@@ -61,6 +63,8 @@ export const AppDataSource = new DataSource({
     Permiso,
     UsuarioPermiso,
     Modulo,
+    Broker,
+    Subscripcion,
   ],
   migrations: [
     isCompiled

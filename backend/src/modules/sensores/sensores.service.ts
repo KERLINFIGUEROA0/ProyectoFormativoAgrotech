@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
 import { Surco } from '../surcos/entities/surco.entity';
-import { TipoSensor } from '../tipo_sensor/entities/tipo_sensor.entity';
+import { Broker } from '../mqtt-config/entities/broker.entity';
+import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
+import { MqttClientService } from '../mqtt-config/mqtt-client.service';
 
 @Injectable()
 export class SensoresService {
@@ -14,15 +16,18 @@ export class SensoresService {
     private readonly sensorRepo: Repository<Sensor>,
     @InjectRepository(Surco)
     private readonly surcoRepo: Repository<Surco>,
-    @InjectRepository(TipoSensor)
-    private readonly tipoSensorRepo: Repository<TipoSensor>,
+    @InjectRepository(Broker)
+    private readonly brokerRepo: Repository<Broker>,
+    @Inject(forwardRef(() => InformacionSensorService))
+    private readonly infoSensorService: InformacionSensorService,
+    @Inject(forwardRef(() => MqttClientService))
+    private readonly mqttClientService: MqttClientService,
   ) {}
 
-  // --- El método findOne es necesario para update y remove ---
   async findOne(id: number): Promise<Sensor> {
     const sensor = await this.sensorRepo.findOne({
       where: { id },
-      relations: ['surco', 'tipoSensor', 'surco.lote'],
+      relations: ['surco', 'surco.lote', 'surco.broker'],
     });
     if (!sensor) {
       throw new NotFoundException(`Sensor con ID ${id} no encontrado.`);
@@ -31,44 +36,120 @@ export class SensoresService {
   }
 
   async create(createSensoreDto: CreateSensoreDto): Promise<Sensor> {
-    const { surcoId, tipoSensorId } = createSensoreDto;
-    const surco = await this.surcoRepo.findOne({ where: { id: surcoId } });
+    const { surcoId, topic, broker } = createSensoreDto;
+
+    // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
+    // Cada sensor guardará los datos en su propio surco/lote
+
+    const surco = await this.surcoRepo.findOne({ 
+      where: { id: surcoId },
+      relations: ['broker']
+    });
     if (!surco) throw new NotFoundException(`El surco con ID ${surcoId} no fue encontrado.`);
-    const tipoSensor = await this.tipoSensorRepo.findOne({ where: { id: tipoSensorId } });
-    if (!tipoSensor) throw new NotFoundException(`El tipo de sensor con ID ${tipoSensorId} no fue encontrado.`);
-    const nuevoSensor = this.sensorRepo.create({ ...createSensoreDto, surco, tipoSensor });
-    return this.sensorRepo.save(nuevoSensor);
+
+    // Si se proporciona información del broker, crear o actualizar el broker
+    let brokerEntity: Broker | null = null;
+    if (broker) {
+      // Buscar si ya existe un broker con el mismo nombre
+      let existingBroker = await this.brokerRepo.findOne({
+        where: { nombre: broker.nombre }
+      });
+
+      if (existingBroker) {
+        // Si existe, actualizarlo con los nuevos datos
+        existingBroker.host = broker.host;
+        existingBroker.puerto = broker.puerto;
+        existingBroker.protocolo = broker.protocolo;
+        if (broker.usuario !== undefined) existingBroker.usuario = broker.usuario;
+        if (broker.password !== undefined) existingBroker.password = broker.password;
+        brokerEntity = await this.brokerRepo.save(existingBroker);
+      } else {
+        // Si no existe, crear uno nuevo
+        const nuevoBroker = this.brokerRepo.create({
+          nombre: broker.nombre,
+          host: broker.host,
+          puerto: broker.puerto,
+          protocolo: broker.protocolo,
+          usuario: broker.usuario,
+          password: broker.password,
+        });
+        brokerEntity = await this.brokerRepo.save(nuevoBroker);
+      }
+
+      // Asociar el broker al surco
+      surco.broker = brokerEntity;
+      await this.surcoRepo.save(surco);
+    }
+
+    // Crear el sensor
+    const { broker: _, ...sensorData } = createSensoreDto; // Excluir broker del DTO
+    const nuevoSensor = this.sensorRepo.create({ ...sensorData, surco });
+    const sensorGuardado = await this.sensorRepo.save(nuevoSensor);
+
+    // Insertar un dato inicial en informacion_sensor
+    // Usamos un valor promedio entre el mínimo y máximo de alerta como valor inicial
+    const valorInicial = (Number(sensorGuardado.valor_minimo_alerta) + Number(sensorGuardado.valor_maximo_alerta)) / 2;
+    
+    try {
+      await this.infoSensorService.create({
+        sensorId: sensorGuardado.id,
+        valor: Number(valorInicial.toFixed(2)),
+      });
+    } catch (error) {
+      // Si falla la inserción del dato inicial, no falla la creación del sensor
+      // Solo logueamos el error
+      console.error(`Error al insertar dato inicial para sensor ${sensorGuardado.id}:`, error);
+    }
+
+    // Suscribirse al tópico MQTT del nuevo sensor
+    try {
+      // Recargar el sensor con las relaciones para el servicio MQTT
+      const sensorCompleto = await this.sensorRepo.findOne({
+        where: { id: sensorGuardado.id },
+        relations: ['surco', 'surco.broker'],
+      });
+      
+      if (sensorCompleto) {
+        await this.mqttClientService.subscribeToNewSensor(sensorCompleto);
+      }
+    } catch (error) {
+      console.error(`Error suscribiéndose al tópico MQTT del sensor ${sensorGuardado.id}:`, error);
+    }
+
+    return sensorGuardado;
   }
 
   async findAll(): Promise<Sensor[]> {
-    return this.sensorRepo.find({ relations: ['surco', 'tipoSensor', 'surco.lote'] });
+    return this.sensorRepo.find({ relations: ['surco', 'surco.lote', 'surco.broker'] });
   }
 
-  // --- LÓGICA PARA ACTUALIZAR (EDITAR) ---
   async update(id: number, updateSensoreDto: UpdateSensoreDto): Promise<Sensor> {
-    const sensor = await this.findOne(id); // Primero, busca el sensor
-    
-    // Si se envía un nuevo surcoId o tipoSensorId, los actualiza
-    const { surcoId, tipoSensorId } = updateSensoreDto;
+    const sensor = await this.findOne(id);
+    const { surcoId, topic } = updateSensoreDto;
+
+    // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
+
     if (surcoId) {
-      const surco = await this.surcoRepo.findOne({ where: { id: surcoId } });
+      const surco = await this.surcoRepo.findOne({ 
+        where: { id: surcoId },
+        relations: ['broker']
+      });
       if (!surco) throw new NotFoundException(`El surco con ID ${surcoId} no fue encontrado.`);
       sensor.surco = surco;
     }
-    if (tipoSensorId) {
-      const tipoSensor = await this.tipoSensorRepo.findOne({ where: { id: tipoSensorId } });
-      if (!tipoSensor) throw new NotFoundException(`El tipo de sensor con ID ${tipoSensorId} no fue encontrado.`);
-      sensor.tipoSensor = tipoSensor;
-    }
     
-    // Combina los datos nuevos con los existentes
     Object.assign(sensor, updateSensoreDto);
     return this.sensorRepo.save(sensor);
   }
 
-  // --- LÓGICA PARA ELIMINAR ---
+  async updateEstado(id: number, estado: 'Activo' | 'Inactivo' | 'Mantenimiento'): Promise<Sensor> {
+    const sensor = await this.findOne(id);
+    sensor.estado = estado;
+    return this.sensorRepo.save(sensor);
+  }
+
   async remove(id: number): Promise<void> {
-    const sensor = await this.findOne(id); // Asegura que el sensor exista
-    await this.sensorRepo.remove(sensor); // Lo elimina
+    const sensor = await this.findOne(id);
+    await this.sensorRepo.remove(sensor);
   }
 }

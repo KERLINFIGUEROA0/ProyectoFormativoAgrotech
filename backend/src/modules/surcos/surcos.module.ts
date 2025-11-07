@@ -5,9 +5,10 @@ import { SurcosService } from './surcos.service';
 import { SurcosController } from './surcos.controller';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { Broker } from '../mqtt-config/entities/broker.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Surco, Lote, Cultivo])],
+  imports: [TypeOrmModule.forFeature([Surco, Lote, Cultivo, Broker])],
   controllers: [SurcosController],
   providers: [SurcosService],
 })

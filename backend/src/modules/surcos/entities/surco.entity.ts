@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColum
 import { Lote } from '../../lotes/entities/lote.entity';
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 import { Sensor } from '../../sensores/entities/sensore.entity';
+import { Broker } from '../../mqtt-config/entities/broker.entity';
 
 @Entity('surcos')
 export class Surco {
@@ -14,15 +15,20 @@ export class Surco {
   @Column({ name: 'Descripcion', length: 150, nullable: true })
   descripcion: string;
 
-  // --- CAMPO AÑADIDO ---
   @Column({ name: 'Estado', type: 'varchar', length: 50, default: 'Disponible' })
   estado: string;
+
+  @Column({ name: 'activo_mqtt', type: 'boolean', default: true })
+  activo_mqtt: boolean;
 
   @ManyToOne(() => Lote, (lote) => lote.surcos, { onDelete: 'CASCADE' })
     lote: Lote;
 
-  @ManyToOne(() => Cultivo, (cultivo) => cultivo.surcos, { onDelete: 'CASCADE' })
-    cultivo: Cultivo;
+  @ManyToOne(() => Cultivo, (cultivo) => cultivo.surcos, { onDelete: 'CASCADE', nullable: true })
+    cultivo: Cultivo | null;
+
+  @ManyToOne(() => Broker, { nullable: true, onDelete: 'SET NULL' })
+  broker: Broker | null;
 
   @OneToMany(() => Sensor, (s) => s.surco)
   sensores: Sensor[];

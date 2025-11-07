@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Sensor } from '../../sensores/entities/sensore.entity';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('tipo_sensor')
 export class TipoSensor {
@@ -9,6 +8,7 @@ export class TipoSensor {
   @Column({ name: 'Nombre', length: 100, nullable: false })
   nombre: string;
 
-  @OneToMany(() => Sensor, (sensor) => sensor.tipoSensor)
-  sensores: Sensor[];
+  // Nota: La relación con Sensor fue eliminada ya que los sensores ya no tienen tipoSensor
+  // @OneToMany(() => Sensor, (sensor) => sensor.tipoSensor)
+  // sensores: Sensor[];
 }

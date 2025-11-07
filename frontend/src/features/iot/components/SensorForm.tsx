@@ -1,96 +1,220 @@
-// src/features/iot/components/SensorForm.tsx
 import { useState, useEffect, type ReactElement } from 'react';
 import { Input, Button } from "@heroui/react";
 import { toast } from "sonner";
+import type { Sensor, Surco } from '../interfaces/iot';
 
-// ... (la interfaz SensorFormProps sigue igual)
+type SensorFormData = Partial<Omit<Sensor, 'surco'>> & {
+  surcoId?: number;
+  // Campos del broker
+  brokerNombre?: string;
+  brokerHost?: string;
+  brokerPuerto?: number;
+  brokerProtocolo?: string;
+  brokerUsuario?: string;
+  brokerPassword?: string;
+};
+
 interface SensorFormProps {
-  initialData?: any;
-  surcos: any[];
-  tiposSensor: any[];
+  initialData?: Partial<Sensor>;
+  surcos: Surco[];
   onSave: (data: any) => void;
   onCancel: () => void;
 }
 
-
-export default function SensorForm({ initialData = {}, surcos, tiposSensor, onSave, onCancel }: SensorFormProps): ReactElement {
-  const [formData, setFormData] = useState(initialData);
+export default function SensorForm({ initialData = {}, surcos, onSave, onCancel }: SensorFormProps): ReactElement {
+  const [formData, setFormData] = useState<SensorFormData>({});
 
   useEffect(() => {
-    // Cuando se edita, el surcoId y tipoSensorId pueden venir en objetos anidados
-    // Los extraemos para que los <select> funcionen correctamente
-    const flatInitialData = {
-        ...initialData,
-        surcoId: initialData.surco?.id || initialData.surcoId,
-        tipoSensorId: initialData.tipoSensor?.id || initialData.tipoSensorId,
+    const flatData: SensorFormData = {
+      id: initialData.id,
+      nombre: initialData.nombre,
+      estado: initialData.estado,
+      fecha_instalacion: initialData.fecha_instalacion,
+      valor_minimo_alerta: initialData.valor_minimo_alerta,
+      valor_maximo_alerta: initialData.valor_maximo_alerta,
+      topic: initialData.topic,
+      surcoId: initialData.surco?.id,
+      // Datos del broker del surco (si existe)
+      brokerNombre: initialData.surco?.broker?.nombre || '',
+      brokerHost: initialData.surco?.broker?.host || '',
+      brokerPuerto: initialData.surco?.broker?.puerto || 1883,
+      brokerProtocolo: initialData.surco?.broker?.protocolo || 'mqtt://',
     };
-    setFormData(flatInitialData);
+    
+    setFormData(flatData);
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = () => {
-    const { nombre, surcoId, tipoSensorId, fecha_instalacion, valor_minimo_alerta, valor_maximo_alerta } = formData;
-    if (!nombre || !surcoId || !tipoSensorId || !fecha_instalacion || !valor_minimo_alerta || !valor_maximo_alerta) {
-      toast.error("Todos los campos son requeridos.");
+    const { 
+      nombre, 
+      surcoId, 
+      fecha_instalacion, 
+      valor_minimo_alerta, 
+      valor_maximo_alerta, 
+      topic,
+      brokerNombre,
+      brokerHost,
+      brokerPuerto,
+      brokerProtocolo,
+      brokerUsuario,
+      brokerPassword
+    } = formData;
+    
+    // Validamos campos requeridos del sensor
+    if (!nombre || !surcoId || !fecha_instalacion || !valor_minimo_alerta || !valor_maximo_alerta || !topic) {
+      toast.error("Todos los campos del sensor son requeridos, incluyendo el tópico MQTT.");
       return;
     }
 
-    // --- CORRECCIÓN AQUÍ ---
-    // En lugar de enviar todo el 'formData', creamos un objeto 'payload' limpio
-    // con solo los campos que el backend necesita.
+    // Validamos campos requeridos del broker
+    if (!brokerNombre || !brokerHost || !brokerPuerto || !brokerProtocolo) {
+      toast.error("Todos los campos del broker son requeridos (nombre, host, puerto, protocolo).");
+      return;
+    }
+
+    // Creamos el payload "limpio" que espera el backend
     const payload = {
       nombre,
-      surcoId: parseInt(surcoId, 10),
-      tipoSensorId: parseInt(tipoSensorId, 10),
+      surcoId: parseInt(String(surcoId), 10),
       fecha_instalacion,
-      valor_minimo_alerta: parseFloat(valor_minimo_alerta),
-      valor_maximo_alerta: parseFloat(valor_maximo_alerta),
-      estado: formData.estado || 'Activo', // Aseguramos que el estado se envíe
+      valor_minimo_alerta: parseFloat(String(valor_minimo_alerta)),
+      valor_maximo_alerta: parseFloat(String(valor_maximo_alerta)),
+      topic: topic || null,
+      estado: formData.estado || 'Activo',
+      // Información del broker
+      broker: {
+        nombre: brokerNombre,
+        host: brokerHost,
+        puerto: parseInt(String(brokerPuerto), 10),
+        protocolo: brokerProtocolo,
+        usuario: brokerUsuario || undefined,
+        password: brokerPassword || undefined,
+      }
     };
     
     onSave(payload);
   };
 
-  // ... (el JSX del return no cambia)
   return (
     <div className="flex flex-col gap-4 p-4">
-      <Input label="Nombre del Sensor" name="nombre" value={formData.nombre || ''} onChange={handleChange} placeholder="Ej: Sensor Temperatura 01" fullWidth />
+      <Input label="Nombre del Sensor *" name="nombre" value={formData.nombre || ''} onChange={handleChange} placeholder="Ej: Sensor Temperatura 01" fullWidth />
       
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-gray-700">Ubicación (Surco) *</span>
+        <select name="surcoId" value={formData.surcoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
+          <option value="" disabled>Seleccionar surco</option>
+          {surcos.map(surco => (
+            <option key={surco.id} value={surco.id}>{surco.nombre} (Lote: {surco.lote.nombre})</option>
+          ))}
+        </select>
+      </label>
+
+      <Input label="Fecha de Instalación *" name="fecha_instalacion" type="date" value={formData.fecha_instalacion || ''} onChange={handleChange} fullWidth />
+
       <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-gray-700">Ubicación (ID de Surco)</span>
-          <select name="surcoId" value={formData.surcoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
-            <option value="" disabled>Seleccionar surco</option>
-            {surcos.map(surco => (
-              <option key={surco.id} value={surco.id}>{surco.nombre} (Lote: {surco.lote.nombre})</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-gray-700">Tipo de Sensor</span>
-          <select name="tipoSensorId" value={formData.tipoSensorId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
-            <option value="" disabled>Seleccionar tipo</option>
-            {tiposSensor.map(tipo => (
-              <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
-            ))}
-          </select>
-        </label>
+        <Input label="Valor Mínimo Alerta *" name="valor_minimo_alerta" type="number" value={String(formData.valor_minimo_alerta || '')} onChange={handleChange} placeholder="Ej: 10" fullWidth />
+        <Input label="Valor Máximo Alerta *" name="valor_maximo_alerta" type="number" value={String(formData.valor_maximo_alerta || '')} onChange={handleChange} placeholder="Ej: 30" fullWidth />
+      </div>
+      
+      <div>
+        <Input 
+          label="Tópico MQTT *" 
+          name="topic" 
+          value={formData.topic || ''} 
+          onChange={handleChange} 
+          placeholder="Ej: agrotech/sensores/lote1/temp" 
+          fullWidth 
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          El tópico MQTT donde se recibirán los datos del sensor. Puede ser compartido con otros sensores, pero cada sensor guardará los datos en su propio surco/lote.
+        </p>
       </div>
 
-      <Input label="Fecha de Instalación" name="fecha_instalacion" type="date" value={formData.fecha_instalacion || ''} onChange={handleChange} fullWidth />
+      {/* Sección de Configuración del Broker */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración del Broker MQTT</h3>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Input 
+            label="Nombre del Broker *" 
+            name="brokerNombre" 
+            value={formData.brokerNombre || ''} 
+            onChange={handleChange} 
+            placeholder="Ej: Broker Principal" 
+            fullWidth 
+            required
+          />
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-gray-700">Protocolo *</span>
+            <select 
+              name="brokerProtocolo" 
+              value={formData.brokerProtocolo || 'mqtt://'} 
+              onChange={handleChange} 
+              className="border border-gray-300 rounded-md p-2 bg-white"
+            >
+              <option value="mqtt://">mqtt://</option>
+              <option value="mqtts://">mqtts:// (SSL)</option>
+              <option value="ws://">ws:// (WebSocket)</option>
+              <option value="wss://">wss:// (WebSocket SSL)</option>
+            </select>
+          </label>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-          <Input label="Valor Mínimo del Sensor" name="valor_minimo_alerta" type="number" value={formData.valor_minimo_alerta || ''} onChange={handleChange} placeholder="Ej: 10" fullWidth />
-          <Input label="Valor Máximo del Sensor" name="valor_maximo_alerta" type="number" value={formData.valor_maximo_alerta || ''} onChange={handleChange} placeholder="Ej: 30" fullWidth />
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <Input 
+            label="Host del Broker *" 
+            name="brokerHost" 
+            value={formData.brokerHost || ''} 
+            onChange={handleChange} 
+            placeholder="Ej: test.mosquitto.org" 
+            fullWidth 
+            required
+          />
+          <Input 
+            label="Puerto *" 
+            name="brokerPuerto" 
+            type="number" 
+            value={String(formData.brokerPuerto || 1883)} 
+            onChange={handleChange} 
+            placeholder="1883" 
+            fullWidth 
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <Input 
+            label="Usuario (Opcional)" 
+            name="brokerUsuario" 
+            value={formData.brokerUsuario || ''} 
+            onChange={handleChange} 
+            placeholder="Usuario MQTT" 
+            fullWidth 
+          />
+          <Input 
+            label="Contraseña (Opcional)" 
+            name="brokerPassword" 
+            type="password" 
+            value={formData.brokerPassword || ''} 
+            onChange={handleChange} 
+            placeholder="Contraseña MQTT" 
+            fullWidth 
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          El broker se creará automáticamente y se asociará al surco seleccionado si no existe uno con el mismo nombre.
+        </p>
       </div>
       
       <div className="flex justify-end gap-3 mt-4">
         <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
-        <Button onClick={handleSubmit} color="success">Guardar Sensor</Button>
+        <Button onClick={handleSubmit} color="success">Guardar Sensor y Broker</Button>
       </div>
     </div>
   );

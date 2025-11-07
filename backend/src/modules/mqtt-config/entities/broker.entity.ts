@@ -1,0 +1,32 @@
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Subscripcion } from './subscripcion.entity';
+
+@Entity('brokers')
+export class Broker {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 100, unique: true })
+  nombre: string;
+
+  @Column({ type: 'varchar', length: 10, default: 'mqtt://' })
+  protocolo: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  host: string;
+
+  @Column({ type: 'int' })
+  puerto: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  usuario: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  password: string;
+
+  @OneToMany(() => Subscripcion, (sub) => sub.broker, {
+    cascade: true,
+    eager: true, // Carga automáticamente las subscripciones
+  })
+  subscripciones: Subscripcion[];
+}
