@@ -18,6 +18,7 @@ import DashboardFinanciero from "../features/finanzas/pages/DashboardFinanciero"
 import GestionTransaccionesPage from "../features/finanzas/pages/GestionTransacciones";
 import GestionCultivosPage from "../features/cultivos/pages/GestionCultivos";
 import GestionSensoresPage from "../features/iot/pages/GestionSensores";
+import GestionBrokersPage from "../features/iot/pages/GestionBrokersPage";
 import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion";
 import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCultivoPage";
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
@@ -59,6 +60,7 @@ export default function AppRouter() {
           <Route path="/gestion-usuarios" element={<GestionUsuariosPage />} />
           <Route path="/gestion-lotes" element={<GestionLotes />} />
           <Route path="/gestion-surcos" element={<GestionSurcos />} />
+          <Route path="/gestion-brokers" element={<GestionBrokersPage />} />
           <Route path="/gestion-sensores" element={<GestionSensoresPage />} />
           <Route path="/gestion-cultivos" element={<GestionCultivosPage />} />
           <Route path="/cultivos/:cultivoId/produccion" element={<DashboardProduccion />} /> 

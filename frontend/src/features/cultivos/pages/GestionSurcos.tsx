@@ -3,15 +3,18 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSurcosPorLote, obtenerCultivos, crearSurco, actualizarSurco, eliminarSurco, actualizarEstadoSurco } from '../api/surcosApi';
+import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import Modal from '../../../components/Modal';
 import SurcoForm from '../components/SurcoForm';
 import SurcoMap from '../components/SurcoMap';
 import type { Lote, Cultivo, Surco, SurcoData } from '../interfaces/cultivos';
+import type { Broker } from '../../iot/interfaces/iot';
 
 // --- Componente Principal ---
 export default function GestionSurcos(): ReactElement {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
+  const [brokers, setBrokers] = useState<Broker[]>([]);
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
   const [surcos, setSurcos] = useState<Surco[]>([]);
   const [loadingSurcos, setLoadingSurcos] = useState(false);
@@ -40,27 +43,24 @@ export default function GestionSurcos(): ReactElement {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [lotesRes, cultivosRes] = await Promise.all([obtenerLotes(), obtenerCultivos()]);
+        const [lotesRes, cultivosRes, brokersRes] = await Promise.all([
+          obtenerLotes(), 
+          obtenerCultivos(),
+          listarBrokers()
+        ]);
         
-        // --- ✅ INICIO DE LA CORRECCIÓN ---
-        // 1. Obtenemos todos los lotes de la API
         const todosLosLotes: Lote[] = lotesRes.data || [];
-        
-        // 2. Filtramos la lista para quedarnos solo con los que están "Activo"
         const lotesActivos = todosLosLotes.filter(lote => lote.estado === 'Activo');
 
-        // 3. Guardamos en el estado solo la lista de lotes activos
         setLotes(lotesActivos);
         setCultivos(cultivosRes.data || []);
+        setBrokers(brokersRes || []);
 
-        // 4. Si hay lotes activos, seleccionamos el primero por defecto
         if (lotesActivos.length > 0) {
           setSelectedLoteId(lotesActivos[0].id);
         } else {
-          // Si no hay ninguno, no seleccionamos nada
           setSelectedLoteId(null);
         }
-        // --- ✅ FIN DE LA CORRECCIÓN ---
 
       } catch (error) {
         toast.error("Error al cargar datos iniciales.");
@@ -160,9 +160,11 @@ export default function GestionSurcos(): ReactElement {
         descripcion: editingSurco.descripcion,
         cultivoId: editingSurco.cultivo?.id,
         loteId: editingSurco.lote.id,
+        brokerId: editingSurco.broker?.id ?? null,
       }
     : { 
         loteId: selectedLoteId ?? undefined,
+        brokerId: null,
       };
 
   return (
@@ -265,6 +267,7 @@ export default function GestionSurcos(): ReactElement {
           initialData={formInitialData}
           lotes={lotes}
           cultivos={cultivos}
+          brokers={brokers}
           onSave={handleSaveSurco}
           onCancel={handleCloseModal}
         />

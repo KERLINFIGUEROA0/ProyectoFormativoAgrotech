@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { Button } from "@heroui/react";
 import type { Lote, Cultivo, SurcoData } from '../interfaces/cultivos';
+import type { Broker } from '../../iot/interfaces/iot';
 
 // Un tipo para manejar los datos del formulario de manera interna.
 // Hacemos todo parcial para manejar el estado inicial y la creación.
@@ -10,28 +11,49 @@ type SurcoFormData = Partial<{
   descripcion: string;
   loteId: number;
   cultivoId: number;
+  brokerId: number | null;
 }>;
 
 interface SurcoFormProps {
   initialData?: SurcoFormData;
   lotes: Lote[];
   cultivos: Cultivo[];
+  brokers: Broker[];
   onSave: (data: SurcoData) => void;
   onCancel: () => void;
 }
 
-export default function SurcoForm({ initialData = {}, lotes, cultivos, onSave, onCancel }: SurcoFormProps): ReactElement {
-  const [formData, setFormData] = useState<SurcoFormData>(initialData);
+export default function SurcoForm({ initialData = {}, lotes, cultivos, brokers, onSave, onCancel }: SurcoFormProps): ReactElement {
+  const [formData, setFormData] = useState<SurcoFormData>({
+    ...initialData,
+    brokerId: initialData.brokerId ?? null,
+  });
 
   const isEditing = Boolean(initialData && initialData.id);
 
   useEffect(() => {
-    setFormData(initialData);
+    setFormData({
+      ...initialData,
+      brokerId: initialData.brokerId ?? null,
+    });
   }, [initialData]);
 
   const handleSubmit = () => {
-    // Aseguramos que los datos enviados cumplan con la interfaz SurcoData
-    onSave(formData as SurcoData);
+    // Preparamos los datos para enviar
+    const dataToSave: SurcoData = {
+      nombre: formData.nombre || '',
+      descripcion: formData.descripcion || undefined,
+      // Convertimos valores vacíos o null a undefined para que el backend los maneje correctamente
+      cultivoId: formData.cultivoId && formData.cultivoId > 0 ? formData.cultivoId : undefined,
+      brokerId: formData.brokerId && formData.brokerId > 0 ? formData.brokerId : undefined,
+    };
+    
+    // Solo agregamos loteId si no estamos editando
+    if (!isEditing && formData.loteId) {
+      dataToSave.loteId = formData.loteId;
+    }
+    
+    onSave(dataToSave);
   };
 
   const loteActualNombre = isEditing 
@@ -97,11 +119,29 @@ export default function SurcoForm({ initialData = {}, lotes, cultivos, onSave, o
           onChange={(e) => setFormData(prev => ({ ...prev, cultivoId: e.target.value ? Number(e.target.value) : undefined }))}
           className="border border-gray-300 rounded-md p-2 bg-white"
         >
-          <option value="">Sin Asignar</option> {/* Opción para no asignar cultivo */}
+          <option value="">Sin Asignar</option>
           {cultivos.map(cultivo => (
             <option key={cultivo.id} value={cultivo.id}>{cultivo.nombre}</option>
           ))}
         </select>
+      </label>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-gray-700">Broker MQTT (Opcional)</span>
+        <select
+          name="brokerId"
+          value={formData.brokerId || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, brokerId: e.target.value ? Number(e.target.value) : null }))}
+          className="border border-gray-300 rounded-md p-2 bg-white"
+        >
+          <option value="">Sin Asignar</option>
+          {brokers.map(broker => (
+            <option key={broker.id} value={broker.id}>{broker.nombre} ({broker.protocolo}{broker.host}:{broker.puerto})</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          Selecciona el broker MQTT que se usará para recibir datos de los sensores de este surco.
+        </p>
       </label>
 
       <div className="flex justify-end gap-3 mt-4">

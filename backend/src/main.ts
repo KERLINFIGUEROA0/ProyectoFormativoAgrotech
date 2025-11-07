@@ -34,12 +34,10 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.MQTT,
     options: {
-      // 👇 REEMPLAZA ESTO con la URL de tu broker MQTT
-      // Ejemplo: 'mqtt://localhost:1883' o 'mqtt://test.mosquitto.org'
-      url: 'mqtt://test.mosquitto.org:1883',
-      // Opciones adicionales si tu broker requiere autenticación
-      // username: 'tu_usuario',
-      // password: 'tu_password',
+      // Usar variable de entorno. Si no existe, usa 'test.mosquitto.org'
+      url: process.env.MQTT_BROKER_URL || 'mqtt://test.mosquitto.org:1883',
+      // username: process.env.MQTT_USER,
+      // password: process.env.MQTT_PASSWORD,
     },
   });
 
