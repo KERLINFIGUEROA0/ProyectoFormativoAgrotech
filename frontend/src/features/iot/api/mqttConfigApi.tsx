@@ -34,3 +34,9 @@ export const crearSubscripcion = async (
 export const eliminarSubscripcion = async (id: number): Promise<void> => {
   await api.delete(`/mqtt-config/subscripciones/${id}`);
 };
+
+// --- API para probar conexión ---
+export const probarConexionBroker = async (data: CreateBrokerDto): Promise<{ connected: boolean; message: string }> => {
+  const response = await api.post("/mqtt-config/brokers/test-connection", data);
+  return response.data; // Retorna { success: true, message: string, connected: boolean }
+};

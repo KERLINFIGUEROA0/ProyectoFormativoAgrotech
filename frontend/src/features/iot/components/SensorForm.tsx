@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { Input, Button } from "@heroui/react";
 import { toast } from "sonner";
+import { probarConexionBroker } from '../api/mqttConfigApi';
 import type { Sensor, Surco } from '../interfaces/iot';
 
 type SensorFormData = Partial<Omit<Sensor, 'surco'>> & {
@@ -23,6 +24,7 @@ interface SensorFormProps {
 
 export default function SensorForm({ initialData = {}, surcos, onSave, onCancel }: SensorFormProps): ReactElement {
   const [formData, setFormData] = useState<SensorFormData>({});
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   useEffect(() => {
     const flatData: SensorFormData = {
@@ -49,13 +51,49 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleTestConnection = async () => {
+    const { brokerNombre, brokerHost, brokerPuerto, brokerProtocolo, brokerUsuario, brokerPassword } = formData;
+
+    if (!brokerNombre || !brokerHost || !brokerPuerto || !brokerProtocolo) {
+      toast.error("Debes completar todos los campos del broker para probar la conexión.");
+      return;
+    }
+
+    setIsTestingConnection(true);
+    toast.info("Probando conexión con el broker MQTT...");
+
+    try {
+      const brokerData = {
+        nombre: brokerNombre,
+        host: brokerHost,
+        puerto: parseInt(String(brokerPuerto), 10),
+        protocolo: brokerProtocolo,
+        usuario: brokerUsuario || undefined,
+        password: brokerPassword || undefined,
+      };
+
+      const result = await probarConexionBroker(brokerData);
+
+      if (result.connected) {
+        toast.success("✅ Conexión exitosa con el broker MQTT!");
+      } else {
+        toast.error(`❌ Error de conexión: ${result.message}`);
+      }
+
+    } catch (error: any) {
+      toast.error(`❌ Error al probar conexión: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleSubmit = () => {
-    const { 
-      nombre, 
-      surcoId, 
-      fecha_instalacion, 
-      valor_minimo_alerta, 
-      valor_maximo_alerta, 
+    const {
+      nombre,
+      surcoId,
+      fecha_instalacion,
+      valor_minimo_alerta,
+      valor_maximo_alerta,
       topic,
       brokerNombre,
       brokerHost,
@@ -64,7 +102,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       brokerUsuario,
       brokerPassword
     } = formData;
-    
+
     // Validamos campos requeridos del sensor
     if (!nombre || !surcoId || !fecha_instalacion || !valor_minimo_alerta || !valor_maximo_alerta || !topic) {
       toast.error("Todos los campos del sensor son requeridos, incluyendo el tópico MQTT.");
@@ -96,7 +134,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         password: brokerPassword || undefined,
       }
     };
-    
+
     onSave(payload);
   };
 
@@ -218,6 +256,19 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
             fullWidth
           />
         </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button
+            onClick={handleTestConnection}
+            color="primary"
+            variant="bordered"
+            isLoading={isTestingConnection}
+            disabled={isTestingConnection}
+          >
+            {isTestingConnection ? "Probando..." : "Probar Conexión"}
+          </Button>
+        </div>
+
         <p className="text-xs text-gray-500 mt-2">
           El broker se creará automáticamente y se asociará al surco seleccionado si no existe uno con el mismo nombre.
         </p>

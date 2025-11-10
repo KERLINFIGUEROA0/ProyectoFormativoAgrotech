@@ -158,7 +158,6 @@ export default function GestionCultivosPage(): ReactElement {
                      </div>
                 </div>
 
-                {/* --- ✅ INICIO DE LA MODIFICACIÓN --- */}
                 <div className="mt-auto p-3 border-t">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex-1 flex gap-1 min-w-0">
@@ -186,7 +185,6 @@ export default function GestionCultivosPage(): ReactElement {
                     </button>
                   </div>
                 </div>
-                {/* --- ✅ FIN DE LA MODIFICACIÓN --- */}
 
               </div>
             </div>
