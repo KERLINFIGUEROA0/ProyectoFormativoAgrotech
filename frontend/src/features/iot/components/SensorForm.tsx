@@ -101,61 +101,72 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <Input label="Nombre del Sensor *" name="nombre" value={formData.nombre || ''} onChange={handleChange} placeholder="Ej: Sensor Temperatura 01" fullWidth />
-      
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-700">Ubicación (Surco) *</span>
-        <select name="surcoId" value={formData.surcoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
-          <option value="" disabled>Seleccionar surco</option>
-          {surcos.map(surco => (
-            <option key={surco.id} value={surco.id}>{surco.nombre} (Lote: {surco.lote.nombre})</option>
-          ))}
-        </select>
-      </label>
+    <div className="flex flex-col gap-4 p-4 max-h-[70vh] overflow-y-auto">
+      {/* Información Básica del Sensor */}
+      <div className="border-b pb-4 mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Información del Sensor</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input label="Nombre del Sensor *" name="nombre" value={formData.nombre || ''} onChange={handleChange} placeholder="Ej: Sensor Temperatura 01" fullWidth />
 
-      <Input label="Fecha de Instalación *" name="fecha_instalacion" type="date" value={formData.fecha_instalacion || ''} onChange={handleChange} fullWidth />
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-gray-700">Ubicación (Surco) *</span>
+            <select name="surcoId" value={formData.surcoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
+              <option value="" disabled>Seleccionar surco</option>
+              {surcos.map(surco => (
+                <option key={surco.id} value={surco.id}>{surco.nombre} (Lote: {surco.lote.nombre})</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input label="Valor Mínimo Alerta *" name="valor_minimo_alerta" type="number" value={String(formData.valor_minimo_alerta || '')} onChange={handleChange} placeholder="Ej: 10" fullWidth />
-        <Input label="Valor Máximo Alerta *" name="valor_maximo_alerta" type="number" value={String(formData.valor_maximo_alerta || '')} onChange={handleChange} placeholder="Ej: 30" fullWidth />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <Input label="Fecha de Instalación *" name="fecha_instalacion" type="date" value={formData.fecha_instalacion || ''} onChange={handleChange} fullWidth />
+
+          <Input label="Valor Mínimo Alerta *" name="valor_minimo_alerta" type="number" value={String(formData.valor_minimo_alerta || '')} onChange={handleChange} placeholder="Ej: 10" fullWidth />
+
+          <Input label="Valor Máximo Alerta *" name="valor_maximo_alerta" type="number" value={String(formData.valor_maximo_alerta || '')} onChange={handleChange} placeholder="Ej: 30" fullWidth />
+        </div>
       </div>
-      
-      <div>
-        <Input 
-          label="Tópico MQTT *" 
-          name="topic" 
-          value={formData.topic || ''} 
-          onChange={handleChange} 
-          placeholder="Ej: agrotech/sensores/lote1/temp" 
-          fullWidth 
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          El tópico MQTT donde se recibirán los datos del sensor. Puede ser compartido con otros sensores, pero cada sensor guardará los datos en su propio surco/lote.
-        </p>
+
+      {/* Configuración MQTT */}
+      <div className="border-b pb-4 mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración MQTT</h3>
+        <div>
+          <Input
+            label="Tópico MQTT *"
+            name="topic"
+            value={formData.topic || ''}
+            onChange={handleChange}
+            placeholder="Ej: agrotech/sensores/lote1/temp"
+            fullWidth
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            El tópico MQTT donde se recibirán los datos del sensor. Puede ser compartido con otros sensores, pero cada sensor guardará los datos en su propio surco/lote.
+          </p>
+        </div>
       </div>
 
       {/* Sección de Configuración del Broker */}
-      <div className="border-t pt-4 mt-4">
+      <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración del Broker MQTT</h3>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <Input 
-            label="Nombre del Broker *" 
-            name="brokerNombre" 
-            value={formData.brokerNombre || ''} 
-            onChange={handleChange} 
-            placeholder="Ej: Broker Principal" 
-            fullWidth 
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            label="Nombre del Broker *"
+            name="brokerNombre"
+            value={formData.brokerNombre || ''}
+            onChange={handleChange}
+            placeholder="Ej: Broker Principal"
+            fullWidth
             required
           />
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium text-gray-700">Protocolo *</span>
-            <select 
-              name="brokerProtocolo" 
-              value={formData.brokerProtocolo || 'mqtt://'} 
-              onChange={handleChange} 
+            <select
+              name="brokerProtocolo"
+              value={formData.brokerProtocolo || 'mqtt://'}
+              onChange={handleChange}
               className="border border-gray-300 rounded-md p-2 bg-white"
             >
               <option value="mqtt://">mqtt://</option>
@@ -166,45 +177,45 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <Input 
-            label="Host del Broker *" 
-            name="brokerHost" 
-            value={formData.brokerHost || ''} 
-            onChange={handleChange} 
-            placeholder="Ej: test.mosquitto.org" 
-            fullWidth 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <Input
+            label="Host del Broker *"
+            name="brokerHost"
+            value={formData.brokerHost || ''}
+            onChange={handleChange}
+            placeholder="Ej: test.mosquitto.org"
+            fullWidth
             required
           />
-          <Input 
-            label="Puerto *" 
-            name="brokerPuerto" 
-            type="number" 
-            value={String(formData.brokerPuerto || 1883)} 
-            onChange={handleChange} 
-            placeholder="1883" 
-            fullWidth 
+          <Input
+            label="Puerto *"
+            name="brokerPuerto"
+            type="number"
+            value={String(formData.brokerPuerto || 1883)}
+            onChange={handleChange}
+            placeholder="1883"
+            fullWidth
             required
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <Input 
-            label="Usuario (Opcional)" 
-            name="brokerUsuario" 
-            value={formData.brokerUsuario || ''} 
-            onChange={handleChange} 
-            placeholder="Usuario MQTT" 
-            fullWidth 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <Input
+            label="Usuario (Opcional)"
+            name="brokerUsuario"
+            value={formData.brokerUsuario || ''}
+            onChange={handleChange}
+            placeholder="Usuario MQTT"
+            fullWidth
           />
-          <Input 
-            label="Contraseña (Opcional)" 
-            name="brokerPassword" 
-            type="password" 
-            value={formData.brokerPassword || ''} 
-            onChange={handleChange} 
-            placeholder="Contraseña MQTT" 
-            fullWidth 
+          <Input
+            label="Contraseña (Opcional)"
+            name="brokerPassword"
+            type="password"
+            value={formData.brokerPassword || ''}
+            onChange={handleChange}
+            placeholder="Contraseña MQTT"
+            fullWidth
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
@@ -212,7 +223,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         </p>
       </div>
       
-      <div className="flex justify-end gap-3 mt-4">
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
         <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
         <Button onClick={handleSubmit} color="success">Guardar Sensor y Broker</Button>
       </div>

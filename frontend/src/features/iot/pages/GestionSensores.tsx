@@ -479,7 +479,7 @@ export default function GestionSensoresPage(): ReactElement {
       </div>
 
       {/* Modal para agregar/editar */}
-      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'}>
+      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'} size="4xl">
         <SensorForm
           initialData={editingSensor || {}}
           surcos={surcos}

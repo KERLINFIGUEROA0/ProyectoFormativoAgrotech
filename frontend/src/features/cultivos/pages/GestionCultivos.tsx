@@ -110,73 +110,89 @@ export default function GestionCultivosPage(): ReactElement {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {cultivos.map((cultivo) => (
-          <div key={cultivo.id} className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 flex flex-col h-[450px]">
-            <div className="relative w-full h-48">
-              <img
-                className="w-full h-full object-cover"
-                src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${cultivo.img}`}
-                alt={cultivo.nombre}
-                onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x160/cccccc/000000?text=Sin+Imagen'; }}
-              />
-              <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full text-white ${cultivo.Estado === 'Activo' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                {cultivo.Estado}
-              </span>
+      {cultivos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="text-center">
+            <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
             </div>
-            <div className="p-4 flex flex-col h-full">
-              <h3 className="text-lg font-bold text-gray-900">{cultivo.nombre}</h3>
-              <p className="text-sm text-gray-600 mt-1 truncate">{cultivo.descripcion}</p>
-
-              <div className="grid grid-cols-2 gap-x-4 mt-4 text-sm">
-                  <div>
-                      <p className="text-gray-500">Cantidad:</p>
-                      <p className="font-semibold">{cultivo.cantidad} plantas</p>
-                  </div>
-                  <div>
-                      <p className="text-gray-500">Tipo:</p>
-                      <p className="font-semibold">{cultivo.tipoCultivo?.nombre}</p>
-                  </div>
-                  <div className="col-span-2 mt-2">
-                      <p className="text-gray-500">Plantado:</p>
-                      <p className="font-semibold">{new Date(cultivo.Fecha_Plantado).toLocaleDateString()}</p>
-                  </div>
-              </div>
-
-              {/* --- ✅ INICIO DE LA MODIFICACIÓN --- */}
-              <div className="mt-auto p-3 border-t">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex-1 flex gap-1 min-w-0">
-                    <button 
-                      onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)} 
-                      className="flex-1 flex items-center justify-center gap-1 bg-green-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-green-600 whitespace-nowrap min-w-0"
-                    >
-                      <DollarSign size={14} />
-                      <span className="truncate">Producción</span>
-                    </button>
-                    <button 
-                      onClick={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)} 
-                      className="flex-1 flex items-center justify-center gap-1 bg-blue-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-blue-600 whitespace-nowrap min-w-0"
-                    >
-                      <BookCheck size={14} />
-                      <span className="truncate">Trazabilidad</span>
-                    </button>
-                  </div>
-                  <button 
-                    onClick={() => openModal(cultivo)} 
-                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center text-blue-500 hover:bg-blue-100 rounded-full"
-                    title="Editar cultivo"
-                  >
-                    <Edit size={14} />
-                  </button>
-                </div>
-              </div>
-              {/* --- ✅ FIN DE LA MODIFICACIÓN --- */}
-
-            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No hay cultivos registrados</h3>
+            <p className="text-gray-600 max-w-md">
+              Registre aquí para gestionar tu producción agrícola de manera eficiente.
+            </p>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {cultivos.map((cultivo) => (
+            <div key={cultivo.id} className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 flex flex-col h-[450px]">
+              <div className="relative w-full h-48">
+                <img
+                  className="w-full h-full object-cover"
+                  src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${cultivo.img}`}
+                  alt={cultivo.nombre}
+                  onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x160/cccccc/000000?text=Sin+Imagen'; }}
+                />
+                <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full text-white ${cultivo.Estado === 'Activo' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+                  {cultivo.Estado}
+                </span>
+              </div>
+              <div className="p-4 flex flex-col h-full">
+                <h3 className="text-lg font-bold text-gray-900">{cultivo.nombre}</h3>
+                <p className="text-sm text-gray-600 mt-1 truncate">{cultivo.descripcion}</p>
+
+                <div className="grid grid-cols-2 gap-x-4 mt-4 text-sm">
+                     <div>
+                         <p className="text-gray-500">Cantidad:</p>
+                         <p className="font-semibold">{cultivo.cantidad} plantas</p>
+                     </div>
+                     <div>
+                         <p className="text-gray-500">Tipo:</p>
+                         <p className="font-semibold">{cultivo.tipoCultivo?.nombre}</p>
+                     </div>
+                     <div className="col-span-2 mt-2">
+                         <p className="text-gray-500">Plantado:</p>
+                         <p className="font-semibold">{new Date(cultivo.Fecha_Plantado).toLocaleDateString()}</p>
+                     </div>
+                </div>
+
+                {/* --- ✅ INICIO DE LA MODIFICACIÓN --- */}
+                <div className="mt-auto p-3 border-t">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex-1 flex gap-1 min-w-0">
+                      <button
+                        onClick={() => navigate(`/cultivos/${cultivo.id}/produccion`)}
+                        className="flex-1 flex items-center justify-center gap-1 bg-green-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-green-600 whitespace-nowrap min-w-0"
+                      >
+                        <DollarSign size={14} />
+                        <span className="truncate">Producción</span>
+                      </button>
+                      <button
+                        onClick={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)}
+                        className="flex-1 flex items-center justify-center gap-1 bg-blue-500 text-white px-2 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-blue-600 whitespace-nowrap min-w-0"
+                      >
+                        <BookCheck size={14} />
+                        <span className="truncate">Trazabilidad</span>
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => openModal(cultivo)}
+                      className="w-7 h-7 flex-shrink-0 flex items-center justify-center text-blue-500 hover:bg-blue-100 rounded-full"
+                      title="Editar cultivo"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  </div>
+                </div>
+                {/* --- ✅ FIN DE LA MODIFICACIÓN --- */}
+
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingCultivo ? 'Editar Cultivo' : 'Agregar Nuevo Cultivo'}>
         <CultivoForm
