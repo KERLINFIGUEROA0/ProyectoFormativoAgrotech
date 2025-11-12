@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
   Calendar,
-  CirclePause,
+  // CirclePause,
   WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
 
@@ -80,8 +80,8 @@ const menuItems: MenuItemType[] = [
     label: "Fitosanitario",
     icon: Activity,
     children: [
-      { id: "fitosanitario", label: "Fitosanitario", icon: Activity },
-      { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
+      { id: "fitosanitario", label: "EPA", icon: Activity },
+      // { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
     ],
   },
   // --- NUEVO MENÚ DE ACTIVIDADES ---

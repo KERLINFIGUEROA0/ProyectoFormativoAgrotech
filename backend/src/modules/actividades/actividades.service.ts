@@ -4,7 +4,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In, DataSource } from 'typeorm';
+// --- 1. ASEGÚRATE DE QUE 'Like' ESTÉ IMPORTADO ---
+import { Repository, ILike, In, DataSource, Like } from 'typeorm';
 import { Actividad } from './entities/actividade.entity';
 import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
@@ -39,9 +40,9 @@ export class ActividadesService {
     // 1. Extraemos los materiales y el cultivoId
     const { materiales, cultivo: cultivoId, ...dtoActividad } = dto;
 
-  // 1.5 Cargar la entidad Cultivo
-  // Usar null para coincidir con el tipo devuelto por findOneBy
-  let cultivoEntidad: Cultivo | null = null;
+    // 1.5 Cargar la entidad Cultivo
+    // Usar null para coincidir con el tipo devuelto por findOneBy
+    let cultivoEntidad: Cultivo | null = null;
     if (cultivoId) {
       cultivoEntidad = await this.cultivoRepository.findOneBy({ id: cultivoId });
       if (!cultivoEntidad) {
@@ -114,7 +115,7 @@ export class ActividadesService {
     }
   }
   
-  // ... (findAll, findOne, update, remove, search no necesitan cambios) ...
+  // ... (findAll y findOne quedan igual) ...
   async findAll() {
     // ...
     const actividades = await this.actividadRepository.find({
@@ -142,29 +143,131 @@ export class ActividadesService {
     return actividad;
   }
 
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Este es el método que reemplaza tu 'update' vacío
   async update(id: number, dto: UpdateActividadDto) {
-    // ...
-    const updateData: any = {};
+    // 1. Extraer materiales y el cultivoId
+    const { materiales, cultivo: cultivoId, ...dtoActividad } = dto;
 
-    if (dto.titulo !== undefined) updateData.titulo = dto.titulo;
-    if (dto.fecha !== undefined) updateData.fecha = dto.fecha;
-    if (dto.descripcion !== undefined) updateData.descripcion = dto.descripcion;
-    if (dto.img !== undefined) updateData.img = dto.img;
-    if (dto.estado !== undefined) updateData.estado = dto.estado;
+    // 2. Iniciar Transacción
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (dto.usuario !== undefined) {
-      updateData.usuario = { identificacion: dto.usuario };
-    }
-    if (dto.cultivo !== undefined) {
-      updateData.cultivo = { id: dto.cultivo };
-    }
-    if (Object.keys(updateData).length === 0) {
-      throw new BadRequestException('No hay campos válidos para actualizar');
-    }
+    try {
+      // 3. Encontrar la actividad y sus relaciones antiguas
+      const actividad = await queryRunner.manager.findOne(Actividad, {
+        where: { id },
+        relations: ['actividadMaterial', 'actividadMaterial.material', 'cultivo'],
+      });
 
-    await this.actividadRepository.update(id, updateData);
-    return this.findOne(id);
+      if (!actividad) {
+        throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
+      }
+      
+      // Repositorios dentro de la transacción
+      const gastoRepo = queryRunner.manager.getRepository(Gasto);
+      const materialRepo = queryRunner.manager.getRepository(Material);
+      const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
+
+      // --- 4. REVERTIR LÓGICA ANTERIOR (Materiales y Gastos) ---
+
+      // 4a. Devolver el stock de los materiales antiguos
+      if (actividad.actividadMaterial && actividad.actividadMaterial.length > 0) {
+        for (const am of actividad.actividadMaterial) {
+          // Usamos 'am.material.id' porque cargamos la relación
+          const material = await materialRepo.findOneBy({ id: am.material.id });
+          if (material) {
+            material.cantidad += am.cantidadUsada; // Devolver stock
+            await queryRunner.manager.save(material);
+          }
+          // 4b. Borrar la entrada de la tabla de unión
+          await queryRunner.manager.remove(am);
+        }
+      }
+      
+      // 4c. Borrar los gastos antiguos (basado en la descripción que usa el método 'create')
+      // Usamos el título que la actividad TENÍA ANTES de actualizarse
+      const tituloAntiguo = actividad.titulo;
+      if (actividad.cultivo) {
+          await gastoRepo.delete({
+            cultivo: { id: actividad.cultivo.id },
+            // Usamos 'Like' (o 'ILike') para buscar la descripción
+            descripcion: Like(`% (Actividad: ${tituloAntiguo})%`) 
+          });
+      }
+
+      // --- 5. ACTUALIZAR LOS DATOS SIMPLES DE LA ACTIVIDAD ---
+      
+      // Si se envía un nuevo cultivoId, cargarlo
+      let cultivoEntidad: Cultivo | null = actividad.cultivo;
+      if (cultivoId) {
+          cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
+          if (!cultivoEntidad) {
+              throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
+          }
+      }
+      
+      // Aplicar cambios al DTO de actividad (titulo, descripcion, estado, etc.)
+      Object.assign(actividad, dtoActividad); 
+      actividad.cultivo = cultivoEntidad; // Asignar el nuevo cultivo
+      
+      // Guardar los cambios de la actividad (ej. nuevo título)
+      const saved = await queryRunner.manager.save(actividad);
+
+
+      // --- 6. APLICAR LÓGICA DE 'CREATE' PARA LOS NUEVOS MATERIALES ---
+      // (dto.materiales es la NUEVA lista completa que viene del frontend)
+      if (materiales && materiales.length > 0) {
+        for (const item of materiales) {
+          const { materialId, cantidadUsada } = item;
+          const material = await materialRepo.findOne({ where: { id: materialId } });
+          
+          if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
+          if (material.cantidad < cantidadUsada) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
+
+          // Restamos el stock NUEVO
+          material.cantidad -= cantidadUsada;
+          await queryRunner.manager.save(material);
+
+          // Creamos el NUEVO registro en la tabla de unión
+          const nuevaUnion = actMaterialRepo.create({
+            actividad: saved,
+            material: material,
+            cantidadUsada: cantidadUsada,
+          });
+          await queryRunner.manager.save(nuevaUnion);
+
+          // Creamos el NUEVO gasto
+          const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+          if (costoTotal > 0) {
+            const nuevoGasto = gastoRepo.create({
+              descripcion: `Costo material: ${material.nombre} (Actividad: ${saved.titulo})`, // Usar el título NUEVO
+              monto: costoTotal,
+              fecha: saved.fecha, 
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+            });
+            await queryRunner.manager.save(nuevoGasto);
+          }
+        }
+      }
+
+      // --- 7. FINALIZAR TRANSACCIÓN ---
+      await queryRunner.commitTransaction();
+      
+      // Devolver la actividad actualizada
+      return this.findOne(id); 
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
+  // --- FIN DE LA CORRECCIÓN ---
+
 
   async remove(id: number) {
     // ...

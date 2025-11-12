@@ -67,7 +67,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     }
   }, [userData, token]);
 
-  // 🧩 Precargar datos de edición (sin cambios)
+  // 🧩 Precargar datos de edición (MODIFICADO)
   useEffect(() => {
     if (isEditing && actividadInicial) {
       setFormData({
@@ -80,9 +80,35 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         estado: actividadInicial.estado || "pendiente",
         imagenes: [],
       });
-      // (Nota: no se precargan materiales en modo edición por simplicidad)
+      
+      // --- INICIO DE CORRECCIÓN 2: Precargar materiales existentes ---
+      // (Se ejecuta solo si hay materiales en la actividad Y la lista de inventario ya cargó)
+     if (actividadInicial.actividadMaterial && materialesDisponibles.length > 0) {
+        
+        const materialesCargados = actividadInicial.actividadMaterial.map(am => {
+          
+          // Leemos la estructura anidada correcta de tu interfaz
+          const materialId = am.material?.id;
+          const materialNombre = am.material?.nombre || 'Material Desconocido';
+          
+          // Buscamos el material en el inventario para obtener el stock MÁS RECIENTE
+          const materialInfo = materialesDisponibles.find(m => m.id === materialId);
+          
+          return {
+            materialId: materialId,
+            cantidadUsada: am.cantidadUsada,
+            nombre: materialNombre,
+            // Usamos el stock actual del inventario, no el stock que tenía cuando se creó la actividad
+            stockDisponible: materialInfo?.cantidad || 0, 
+          };
+        });
+        
+        setMaterialesSeleccionados(materialesCargados);
+      }
+      // --- FIN DE CORRECCIÓN 2 ---
+      
     }
-  }, [actividadInicial, isEditing]);
+  }, [actividadInicial, isEditing, materialesDisponibles]); // <-- CORRECCIÓN: Añadir materialesDisponibles
 
   // --- AÑADIR USEEFFECT PARA CARGAR MATERIALES ---
   useEffect(() => {
@@ -110,7 +136,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
 
   // 🖼️ Manejar carga de imágenes (sin cambios)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ... (código sin cambios)
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setFormData((prev) => ({
@@ -122,14 +147,13 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
 
   // ❌ Eliminar imagen de la vista previa (sin cambios)
   const handleRemoveImage = (index: number) => {
-    // ... (código sin cambios)
     setFormData((prev) => ({
       ...prev,
       imagenes: prev.imagenes.filter((_, i) => i !== index),
     }));
   };
 
-  // --- AÑADIR LÓGICA PARA GESTIONAR MATERIALES ---
+  // --- AÑADIR LÓGICA PARA GESTIONAR MATERIALES (MODIFICADO) ---
   const handleAddMaterial = () => {
     const id = parseInt(materialActual);
     const cantidad = Number(cantidadMaterial);
@@ -157,14 +181,20 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${material.cantidad}`);
             return;
         }
-        setMaterialesSeleccionados(
-            materialesSeleccionados.map(m => 
+        
+        // --- INICIO DE CORRECCIÓN 1 (Caso Existente) ---
+        setMaterialesSeleccionados((prevMateriales) => 
+            prevMateriales.map(m => 
                 m.materialId === id ? { ...m, cantidadUsada: nuevaCantidadTotal } : m
             )
         );
+        // --- FIN DE CORRECCIÓN 1 ---
+
     } else {
-        setMaterialesSeleccionados([
-          ...materialesSeleccionados,
+    
+        // --- INICIO DE CORRECCIÓN 1 (Caso Nuevo) ---
+        setMaterialesSeleccionados((prevMateriales) => [
+          ...prevMateriales,
           {
             materialId: material.id,
             nombre: material.nombre,
@@ -172,6 +202,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             stockDisponible: material.cantidad,
           },
         ]);
+        // --- FIN DE CORRECCIÓN 1 ---
     }
 
     // Limpiar inputs

@@ -24,7 +24,7 @@ import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCult
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
 import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFitosanitarioPage";
-import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
+// import GestionTratamientosPage from "../features/fitosanitario/pages/GestionTratamientosPage";
 import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
 import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
 import GestionFichasPage from "../features/fichas/pages/GestionFichas";
@@ -70,7 +70,7 @@ export default function AppRouter() {
           <Route path="/cultivos/:cultivoId/trazabilidad" element={<TrazabilidadCultivoPage />} />
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
           <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
-          <Route path="/tratamientos" element={<GestionTratamientosPage />} />
+          {/* <Route path="/tratamientos" element={<GestionTratamientosPage />} /> */}
           <Route path="/stock" element={<GestionInventarioPage />} />
           <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
            <Route path="/gestion-fichas" element={<GestionFichasPage />} />

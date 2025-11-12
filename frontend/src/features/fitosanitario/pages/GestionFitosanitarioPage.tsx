@@ -324,7 +324,7 @@ export default function GestionFitosanitarioPage() {
             <EpaCard
               key={epa.id}
               epa={epa}
-              onClick={() => handleCardClick(epa)}
+              // onClick={() => handleCardClick(epa)}
               onEdit={(e) => {
                 e.stopPropagation();
                 handleOpenFormModal(epa);
