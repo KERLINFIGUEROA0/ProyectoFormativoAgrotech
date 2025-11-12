@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsEmail, IsOptional, MinLength, Length, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsEmail, IsOptional, MinLength, Length, IsIn, Matches } from 'class-validator';
 
 export class UpdateUsuarioDto {
   @IsOptional()
@@ -35,4 +35,10 @@ export class UpdateUsuarioDto {
   @IsOptional()
   @IsNumber({}, { message: 'El ID del rol debe ser un número.' })
   tipoUsuario?: number;
+
+  @IsOptional()
+  @IsString({ message: 'El id_ficha debe ser un texto.' })
+  @Length(6, 8, { message: 'El id_ficha debe tener entre 6 y 8 caracteres.' })
+  @Matches(/^\d+$/, { message: 'El id_ficha debe contener solo números.' })
+  id_ficha?: string;
 }

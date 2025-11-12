@@ -1,6 +1,14 @@
 import { useState, useEffect, type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff, ChevronLeft, ChevronRight, BarChart3, TrendingUp } from 'lucide-react';
+
+// Función helper para restar 5 horas a la fecha
+const subtract5Hours = (dateString: string | null): Date | null => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  date.setHours(date.getHours() - 5);
+  return date;
+};
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area
 } from 'recharts';
@@ -112,7 +120,7 @@ function SensorCard({ sensor, latestData, onEdit, onDelete, onViewHistory, onTog
         <Clock size={14} className="mr-2" />
         Última lectura:{' '}
         {latestData?.fechaRegistro ? (
-          new Date(latestData.fechaRegistro).toLocaleTimeString('es-CO', {
+          subtract5Hours(latestData.fechaRegistro)?.toLocaleTimeString('es-CO', {
             hour: '2-digit', minute: '2-digit', hour12: true
           })
         ) : (sensor.topic ? 'Esperando datos...' : 'Tópico no configurado')}
@@ -151,13 +159,16 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
       .then(data => {
         const formattedHistory = (data || [])
           .sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime())
-          .map(reading => ({
-            time: new Date(reading.fechaRegistro).toLocaleTimeString('es-CO', {
-              hour: '2-digit', minute: '2-digit'
-            }),
-            fecha: new Date(reading.fechaRegistro).toLocaleDateString('es-CO'),
-            valor: parseFloat(String(reading.valor)),
-          }));
+          .map(reading => {
+            const adjustedDate = subtract5Hours(reading.fechaRegistro);
+            return {
+              time: adjustedDate?.toLocaleTimeString('es-CO', {
+                hour: '2-digit', minute: '2-digit'
+              }) || '',
+              fecha: adjustedDate?.toLocaleDateString('es-CO') || '',
+              valor: parseFloat(String(reading.valor)),
+            };
+          });
         setHistory(formattedHistory);
       })
       .catch(() => toast.error("Error al cargar el historial del sensor."))
@@ -479,7 +490,7 @@ export default function GestionSensoresPage(): ReactElement {
       </div>
 
       {/* Modal para agregar/editar */}
-      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'}>
+      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'} size="4xl">
         <SensorForm
           initialData={editingSensor || {}}
           surcos={surcos}

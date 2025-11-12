@@ -1,17 +1,14 @@
 // src/features/actividades/pages/PrincipalAcvidades.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { 
-  ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield, Plus 
+import {
+  ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield
 } from 'lucide-react';
 
-import { listarActividades, registrarActividad, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
-// ✅ 1. Importamos los tipos que faltaban para los estados
+import { listarActividades, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
 import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
 
 import Modal from '../../../components/Modal';
-import FormularioActividad from '../components/FormularioActividad';
-// ✅ 2. Se corrige la ruta de importación (se quita el espacio al final)
 import AsignacionActividadForm from '../components/AsignacionActividadForm';
 
 // --- Componente de Tarjeta de Acceso Rápido (sin cambios) ---
@@ -114,8 +111,7 @@ const ActividadesPrincipal: React.FC = () => {
   const [usuarios, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   
-  const [isRegistroModalOpen, setIsRegistroModalOpen] = useState(false); 
-  const [isAsignacionModalOpen, setIsAsignacionModalOpen] = useState(false); 
+  const [isAsignacionModalOpen, setIsAsignacionModalOpen] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   const cargarActividades = useCallback(async () => {
@@ -152,18 +148,6 @@ const ActividadesPrincipal: React.FC = () => {
     cargarDatosSecundarios();
   }, [cargarActividades, cargarDatosSecundarios]);
 
-  const handleSaveRegistro = async (payload: FormData) => {
-    const toastId = toast.loading('Registrando actividad...');
-    try {
-      await registrarActividad(payload);
-      toast.success('Actividad registrada correctamente', { id: toastId });
-      setIsRegistroModalOpen(false);
-      await cargarActividades();
-    } catch {
-      toast.error('Error al registrar actividad', { id: toastId });
-    }
-  };
-
   return (
     <div className="p-6 bg-gray-50 min-h-screen space-y-8">
       <div className="flex items-center justify-between p-6 bg-green-600 text-white rounded-lg shadow-lg">
@@ -172,25 +156,18 @@ const ActividadesPrincipal: React.FC = () => {
           <p className="text-lg">Administra eficientemente todas las actividades agrícolas</p>
         </div>
         {/* Este ícono debe estar en tu carpeta public/ para que funcione */}
-        <img src="/tractor-icon.svg" alt="Tractor" className="w-12 h-12 text-white" />
+        <img src="/tractor-icon.svg" alt="Tractor" className="w-18 h-18 text-white" />
       </div>
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <QuickAccessCard
-            title="Registrar Nueva Actividad"
-            description="Agrega rápidamente una nueva actividad al sistema"
-            icon={<Plus className="w-6 h-6 text-green-600" />}
-            colorClass="border-green-500"
-            action={() => setIsRegistroModalOpen(true)}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <QuickAccessCard
             title="Asignación de Actividades"
             description="Asigna tareas específicas a los aprendices"
             icon={<ClipboardList className="w-6 h-6 text-blue-600" />}
             colorClass="border-blue-500"
-            action={() => setIsAsignacionModalOpen(true)} 
+            action={() => setIsAsignacionModalOpen(true)}
           />
           <QuickAccessCard
             title="Gestión de Actividades"
@@ -227,19 +204,6 @@ const ActividadesPrincipal: React.FC = () => {
       </div>
 
       <Modal
-        isOpen={isRegistroModalOpen}
-        onClose={() => setIsRegistroModalOpen(false)}
-        title="Registrar Nueva Actividad"
-      >
-        <FormularioActividad
-          actividadInicial={{}}
-          cultivos={cultivos}
-          onSubmit={handleSaveRegistro}
-          onCancel={() => setIsRegistroModalOpen(false)}
-        />
-      </Modal>
-      
-      <Modal
         isOpen={isAsignacionModalOpen}
         onClose={() => setIsAsignacionModalOpen(false)}
         title="Asignación de Actividades"
@@ -247,8 +211,8 @@ const ActividadesPrincipal: React.FC = () => {
         <AsignacionActividadForm
           usuarios={usuarios}
           cultivos={cultivos}
-          onCancel={() => setIsAsignacionModalOpen(false)} 
-          onSuccess={cargarActividades} 
+          onCancel={() => setIsAsignacionModalOpen(false)}
+          onSuccess={cargarActividades}
         />
       </Modal>
     </div>

@@ -11,15 +11,17 @@ export interface Permiso {
   nombre: string;
   descripcion: string;
   activo: boolean;
+  modulo?: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+  };
 }
 
 export interface PermisoRol extends Permiso {
-  // Para roles: todos los permisos con su estado activo/inactivo
 }
 
 export interface PermisoUsuario extends Permiso {
-  // Para usuarios: solo permisos adicionales (no heredados del rol)
-  // activo indica si está asignado individualmente al usuario
 }
 
 export interface Usuario {
@@ -31,9 +33,14 @@ export interface Usuario {
   correo: string;
   telefono: string;
   estado: boolean;
-  tipoUsuario?: { 
+  tipoUsuario?: {
     id: number;
     nombre: string;
+  };
+  ficha?: {
+    id: number;
+    nombre: string;
+    id_ficha: string;
   };
   permisos?: Record<string, boolean>;
 }
@@ -46,4 +53,5 @@ export interface UsuarioForm {
   correo?: string;
   telefono?: string;
   rolId?: number;
+  id_ficha?: string;
 }

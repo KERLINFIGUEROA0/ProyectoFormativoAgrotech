@@ -48,11 +48,28 @@ export class TrazabilidadService {
     // Eventos de Actividades
     actividades.forEach((act) => {
       if (act.fecha) { // Solo añadimos si tiene fecha
+        
+        // 1. Añadir descripción base
+        let descripcionCompleta = act.descripcion || 'Actividad registrada.';
+
+        // 2. Añadir el usuario asignado (si existe)
+        if (act.usuario) {
+          descripcionCompleta += `\nAsignado a: ${act.usuario.nombre} ${act.usuario.apellidos}.`;
+        }
+
+        // 3. Añadir los materiales usados (si existen)
+        if (act.actividadMaterial && act.actividadMaterial.length > 0) {
+          const materialesList = act.actividadMaterial
+            .map(am => `${am.material?.nombre || 'Material desconocido'} (x${am.cantidadUsada})`)
+            .join(', ');
+          descripcionCompleta += `\nMateriales: ${materialesList}.`;
+        }
+
         timeline.push({
           tipo: 'Actividad',
           fecha: act.fecha,
           titulo: act.titulo,
-          descripcion: act.descripcion || 'Sin descripción.',
+          descripcion: descripcionCompleta, // <-- Usamos la nueva descripción
           estado: act.estado,
           icono: 'ClipboardList',
         });
@@ -66,7 +83,7 @@ export class TrazabilidadService {
           tipo: 'Cosecha',
           fecha: prod.fecha,
           titulo: 'Registro de Cosecha',
-          descripcion: `Se cosecharon ${prod.cantidad} kg.`,
+          descripcion: `Se cosecharon ${prod.cantidadOriginal || prod.cantidad} kg.`,
           icono: 'Package',
         });
       }
@@ -79,8 +96,8 @@ export class TrazabilidadService {
           tipo: 'Venta',
           fecha: venta.fecha,
           titulo: `Venta registrada (Factura #${venta.id})`,
-          // Usamos 'valorTotalVenta' que viene de la entidad
-          descripcion: `${venta.descripcion}. Total: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(venta.valorTotalVenta))}`,
+          // Usamos 'valorTotalVenta' que viene de la entidad e incluimos cantidad vendida
+          descripcion: `${venta.descripcion}. Cantidad vendida: ${venta.cantidadVenta} kg. Total: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(venta.valorTotalVenta))}`,
           icono: 'DollarSign',
         });
       }

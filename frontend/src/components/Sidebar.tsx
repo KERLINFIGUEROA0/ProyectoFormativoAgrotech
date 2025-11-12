@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
   Calendar,
-  CirclePause,
+  // CirclePause,
   WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
 
@@ -80,8 +80,8 @@ const menuItems: MenuItemType[] = [
     label: "Fitosanitario",
     icon: Activity,
     children: [
-      { id: "aplicaciones", label: "Aplicaciones", icon: Activity },
-      { id: "historial", label: "Historial", icon: TrendingUp },
+      { id: "fitosanitario", label: "EPA", icon: Activity },
+      // { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
     ],
   },
   // --- NUEVO MENÚ DE ACTIVIDADES ---
@@ -90,8 +90,8 @@ const menuItems: MenuItemType[] = [
     label: "Actividades",
     icon: ClipboardList,
     children: [
-      { id: "cronograma", label: "Cronograma", icon: Calendar },
       { id: "gestion-actividades", label: "Tareas", icon: Activity },
+      { id: "cronograma", label: "Cronograma", icon: Calendar },
     ],
   },
   // ---------------------------------
@@ -100,8 +100,8 @@ const menuItems: MenuItemType[] = [
     label: "Finanzas",
     icon: TrendingUp,
     children: [
-      { id: "ingresos", label: "Ingresos", icon: TrendingUp },
-      { id: "egresos", label: "Egresos", icon: Package },
+      { id: "ingresos", label: "Inicio", icon: TrendingUp },
+      { id: "egresos", label: "Transacciones", icon: Package },
     ],
   },
   {
@@ -111,6 +111,7 @@ const menuItems: MenuItemType[] = [
     children: [
       { id: "gestion-usuarios", label: "Gestion Usuarios", icon: User },
       { id: "gestion-roles", label: "Gestion Roles", icon: Settings },
+        {id: "gestion-fichas", label: "Gestion Fichas", icon: Package },
     ],
   },
 ];

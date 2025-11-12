@@ -58,6 +58,30 @@ export class RolPermisoController {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  @Get('rol/:rolId/detallado')
+  @Permission('Usuarios.VerPermisos') // <-- AÑADIR PERMISO
+  async getPermissionsByRoleDetallado(@Param('rolId') rolId: string) {
+    try {
+      const permissions = await this.rolPermisoService.getPermissionsByRoleDetallado(
+        +rolId,
+      );
+      return {
+        success: true,
+        message: `Permisos detallados para el rol ${rolId} obtenidos.`,
+        data: permissions,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Error al obtener los permisos detallados del rol.',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
 
 

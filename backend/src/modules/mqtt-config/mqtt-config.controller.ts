@@ -43,6 +43,13 @@ export class MqttConfigController {
     return { success: true, message: 'Broker eliminado.' };
   }
 
+  @Post('brokers/test-connection')
+  @Permission('Iot.Crear')
+  async testBrokerConnection(@Body() dto: CreateBrokerDto) {
+    const result = await this.configService.testBrokerConnection(dto);
+    return { success: true, message: result.message, connected: result.connected };
+  }
+
   // --- Endpoints para Subscripciones (Tópicos) ---
 
   @Post('subscripciones')

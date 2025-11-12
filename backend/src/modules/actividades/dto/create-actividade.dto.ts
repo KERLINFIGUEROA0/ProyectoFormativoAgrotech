@@ -1,10 +1,22 @@
-import { IsString, IsDateString, IsOptional, IsNumber, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested } from 'class-validator';
+// --- 1. IMPORTA plainToInstance ---
+import { Transform, Type, plainToInstance } from 'class-transformer';
+
+export class MaterialUsadoDto {
+  @IsNumber()
+  @IsPositive()
+  materialId: number;
+
+  @IsNumber()
+  @IsPositive()
+  cantidadUsada: number;
+}
 
 export class CreateActividadDto {
   @IsString()
   titulo: string;
 
+  // ... (otros campos: fecha, descripcion, etc. quedan igual) ...
   @IsDateString()
   fecha: Date;
 
@@ -12,13 +24,47 @@ export class CreateActividadDto {
   @IsOptional()
   descripcion?: string;
 
+
+  // --- 2. REEMPLAZA EL CAMPO 'materiales' CON ESTE BLOQUE COMPLETO ---
+  @Transform(({ value }) => {
+    let parsed: any;
+    if (typeof value === 'string') {
+      try {
+        // 1. Parsear el string JSON que viene del FormData
+        parsed = JSON.parse(value);
+      } catch (e) {
+        // Si el JSON es inválido, se devuelve un array vacío
+        return [];
+      }
+    } else {
+      // Si no es un string (ej. ya es un array), lo usamos directamente
+      parsed = value;
+    }
+
+    // 2. Asegurarse de que sea un array
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    // 3. Convertir cada objeto plano (plain) del array en una instancia de MaterialUsadoDto
+    // ESTE ES EL PASO CLAVE que soluciona el error de 'whitelist: true'
+    return parsed.map(item => plainToInstance(MaterialUsadoDto, item));
+  })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => MaterialUsadoDto) // Mantenemos @Type por si 'value' no es un string
+  materiales?: MaterialUsadoDto[];
+  // --- FIN DE LA CORRECCIÓN ---
+
+
   @IsString()
   @IsOptional()
   img?: string;
 
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
-  usuario: number;
+  @IsOptional()
+  usuario?: number;
 
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
@@ -28,4 +74,3 @@ export class CreateActividadDto {
   @IsOptional()
   estado?: 'pendiente' | 'en proceso' | 'completado';
 }
-

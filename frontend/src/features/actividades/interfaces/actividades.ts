@@ -3,12 +3,23 @@
 // El tipo de estado no cambia
 export type EstadoActividad = 'pendiente' | 'en proceso' | 'completado';
 
+
+export interface MaterialUsado {
+  materialId: number;
+  cantidadUsada: number;
+}
 // Interfaz para un usuario simple, tal como viene en la relación
 export interface UsuarioSimple {
   id: number;
   identificacion: number;
   nombre: string;
   apellidos: string;
+  // Información de ficha para filtrado y agrupación
+  ficha?: {
+    id: number;
+    nombre: string;
+    id_ficha: string;
+  };
 }
 
 // Interfaz para un cultivo simple
@@ -30,6 +41,13 @@ export interface Actividad {
   // Relaciones que vienen del backend
   usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
+  actividadMaterial?: {
+    cantidadUsada: number;
+    material: {
+      id: number;
+      nombre: string;
+    };
+  }[];
 }
 
 // 2. Payload para CREAR una actividad (lo que se envía a la API)
@@ -40,6 +58,7 @@ export interface CreateActividadPayload {
   // El backend espera la IDENTIFICACIÓN del usuario, no su ID.
   usuario: number; // <--- ID de IDENTIFICACIÓN del usuario
   cultivo: number; // <--- ID del cultivo
+  materiales?: MaterialUsado[];
 }
 
 // 3. Payload para ACTUALIZAR una actividad
@@ -54,5 +73,6 @@ export interface AsignarActividadPayload {
   descripcion: string;    // Descripción de la actividad
   fecha: string;          // Fecha de la actividad (YYYY-MM-DD)
   // Array de IDENTIFICACIONES de los aprendices seleccionados
-  aprendices: number[];   
+  aprendices: number[];
+  materiales?: MaterialUsado[];
 }

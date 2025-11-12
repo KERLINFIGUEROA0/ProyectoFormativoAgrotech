@@ -30,13 +30,16 @@ import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { CambiarPasswordDto } from './dto/cambiar-password.dto';
-
+import { FichasService } from '../../modules/fichas/fichas.service';
 
 
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly fichasService: FichasService,
+  ) {}
   @Post('crear')
   @Permission('Usuarios.Crear')
   
@@ -178,7 +181,7 @@ export class UsuariosController {
   }
   @Put('actualizar/:id')
   @Permission('Usuarios.Editar')
-  
+
   async actualizar(@Param('id') id: number, @Body() data: UpdateUsuarioDto) {
     try {
       const usuario = await this.usuariosService.actualizar(id, data);
@@ -186,6 +189,7 @@ export class UsuariosController {
         success: true,
         message: `Usuario con id ${id} actualizado exitosamente`,
         data: usuario,
+        note: data.tipoUsuario ? 'Los permisos del usuario se actualizarán en el próximo login' : undefined,
       };
     } catch (error) {
       throw new HttpException(
@@ -221,7 +225,7 @@ export class UsuariosController {
   }
   @Patch('reactivar/:id')
   @Permission('Usuarios.Editar')
-  
+
   async reactivar(@Param('id') id: number) {
     try {
       await this.usuariosService.reactivar(id);
@@ -234,6 +238,28 @@ export class UsuariosController {
         {
           success: false,
           message: `Error al reactivar el usuario con id ${id}`,
+          error: error.message,
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  @Delete('eliminar-permanente/:id')
+  @Permission('Usuarios.Eliminar')
+
+  async eliminarPermanente(@Param('id') id: number) {
+    try {
+      await this.usuariosService.deleteUsuario(id);
+      return {
+        success: true,
+        message: `Usuario con id ${id} eliminado permanentemente`,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: `Error al eliminar permanentemente el usuario con id ${id}`,
           error: error.message,
         },
         HttpStatus.NOT_FOUND,
@@ -295,36 +321,37 @@ export class UsuariosController {
     }
   }
   @Get('perfil')
-  
-  async obtenerPerfil(@Req() req) {
-    try {
-      const usuarioId = req.user.id;
-      const usuario = await this.usuariosService.buscarPorId(usuarioId);
-      return {
-        success: true,
-        message: 'Perfil obtenido correctamente',
-        data: {
-          tipoIdentificacion: usuario.Tipo_Identificacion,
-          identificacion: usuario.identificacion,
-          nombres: usuario.nombre,
-          apellidos: usuario.apellidos,
-          correo: usuario.correo,
-          telefono: usuario.telefono,
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error al obtener perfil',
-          error: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
+
+   async obtenerPerfil(@Req() req) {
+     try {
+       const usuarioId = req.user.id;
+       const usuario = await this.usuariosService.buscarPorId(usuarioId);
+       return {
+         success: true,
+         message: 'Perfil obtenido correctamente',
+         data: {
+           tipoIdentificacion: usuario.Tipo_Identificacion,
+           identificacion: usuario.identificacion,
+           nombres: usuario.nombre,
+           apellidos: usuario.apellidos,
+           correo: usuario.correo,
+           telefono: usuario.telefono,
+           rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
+         },
+       };
+     } catch (error) {
+       throw new HttpException(
+         {
+           success: false,
+           message: 'Error al obtener perfil',
+           error: error.message,
+         },
+         HttpStatus.BAD_REQUEST,
+       );
+     }
+   }
   @Put('editarperfil')
-  
+
   async editarPerfil(@Req() req, @Body() data: UpdatePerfilDto) {
     try {
       const usuarioId = req.user.id;
@@ -350,7 +377,7 @@ export class UsuariosController {
   }
   @Post('fotoperfil')
   @UseInterceptors(FileInterceptor('file', multerConfig))
-  
+
   async uploadProfilePic(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
@@ -362,9 +389,50 @@ export class UsuariosController {
     return this.usuariosService.updateProfilePic(userId, file.filename);
   }
   @Get('fotoperfil')
-  
+
   async getProfilePic(@Req() req: any, @Res() res: any) {
     const userId = req.user.id;
     return this.usuariosService.getProfilePic(userId, res);
+  }
+
+  @Get('fichas/opciones')
+  @Permission('Usuarios.Ver')
+  async getFichasOpciones() {
+    try {
+      const opciones = await this.fichasService.getOpciones();
+      return {
+        success: true,
+        message: 'Opciones de fichas obtenidas',
+        data: opciones,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Error al obtener opciones de fichas',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('exportar-excel-filtrado')
+  @Permission('Usuarios.Ver')
+  async exportarExcelFiltrado(@Body() filtros: any, @Res() res: Response) {
+    try {
+      const buffer = await this.usuariosService.exportarExcelFiltrado(filtros);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', 'attachment; filename=usuarios_filtrados.xlsx');
+      res.send(buffer);
+    } catch (error) {
+      throw new HttpException(
+        'Error al generar el archivo Excel filtrado.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

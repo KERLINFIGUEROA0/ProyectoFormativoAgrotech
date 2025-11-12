@@ -11,6 +11,11 @@ export const getStatsPorCultivo = async (cultivoId: number) => {
   return response.data;
 };
 
+export const getAvailableForSale = async () => {
+  const response = await api.get('/producciones/available-for-sale');
+  return response.data;
+};
+
 export const createProduccion = async (data: any) => {
   const response = await api.post('/producciones', data);
   return response.data;

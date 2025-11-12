@@ -9,6 +9,7 @@ import {
 import { TipoUsuario } from '../../tipo_usuario/entities/tipo_usuario.entity';
 import { Actividad } from '../../actividades/entities/actividade.entity';
 import { UsuarioPermiso } from '../../usuarios_permisos/entities/usuarios_permiso.entity';
+import { Ficha } from '../../../modules/fichas/entities/ficha.entity';
 
 @Entity('usuarios')
 export class Usuario {
@@ -54,6 +55,10 @@ export class Usuario {
 
   @ManyToOne(() => TipoUsuario, (tipoUsuario) => tipoUsuario.usuarios)
   tipoUsuario: TipoUsuario;
+
+  @ManyToOne(() => Ficha, (ficha) => ficha.usuarios, { nullable: true })
+  @JoinColumn({ name: 'id_ficha' })
+  ficha: Ficha;
 
   @OneToMany(() => Actividad, (actividad) => actividad.usuario)
   actividades: Actividad[];

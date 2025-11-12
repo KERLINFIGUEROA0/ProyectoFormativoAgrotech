@@ -37,9 +37,6 @@ export class TipoCultivoController {
   @Get('listar')
   async listar() {
     const lista = await this.tipoCultivoService.listar();
-    if (!lista || lista.length === 0) {
-      throw new NotFoundException('No hay tipos de cultivo registrados');
-    }
     return {
       success: true,
       total: lista.length,

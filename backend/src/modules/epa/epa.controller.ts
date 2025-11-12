@@ -1,4 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query} from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+  Query,
+  // --- AÑADIR ESTOS IMPORTS ---
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  // --- FIN DE IMPORTS ---
+} from '@nestjs/common';
+// --- AÑADIR ESTE IMPORT ---
+import { FileInterceptor } from '@nestjs/platform-express';
+// --- FIN DE IMPORT ---
 import { EpaService } from './epa.service';
 import { CreateEpaDto } from './dto/create-epa.dto';
 import { UpdateEpaDto } from './dto/update-epa.dto';
@@ -12,10 +30,29 @@ export class EpaController {
     return this.epaService.create(createEpaDto);
   }
 
+  // --- AÑADIR ESTE NUEVO ENDPOINT ---
+  @Post(':id/imagen')
+  @UseInterceptors(FileInterceptor('file')) // 'file' debe coincidir con el nombre en el FormData
+  async subirImagen(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ningún archivo.');
+    }
+
+    // Guardamos la ruta relativa
+    const relativePath = `epa-pic/${file.filename}`;
+    return this.epaService.actualizarImagen(id, relativePath);
+  }
+  // --- FIN DEL ENDPOINT ---
+
+  /* --- DESHABILITAR API EXTERNA (OPCIONAL PERO RECOMENDADO) ---
   @Get('buscar-externo')
   searchExternal(@Query('q') query: string) {
     return this.epaService.searchExternal(query);
   }
+  */
 
   @Get()
   findAll() {
@@ -28,7 +65,10 @@ export class EpaController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateEpaDto: UpdateEpaDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateEpaDto: UpdateEpaDto,
+  ) {
     return this.epaService.update(id, updateEpaDto);
   }
 

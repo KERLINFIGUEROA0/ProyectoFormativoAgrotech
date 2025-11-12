@@ -34,7 +34,10 @@ import { ModulosModule } from './modules/modulos/modulos.module';
 import { AuthModule } from './auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { NotificationsModule } from './notifications/notifications.module';
-import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module'; // ✅ ASEGÚRATE DE QUE ESTA LÍNEA EXISTA
+import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module';
+import { FichasModule } from './modules/fichas/fichas.module';
+
+
 @Module({
   imports: [
     HttpModule,
@@ -81,6 +84,7 @@ import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module'; // 
     AuthModule,
     NotificationsModule,
     MqttConfigModule,
+    FichasModule,
   ],
   providers: [],
   controllers: []

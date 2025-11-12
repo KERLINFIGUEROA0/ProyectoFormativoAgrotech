@@ -4,15 +4,18 @@ import { Actividad } from '../../actividades/entities/actividade.entity';
 import { Produccion } from '../../producciones/entities/produccione.entity';
 import { Surco } from '../../surcos/entities/surco.entity';
 import { CultivoEpa } from '../../cultivos_epa/entities/cultivos_epa.entity';
+import { Gasto } from '../../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
 
 @Entity('cultivos')
 export class Cultivo {
+  // ... (todas las demás propiedades como id, nombre, cantidad, etc. quedan igual) ...
   @PrimaryGeneratedColumn({ name: 'Id_Cultivo' })
   id: number;
 
   @Column({ name: 'Nombre', length: 20 })
   nombre: string;
-
+  
+  // ... (img, descripcion, Estado, Fecha_Plantado, tipoCultivo, actividades, producciones, surcos, cultivosEpa...)
   @Column({ name: 'Cantidad', type: 'int' })
   cantidad: number;
 
@@ -22,13 +25,11 @@ export class Cultivo {
   @Column({ name: 'Descripcion', length: 255, nullable: true })
   descripcion: string;
   
-  // --- CAMPOS NUEVOS AÑADIDOS ---
   @Column({ name: 'Estado', length: 50, nullable: true })
   Estado: string;
 
   @Column({ name: 'Fecha_Plantado', type: 'date', nullable: true })
   Fecha_Plantado: Date;
-  // --- FIN DE CAMPOS NUEVOS ---
 
   @ManyToOne(() => TipoCultivo, (tipoCultivo) => tipoCultivo.cultivos, {
     onDelete: 'SET NULL',
@@ -46,4 +47,8 @@ export class Cultivo {
 
   @OneToMany(() => CultivoEpa, (ce) => ce.cultivo)
   cultivosEpa: CultivoEpa[];
+
+  // --- 2. AÑADIR ESTA NUEVA RELACIÓN ---
+  @OneToMany(() => Gasto, (gasto) => gasto.cultivo)
+  gastos: Gasto[];
 }
