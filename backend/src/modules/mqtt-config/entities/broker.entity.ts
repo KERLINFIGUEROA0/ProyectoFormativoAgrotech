@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Subscripcion } from './subscripcion.entity';
+import { Surco } from '../../surcos/entities/surco.entity';
 
 @Entity('brokers')
 export class Broker {
@@ -23,6 +24,19 @@ export class Broker {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   password: string;
+
+  @Column({ type: 'int', nullable: true })
+  surcoId: number;
+
+  @ManyToOne(() => Surco, { nullable: true })
+  @JoinColumn({ name: 'surcoId' })
+  surco: Surco;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  prefijoTopicos: string;
+
+  @Column({ type: 'json', nullable: true })
+  topicosAdicionales: string[];
 
   @OneToMany(() => Subscripcion, (sub) => sub.broker, {
     cascade: true,

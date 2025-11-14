@@ -376,7 +376,9 @@ export default function GestionSensoresPage(): ReactElement {
 
     // Solo activar el intervalo si los modales NO están abiertos
     if (!isFormModalOpen && !historySensor) {
-      intervalId = setInterval(fetchLatestData, 5000); // Refresca cada 5 segundos
+      intervalId = setInterval(() => {
+        fetchData(); // Refresca sensores y datos cada 5 segundos
+      }, 5000);
     }
 
     return () => {

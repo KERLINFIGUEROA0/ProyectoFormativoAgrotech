@@ -3,12 +3,10 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Globe, MoreVertical } from 'lucide-react';
 import {
   listarBrokers,
-  crearBroker,
   eliminarBroker,
 } from '../api/mqttConfigApi';
-import Modal from '../../../components/Modal';
-import BrokerForm from '../components/BrokerForm';
-import type { Broker, CreateBrokerDto } from '../interfaces/iot';
+import BrokerFormModal from '../components/BrokerFormModal';
+import type { Broker } from '../interfaces/iot';
 
 // --- Componente de Tarjeta de Broker ---
 interface BrokerCardProps {
@@ -61,7 +59,7 @@ export default function GestionBrokersPage(): ReactElement {
   const [brokers, setBrokers] = useState<Broker[]>([]);
   
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
-  const [editingBroker, setEditingBroker] = useState<Partial<Broker> | null>(null);
+  const [editingBroker, setEditingBroker] = useState<Broker | null>(null);
 
   const fetchData = async () => {
     try {
@@ -76,24 +74,6 @@ export default function GestionBrokersPage(): ReactElement {
     fetchData();
   }, []);
 
-  // --- Lógica de CRUD para Brokers ---
-  const handleSaveBroker = async (data: CreateBrokerDto) => {
-    const toastId = toast.loading("Guardando broker...");
-    try {
-      // NOTA: La edición no está implementada en el backend aún, solo creación.
-      if (editingBroker?.id) {
-        // await actualizarBroker(editingBroker.id, data); // Descomentar cuando exista
-        toast.info("La actualización de brokers no está implementada.", { id: toastId });
-      } else {
-        await crearBroker(data);
-        toast.success("Broker creado con éxito.", { id: toastId });
-      }
-      await fetchData();
-      closeBrokerModal();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Error al guardar el broker.", { id: toastId });
-    }
-  };
 
   const handleDeleteBroker = (broker: Broker) => {
     toast.warning(`¿Eliminar el broker "${broker.nombre}"?`, {
@@ -152,14 +132,12 @@ export default function GestionBrokersPage(): ReactElement {
         )}
       </div>
 
-      {/* Modal */}
-      <Modal isOpen={isBrokerModalOpen} onClose={closeBrokerModal} title={editingBroker ? 'Editar Broker' : 'Nuevo Broker MQTT'}>
-        <BrokerForm
-          initialData={editingBroker || {}}
-          onSave={handleSaveBroker}
-          onCancel={closeBrokerModal}
-        />
-      </Modal>
+      <BrokerFormModal
+        isOpen={isBrokerModalOpen}
+        onClose={closeBrokerModal}
+        onSuccess={fetchData}
+        broker={editingBroker}
+      />
     </div>
   );
 }

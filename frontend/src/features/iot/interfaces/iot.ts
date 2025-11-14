@@ -64,6 +64,9 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
+  surco?: Surco | null;
+  prefijoTopicos?: string;
+  topicosAdicionales?: string[];
   subscripciones: Subscripcion[]; // El backend las incluye (eager: true)
 }
 

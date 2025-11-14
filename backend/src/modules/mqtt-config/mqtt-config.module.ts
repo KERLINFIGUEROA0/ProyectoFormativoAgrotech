@@ -7,11 +7,13 @@ import { MqttConfigService } from './mqtt-config.service';
 import { MqttConfigController } from './mqtt-config.controller';
 import { MqttClientService } from './mqtt-client.service';
 import { InformacionSensorModule } from '../informacion_sensor/informacion_sensor.module';
+import { SensoresModule } from '../sensores/sensores.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Broker, Subscripcion, Sensor]),
     forwardRef(() => InformacionSensorModule), // Para usar InformacionSensorService
+    forwardRef(() => SensoresModule), // Para usar SensoresService
   ],
   controllers: [MqttConfigController],
   providers: [MqttConfigService, MqttClientService],
