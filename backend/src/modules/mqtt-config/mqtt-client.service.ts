@@ -120,10 +120,30 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Se suscribe a los tópicos de los sensores asociados a un broker
+   * Se suscribe a los tópicos configurados en el broker y de los sensores asociados
    */
   private async subscribeToSensorTopics(brokerId: number, client: mqtt.MqttClient) {
-    // Buscar todos los sensores que pertenecen a surcos con este broker
+    // Obtener el broker para acceder a topicosAdicionales
+    const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
+    if (!broker) {
+      this.logger.error(`Broker ID ${brokerId} no encontrado`);
+      return;
+    }
+
+    // Suscribirse a los tópicos configurados en el broker
+    if (broker.topicosAdicionales && broker.topicosAdicionales.length > 0) {
+      for (const topic of broker.topicosAdicionales) {
+        client.subscribe(topic, { qos: 0 }, (err) => {
+          if (err) {
+            this.logger.error(`Error suscribiéndose a tópico del broker [${topic}]: ${err.message}`);
+          } else {
+            this.logger.log(`✅ Suscrito a tópico del broker: [${topic}]`);
+          }
+        });
+      }
+    }
+
+    // También suscribirse a tópicos de sensores existentes (por compatibilidad)
     const sensores = await this.sensorRepo.find({
       where: {
         surco: {
@@ -134,14 +154,9 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       relations: ['surco', 'surco.broker'],
     });
 
-    if (sensores.length === 0) {
-      this.logger.warn(`No hay sensores activos para el broker ID: ${brokerId}`);
-      return;
-    }
-
-    // Suscribirse a cada tópico
     for (const sensor of sensores) {
-      if (sensor.topic) {
+      if (sensor.topic && !broker.topicosAdicionales?.includes(sensor.topic)) {
+        // Solo suscribirse si no está ya en topicosAdicionales
         client.subscribe(sensor.topic, { qos: 0 }, (err) => {
           if (err) {
             this.logger.error(`Error suscribiéndose a [${sensor.topic}]: ${err.message}`);

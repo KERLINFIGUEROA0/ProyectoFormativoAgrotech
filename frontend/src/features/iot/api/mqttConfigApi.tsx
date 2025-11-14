@@ -4,6 +4,7 @@ import type {
   CreateBrokerDto,
   CreateSubscripcionDto,
   Subscripcion,
+  Surco,
 } from "../interfaces/iot";
 
 // --- API para Brokers ---
@@ -15,6 +16,11 @@ export const listarBrokers = async (): Promise<Broker[]> => {
 
 export const crearBroker = async (data: CreateBrokerDto): Promise<Broker> => {
   const response = await api.post("/mqtt-config/brokers", data);
+  return response.data.data;
+};
+
+export const actualizarBroker = async (id: number, data: CreateBrokerDto): Promise<Broker> => {
+  const response = await api.put(`/mqtt-config/brokers/${id}`, data);
   return response.data.data;
 };
 
@@ -39,4 +45,10 @@ export const eliminarSubscripcion = async (id: number): Promise<void> => {
 export const probarConexionBroker = async (data: CreateBrokerDto): Promise<{ connected: boolean; message: string }> => {
   const response = await api.post("/mqtt-config/brokers/test-connection", data);
   return response.data; // Retorna { success: true, message: string, connected: boolean }
+};
+
+// --- API para Surcos ---
+export const listarSurcos = async (): Promise<Surco[]> => {
+  const response = await api.get("/surcos/listar");
+  return response.data.data;
 };

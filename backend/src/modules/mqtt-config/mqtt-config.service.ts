@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as mqtt from 'mqtt';
 import { Broker } from './entities/broker.entity';
 import { Subscripcion } from './entities/subscripcion.entity';
+import { Sensor } from '../sensores/entities/sensore.entity';
 import { CreateBrokerDto } from './dto/create-broker.dto';
 import { CreateSubscripcionDto } from './dto/create-subscripcion.dto';
+import { SensoresService } from '../sensores/sensores.service';
+import { CreateSensoreDto } from '../sensores/dto/create-sensore.dto';
+import { MqttClientService } from './mqtt-client.service';
 
 @Injectable()
 export class MqttConfigService {
@@ -16,12 +20,31 @@ export class MqttConfigService {
     private readonly brokerRepo: Repository<Broker>,
     @InjectRepository(Subscripcion)
     private readonly subRepo: Repository<Subscripcion>,
+    @InjectRepository(Sensor)
+    private readonly sensorRepo: Repository<Sensor>,
+    @Inject(forwardRef(() => SensoresService))
+    private readonly sensoresService: SensoresService,
+    private readonly mqttClientService: MqttClientService,
   ) {}
 
   // --- Lógica de Brokers ---
   async createBroker(dto: CreateBrokerDto): Promise<Broker> {
     const nuevoBroker = this.brokerRepo.create(dto);
-    return this.brokerRepo.save(nuevoBroker);
+    const brokerGuardado = await this.brokerRepo.save(nuevoBroker);
+
+    // Crear sensores automáticamente para los tópicos si hay surcoId
+    if (dto.surcoId && dto.topicosAdicionales && dto.topicosAdicionales.length > 0) {
+      await this.crearSensoresParaTopicos(brokerGuardado, dto.surcoId, dto.topicosAdicionales);
+    }
+
+    // Conectar al broker para recibir datos en tiempo real
+    try {
+      await this.mqttClientService.connectToBroker(brokerGuardado);
+    } catch (error) {
+      this.logger.error(`Error conectando al broker ${brokerGuardado.nombre}: ${error.message}`);
+    }
+
+    return brokerGuardado;
   }
 
   async findAllBrokers(): Promise<Broker[]> {
@@ -36,8 +59,34 @@ export class MqttConfigService {
     return broker;
   }
 
+  async updateBroker(id: number, dto: CreateBrokerDto): Promise<Broker> {
+    const broker = await this.findOneBroker(id);
+    Object.assign(broker, dto);
+    const updated = await this.brokerRepo.save(broker);
+
+    // Reconectar al broker con la nueva configuración
+    try {
+      await this.mqttClientService.connectToBroker(updated);
+    } catch (error) {
+      this.logger.error(`Error reconectando al broker ${updated.nombre}: ${error.message}`);
+    }
+
+    return updated;
+  }
+
   async deleteBroker(id: number): Promise<void> {
     const broker = await this.findOneBroker(id);
+
+    // Eliminar sensores asociados al broker
+    const sensores = await this.sensorRepo.find({
+      where: { surco: { broker: { id } } },
+      relations: ['surco'],
+    });
+
+    for (const sensor of sensores) {
+      await this.sensoresService.remove(sensor.id);
+    }
+
     await this.brokerRepo.remove(broker);
   }
 
@@ -108,6 +157,46 @@ export class MqttConfigService {
     } catch (error: any) {
       this.logger.error(`❌ Error de conexión al broker ${brokerUrl}: ${error.message}`);
       return { connected: false, message: `Error de conexión: ${error.message}` };
+    }
+  }
+
+  // --- Método auxiliar para crear sensores ---
+  private async crearSensoresParaTopicos(broker: Broker, surcoId: number, topicos: string[]): Promise<void> {
+    const topicDefaults = {
+      'luz': { nombre: 'Sensor de Luz', min: 0, max: 100 },
+      'temperatura': { nombre: 'Sensor de Temperatura', min: 0, max: 50 },
+      'humedad': { nombre: 'Sensor de Humedad', min: 0, max: 100 },
+      'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 0, max: 100 },
+    };
+
+    for (const topic of topicos) {
+      const topicName = topic.split('/').pop() || topic; // Última parte del tópico
+      const defaults = topicDefaults[topicName] || { nombre: `Sensor ${topicName}`, min: 0, max: 100 };
+
+      const sensorDto: CreateSensoreDto = {
+        nombre: defaults.nombre,
+        surcoId: surcoId,
+        fecha_instalacion: new Date().toISOString().split('T')[0], // Fecha actual en formato YYYY-MM-DD
+        valor_minimo_alerta: defaults.min,
+        valor_maximo_alerta: defaults.max,
+        estado: 'Activo',
+        topic: topic,
+        broker: {
+          nombre: broker.nombre,
+          protocolo: broker.protocolo,
+          host: broker.host,
+          puerto: broker.puerto,
+          usuario: broker.usuario,
+          password: broker.password,
+        },
+      };
+
+      try {
+        await this.sensoresService.create(sensorDto);
+        this.logger.log(`Sensor creado para tópico: ${topic}`);
+      } catch (error) {
+        this.logger.error(`Error creando sensor para tópico ${topic}:`, error);
+      }
     }
   }
 }

@@ -5,6 +5,7 @@ import {
   IsOptional,
   Min,
   Max,
+  IsArray,
 } from 'class-validator';
 
 export class CreateBrokerDto {
@@ -32,4 +33,17 @@ export class CreateBrokerDto {
   @IsString()
   @IsOptional()
   password?: string;
+
+  @IsInt()
+  @IsOptional()
+  surcoId?: number;
+
+  @IsString()
+  @IsOptional()
+  prefijoTopicos?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  topicosAdicionales?: string[];
 }
