@@ -157,6 +157,41 @@ export class UsuariosController {
       );
     }
   }
+
+  @Get('asignables')
+  @Permission('Usuarios.Ver') // Reutilizamos el permiso de ver usuarios
+  async getAssignableUsers() {
+    try {
+      const usuarios = await this.usuariosService.findAssignableUsers();
+      // Mapeamos para que coincida con la interfaz UsuarioSimple del frontend
+      const data = usuarios.map(u => ({
+        id: u.id,
+        identificacion: u.identificacion,
+        nombre: u.nombre,
+        apellidos: u.apellidos,
+        ficha: u.ficha ? {
+          id: u.ficha.id,
+          nombre: u.ficha.nombre,
+          id_ficha: u.ficha.id_ficha,
+        } : undefined,
+      }));
+      
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Error al obtener usuarios asignables',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('buscar/:id')
   @Permission('Usuarios.Ver')
   

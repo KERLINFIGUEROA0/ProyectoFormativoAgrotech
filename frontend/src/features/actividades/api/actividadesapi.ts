@@ -3,6 +3,7 @@ import { api } from "../../../lib/axios";
 import type {
   UpdateActividadPayload,
   AsignarActividadPayload,
+  UsuarioSimple,
 } from '../interfaces/actividades';
 // --- AÑADIR ESTE IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
@@ -40,10 +41,16 @@ export const eliminarActividad = async (id: number) => {
   return response.data;
 };
 
-export const obtenerUsuariosParaActividades = async () => {
-  // ... (sin cambios)
-  const response = await api.get('/usuarios?include=ficha'); 
-  return response.data.data; 
+export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]> => {
+  try {
+    // Apuntamos al nuevo endpoint '/usuarios/asignables'
+    // y esperamos la respuesta envuelta en { data: ... }
+    const { data } = await api.get<{ data: UsuarioSimple[] }>('/usuarios/asignables');
+    return data.data; // Devolvemos el array de usuarios
+  } catch (error) {
+    console.error('Error al obtener usuarios asignables:', error);
+    return [];
+  }
 };
 
 export const obtenerCultivosParaActividades = async () => {

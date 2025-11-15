@@ -37,5 +37,27 @@ usuario: Usuario | null;
     default: 'pendiente',
   })
   estado: 'pendiente' | 'en proceso' | 'completado';
+
+@Column({ 
+    name: 'horas_trabajadas', 
+    type: 'decimal', 
+    precision: 5, 
+    scale: 2, 
+    nullable: true 
+  })
+  horas?: number;
+
+  @Column({ 
+    name: 'tarifa_hora', 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2, 
+    nullable: true 
+  })
+  tarifaHora?: number;
+  // --- FIN DE CAMPOS NUEVOS ---
 }
+
+
+
 

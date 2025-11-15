@@ -332,7 +332,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                   <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
                   <input
                     type="number"
-                    value={formData.cantidadMaterial}
+                    value={Number(formData.cantidadMaterial) || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"

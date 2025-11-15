@@ -42,7 +42,7 @@ async function bootstrap() {
   });
 
   // --- 3. Inicia AMBOS servicios ---
-  await app.startAllMicroservices();
+  // await app.startAllMicroservices();
   await app.listen(3000);
 }
 bootstrap();
