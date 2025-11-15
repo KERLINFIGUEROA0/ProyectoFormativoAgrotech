@@ -144,7 +144,7 @@ export class MqttConfigService {
       const options: mqtt.IClientOptions = {
         clientId: `test-client-${Date.now()}`,
         clean: true,
-        connectTimeout: 5000, // 5 segundos de timeout
+        connectTimeout: 15000, // 15 segundos de timeout
         reconnectPeriod: 0, // No reconectar para prueba
       };
 
@@ -156,8 +156,8 @@ export class MqttConfigService {
       const connectionPromise = new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           client.end();
-          reject(new Error('Timeout: No se pudo conectar en 5 segundos'));
-        }, 5000);
+          reject(new Error('Timeout: No se pudo conectar en 15 segundos'));
+        }, 15000);
 
         client.on('connect', () => {
           clearTimeout(timeout);

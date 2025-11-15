@@ -31,8 +31,10 @@ import {
 } from '../api/sensoresApi';
 import { obtenerSurcosPorLote } from '../../cultivos/api/surcosApi';
 import { obtenerLotes } from '../../cultivos/api/lotesApi';
+import { listarBrokers } from '../api/mqttConfigApi';
 import Modal from '../../../components/Modal';
 import SensorForm from '../components/SensorForm';
+import BrokerFormModal from '../components/BrokerFormModal';
 import type { Sensor, LatestSensorData, Surco } from '../interfaces/iot';
 import type { Lote } from '../../cultivos/interfaces/cultivos';
 
@@ -296,14 +298,13 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
             <LineChart data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value).toFixed(1)} domain={['dataMin - 0.1', 'dataMax + 0.1']} />
               <Tooltip
-                formatter={(value: number) => [`${value.toFixed(1)}`, "Valor"]}
+                formatter={(value: number) => [`${value.toFixed(2)}`, "Valor"]}
                 labelFormatter={(label) => `Hora: ${label}`}
               />
               <Legend />
               <Line type="monotone" dataKey="valor" stroke={color} strokeWidth={3} dot={true} activeDot={{ r: 8 }} name={sensor.nombre} />
-              <Brush dataKey="time" height={30} stroke={color} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -313,14 +314,13 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
             <BarChart data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value).toFixed(1)} domain={['dataMin - 0.1', 'dataMax + 0.1']} />
               <Tooltip
-                formatter={(value: number) => [`${value.toFixed(1)}`, "Valor"]}
+                formatter={(value: number) => [`${value.toFixed(2)}`, "Valor"]}
                 labelFormatter={(label) => `Hora: ${label}`}
               />
               <Legend />
               <Bar dataKey="valor" fill={color} name={sensor.nombre} />
-              <Brush dataKey="time" height={30} stroke={color} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -329,15 +329,14 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
           <ResponsiveContainer width="100%" height={400}>
             <AreaChart data={history} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-              <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
+              <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} domain={['dataMin', 'dataMax']} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value).toFixed(1)} domain={['dataMin - 0.1', 'dataMax + 0.1']} />
               <Tooltip
                 formatter={(value: number) => [`${value.toFixed(1)}`, "Valor"]}
                 labelFormatter={(label) => `Hora: ${label}`}
               />
-              <Legend />
+              <Legend layout="vertical" verticalAlign="top" align="right" wrapperStyle={{ paddingLeft: '20px' }} />
               <Area type="monotone" dataKey="valor" stroke={color} fill={color} fillOpacity={0.3} name={sensor.nombre} />
-              <Brush dataKey="time" height={30} stroke={color} />
             </AreaChart>
           </ResponsiveContainer>
         );
@@ -347,11 +346,11 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
   };
 
   return (
-    <Modal isOpen={!!sensor} onClose={onClose} title={`Análisis de ${sensor.nombre}`}>
-      <div className="p-4">
+    <Modal isOpen={!!sensor} onClose={onClose} title={`Análisis de ${sensor.nombre}`} size="4xl">
+      <div className="p-4 max-h-[80vh] overflow-y-auto">
         {/* Estadísticas */}
         {stats && (
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg text-center">
               <p className="text-sm text-gray-600">Promedio</p>
               <p className="text-2xl font-bold text-blue-600">{stats.promedio.toFixed(1)}</p>
@@ -426,35 +425,58 @@ export default function GestionSensoresPage(): ReactElement {
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingSensor, setEditingSensor] = useState<Sensor | null>(null);
-  
+
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
+  const [generalHistory, setGeneralHistory] = useState<{time: string, [key: string]: number | string}[]>([]);
 
   const fetchData = async () => {
     try {
-      const [sensoresRes, lotesRes, latestDataRes] = await Promise.all([
+      const [sensoresRes, lotesRes, latestDataRes, brokersRes] = await Promise.all([
         listarSensores(),
         obtenerLotes(),
-        getLatestSensorData()
+        getLatestSensorData(),
+        listarBrokers()
       ]);
 
       setSensores(sensoresRes.data || []);
       setLatestData(latestDataRes || []);
 
+      // Actualizar historial general
+      const newEntry: {time: string, [key: string]: number | string} = {
+        time: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      };
+      (latestDataRes || []).forEach(d => {
+        if (d.valor != null) {
+          newEntry[d.id.toString()] = d.valor;
+        }
+      });
+      setGeneralHistory(prev => {
+        const newHistory = [...prev, newEntry];
+        if (newHistory.length > 50) newHistory.shift();
+        return newHistory;
+      });
+
       const lotesData: Lote[] = lotesRes.data || [];
-      
+
       const allSurcosPromises = lotesData.map((lote: Lote) => obtenerSurcosPorLote(lote.id));
       const allSurcosResponses = await Promise.all(allSurcosPromises);
-      
+
       const allSurcos = allSurcosResponses.flatMap((res, index) => {
         const lote = lotesData[index];
-        return (res?.data || []).map((s: any) => ({ 
-          ...s, 
+        return (res?.data || []).map((s: any) => ({
+          ...s,
           lote: { id: lote.id, nombre: lote.nombre }
         }));
       });
-      
+
       setSurcos(allSurcos);
+
+      const brokers = brokersRes || [];
+      if (brokers.length === 0) {
+        setIsBrokerModalOpen(true);
+      }
 
     } catch (error) {
       toast.error("Error al cargar los datos de los sensores.");
@@ -648,11 +670,60 @@ export default function GestionSensoresPage(): ReactElement {
         )}
       </div>
 
+      {/* Gráfica de reporte general */}
+      {sensoresConDatos.length > 0 && (
+        <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Reporte General de Sensores en Tiempo Real</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={generalHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis dataKey="time" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => Number(value).toFixed(1)} domain={['dataMin - 0.1', 'dataMax + 0.1']} />
+              <Tooltip formatter={(value) => [Number(value).toFixed(2), 'Valor']} />
+              <Legend />
+              {sensoresConDatos.map((sensor, index) => {
+                const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff0000', '#0000ff'];
+                return (
+                  <Line
+                    key={sensor.id}
+                    type="monotone"
+                    dataKey={sensor.id.toString()}
+                    stroke={colors[index % colors.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    name={sensor.nombre}
+                    isAnimationActive={true}
+                    animationDuration={800}
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Modal para ver gráficos con carrusel */}
       <SensorChartsCarousel
         sensor={historySensor}
         onClose={closeHistoryModal}
+      />
+
+      {/* Modal para registrar broker si no hay ninguno */}
+      <BrokerFormModal
+        isOpen={isBrokerModalOpen}
+        onClose={() => setIsBrokerModalOpen(false)}
+        onSuccess={async () => {
+          setIsBrokerModalOpen(false);
+          await fetchData();
+          // Forzar actualización inmediata de datos de sensores
+          try {
+            const info = await getLatestSensorData();
+            setLatestData(info || []);
+          } catch (error) {
+            console.error("Error al refrescar datos después de registrar broker:", error);
+          }
+        }}
+        broker={null}
       />
     </div>
   );

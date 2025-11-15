@@ -172,6 +172,9 @@ export default function Sidebar({
                   if (item.id === "perfil") {
                     setActiveSection(item.id);
                     navigate("/usuario");
+                  } else if (item.id === "iot") {
+                    setActiveSection("gestion-sensores");
+                    navigate("/gestion-sensores");
                   } else if (item.children) {
                     toggleMenu(item.id);
                   } else {
@@ -203,7 +206,11 @@ export default function Sidebar({
 
                 {item.children && !collapsed && (
                   <ChevronDown
-                    className={`ml-auto w-5 h-5 transition-transform flex-shrink-0 ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMenu(item.id);
+                    }}
+                    className={`ml-auto w-5 h-5 transition-transform flex-shrink-0 cursor-pointer ${
                       openMenu === item.id ? "rotate-180" : ""
                     }`}
                   />
