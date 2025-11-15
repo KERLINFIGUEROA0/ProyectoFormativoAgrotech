@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff, ChevronLeft, ChevronRight, BarChart3, TrendingUp, MoreVertical, Settings } from 'lucide-react';
+import {Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff, ChevronLeft, ChevronRight, BarChart3, TrendingUp, MoreVertical } from 'lucide-react';
 
 declare global {
   namespace JSX {
@@ -18,25 +18,19 @@ const subtract5Hours = (dateString: string | null): Date | null => {
   return date;
 };
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area, Brush
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area
 } from 'recharts';
 import {
   listarSensores,
-  crearSensor,
-  actualizarSensor,
   eliminarSensor,
   getLatestSensorData,
   getSensorHistory,
   actualizarEstadoSensor,
 } from '../api/sensoresApi';
-import { obtenerSurcosPorLote } from '../../cultivos/api/surcosApi';
-import { obtenerLotes } from '../../cultivos/api/lotesApi';
 import { listarBrokers } from '../api/mqttConfigApi';
 import Modal from '../../../components/Modal';
-import SensorForm from '../components/SensorForm';
 import BrokerFormModal from '../components/BrokerFormModal';
-import type { Sensor, LatestSensorData, Surco } from '../interfaces/iot';
-import type { Lote } from '../../cultivos/interfaces/cultivos';
+import type { Sensor, LatestSensorData } from '../interfaces/iot';
 
 type ChartData = {
   time: string;
@@ -56,7 +50,7 @@ interface SensorCardProps {
   onMenuToggle: (sensorId: string | null) => void;
 }
 
-function SensorCard({ sensor, latestData, onEdit, onDelete, onViewHistory, onToggleEstado, menuOpen, onMenuToggle }: SensorCardProps) {
+function SensorCard({ sensor, latestData,onViewHistory, onToggleEstado, menuOpen, onMenuToggle }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
 
   // Determinar unidad y convertir valor si es necesario
@@ -421,10 +415,8 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
 export default function GestionSensoresPage(): ReactElement {
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
-  const [surcos, setSurcos] = useState<Surco[]>([]);
-  
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [editingSensor, setEditingSensor] = useState<Sensor | null>(null);
 
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -433,9 +425,8 @@ export default function GestionSensoresPage(): ReactElement {
 
   const fetchData = async () => {
     try {
-      const [sensoresRes, lotesRes, latestDataRes, brokersRes] = await Promise.all([
+      const [sensoresRes, latestDataRes, brokersRes] = await Promise.all([
         listarSensores(),
-        obtenerLotes(),
         getLatestSensorData(),
         listarBrokers()
       ]);
@@ -447,7 +438,7 @@ export default function GestionSensoresPage(): ReactElement {
       const newEntry: {time: string, [key: string]: number | string} = {
         time: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       };
-      (latestDataRes || []).forEach(d => {
+      (latestDataRes || []).forEach((d: LatestSensorData) => {
         if (d.valor != null) {
           newEntry[d.id.toString()] = d.valor;
         }
@@ -457,21 +448,6 @@ export default function GestionSensoresPage(): ReactElement {
         if (newHistory.length > 50) newHistory.shift();
         return newHistory;
       });
-
-      const lotesData: Lote[] = lotesRes.data || [];
-
-      const allSurcosPromises = lotesData.map((lote: Lote) => obtenerSurcosPorLote(lote.id));
-      const allSurcosResponses = await Promise.all(allSurcosPromises);
-
-      const allSurcos = allSurcosResponses.flatMap((res, index) => {
-        const lote = lotesData[index];
-        return (res?.data || []).map((s: any) => ({
-          ...s,
-          lote: { id: lote.id, nombre: lote.nombre }
-        }));
-      });
-
-      setSurcos(allSurcos);
 
       const brokers = brokersRes || [];
       if (brokers.length === 0) {
@@ -504,14 +480,7 @@ export default function GestionSensoresPage(): ReactElement {
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    const fetchLatestData = async () => {
-      try {
-        const infoRes = await getLatestSensorData();
-        setLatestData(infoRes || []);
-      } catch (error) {
-        console.error("Error al refrescar los datos del sensor:", error);
-      }
-    };
+
 
     // Solo activar el intervalo si los modales NO están abiertos
     if (!isFormModalOpen && !historySensor) {
@@ -540,24 +509,8 @@ export default function GestionSensoresPage(): ReactElement {
   }, [sensores, latestData]);
 
 
-  // --- Lógica de Modales y CRUD ---
-  const handleSave = async (data: any) => {
-    const toastId = toast.loading("Guardando sensor...");
-    try {
-      if (editingSensor) {
-        await actualizarSensor(editingSensor.id, data);
-        toast.success("Sensor actualizado con éxito.", { id: toastId });
-      } else {
-        await crearSensor(data);
-        toast.success("Sensor creado con éxito.", { id: toastId });
-      }
-      await fetchData(); // Recarga todo
-      closeFormModal();
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Error al guardar el sensor.";
-      toast.error(Array.isArray(msg) ? msg.join(', ') : msg, { id: toastId });
-    }
-  };
+
+
 
   const handleDelete = (id: number) => {
     toast.warning('¿Estás seguro de que quieres eliminar este sensor?', {
@@ -590,14 +543,9 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
-  const openFormModal = (sensor: Sensor | null = null) => {
-    setEditingSensor(sensor);
+  const openFormModal = (_sensor: Sensor | null = null) => {
     setIsFormModalOpen(true);
-  };
-  const closeFormModal = () => {
-    setIsFormModalOpen(false);
-    setEditingSensor(null);
-  };
+  }
   
   const openHistoryModal = (sensor: Sensor) => {
     setHistorySensor(sensor);
@@ -728,3 +676,4 @@ export default function GestionSensoresPage(): ReactElement {
     </div>
   );
 }
+
