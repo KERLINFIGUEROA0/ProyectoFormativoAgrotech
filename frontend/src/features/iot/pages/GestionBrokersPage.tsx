@@ -1,9 +1,10 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Globe, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, MoreVertical, Power, PowerOff } from 'lucide-react';
 import {
   listarBrokers,
   eliminarBroker,
+  actualizarEstadoBroker,
 } from '../api/mqttConfigApi';
 import BrokerFormModal from '../components/BrokerFormModal';
 import type { Broker } from '../interfaces/iot';
@@ -15,9 +16,12 @@ interface BrokerCardProps {
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleEstado: () => void;
 }
 
-function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete }: BrokerCardProps) {
+function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete, onToggleEstado }: BrokerCardProps) {
+  const isActive = broker.estado === 'Activo';
+
   return (
     <div
       onClick={onSelect}
@@ -33,6 +37,9 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete }: BrokerCa
           <div>
             <h3 className="font-bold text-lg text-gray-800">{broker.nombre}</h3>
             <p className="text-sm text-gray-500">{`${broker.protocolo}${broker.host}:${broker.puerto}`}</p>
+            <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+              {broker.estado}
+            </span>
           </div>
         </div>
         <div className="flex-shrink-0 relative">
@@ -42,6 +49,9 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete }: BrokerCa
       </div>
       <div className="mt-4 flex justify-end items-center">
         <div className="flex gap-2">
+          <button onClick={(e) => { e.stopPropagation(); onToggleEstado(); }} className={`p-1.5 rounded-full ${isActive ? 'text-yellow-500 hover:bg-yellow-100' : 'text-green-500 hover:bg-green-100'}`} title={isActive ? 'Desactivar Broker' : 'Activar Broker'}>
+            {isActive ? <PowerOff size={16} /> : <Power size={16} />}
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar Broker">
             <Edit size={16} />
           </button>
@@ -95,6 +105,18 @@ export default function GestionBrokersPage(): ReactElement {
     });
   };
 
+  const handleToggleEstado = async (broker: Broker) => {
+    const nuevoEstado = broker.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    const toastId = toast.loading(`Cambiando estado del broker...`);
+    try {
+      await actualizarEstadoBroker(broker.id, nuevoEstado);
+      toast.success(`Broker ${nuevoEstado === 'Activo' ? 'activado' : 'desactivado'} correctamente.`, { id: toastId });
+      await fetchData();
+    } catch (error) {
+      toast.error("No se pudo cambiar el estado del broker.", { id: toastId });
+    }
+  };
+
   const openBrokerModal = (broker: Broker | null = null) => {
     setEditingBroker(broker);
     setIsBrokerModalOpen(true);
@@ -123,6 +145,7 @@ export default function GestionBrokersPage(): ReactElement {
               onSelect={() => {}}
               onEdit={() => openBrokerModal(broker)}
               onDelete={() => handleDeleteBroker(broker)}
+              onToggleEstado={() => handleToggleEstado(broker)}
             />
           ))
         ) : (

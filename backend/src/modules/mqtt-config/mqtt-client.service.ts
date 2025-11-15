@@ -39,8 +39,8 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
    * Inicializa todos los brokers y se suscribe a los tópicos de sus sensores
    */
   private async initializeAllBrokers() {
-    const brokers = await this.brokerRepo.find();
-    
+    const brokers = await this.brokerRepo.find({ where: { estado: 'Activo' } });
+
     for (const broker of brokers) {
       await this.connectToBroker(broker);
     }
@@ -148,8 +148,8 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       where: {
         surco: {
           broker: { id: brokerId },
-          activo_mqtt: true,
         },
+        estado: 'Activo',
       },
       relations: ['surco', 'surco.broker'],
     });
@@ -172,7 +172,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
    * Se suscribe a un nuevo tópico cuando se crea un sensor
    */
   async subscribeToNewSensor(sensor: Sensor) {
-    if (!sensor.surco?.broker || !sensor.topic) {
+    if (!sensor.surco?.broker || !sensor.topic || sensor.estado !== 'Activo') {
       return;
     }
 
@@ -182,22 +182,20 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
     if (!client || !client.connected) {
       // Si no hay cliente o no está conectado, reconectar
       const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
-      if (broker) {
+      if (broker && broker.estado === 'Activo') {
         await this.connectToBroker(broker);
       }
       return;
     }
 
     // Suscribirse al nuevo tópico
-    if (sensor.surco.activo_mqtt) {
-      client.subscribe(sensor.topic, { qos: 0 }, (err) => {
-        if (err) {
-          this.logger.error(`Error suscribiéndose a [${sensor.topic}]: ${err.message}`);
-        } else {
-          this.logger.log(`✅ Suscrito a nuevo tópico: [${sensor.topic}] (Sensor: ${sensor.nombre})`);
-        }
-      });
-    }
+    client.subscribe(sensor.topic, { qos: 0 }, (err) => {
+      if (err) {
+        this.logger.error(`Error suscribiéndose a [${sensor.topic}]: ${err.message}`);
+      } else {
+        this.logger.log(`✅ Suscrito a nuevo tópico: [${sensor.topic}] (Sensor: ${sensor.nombre})`);
+      }
+    });
   }
 
   /**
@@ -209,6 +207,44 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       client.end();
       this.clients.delete(brokerId);
       this.logger.log(`Desconectado broker ID: ${brokerId}`);
+    }
+  }
+
+  /**
+   * Desuscribe un sensor de su tópico
+   */
+  async unsubscribeSensor(sensor: Sensor) {
+    if (!sensor.surco?.broker || !sensor.topic) {
+      return;
+    }
+
+    const brokerId = sensor.surco.broker.id;
+    const client = this.clients.get(brokerId);
+
+    if (!client || !client.connected) {
+      return;
+    }
+
+    client.unsubscribe(sensor.topic, (err) => {
+      if (err) {
+        this.logger.error(`Error desuscribiéndose de [${sensor.topic}]: ${err.message}`);
+      } else {
+        this.logger.log(`✅ Desuscrito de tópico: [${sensor.topic}] (Sensor: ${sensor.nombre})`);
+      }
+    });
+  }
+
+  /**
+   * Activa o desactiva un broker
+   */
+  async toggleBrokerEstado(brokerId: number, nuevoEstado: 'Activo' | 'Inactivo') {
+    if (nuevoEstado === 'Activo') {
+      const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
+      if (broker) {
+        await this.connectToBroker(broker);
+      }
+    } else {
+      await this.disconnectBroker(brokerId);
     }
   }
 }

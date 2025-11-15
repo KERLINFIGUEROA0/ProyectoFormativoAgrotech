@@ -90,6 +90,28 @@ export class MqttConfigService {
     await this.brokerRepo.remove(broker);
   }
 
+  async updateBrokerEstado(id: number, estado: 'Activo' | 'Inactivo'): Promise<Broker> {
+    const broker = await this.findOneBroker(id);
+    broker.estado = estado;
+    const updated = await this.brokerRepo.save(broker);
+
+    // Cambiar estado de sensores asociados
+    const sensores = await this.sensorRepo.find({
+      where: { surco: { broker: { id } } },
+      relations: ['surco'],
+    });
+
+    for (const sensor of sensores) {
+      sensor.estado = estado === 'Activo' ? 'Activo' : 'Inactivo';
+      await this.sensorRepo.save(sensor);
+    }
+
+    // Activar/desactivar conexión MQTT
+    await this.mqttClientService.toggleBrokerEstado(id, estado);
+
+    return updated;
+  }
+
   // --- Lógica de Subscripciones ---
   async createSubscripcion(dto: CreateSubscripcionDto): Promise<Subscripcion> {
     const { brokerId, topic, qos } = dto;
@@ -163,10 +185,10 @@ export class MqttConfigService {
   // --- Método auxiliar para crear sensores ---
   private async crearSensoresParaTopicos(broker: Broker, surcoId: number, topicos: string[]): Promise<void> {
     const topicDefaults = {
-      'luz': { nombre: 'Sensor de Luz', min: 0, max: 100 },
-      'temperatura': { nombre: 'Sensor de Temperatura', min: 0, max: 50 },
-      'humedad': { nombre: 'Sensor de Humedad', min: 0, max: 100 },
-      'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 0, max: 100 },
+      'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 }, // 1500-50000 lux
+      'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },
+      'humedad': { nombre: 'Sensor de Humedad', min: 30, max: 85 },
+      'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 20, max: 90 },
     };
 
     for (const topic of topicos) {

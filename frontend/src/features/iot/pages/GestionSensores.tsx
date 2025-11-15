@@ -1,6 +1,14 @@
-import { useState, useEffect, type ReactElement, useMemo } from 'react';
+import React, { useState, useEffect, type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff, ChevronLeft, ChevronRight, BarChart3, TrendingUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff, ChevronLeft, ChevronRight, BarChart3, TrendingUp, MoreVertical, Settings } from 'lucide-react';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'marquee': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+    }
+  }
+}
 
 // Función helper para restar 5 horas a la fecha
 const subtract5Hours = (dateString: string | null): Date | null => {
@@ -10,7 +18,7 @@ const subtract5Hours = (dateString: string | null): Date | null => {
   return date;
 };
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area, Brush
 } from 'recharts';
 import {
   listarSensores,
@@ -42,88 +50,151 @@ interface SensorCardProps {
   onDelete: (id: number) => void;
   onViewHistory: (sensor: Sensor) => void;
   onToggleEstado: (id: number, estado: 'Activo' | 'Inactivo') => void;
+  menuOpen: string | null;
+  onMenuToggle: (sensorId: string | null) => void;
 }
 
-function SensorCard({ sensor, latestData, onEdit, onDelete, onViewHistory, onToggleEstado }: SensorCardProps) {
-  const valor = latestData ? latestData.valor : null;
-  const min = sensor.valor_minimo_alerta;
-  const max = sensor.valor_maximo_alerta;
+function SensorCard({ sensor, latestData, onEdit, onDelete, onViewHistory, onToggleEstado, menuOpen, onMenuToggle }: SensorCardProps) {
+  const rawValor = latestData ? latestData.valor : null;
+
+  // Determinar unidad y convertir valor si es necesario
+  const getDisplayData = (sensor: Sensor, valor: number | null) => {
+    const name = sensor.nombre.toLowerCase();
+    const topic = sensor.topic?.toLowerCase() || '';
+
+    if (name.includes('luz') || topic.includes('luz')) {
+      // Convertir porcentaje a lux (0-100% -> 0-10000 lux)
+      const luxValor = valor !== null ? valor * 100 : null;
+      return { valor: luxValor, unit: 'lux' };
+    } else if (name.includes('temperatura') || topic.includes('temperatura')) {
+      return { valor, unit: '°C' };
+    } else if ((name.includes('humedad') && name.includes('suelo')) || (topic.includes('humedad') && topic.includes('suelo'))) {
+      return { valor, unit: '%' };
+    } else if (name.includes('humedad') || topic.includes('humedad')) {
+      return { valor, unit: '%' };
+    }
+    return { valor, unit: '' };
+  };
+
+  const { valor, unit } = getDisplayData(sensor, rawValor);
+  const minRaw = sensor.valor_minimo_alerta;
+  const maxRaw = sensor.valor_maximo_alerta;
+
+  // Convertir min y max para display si es sensor de luz
+  const convertAlertValue = (rawValue: number): number => {
+    const name = sensor.nombre.toLowerCase();
+    const topic = sensor.topic?.toLowerCase() || '';
+    if (name.includes('luz') || topic.includes('luz')) {
+      return rawValue * 100;
+    }
+    return rawValue;
+  };
+
+  const min = convertAlertValue(minRaw);
+  const max = convertAlertValue(maxRaw);
 
   let valorColor = "text-gray-900";
   let alertMessage: string | null = null;
   let cardBorderColor = "border-transparent";
+  let bellColor = "text-gray-500";
+  let bellAnimation = "";
 
   if (valor !== null && !isNaN(Number(min)) && !isNaN(Number(max))) {
     if (valor < Number(min)) {
-      valorColor = "text-yellow-600 animate-pulse";
-      alertMessage = `¡Valor Bajo! (Mín: ${min})`;
-      cardBorderColor = "border-yellow-500";
+      valorColor = "text-blue-600 animate-pulse";
+      alertMessage = `PELIGRO`;
+      cardBorderColor = "border-blue-500";
+      bellColor = "text-blue-600";
+      bellAnimation = "animate-bounce";
     } else if (valor > Number(max)) {
       valorColor = "text-red-600 animate-pulse";
-      alertMessage = `¡Valor Alto! (Máx: ${max})`;
+      alertMessage = `PELIGRO`;
       cardBorderColor = "border-red-500";
+      bellColor = "text-red-600";
+      bellAnimation = "animate-bounce";
     }
   }
 
   const isActive = sensor.estado === 'Activo';
 
   return (
-    <div className={`bg-white shadow-xl rounded-xl p-6 relative transition-all border-4 ${cardBorderColor}`}>
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gray-100 rounded-full">
-            <Bell className="w-8 h-8 text-gray-500" />
+    <div className={`bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-lg p-3 relative transition-all border-2 ${cardBorderColor} h-48 flex flex-col hover:shadow-xl`}>
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 bg-gray-100 rounded-full ${bellAnimation}`}>
+            <Bell className={`w-4 h-4 ${bellColor}`} />
           </div>
-          <div>
-            <h3 className="font-bold text-lg text-gray-800">{sensor.nombre}</h3>
-            <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+          <div className="min-w-0 flex-1" style={{ maxWidth: 'calc(100% - 50px)' }}>
+            {React.createElement('marquee', { className: "font-semibold text-sm text-gray-800", behavior: "scroll", direction: "left", scrollamount: "2" }, sensor.nombre)}
+            <span className={`px-1.5 py-0.5 inline-flex text-xs leading-4 font-medium rounded-full ${isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
               {sensor.estado}
             </span>
           </div>
         </div>
-        <div className="absolute top-4 right-4 flex gap-2">
-          <button 
-            onClick={() => onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo')} 
-            className={`${isActive ? 'text-green-500 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'}`}
-            title={isActive ? 'Desactivar' : 'Activar'}
-          >
-            {isActive ? <Power size={16} /> : <PowerOff size={16} />}
-          </button>
-          <button onClick={() => onViewHistory(sensor)} className="text-green-500 hover:text-green-700" title="Ver Gráficos">
-            <ChartIcon size={16} />
-          </button>
-          <button onClick={() => onEdit(sensor)} className="text-blue-500 hover:text-blue-700" title="Editar">
-            <Edit size={16} />
-          </button>
-          <button onClick={() => onDelete(sensor.id)} className="text-red-500 hover:text-red-700" title="Eliminar">
-            <Trash2 size={16} />
-          </button>
+        <div className="absolute top-2 right-2">
+          <div className="relative sensor-menu">
+            <button
+              onClick={() => onMenuToggle(menuOpen === sensor.id.toString() ? null : sensor.id.toString())}
+              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              title="Opciones"
+            >
+              <MoreVertical size={14} className="text-gray-600" />
+            </button>
+
+            {menuOpen === sensor.id.toString() && (
+              <div className="absolute right-0 sm:right-0 left-0 sm:left-auto mt-1 w-44 bg-white rounded-md shadow-lg border border-gray-200 z-10 sensor-menu">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo');
+                      onMenuToggle(null);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    {isActive ? <PowerOff size={12} /> : <Power size={12} />}
+                    {isActive ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onViewHistory(sensor);
+                      onMenuToggle(null);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <ChartIcon size={12} />
+                    Ver Gráficos
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="my-6 text-center">
+      <div className="flex-1 flex flex-col justify-center my-2 text-center">
         {valor !== null ? (
-          <p className={`text-6xl font-bold transition-colors ${valorColor}`}>
-            {Number(valor).toFixed(1)}
-          </p>
+          <div className={`text-3xl font-bold transition-colors ${valorColor} flex items-center justify-center gap-1`}>
+            <span>{Number(valor).toFixed(1)}</span>
+            {unit && <span className="text-lg font-normal">{unit}</span>}
+          </div>
         ) : (
-          <p className="text-4xl font-bold text-gray-400">N/A</p>
+          <p className="text-2xl font-bold text-gray-400">N/A</p>
         )}
         {alertMessage && (
-          <div className={`mt-2 flex items-center justify-center gap-2 font-semibold ${valorColor}`}>
-            <AlertTriangle size={16} /> <span>{alertMessage}</span>
+          <div className={`mt-1 flex items-center justify-center gap-1 font-semibold text-sm ${valorColor}`}>
+            <AlertTriangle size={12} /> <span>{alertMessage}</span>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-center text-sm text-gray-500 border-t pt-3 mt-4">
-        <Clock size={14} className="mr-2" />
-        Última lectura:{' '}
+      <div className="flex items-center justify-center text-xs text-gray-500 border-t pt-2 mt-auto">
+        <Clock size={12} className="mr-1" />
+        Última:{' '}
         {latestData?.fechaRegistro ? (
           subtract5Hours(latestData.fechaRegistro)?.toLocaleTimeString('es-CO', {
             hour: '2-digit', minute: '2-digit', hour12: true
           })
-        ) : (sensor.topic ? 'Esperando datos...' : 'Tópico no configurado')}
+        ) : (sensor.topic ? 'Esperando...' : 'Sin tópico')}
       </div>
     </div>
   );
@@ -175,6 +246,36 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
       .finally(() => setLoading(false));
   }, [sensor]);
 
+  // Polling para actualizar gráficas cada 5 segundos
+  useEffect(() => {
+    if (!sensor) return;
+
+    const intervalId = setInterval(() => {
+      getSensorHistory(sensor.id)
+        .then(data => {
+          const formattedHistory = (data || [])
+            .sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime())
+            .map(reading => {
+              const adjustedDate = subtract5Hours(reading.fechaRegistro);
+              return {
+                time: adjustedDate?.toLocaleTimeString('es-CO', {
+                  hour: '2-digit', minute: '2-digit'
+                }) || '',
+                fecha: adjustedDate?.toLocaleDateString('es-CO') || '',
+                valor: parseFloat(String(reading.valor)),
+              };
+            });
+          setHistory(formattedHistory);
+        })
+        .catch(() => {
+          // Silenciar errores de polling para no molestar al usuario
+          console.warn("Error al actualizar historial del sensor en polling.");
+        });
+    }, 5000); // Actualizar cada 5 segundos
+
+    return () => clearInterval(intervalId);
+  }, [sensor]);
+
   if (!sensor) return null;
 
   const color = "#3b82f6";
@@ -202,6 +303,7 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
               />
               <Legend />
               <Line type="monotone" dataKey="valor" stroke={color} strokeWidth={3} dot={true} activeDot={{ r: 8 }} name={sensor.nombre} />
+              <Brush dataKey="time" height={30} stroke={color} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -218,6 +320,7 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
               />
               <Legend />
               <Bar dataKey="valor" fill={color} name={sensor.nombre} />
+              <Brush dataKey="time" height={30} stroke={color} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -234,6 +337,7 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
               />
               <Legend />
               <Area type="monotone" dataKey="valor" stroke={color} fill={color} fillOpacity={0.3} name={sensor.nombre} />
+              <Brush dataKey="time" height={30} stroke={color} />
             </AreaChart>
           </ResponsiveContainer>
         );
@@ -324,6 +428,7 @@ export default function GestionSensoresPage(): ReactElement {
   const [editingSensor, setEditingSensor] = useState<Sensor | null>(null);
   
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -360,6 +465,18 @@ export default function GestionSensoresPage(): ReactElement {
   useEffect(() => {
     fetchData(); // Carga inicial
   }, []);
+
+  // Cerrar menú al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuOpen && !(event.target as Element).closest('.sensor-menu')) {
+        setMenuOpen(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   // --- ✅ Lógica de Polling para datos en tiempo real ---
   useEffect(() => {
@@ -471,35 +588,66 @@ export default function GestionSensoresPage(): ReactElement {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Monitor de Sensores</h1>
-        <button onClick={() => openFormModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
-          <Plus /> Agregar Sensor
-        </button>
+        {/* Indicadores de colores en el header */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-500 rounded-full border border-blue-300"></div>
+            <span className="text-sm text-gray-700">Valor bajo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-500 rounded-full border border-red-300"></div>
+            <span className="text-sm text-gray-700">Valor alto</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gray-500 rounded-full border border-gray-300"></div>
+            <span className="text-sm text-gray-700">Valor óptimo</span>
+          </div>
+        </div>
       </div>
 
-      {/* Sección de Tarjetas (Cuadrados) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sensoresConDatos.map(data => (
-          <SensorCard
-            key={data.id}
-            sensor={data}
-            latestData={data.latestData}
-            onEdit={openFormModal}
-            onDelete={handleDelete}
-            onViewHistory={openHistoryModal}
-            onToggleEstado={handleToggleEstado}
-          />
-        ))}
+      {/* Sección de Tarjetas (Cuadrados) con scroll horizontal */}
+      <div className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 backdrop-blur-sm rounded-3xl shadow-2xl border border-blue-200/50 p-8 hover:shadow-3xl transition-shadow duration-300">
+        <div className="overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100 scrollbar-thumb-rounded-full">
+          <div className="flex gap-6 min-w-max px-4">
+            {sensoresConDatos.map(data => (
+              <div key={data.id} className="flex-shrink-0 w-60 sm:w-64 transform hover:scale-105 transition-transform duration-200">
+                <SensorCard
+                  sensor={data}
+                  latestData={data.latestData}
+                  onEdit={openFormModal}
+                  onDelete={handleDelete}
+                  onViewHistory={openHistoryModal}
+                  onToggleEstado={handleToggleEstado}
+                  menuOpen={menuOpen}
+                  onMenuToggle={setMenuOpen}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Indicadores de scroll si hay muchos sensores */}
+        {sensoresConDatos.length > 4 && (
+          <div className="flex justify-center mt-6 space-x-2">
+            <div className="text-sm text-blue-600 bg-blue-100/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg border border-blue-200/50 flex items-center gap-2">
+              <ChevronLeft size={16} className="text-blue-500" />
+              <span>Desliza para ver más sensores</span>
+              <ChevronRight size={16} className="text-blue-500" />
+            </div>
+          </div>
+        )}
+
+        {/* Mensaje cuando no hay sensores */}
+        {sensoresConDatos.length === 0 && (
+          <div className="text-center py-16">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200/50">
+              <p className="text-gray-600 text-xl font-medium">No hay sensores configurados</p>
+              <p className="text-gray-500 text-sm mt-3">Registra un broker para crear sensores automáticamente</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal para agregar/editar */}
-      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editingSensor ? 'Editar Sensor' : 'Agregar Nuevo Sensor'} size="4xl">
-        <SensorForm
-          initialData={editingSensor || {}}
-          surcos={surcos}
-          onSave={handleSave}
-          onCancel={closeFormModal}
-        />
-      </Modal>
 
       {/* Modal para ver gráficos con carrusel */}
       <SensorChartsCarousel
