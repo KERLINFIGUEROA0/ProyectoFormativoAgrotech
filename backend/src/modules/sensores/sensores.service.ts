@@ -144,8 +144,20 @@ export class SensoresService {
 
   async updateEstado(id: number, estado: 'Activo' | 'Inactivo' | 'Mantenimiento'): Promise<Sensor> {
     const sensor = await this.findOne(id);
+    const estadoAnterior = sensor.estado;
     sensor.estado = estado;
-    return this.sensorRepo.save(sensor);
+    const updated = await this.sensorRepo.save(sensor);
+
+    // Si cambió de inactivo a activo, suscribir
+    if (estadoAnterior !== 'Activo' && estado === 'Activo') {
+      await this.mqttClientService.subscribeToNewSensor(updated);
+    }
+    // Si cambió de activo a inactivo, desuscribir
+    else if (estadoAnterior === 'Activo' && estado !== 'Activo') {
+      await this.mqttClientService.unsubscribeSensor(updated);
+    }
+
+    return updated;
   }
 
   async remove(id: number): Promise<void> {

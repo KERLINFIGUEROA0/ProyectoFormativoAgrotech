@@ -64,11 +64,15 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
+  surco?: Surco | null;
+  prefijoTopicos?: string;
+  topicosAdicionales?: string[];
+  estado: 'Activo' | 'Inactivo';
   subscripciones: Subscripcion[]; // El backend las incluye (eager: true)
 }
 
 // Para el formulario de crear Broker
-export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones'>;
+export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones' | 'estado'>;
 
 // Para el formulario de crear Subscripción
 export interface CreateSubscripcionDto {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   Delete,
@@ -36,11 +37,25 @@ export class MqttConfigController {
     return { success: true, data };
   }
 
+  @Put('brokers/:id')
+  @Permission('Iot.Editar')
+  async updateBroker(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateBrokerDto) {
+    const data = await this.configService.updateBroker(id, dto);
+    return { success: true, message: 'Broker actualizado.', data };
+  }
+
   @Delete('brokers/:id')
   @Permission('Iot.Eliminar')
   async deleteBroker(@Param('id', ParseIntPipe) id: number) {
     await this.configService.deleteBroker(id);
     return { success: true, message: 'Broker eliminado.' };
+  }
+
+  @Put('brokers/:id/estado')
+  @Permission('Iot.Editar')
+  async updateBrokerEstado(@Param('id', ParseIntPipe) id: number, @Body('estado') estado: 'Activo' | 'Inactivo') {
+    const data = await this.configService.updateBrokerEstado(id, estado);
+    return { success: true, message: 'Estado del broker actualizado.', data };
   }
 
   @Post('brokers/test-connection')

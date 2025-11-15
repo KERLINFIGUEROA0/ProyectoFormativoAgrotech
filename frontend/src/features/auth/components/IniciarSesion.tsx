@@ -22,6 +22,12 @@ export default function FormularioLogin(): ReactElement {
   const toggleVisibilidad = (): void => setEsVisible((v) => !v);
 
   const manejarLogin = async (): Promise<void> => {
+    // Validar campos vacíos
+    if (!formulario.identificacion.trim() || !formulario.password.trim()) {
+      toast.error("Debe llenar todos los campos");
+      return;
+    }
+
     setCargando(true);
     const minLoadingTime = 2000;
     const startTime = Date.now();
@@ -84,6 +90,11 @@ export default function FormularioLogin(): ReactElement {
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             setFormulario({ ...formulario, identificacion: e.target.value })
           }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              manejarLogin();
+            }
+          }}
         />
         <Input
           label="Contraseña"
@@ -96,6 +107,11 @@ export default function FormularioLogin(): ReactElement {
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             setFormulario({ ...formulario, password: e.target.value })
           }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              manejarLogin();
+            }
+          }}
           endContent={
             <button
               type="button"
