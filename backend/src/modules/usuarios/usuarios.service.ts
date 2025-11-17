@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, Not } from 'typeorm';
+import { Repository, Brackets, Not,In } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { join } from 'path';
@@ -278,6 +278,19 @@ export class UsuariosService {
 
     // Ya no es necesario filtrar los permisos del usuario aquí
     return usuarios;
+  }
+
+  async findAssignableUsers(): Promise<Usuario[]> {
+    return this.usuarioRepository.find({
+      relations: ['tipoUsuario', 'ficha'], // Cargamos las relaciones
+      where: {
+        estado: true, // Solo usuarios activos
+        tipoUsuario: {
+          nombre: In(['Aprendiz', 'Pasante']), // Solo estos roles
+        },
+      },
+      select: ['id', 'identificacion', 'nombre', 'apellidos', 'ficha', 'tipoUsuario'], // Traer solo lo necesario
+    });
   }
 
   async buscarTodos() {

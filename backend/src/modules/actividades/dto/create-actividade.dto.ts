@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested } from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested,Min } from 'class-validator';
 // --- 1. IMPORTA plainToInstance ---
 import { Transform, Type, plainToInstance } from 'class-transformer';
 
@@ -73,4 +73,17 @@ export class CreateActividadDto {
   @IsIn(['pendiente', 'en proceso', 'completado'])
   @IsOptional()
   estado?: 'pendiente' | 'en proceso' | 'completado';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Type(() => Number) // Ayuda a transformar string (de FormData) a number
+  horas?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Type(() => Number) // Ayuda a transformar string (de FormData) a number
+  tarifaHora?: number;
+  // --- FIN DE CAMPOS NUEVOS ---
 }

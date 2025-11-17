@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-// --- AÑADIR IMPORTS ---
 import { Upload, Plus, X, Package, Hash } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import type {
   Actividad,
   EstadoActividad,
   CultivoSimple,
-  // --- AÑADIR IMPORT ---
   MaterialUsado,
 } from "../interfaces/actividades";
-// --- AÑADIR IMPORTS ---
 import { obtenerMaterialesDisponibles } from "../api/actividadesapi";
 import type { Material } from "../../inventario/interfaces/inventario";
 
@@ -23,7 +20,6 @@ interface FormularioActividadProps {
 
 const estados: EstadoActividad[] = ["pendiente", "en proceso", "completado"];
 
-// --- AÑADIR ESTADO INICIAL PARA MATERIALES ---
 interface MaterialSeleccionado extends MaterialUsado {
   nombre: string;
   stockDisponible: number;
@@ -38,6 +34,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   const { userData, token } = useAuth();
   const isEditing = Boolean(actividadInicial?.id);
 
+  // --- CORRECCIÓN 1: Añadir horas y tarifaHora al estado ---
   const [formData, setFormData] = useState({
     titulo: "",
     descripcion: "",
@@ -45,20 +42,20 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     cultivo: "",
     estado: "completado" as EstadoActividad,
     imagenes: [] as File[],
+    horas: '' as number | string, // <-- AÑADIDO
+    tarifaHora: '' as number | string, // <-- AÑADIDO
   });
 
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
 
-  // --- AÑADIR ESTADOS PARA MATERIALES ---
   const [materialesDisponibles, setMaterialesDisponibles] = useState<Material[]>([]);
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState<
     MaterialSeleccionado[]
   >([]);
-  const [materialActual, setMaterialActual] = useState<string>(''); // ID del material
+  const [materialActual, setMaterialActual] = useState<string>(''); 
   const [cantidadMaterial, setCantidadMaterial] = useState<number | string>(1);
-  // --- FIN DE ESTADOS PARA MATERIALES ---
 
-  // 🔐 Obtener usuario autenticado (sin cambios)
+  // Obtener usuario autenticado (sin cambios)
   useEffect(() => {
     if (userData && userData.identificacion) {
       setUsuarioId(userData.identificacion);
@@ -67,9 +64,10 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     }
   }, [userData, token]);
 
-  // 🧩 Precargar datos de edición (MODIFICADO)
+  // Precargar datos de edición (MODIFICADO)
   useEffect(() => {
     if (isEditing && actividadInicial) {
+      // --- CORRECCIÓN 2: Precargar horas y tarifaHora ---
       setFormData({
         titulo: actividadInicial.titulo || "",
         descripcion: actividadInicial.descripcion || "",
@@ -79,38 +77,29 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         cultivo: actividadInicial.cultivo?.id?.toString() || "",
         estado: actividadInicial.estado || "pendiente",
         imagenes: [],
+        horas: actividadInicial.horas || '', // <-- AÑADIDO
+        tarifaHora: actividadInicial.tarifaHora || '', // <-- AÑADIDO
       });
       
-      // --- INICIO DE CORRECCIÓN 2: Precargar materiales existentes ---
-      // (Se ejecuta solo si hay materiales en la actividad Y la lista de inventario ya cargó)
-     if (actividadInicial.actividadMaterial && materialesDisponibles.length > 0) {
-        
+      // Precargar materiales (Tu código ya estaba correcto aquí)
+      if (actividadInicial.actividadMaterial && materialesDisponibles.length > 0) {
         const materialesCargados = actividadInicial.actividadMaterial.map(am => {
-          
-          // Leemos la estructura anidada correcta de tu interfaz
           const materialId = am.material?.id;
           const materialNombre = am.material?.nombre || 'Material Desconocido';
-          
-          // Buscamos el material en el inventario para obtener el stock MÁS RECIENTE
           const materialInfo = materialesDisponibles.find(m => m.id === materialId);
-          
           return {
             materialId: materialId,
             cantidadUsada: am.cantidadUsada,
             nombre: materialNombre,
-            // Usamos el stock actual del inventario, no el stock que tenía cuando se creó la actividad
             stockDisponible: materialInfo?.cantidad || 0, 
           };
         });
-        
         setMaterialesSeleccionados(materialesCargados);
       }
-      // --- FIN DE CORRECCIÓN 2 ---
-      
     }
-  }, [actividadInicial, isEditing, materialesDisponibles]); // <-- CORRECCIÓN: Añadir materialesDisponibles
+  }, [actividadInicial, isEditing, materialesDisponibles]);
 
-  // --- AÑADIR USEEFFECT PARA CARGAR MATERIALES ---
+  // Cargar materiales (sin cambios)
   useEffect(() => {
     const cargarMateriales = async () => {
       try {
@@ -122,9 +111,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     };
     cargarMateriales();
   }, []);
-  // --- FIN DE USEEFFECT ---
 
-  // 🔄 Manejar cambios en inputs (sin cambios)
+  // Manejar cambios en inputs (sin cambios)
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -134,7 +122,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🖼️ Manejar carga de imágenes (sin cambios)
+  // Manejar carga de imágenes (sin cambios)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -145,7 +133,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     }
   };
 
-  // ❌ Eliminar imagen de la vista previa (sin cambios)
+  // Eliminar imagen de la vista previa (sin cambios)
   const handleRemoveImage = (index: number) => {
     setFormData((prev) => ({
       ...prev,
@@ -153,7 +141,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     }));
   };
 
-  // --- AÑADIR LÓGICA PARA GESTIONAR MATERIALES (MODIFICADO) ---
+  // --- CORRECCIÓN 3: Arreglar bug de "reemplazo" de materiales ---
   const handleAddMaterial = () => {
     const id = parseInt(materialActual);
     const cantidad = Number(cantidadMaterial);
@@ -166,6 +154,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     const material = materialesDisponibles.find((m) => m.id === id);
     if (!material) return;
 
+    // Verificar stock (tu lógica es correcta)
     if (cantidad > material.cantidad) {
       toast.error(
         `Stock insuficiente. Disponible: ${material.cantidad} ${material.tipoEmpaque}`,
@@ -173,7 +162,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       return;
     }
     
-    // Evitar duplicados, en su lugar, sumar cantidad
     const existente = materialesSeleccionados.find(m => m.materialId === id);
     if (existente) {
         const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
@@ -182,17 +170,15 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             return;
         }
         
-        // --- INICIO DE CORRECCIÓN 1 (Caso Existente) ---
+        // --- USA (prev) ---
         setMaterialesSeleccionados((prevMateriales) => 
             prevMateriales.map(m => 
                 m.materialId === id ? { ...m, cantidadUsada: nuevaCantidadTotal } : m
             )
         );
-        // --- FIN DE CORRECCIÓN 1 ---
 
     } else {
-    
-        // --- INICIO DE CORRECCIÓN 1 (Caso Nuevo) ---
+        // --- USA (prev) ---
         setMaterialesSeleccionados((prevMateriales) => [
           ...prevMateriales,
           {
@@ -202,22 +188,21 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             stockDisponible: material.cantidad,
           },
         ]);
-        // --- FIN DE CORRECCIÓN 1 ---
     }
 
-    // Limpiar inputs
+    // Limpiar inputs (sin cambios)
     setMaterialActual('');
     setCantidadMaterial(1);
   };
 
+  // (handleRemoveMaterial sin cambios)
   const handleRemoveMaterial = (materialId: number) => {
     setMaterialesSeleccionados(
       materialesSeleccionados.filter((m) => m.materialId !== materialId),
     );
   };
-  // --- FIN DE LÓGICA DE MATERIALES ---
 
-  // 🧾 Enviar formulario (MODIFICADO)
+  // --- CORRECCIÓN 4: Añadir 'horas' y 'tarifaHora' al FormData ---
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -225,7 +210,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       toast.error("Los campos Título, Fecha y Cultivo son obligatorios.");
       return;
     }
-    if (!usuarioId) {
+    if (!usuarioId && !isEditing) { // Solo requerir usuarioId si estamos creando
       toast.error("No se pudo identificar el usuario autenticado.");
       return;
     }
@@ -234,17 +219,24 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     dataToSend.append("titulo", formData.titulo.trim());
     dataToSend.append("descripcion", formData.descripcion.trim());
     dataToSend.append("fecha", formData.fecha);
-    dataToSend.append("usuario", usuarioId.toString());
     dataToSend.append("cultivo", formData.cultivo);
     dataToSend.append("estado", formData.estado);
 
+    // --- AÑADIDO: Enviar campos de costo ---
+    dataToSend.append("horas", formData.horas.toString() || "0");
+    dataToSend.append("tarifaHora", formData.tarifaHora.toString() || "0");
+
+    // --- (Tu corrección de 'isEditing' ya estaba aquí, está perfecta) ---
+    if (!isEditing) {
+      dataToSend.append("usuario", usuarioId!.toString());
+    }
+
+    // (Lógica de imágenes sin cambios)
     formData.imagenes.forEach((file) => {
-      dataToSend.append("imagenes", file); // 'imagenes' debe coincidir con el backend
+      dataToSend.append("imagenes", file);
     });
 
-    // --- AÑADIR MATERIALES AL FORMDATA ---
-    // El backend (controlador) debe estar preparado para recibir un string JSON
-    // y parsearlo antes de pasarlo al servicio.
+    // (Lógica de materiales sin cambios)
     if (materialesSeleccionados.length > 0) {
       const materialesPayload = materialesSeleccionados.map(m => ({
         materialId: m.materialId,
@@ -252,14 +244,13 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       }));
       dataToSend.append('materiales', JSON.stringify(materialesPayload));
     }
-    // --- FIN DE AÑADIR MATERIALES ---
 
     onSubmit(dataToSend);
   };
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md p-8 border border-gray-200">
-      {/* ... (Título del formulario sin cambios) ... */}
+      {/* (Título sin cambios) */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
           {isEditing ? "Editar Actividad" : "Registrar Actividad"}
@@ -278,8 +269,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               {isEditing ? "Editar Actividad" : "Nueva Actividad"}
             </h3>
           </div>
-          {/* ... (Inputs de Nombre, Fecha, Cultivo y Estado sin cambios) ... */}
-          {/* Nombre */}
+          
+          {/* Nombre (sin cambios) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nombre de Actividad <span className="text-red-500">*</span>
@@ -294,7 +285,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             />
           </div>
 
-          {/* Fecha */}
+          {/* Fecha (sin cambios) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Fecha de realización <span className="text-red-500">*</span>
@@ -308,7 +299,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             />
           </div>
 
-          {/* Cultivo */}
+          {/* Cultivo (sin cambios) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Cultivo <span className="text-red-500">*</span>
@@ -329,26 +320,24 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             </select>
           </div>
 
-          {/* Estado (solo al editar) */}
-          {isEditing && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-              <select
-                name="estado"
-                value={formData.estado}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-green-500 outline-none"
-              >
-                {estados.map((estado) => (
-                  <option key={estado} value={estado}>
-                    {estado}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Estado (Ahora se muestra siempre, no solo al editar) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <select
+              name="estado"
+              value={formData.estado}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+            >
+              {estados.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {/* Descripción */}
+          {/* Descripción (sin cambios) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Descripción
@@ -361,13 +350,48 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none h-24"
             />
           </div>
+
+          {/* --- CORRECCIÓN 5: Añadir Inputs de Costo al JSX --- */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Horas Trabajadas
+              </label>
+              <input
+                type="number"
+                name="horas"
+                value={formData.horas}
+                onChange={handleChange}
+                placeholder="Ej: 4"
+                min="0"
+                step="0.5"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tarifa por Hora (COP)
+              </label>
+              <input
+                type="number"
+                name="tarifaHora"
+                value={formData.tarifaHora}
+                onChange={handleChange}
+                placeholder="Ej: 5000"
+                min="0"
+                step="500"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
+              />
+            </div>
+          </div>
+          {/* --- FIN DE LA CORRECCIÓN 5 --- */}
+
         </div>
 
         {/* Columna derecha (Imágenes y Materiales) */}
         <div className="space-y-4">
-          {/* Imágenes (código sin cambios) */}
+          {/* (Sección de Imágenes sin cambios) */}
           <div>
-            {/* ... (Label e input de imágenes) ... */}
             <label className="block text-sm font-medium text-gray-700 mb-1">Imágenes</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50">
               <Upload className="mx-auto text-gray-400" size={32} />
@@ -385,7 +409,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                 />
               </label>
             </div>
-            {/* ... (Vista previa de imágenes) ... */}
             {formData.imagenes.length > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {formData.imagenes.map((img, i) => (
@@ -408,14 +431,13 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             )}
           </div>
 
-          {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
+          {/* (Sección de Materiales sin cambios) */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               Materiales Utilizados
             </label>
             <div className="p-4 border rounded-lg bg-gray-50 space-y-3">
               <div className="flex items-end gap-2">
-                {/* Select de Material */}
                 <div className="flex-1">
                   <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Package size={14}/> Material</label>
                   <select
@@ -431,18 +453,16 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                     ))}
                   </select>
                 </div>
-                {/* Input de Cantidad */}
                 <div className="w-1/3">
                   <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
                   <input
                     type="number"
-                    value={cantidadMaterial}
+                    value={cantidadMaterial || ''}
                     onChange={(e) => setCantidadMaterial(Number(e.target.value))}
                     min="1"
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                   />
                 </div>
-                {/* Botón Añadir */}
                 <button
                   type="button"
                   onClick={handleAddMaterial}
@@ -451,8 +471,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                   <Plus size={20} />
                 </button>
               </div>
-
-              {/* Lista de materiales seleccionados */}
               <div className="space-y-2">
                 {materialesSeleccionados.map((m) => (
                   <div
@@ -477,11 +495,9 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               </div>
             </div>
           </div>
-          {/* --- FIN DE SECCIÓN DE MATERIALES --- */}
-
         </div>
 
-        {/* Botones (sin cambios) */}
+        {/* (Botones sin cambios) */}
         <div className="col-span-1 md:col-span-2 flex justify-end gap-4 mt-6">
           <button
             type="button"

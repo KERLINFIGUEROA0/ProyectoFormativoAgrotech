@@ -38,6 +38,9 @@ export class Broker {
   @Column({ type: 'json', nullable: true })
   topicosAdicionales: string[];
 
+  @Column({ type: 'varchar', length: 10, default: 'Activo' })
+  estado: 'Activo' | 'Inactivo';
+
   @OneToMany(() => Subscripcion, (sub) => sub.broker, {
     cascade: true,
     eager: true, // Carga automáticamente las subscripciones

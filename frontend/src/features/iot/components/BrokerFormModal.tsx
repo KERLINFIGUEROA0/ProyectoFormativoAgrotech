@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Server, X } from 'lucide-react';
+import { Server, X, Wifi } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Broker, Surco } from '../interfaces/iot';
-import { listarSurcos, crearBroker, actualizarBroker } from '../api/mqttConfigApi';
+import { listarSurcos, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
 interface BrokerFormModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
     humedad: true,
     humedad_suelo: true,
   });
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     protocolo: 'mqtt://',
@@ -91,8 +93,68 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
   // Normalizar el prefijo para que no empiece con '/' y no termine con '/', y sin múltiples '/'
   const normalizedPrefix = (formData.prefijoTopicos || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\/+/g, '/');
 
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    try {
+      const data = {
+        nombre: formData.nombre,
+        protocolo: formData.protocolo,
+        host: formData.host,
+        puerto: parseInt(formData.puerto),
+        surcoId: formData.surcoId ? parseInt(formData.surcoId) : undefined,
+        prefijoTopicos: normalizedPrefix || undefined,
+        topicosAdicionales: [
+          ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
+          ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
+        ],
+        usuario: formData.usuario || undefined,
+        password: formData.password || undefined,
+      };
+
+      const result = await probarConexionBroker(data);
+      if (result.connected) {
+        toast.success("Conexión exitosa al broker MQTT.");
+      } else {
+        toast.error(`Error de conexión: ${result.message}`);
+      }
+    } catch (error: any) {
+      toast.error(`Error al probar la conexión: ${error.message || 'Error desconocido'}`);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Primero probar la conexión
+    try {
+      const testData = {
+        nombre: formData.nombre,
+        protocolo: formData.protocolo,
+        host: formData.host,
+        puerto: parseInt(formData.puerto),
+        surcoId: formData.surcoId ? parseInt(formData.surcoId) : undefined,
+        prefijoTopicos: normalizedPrefix || undefined,
+        topicosAdicionales: [
+          ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
+          ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
+        ],
+        usuario: formData.usuario || undefined,
+        password: formData.password || undefined,
+      };
+
+      const testResult = await probarConexionBroker(testData);
+      if (!testResult.connected) {
+        toast.error(`No se puede conectar al broker: ${testResult.message}. Verifique los datos e intente nuevamente.`);
+        return;
+      }
+    } catch (error: any) {
+      toast.error(`Error al verificar la conexión: ${error.message || 'Error desconocido'}`);
+      return;
+    }
+
+    // Si la conexión es exitosa, proceder a guardar
     try {
       // Normalizar el prefijo para que no empiece con '/' y no termine con '/', y sin múltiples '/'
       let normalizedPrefix = (formData.prefijoTopicos || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\/+/g, '/');
@@ -113,8 +175,10 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
 
       if (broker) {
         await actualizarBroker(broker.id, data);
+        toast.success("Broker actualizado exitosamente.");
       } else {
         await crearBroker(data);
+        toast.success("Broker creado exitosamente y sensores configurados.");
       }
 
       // Reset form solo si es creación
@@ -134,8 +198,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
       }
       onClose();
       onSuccess?.();
-    } catch (error) {
-      console.error('Error guardando broker:', error);
+    } catch (error: any) {
+      toast.error(`Error guardando broker: ${error.message || 'Error desconocido'}`);
     }
   };
 
@@ -170,6 +234,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-in scale-in duration-200 delay-25"></div>
                   Información del Broker
                 </h4>
+                {/* Primera fila: Nombre y Protocolo */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -197,25 +262,14 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                       <option value="mqtts://">mqtts://</option>
                       <option value="ws://">ws:// (WebSocket)</option>
                       <option value="wss://">wss:// (WebSocket Seguro)</option>
+                      <option value="http://">http://</option>
+                      <option value="https://">https://</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Surco
-                    </label>
-                    <select
-                      value={formData.surcoId}
-                      onChange={(e) => setFormData({ ...formData, surcoId: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">Seleccionar surco (opcional)</option>
-                      {surcos.map((surco) => (
-                        <option key={surco.id} value={surco.id}>
-                          {surco.nombre} - {surco.lote.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                </div>
+
+                {/* Segunda fila: Host y Puerto */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Host
@@ -242,6 +296,27 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                       required
                     />
                   </div>
+                </div>
+
+                {/* Tercera fila: Surco, Prefijo y Botón */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Surco
+                    </label>
+                    <select
+                      value={formData.surcoId}
+                      onChange={(e) => setFormData({ ...formData, surcoId: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">Seleccionar surco (opcional)</option>
+                      {surcos.map((surco) => (
+                        <option key={surco.id} value={surco.id}>
+                          {surco.nombre} - {surco.lote.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Prefijo de Tópicos
@@ -253,6 +328,18 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                       className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       placeholder="ej: sensor/"
                     />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={isTestingConnection || !formData.host || !formData.puerto}
+                      className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md text-sm transition-colors flex items-center justify-center gap-1"
+                      title="Probar conexión al broker"
+                    >
+                      <Wifi size={14} />
+                      {isTestingConnection ? 'Probando...' : 'Probar'}
+                    </button>
                   </div>
                 </div>
               </div>

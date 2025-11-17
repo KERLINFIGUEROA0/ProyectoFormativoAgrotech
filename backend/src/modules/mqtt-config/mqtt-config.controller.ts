@@ -51,6 +51,13 @@ export class MqttConfigController {
     return { success: true, message: 'Broker eliminado.' };
   }
 
+  @Put('brokers/:id/estado')
+  @Permission('Iot.Editar')
+  async updateBrokerEstado(@Param('id', ParseIntPipe) id: number, @Body('estado') estado: 'Activo' | 'Inactivo') {
+    const data = await this.configService.updateBrokerEstado(id, estado);
+    return { success: true, message: 'Estado del broker actualizado.', data };
+  }
+
   @Post('brokers/test-connection')
   @Permission('Iot.Crear')
   async testBrokerConnection(@Body() dto: CreateBrokerDto) {

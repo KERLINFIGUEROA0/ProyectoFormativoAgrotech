@@ -118,7 +118,12 @@ export class ActividadesController {
     if (body.usuario) {
       dto.usuario = parseInt(body.usuario, 10);
     }
-
+    if (body.horas) {
+      dto.horas = parseFloat(body.horas);
+    }
+    if (body.tarifaHora) {
+      dto.tarifaHora = parseFloat(body.tarifaHora);
+    }
     // 7. Manejamos las imágenes como lo hacías antes
     if (files && files.length > 0) {
       const imagenes = files.map((file) => file.filename);

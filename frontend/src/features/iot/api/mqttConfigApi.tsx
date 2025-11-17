@@ -28,6 +28,11 @@ export const eliminarBroker = async (id: number): Promise<void> => {
   await api.delete(`/mqtt-config/brokers/${id}`);
 };
 
+export const actualizarEstadoBroker = async (id: number, estado: 'Activo' | 'Inactivo'): Promise<Broker> => {
+  const response = await api.put(`/mqtt-config/brokers/${id}/estado`, { estado });
+  return response.data.data;
+};
+
 // --- API para Subscripciones (Tópicos) ---
 
 export const crearSubscripcion = async (
