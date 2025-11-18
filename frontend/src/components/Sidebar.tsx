@@ -15,9 +15,12 @@ import {
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
   Calendar,
+  Menu,
+  X,
   // CirclePause,
   WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 import logoAgroFull from "../assets/logo.png";
 import logoAgroMini from "../assets/logo1.png";
@@ -124,32 +127,70 @@ export default function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const toggleMenu = (id: string) => {
     setOpenMenu(openMenu === id ? null : id);
   };
 
+  const handleNavigation = (path: string, sectionId: string) => {
+    setActiveSection(sectionId);
+    navigate(path);
+    if (isMobile) {
+      setMobileMenuOpen(false);
+    }
+  };
+
   return (
-    <aside
-      className={`bg-white shadow-xl transition-all duration-300 flex flex-col
-      ${collapsed ? "w-20" : "w-64"}
-      h-[95vh] ml-4 my-auto rounded-3xl border border-green-100`}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 cursor-pointer"
-        onClick={() => setCollapsed(!collapsed)}
+    <>
+      {/* Botón hamburguesa para móvil - Solo visible cuando el menú está cerrado */}
+      {isMobile && !mobileMenuOpen && (
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="fixed top-2 left-2 z-[60] bg-green-500 text-white p-1.5 rounded-md shadow-sm md:hidden opacity-70 hover:opacity-100 transition-opacity"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Overlay para cerrar menú en móvil */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`bg-white shadow-xl transition-all duration-300 flex flex-col
+        ${collapsed && !isMobile ? "w-20" : "w-64"}
+        ${isMobile ? `fixed inset-y-0 left-0 z-50 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` : 'relative'}
+        h-screen md:h-[95vh] ml-0 md:ml-4 my-0 md:my-auto rounded-none md:rounded-3xl border-r md:border border-green-100`}
       >
-        <div className="flex items-center justify-center w-full">
+      {/* Header con botón de cerrar en móvil */}
+      <div className="flex items-center justify-between p-4">
+        <div
+          className="flex items-center justify-center flex-1 cursor-pointer"
+          onClick={() => !isMobile && setCollapsed(!collapsed)}
+        >
           <img
-            src={collapsed ? logoAgroMini : logoAgroFull}
+            src={collapsed && !isMobile ? logoAgroMini : logoAgroFull}
             alt="Logo AgroTIC"
             className={`${
-              collapsed ? "w-10 h-10" : "w-40"
+              collapsed && !isMobile ? "w-10 h-10" : "w-40"
             } object-contain transition-all duration-300`}
           />
         </div>
+        {isMobile && (
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        )}
       </div>
 
       {/* Menú */}
@@ -170,16 +211,13 @@ export default function Sidebar({
               <button
                 onClick={() => {
                   if (item.id === "perfil") {
-                    setActiveSection(item.id);
-                    navigate("/usuario");
+                    handleNavigation("/usuario", item.id);
                   } else if (item.id === "iot") {
-                    setActiveSection("gestion-sensores");
-                    navigate("/gestion-sensores");
+                    handleNavigation("/gestion-sensores", "gestion-sensores");
                   } else if (item.children) {
                     toggleMenu(item.id);
                   } else {
-                    setActiveSection(item.id);
-                    navigate(`/${item.id}`);
+                    handleNavigation(`/${item.id}`, item.id);
                   }
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-base
@@ -227,10 +265,7 @@ export default function Sidebar({
                     return (
                       <button
                         key={child.id}
-                        onClick={() => {
-                          setActiveSection(child.id);
-                          navigate(`/${child.id}`);
-                        }}
+                        onClick={() => handleNavigation(`/${child.id}`, child.id)}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-100 text-left
                         ${
                           isChildActive
@@ -266,10 +301,7 @@ export default function Sidebar({
           // Vista Colapsada
           <div className="flex flex-col items-center gap-2">
             <button
-              onClick={() => {
-                setActiveSection("perfil");
-                navigate("/usuario");
-              }}
+              onClick={() => handleNavigation("/usuario", "perfil")}
               className="flex items-center justify-center w-12 h-12 rounded-lg text-gray-600 hover:bg-green-50 hover:text-green-800 transition-all duration-200"
             >
               <User className="w-6 h-6" />
@@ -286,10 +318,7 @@ export default function Sidebar({
           <>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setActiveSection("perfil");
-                  navigate("/usuario");
-                }}
+                onClick={() => handleNavigation("/usuario", "perfil")}
                 className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-green-50 hover:text-green-800 transition-all duration-200"
               >
                 <User className="w-6 h-6 flex-shrink-0" />
@@ -310,5 +339,6 @@ export default function Sidebar({
         )}
       </div>
     </aside>
+    </>
   );
 }

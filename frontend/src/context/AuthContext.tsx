@@ -34,6 +34,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserData(null);
       return;
     }
+    
+    // Modo demo: si el token es demo, crear datos ficticios
+    if (token.startsWith('demo-token-')) {
+      const demoUser: UsuarioData = {
+        tipo: "CC",
+        identificacion: 123456789,
+        nombres: "Usuario",
+        apellidos: "Demo",
+        email: "demo@agrotech.com",
+        telefono: "3001234567",
+        fotoUrl: "",
+      };
+      setUserData(demoUser);
+      setUserPermissions(['*']); // Todos los permisos
+      localStorage.setItem('permissions', JSON.stringify(['*']));
+      return;
+    }
+    
     try {
       console.log("🔍 Debug: Fetching user profile...");
       const userProfile = await obtenerPerfil();
@@ -61,11 +79,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Error fetching user data or permissions:", error);
-      localStorage.removeItem("token");
-      localStorage.removeItem("permissions");
-      setToken(null);
-      setUserPermissions(null);
-      setUserData(null);
+      // No eliminar el token si es demo
+      if (!token.startsWith('demo-token-')) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("permissions");
+        setToken(null);
+        setUserPermissions(null);
+        setUserData(null);
+      }
     }
   }, [token]);
 

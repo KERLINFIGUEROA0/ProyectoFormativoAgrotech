@@ -5,6 +5,10 @@ import "./index.css";
 import { HeroUIProvider } from "@heroui/react";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
+import { initializeCapacitor } from "./capacitor-init";
+
+// Inicializar Capacitor
+initializeCapacitor();
 
 ReactDOM.createRoot(
   document.getElementById("root")!).render(

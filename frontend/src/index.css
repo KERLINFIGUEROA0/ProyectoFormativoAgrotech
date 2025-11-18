@@ -2,6 +2,35 @@
 @plugin "./hero";
 @source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
 
+/* Estilos base para móvil */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optimización para inputs en móvil */
+input, textarea, select {
+  font-size: 16px !important; /* Evita zoom en iOS */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -9,7 +38,177 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* Quitar flechas en Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Botones táctiles más grandes */
+button, a {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* Scroll suave */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Tablas responsivas */
+table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 6px 3px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Cards y contenedores móviles */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Ajustar modales para móvil */
+  [role="dialog"] {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 8px !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Formularios más compactos */
+  form {
+    width: 100% !important;
+  }
+  
+  form > div {
+    margin-bottom: 8px !important;
+  }
+  
+  /* Inputs y selects más compactos */
+  input, select, textarea {
+    padding: 8px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Labels más pequeños */
+  label {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  /* Botones más compactos */
+  button {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Grids responsivos */
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  /* Cards más compactos */
+  [class*="card"], [class*="Card"] {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  /* Títulos más pequeños */
+  h1 {
+    font-size: 20px !important;
+  }
+  
+  h2 {
+    font-size: 18px !important;
+  }
+  
+  h3 {
+    font-size: 16px !important;
+  }
+  
+  h4, h5, h6 {
+    font-size: 14px !important;
+  }
+  
+  /* Espaciado general reducido */
+  .p-6 {
+    padding: 12px !important;
+  }
+  
+  .p-4 {
+    padding: 8px !important;
+  }
+  
+  .gap-4 {
+    gap: 8px !important;
+  }
+  
+  .gap-6 {
+    gap: 12px !important;
+  }
+  
+  /* Flex containers */
+  .flex {
+    flex-wrap: wrap !important;
+  }
+  
+  /* Ancho completo para elementos */
+  .w-1\/2, .w-1\/3, .w-1\/4, .w-2\/3, .w-3\/4 {
+    width: 100% !important;
+  }
+}
+
+/* Mejoras para mapas en móvil */
+.leaflet-container {
+  height: 300px !important;
+  min-height: 300px !important;
+}
+
+@media (max-width: 768px) {
+  .leaflet-container {
+    height: 250px !important;
+    min-height: 250px !important;
+  }
+}
+
+/* Sidebar móvil */
+@media (max-width: 768px) {
+  aside {
+    position: fixed !important;
+    z-index: 1000 !important;
+    height: 100vh !important;
+  }
+}
+
+/* Ocultar scrollbar pero mantener funcionalidad */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
 }
