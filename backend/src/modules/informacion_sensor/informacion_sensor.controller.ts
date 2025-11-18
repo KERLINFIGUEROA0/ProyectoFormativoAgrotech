@@ -9,11 +9,12 @@ export class InformacionSensorController {
 
   /**
    * ✅ NUEVO: Devuelve el último dato de CADA sensor.
+   * Solo muestra datos recientes (configurable via query param).
    * (Ideal para un dashboard)
    */
   @Get('latest')
-  async getLatestData() {
-    const data = await this.informacionSensorService.getLatestData();
+  async getLatestData(@Query('maxAgeMinutes', new ParseIntPipe({ optional: true })) maxAgeMinutes?: number) {
+    const data = await this.informacionSensorService.getLatestData(maxAgeMinutes || 2);
     return { success: true, data };
   }
 

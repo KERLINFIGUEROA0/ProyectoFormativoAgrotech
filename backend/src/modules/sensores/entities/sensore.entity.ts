@@ -41,6 +41,9 @@ export class Sensor {
   @Column({ name: 'mqtt_topic', type: 'varchar', length: 255, nullable: true })
   topic: string | null;
 
+  @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
+  ultimo_mqtt_mensaje: Date | null;
+
   @ManyToOne(() => Surco, (surco) => surco.sensores, { onDelete: 'CASCADE' })
   surco: Surco;
 
