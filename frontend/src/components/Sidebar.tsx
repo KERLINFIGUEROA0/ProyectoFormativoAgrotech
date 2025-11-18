@@ -15,12 +15,11 @@ import {
   ChevronDown,
   ClipboardList, // Icono para el nuevo menú de Actividades
   Calendar,
-  Menu,
-  X,
   // CirclePause,
   WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { SwipeDetector } from "./SwipeDetector";
 
 import logoAgroFull from "../assets/logo.png";
 import logoAgroMini from "../assets/logo1.png";
@@ -145,15 +144,11 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Botón hamburguesa para móvil */}
-      {isMobile && (
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="fixed top-4 left-4 z-[60] bg-green-500 text-white p-3 rounded-xl shadow-lg md:hidden"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      )}
+      {/* Detector de swipe para abrir menú */}
+      <SwipeDetector
+        onSwipeRight={() => setMobileMenuOpen(true)}
+        enabled={isMobile && !mobileMenuOpen}
+      />
 
       {/* Overlay para cerrar menú en móvil */}
       {isMobile && mobileMenuOpen && (
