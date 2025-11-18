@@ -145,13 +145,13 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Botón hamburguesa para móvil - Solo visible cuando el menú está cerrado */}
-      {isMobile && !mobileMenuOpen && (
+      {/* Botón hamburguesa para móvil */}
+      {isMobile && (
         <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="fixed top-2 left-2 z-[60] bg-green-500 text-white p-1.5 rounded-md shadow-sm md:hidden opacity-70 hover:opacity-100 transition-opacity"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="fixed top-4 left-4 z-[60] bg-green-500 text-white p-3 rounded-xl shadow-lg md:hidden"
         >
-          <Menu className="w-4 h-4" />
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       )}
 
@@ -169,28 +169,20 @@ export default function Sidebar({
         ${isMobile ? `fixed inset-y-0 left-0 z-50 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` : 'relative'}
         h-screen md:h-[95vh] ml-0 md:ml-4 my-0 md:my-auto rounded-none md:rounded-3xl border-r md:border border-green-100`}
       >
-      {/* Header con botón de cerrar en móvil */}
-      <div className="flex items-center justify-between p-4">
-        <div
-          className="flex items-center justify-center flex-1 cursor-pointer"
-          onClick={() => !isMobile && setCollapsed(!collapsed)}
-        >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between p-4 cursor-pointer"
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        <div className="flex items-center justify-center w-full">
           <img
-            src={collapsed && !isMobile ? logoAgroMini : logoAgroFull}
+            src={collapsed ? logoAgroMini : logoAgroFull}
             alt="Logo AgroTIC"
             className={`${
-              collapsed && !isMobile ? "w-10 h-10" : "w-40"
+              collapsed ? "w-10 h-10" : "w-40"
             } object-contain transition-all duration-300`}
           />
         </div>
-        {isMobile && (
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        )}
       </div>
 
       {/* Menú */}
