@@ -62,6 +62,11 @@ export class InformacionSensorService {
         });
 
         await this.infoRepo.save(nuevaInfo);
+
+        // Actualizar timestamp del último mensaje MQTT
+        sensor.ultimo_mqtt_mensaje = new Date();
+        await this.sensorRepo.save(sensor);
+
         guardados++;
         this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco.nombre}, Lote: ${sensor.surco.lote?.nombre || 'N/A'}, Broker: ${sensor.surco.broker.nombre}) desde topic [${topic}].`);
       } catch (error) {
@@ -104,11 +109,12 @@ export class InformacionSensorService {
 
   /**
    * ✅ NUEVO: Devuelve el último dato registrado de CADA sensor.
-   * (Esta es la consulta que necesitas para "mostrar en pantalla" el estado actual).
+   * Solo muestra datos si hay mensajes MQTT recientes (últimos 2 minutos por defecto).
+   * Si no hay mensajes MQTT recientes, muestra null para que aparezca "N/A".
    */
-  async getLatestData(): Promise<any[]> {
+  async getLatestData(maxAgeMinutes: number = 10): Promise<any[]> {
     this.logger.log('🔍 Iniciando getLatestData...');
-    
+
     // Usamos TypeORM QueryBuilder para obtener todos los sensores activos
     const sensores = await this.sensorRepo.find({
       where: { estado: 'Activo' },
@@ -122,21 +128,42 @@ export class InformacionSensorService {
       return [];
     }
 
+    // Calcular el tiempo límite (hace maxAgeMinutes minutos)
+    const limiteTiempo = new Date();
+    limiteTiempo.setMinutes(limiteTiempo.getMinutes() - maxAgeMinutes);
+
     // Para cada sensor, obtenemos su último dato
     const resultados = await Promise.all(
       sensores.map(async (sensor) => {
         this.logger.debug(`🔎 Buscando último dato para sensor ID: ${sensor.id}, Nombre: ${sensor.nombre}`);
-        
-        // Intentamos buscar el último dato usando la relación
-        const ultimoDato = await this.infoRepo.findOne({
-          where: { sensor: { id: sensor.id } },
-          order: { fechaRegistro: 'DESC' },
-        });
 
-        if (ultimoDato) {
-          this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${ultimoDato.valor}, Fecha=${ultimoDato.fechaRegistro}`);
+        let valor: number | null = null;
+        let fechaRegistro: string | null = null;
+
+        // Verificar si hay mensajes MQTT recientes
+        if (sensor.ultimo_mqtt_mensaje) {
+          const fechaMqtt = new Date(sensor.ultimo_mqtt_mensaje);
+          if (fechaMqtt >= limiteTiempo) {
+            // Hay mensajes MQTT recientes, buscar el último dato
+            const ultimoDato = await this.infoRepo.findOne({
+              where: { sensor: { id: sensor.id } },
+              order: { fechaRegistro: 'DESC' },
+            });
+
+            if (ultimoDato) {
+              valor = Number(ultimoDato.valor);
+              fechaRegistro = ultimoDato.fechaRegistro.toISOString();
+              this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${valor}, Último MQTT=${fechaMqtt.toISOString()} (ACTIVO)`);
+            } else {
+              this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): MQTT reciente pero sin datos en BD`);
+            }
+          } else {
+            // Último mensaje MQTT es antiguo
+            this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Último MQTT antiguo (${fechaMqtt.toISOString()}), mostrando N/A`);
+          }
         } else {
-          this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Sin datos en informacion_sensor`);
+          // Nunca ha recibido mensajes MQTT
+          this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Nunca ha recibido mensajes MQTT`);
         }
 
         const resultado = {
@@ -145,8 +172,8 @@ export class InformacionSensorService {
           topic: sensor.topic,
           valorMinimo: sensor.valor_minimo_alerta,
           valorMaximo: sensor.valor_maximo_alerta,
-          valor: ultimoDato ? Number(ultimoDato.valor) : null,
-          fechaRegistro: ultimoDato ? ultimoDato.fechaRegistro.toISOString() : null,
+          valor: valor,
+          fechaRegistro: fechaRegistro,
         };
 
         return resultado;

@@ -148,7 +148,7 @@ export default function SurcoForm({ initialData = {}, lotes, cultivos, brokers, 
         <Button onClick={onCancel} color="danger" variant="light">
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} color="success">
+        <Button onClick={handleSubmit} className="bg-blue-600 text-white font-bold hover:bg-blue-700">
           Guardar Surco
         </Button>
       </div>

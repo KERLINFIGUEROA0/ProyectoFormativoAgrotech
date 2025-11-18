@@ -4,7 +4,7 @@ import { Pencil, Trash2, FileText, Plus, Search } from 'lucide-react';
 import type { Ficha, FichaForm } from '../interfaces/fichas';
 import { getFichas, createFicha, updateFicha, deleteFicha } from '../api/fichas';
 import FichaFormComponent from './FichaForm';
-import Modal from '../../../components/Modal';
+import FormModal from '../../../components/FormModal';
 
 export default function GestionFichas(): ReactElement {
   const [fichas, setFichas] = useState<Ficha[]>([]);
@@ -149,10 +149,12 @@ export default function GestionFichas(): ReactElement {
       </div>
 
       {showForm && (
-        <Modal
+        <FormModal
           isOpen={showForm}
           onClose={handleCancel}
           title={editingFicha ? 'Editar Ficha' : 'Crear Nueva Ficha'}
+          icon={<FileText className="h-6 w-6 text-green-600" />}
+          size="sm"
         >
           <FichaFormComponent
             initialData={formData}
@@ -160,7 +162,7 @@ export default function GestionFichas(): ReactElement {
             onCancel={handleCancel}
             editingId={editingFicha?.id || null}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {showDeleteModal && fichaToDelete && (

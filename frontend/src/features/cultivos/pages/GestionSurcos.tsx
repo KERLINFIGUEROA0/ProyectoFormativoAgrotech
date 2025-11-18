@@ -1,12 +1,14 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSurcosPorLote, obtenerCultivos, crearSurco, actualizarSurco, eliminarSurco, actualizarEstadoSurco } from '../api/surcosApi';
 import { listarBrokers } from '../../iot/api/mqttConfigApi';
-import Modal from '../../../components/Modal';
+import FormModal from '../../../components/FormModal';
 import SurcoForm from '../components/SurcoForm';
 import SurcoMap from '../components/SurcoMap';
+import { Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@heroui/react';
 import type { Lote, Cultivo, Surco, SurcoData } from '../interfaces/cultivos';
 import type { Broker } from '../../iot/interfaces/iot';
 
@@ -22,6 +24,8 @@ export default function GestionSurcos(): ReactElement {
   const [editingSurco, setEditingSurco] = useState<Surco | null>(null);
   const [selectedSurco, setSelectedSurco] = useState<Surco | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingSurco, setDeletingSurco] = useState<Surco | null>(null);
 
   const fetchSurcos = (loteId: number) => {
     setLoadingSurcos(true);
@@ -110,21 +114,28 @@ export default function GestionSurcos(): ReactElement {
     });
   };
 
-  const handleDeleteSurco = (id: number) => {
-    toast.error('¿Estás seguro de que quieres eliminar este surco?', {
-      action: { label: 'Eliminar', onClick: () => {
-        const promise = eliminarSurco(id);
-        toast.promise(promise, {
-          loading: 'Eliminando...',
-          success: (res) => {
-            if (selectedLoteId) fetchSurcos(selectedLoteId);
-            return res.message;
-          },
-          error: 'Error al eliminar.',
-        });
-      }},
-      cancel: { label: 'Cancelar', onClick: () => {} },
-    });
+  const handleDeleteSurco = (surco: Surco) => {
+    setDeletingSurco(surco);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeletingSurco(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const confirmDeleteSurco = async () => {
+    if (!deletingSurco) return;
+    const toastId = toast.loading("Eliminando surco...");
+    try {
+      await eliminarSurco(deletingSurco.id);
+      toast.success("Surco eliminado con éxito.", { id: toastId });
+      if (selectedLoteId) fetchSurcos(selectedLoteId);
+      closeDeleteModal();
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al eliminar el surco.";
+      toast.error(errorMessage, { id: toastId });
+    }
   };
 
   const handleEstadoChange = (surcoId: number, nuevoEstado: string) => {
@@ -154,18 +165,18 @@ export default function GestionSurcos(): ReactElement {
   };
 
    const formInitialData = editingSurco
-    ? {
-        id: editingSurco.id,
-        nombre: editingSurco.nombre,
-        descripcion: editingSurco.descripcion,
-        cultivoId: editingSurco.cultivo?.id,
-        loteId: editingSurco.lote.id,
-        brokerId: editingSurco.broker?.id ?? null,
-      }
-    : { 
-        loteId: selectedLoteId ?? undefined,
-        brokerId: null,
-      };
+     ? {
+         id: editingSurco.id,
+         nombre: editingSurco.nombre,
+         descripcion: editingSurco.descripcion,
+         cultivoId: editingSurco.cultivo?.id,
+         loteId: editingSurco.lote.id,
+         brokerId: null, // Will be handled by the form component
+       }
+     : {
+         loteId: selectedLoteId ?? undefined,
+         brokerId: null,
+       };
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -229,7 +240,7 @@ export default function GestionSurcos(): ReactElement {
                   <h4 className="text-lg font-bold text-green-800">{selectedSurco.nombre}</h4>
                   <div className="flex gap-3">
                     <button onClick={() => handleOpenModal(selectedSurco)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                    <button onClick={() => handleDeleteSurco(selectedSurco.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
+                    <button onClick={() => handleDeleteSurco(selectedSurco)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -262,31 +273,49 @@ export default function GestionSurcos(): ReactElement {
         </div>
       </div>
 
-       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingSurco ? 'Editar Surco' : 'Agregar Nuevo Surco'}>
-          <SurcoForm
-          initialData={formInitialData}
-          lotes={lotes}
-          cultivos={cultivos}
-          brokers={brokers}
-          onSave={handleSaveSurco}
-          onCancel={handleCloseModal}
-        />
-      </Modal>
+       <FormModal
+         isOpen={isModalOpen}
+         onClose={handleCloseModal}
+         title={editingSurco ? 'Editar Surco' : 'Agregar Nuevo Surco'}
+         icon={<Plus className="h-6 w-6 text-green-600" />}
+       >
+         <SurcoForm
+           initialData={formInitialData}
+           lotes={lotes}
+           cultivos={cultivos}
+           brokers={brokers}
+           onSave={handleSaveSurco}
+           onCancel={handleCloseModal}
+         />
+       </FormModal>
 
-      <Modal 
-        isOpen={isDetailModalOpen && selectedSurco !== null} 
-        onClose={() => setIsDetailModalOpen(false)} 
+      <FormModal
+        isOpen={isDetailModalOpen && selectedSurco !== null}
+        onClose={() => setIsDetailModalOpen(false)}
         title={`Detalles de ${selectedSurco?.nombre}`}
+        icon={<Edit className="h-6 w-6 text-blue-600" />}
       >
         {selectedSurco && (
-            <div className="p-4 space-y-3 text-base text-gray-700">
-                <p><strong>Nombre:</strong> {selectedSurco.nombre}</p>
-                <p><strong>Descripción:</strong> {selectedSurco.descripcion || 'N/A'}</p>
-                <p><strong>Cultivo Asociado:</strong> {selectedSurco.cultivo?.nombre || 'Ninguno'}</p>
-                <p><strong>Pertenece al Lote:</strong> {selectedSurco.lote.nombre}</p>
-                <div className="flex items-center gap-2 pt-2">
-                    <strong>Estado:</strong>
-                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
+            <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Nombre</p>
+                    <p className="text-lg font-semibold text-gray-900">{selectedSurco.nombre}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Descripción</p>
+                    <p className="text-base text-gray-900">{selectedSurco.descripcion || 'Sin descripción'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Cultivo Asociado</p>
+                    <p className="text-base text-gray-900">{selectedSurco.cultivo?.nombre || 'Ninguno'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Pertenece al Lote</p>
+                    <p className="text-base text-gray-900">{selectedSurco.lote.nombre}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Estado</p>
+                    <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
                         selectedSurco.estado === 'Disponible' ? 'bg-green-100 text-green-800' :
                         selectedSurco.estado === 'En siembra' ? 'bg-blue-100 text-blue-800' :
                         selectedSurco.estado === 'En cosecha' ? 'bg-yellow-100 text-yellow-800' :
@@ -297,7 +326,27 @@ export default function GestionSurcos(): ReactElement {
                 </div>
             </div>
         )}
-      </Modal>
+      </FormModal>
+
+      <HeroModal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col items-center gap-3 text-center">
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+              <FaExclamationTriangle className="text-red-600" size={24} />
+            </div>
+            <h4 className="text-lg font-semibold text-center">¿Eliminar Surco?</h4>
+          </ModalHeader>
+          <ModalBody className="text-center">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold text-center">{deletingSurco?.nombre}</div>
+            <div className="w-full bg-blue-50 border border-blue-100 rounded px-3 py-2 text-sm text-blue-700 font-medium text-center mt-2">{deletingSurco?.lote.nombre}</div>
+            <p className="text-xs text-gray-500 mt-2 text-center">Esta acción no se puede deshacer. Se eliminará permanentemente el surco.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={closeDeleteModal} variant="light">Cancelar</Button>
+            <Button onClick={confirmDeleteSurco} color="danger">Eliminar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </HeroModal>
     </div>
   );
 }

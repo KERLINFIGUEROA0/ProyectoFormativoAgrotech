@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaTrash, FaExclamationTriangle, FaEdit } from 'react-icons/fa';
 import { obtenerLotes, crearLote, actualizarLote, eliminarLote, actualizarEstadoLote, obtenerEstadisticasLotes } from '../api/lotesApi';
-import Modal from '../../../components/Modal';
+import FormModal from '../../../components/FormModal';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
 import type { Lote, LoteData, StatCardProps } from '../interfaces/cultivos';
@@ -280,18 +280,25 @@ const handleViewLocation = (lote: Lote) => {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingLote ? 'Editar Lote' : 'Registrar Lote'}><LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} /></Modal>
+      <FormModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingLote ? 'Editar Lote' : 'Registrar Lote'}
+        icon={<FaLeaf className="h-6 w-6 text-green-600" />}
+      >
+        <LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} />
+      </FormModal>
       <HeroModal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
         <ModalContent>
           <ModalHeader className="flex flex-col items-center gap-3 text-center">
             <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
               <FaExclamationTriangle className="text-red-600" size={24} />
             </div>
-            <h4 className="text-lg font-semibold">¿Eliminar Lote?</h4>
+            <h4 className="text-lg font-semibold text-center">¿Eliminar Lote?</h4>
           </ModalHeader>
-          <ModalBody>
-            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold">{deletingLote?.nombre}</div>
-            <p className="text-xs text-gray-500">Esta acción no se puede deshacer. Se eliminará permanentemente el lote.</p>
+          <ModalBody className="text-center">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold text-center">{deletingLote?.nombre}</div>
+            <p className="text-xs text-gray-500 mt-2 text-center">Esta acción no se puede deshacer. Se eliminará permanentemente el lote.</p>
           </ModalBody>
           <ModalFooter>
             <Button onClick={closeDeleteModal} variant="light">Cancelar</Button>

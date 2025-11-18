@@ -279,16 +279,16 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-400 delay-600">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
           <button
             onClick={onCancel}
-            className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors animate-in slide-in-from-left-3 duration-300 delay-700"
+            className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={validateAndSave}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm animate-in slide-in-from-right-3 duration-300 delay-800"
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
           >
             {editingId != null ? 'Actualizar Usuario' : 'Registrar Usuario'}
           </button>

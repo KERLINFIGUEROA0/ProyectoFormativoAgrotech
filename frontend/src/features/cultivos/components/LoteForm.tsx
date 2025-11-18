@@ -151,7 +151,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
 
       <div className="flex justify-end gap-3 mt-4">
         <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
-        <Button onClick={handleSubmit} color="success">Guardar Lote</Button>
+        <Button onClick={handleSubmit} className="bg-blue-600 text-white font-bold hover:bg-blue-700">Guardar Lote</Button>
       </div>
 
       <DrawMapModal
