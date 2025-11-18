@@ -326,6 +326,34 @@ export class UsuariosController {
      try {
        const usuarioId = req.user.id;
        const usuario = await this.usuariosService.buscarPorId(usuarioId);
+
+       // Obtener permisos del rol
+       const permisosRol = (usuario.tipoUsuario?.rolPermisos ?? [])
+         .map((rp) => rp.permiso?.nombre)
+         .filter(Boolean) as string[];
+
+       // Obtener permisos individuales del usuario
+       const permisosUsuario = (usuario.usuarioPermisos ?? [])
+         .map((up) => up.permiso?.nombre)
+         .filter(Boolean) as string[];
+
+       // Combinar permisos únicos
+       const permisos = Array.from(new Set([...permisosRol, ...permisosUsuario]));
+
+       // Agrupar permisos por módulo
+       const modulos = (usuario.tipoUsuario?.rolPermisos ?? [])
+         .map((rp) => rp.permiso)
+         .concat((usuario.usuarioPermisos ?? []).map((up) => up.permiso))
+         .filter(Boolean)
+         .reduce((acc: Record<string, string[]>, p: any) => {
+           const moduloNombre = p?.modulo?.nombre || 'General';
+           acc[moduloNombre] = acc[moduloNombre] || [];
+           if (!acc[moduloNombre].includes(p.nombre)) {
+             acc[moduloNombre].push(p.nombre);
+           }
+           return acc;
+         }, {});
+
        return {
          success: true,
          message: 'Perfil obtenido correctamente',
@@ -337,6 +365,8 @@ export class UsuariosController {
            correo: usuario.correo,
            telefono: usuario.telefono,
            rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
+           permisos,
+           modulos,
          },
        };
      } catch (error) {

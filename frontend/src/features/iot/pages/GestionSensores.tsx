@@ -31,6 +31,7 @@ import { listarBrokers } from '../api/mqttConfigApi';
 import Modal from '../../../components/Modal';
 import BrokerFormModal from '../components/BrokerFormModal';
 import type { Sensor, LatestSensorData } from '../interfaces/iot';
+import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 type ChartData = {
   time: string;
@@ -413,6 +414,9 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
 
 // --- Componente Principal (GestionSensoresPage) ---
 export default function GestionSensoresPage(): ReactElement {
+  // Protección de permisos en tiempo real
+  usePermissionGuard({ module: 'Iot' });
+
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
 

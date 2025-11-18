@@ -64,6 +64,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         
         this.server.to(socketId).emit('permissions_updated', {
           permisos: newTokenData.permisos,
+          modulos: newTokenData.modulos,
           access_token: newTokenData.access_token, // Se envía el nuevo token
         });
       }

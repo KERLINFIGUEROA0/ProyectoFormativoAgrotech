@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   isLoggingOut: boolean;
   userPermissions: string[] | null;
+  userModules: Record<string, string[]> | null;
   userData: UsuarioData | null;
   login: (token: string) => void;
   logout: () => void;
@@ -26,6 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userPermissions, setUserPermissions] = useState<string[] | null>(null);
+  const [userModules, setUserModules] = useState<Record<string, string[]> | null>(null);
   const [userData, setUserData] = useState<UsuarioData | null>(null);
 
   const fetchAndSetData = useCallback(async () => {
@@ -35,13 +37,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
-      console.log("🔍 Debug: Fetching user profile...");
       const userProfile = await obtenerPerfil();
-      console.log("🔍 Debug: User profile response:", userProfile);
 
       if (userProfile && userProfile.identificacion) {
-        console.log("✅ User profile has identificacion:", userProfile.identificacion);
-
         const usuario: UsuarioData = {
           tipo: userProfile.tipoIdentificacion || "CC",
           identificacion: userProfile.identificacion,
@@ -51,11 +49,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           telefono: userProfile.telefono || "",
           fotoUrl: userProfile.fotoUrl || "",
         };
-        console.log("✅ Setting userData:", usuario);
         setUserData(usuario);
 
         setUserPermissions(userProfile.permisos || []);
+        setUserModules(userProfile.modulos || {});
         localStorage.setItem('permissions', JSON.stringify(userProfile.permisos || []));
+        localStorage.setItem('modules', JSON.stringify(userProfile.modulos || {}));
       } else {
         console.warn("⚠️ User profile missing identificacion:", userProfile);
       }
@@ -74,7 +73,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (savedToken) {
       setToken(savedToken);
       const savedPerms = localStorage.getItem('permissions');
+      const savedModules = localStorage.getItem('modules');
       setUserPermissions(savedPerms ? JSON.parse(savedPerms) : []);
+      setUserModules(savedModules ? JSON.parse(savedModules) : {});
     }
     setLoading(false);
   }, []);
@@ -97,21 +98,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔌 Conectado al servidor de WebSockets.');
       });
 
-      socket.on('permissions_updated', (data: { permisos: string[], access_token: string }) => {
+      socket.on('permissions_updated', (data: { permisos: string[], modulos: Record<string, string[]>, access_token: string }) => {
         console.log('✨ Permisos y nuevo token recibidos:', data);
-        
-        if (data.access_token && data.permisos) {
+
+        if (data.access_token && data.permisos && data.modulos) {
           setUserPermissions(data.permisos);
+          setUserModules(data.modulos);
           localStorage.setItem('permissions', JSON.stringify(data.permisos));
-          
+          localStorage.setItem('modules', JSON.stringify(data.modulos));
+
           setToken(data.access_token);
           localStorage.setItem('token', data.access_token);
-          
-          toast.info('Tus permisos han sido actualizados. La sesión se refrescará.');
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
+          window.dispatchEvent(new CustomEvent('permissionsChanged', {
+            detail: { permisos: data.permisos, modulos: data.modulos }
+          }));
+
+          toast.info('Tus permisos han sido actualizados.');
         }
       });
 
@@ -137,8 +141,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoggingOut(true);
     localStorage.removeItem("token");
     localStorage.removeItem("permissions");
+    localStorage.removeItem("modules");
     setToken(null);
     setUserPermissions(null);
+    setUserModules(null);
     setUserData(null);
   };
 
@@ -156,6 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       isLoggingOut,
       userPermissions,
+      userModules,
       userData,
       login,
       logout,
