@@ -1,7 +1,6 @@
-// --- MODIFICACIÓN: Añadir 'useMemo', 'Package' y 'Users' ---
+// --- MODIFICACIÓN: Añadir 'DollarSign' ---
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-// --- MODIFICACIÓN: Añadidos Package y Users ---
 import {
   ClipboardList,
   Loader2,
@@ -13,6 +12,7 @@ import {
   Bell,
   Package,
   Users,
+  DollarSign, // <-- AÑADIDO
 } from 'lucide-react';
 
 import ActividadCard from '../components/ActividadCard';
@@ -38,7 +38,6 @@ import { getEstadoTexto } from '../utils/estadoUtils';
 
 // --- INICIO: Componente ModalDetalles (MODIFICADO) ---
 interface ModalDetallesProps {
-  // --- MODIFICACIÓN: Asegurar que el tipo Actividad incluya los materiales ---
   actividad: (Actividad & {
     actividadMaterial?: {
       cantidadUsada: number;
@@ -47,7 +46,6 @@ interface ModalDetallesProps {
   }) | null;
   onClose: () => void;
   onEdit: (actividad: Actividad) => void;
-  // --- MODIFICACIÓN: Añadir la lista completa de actividades ---
   allActividades: Actividad[];
 }
 
@@ -55,13 +53,11 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   actividad,
   onClose,
   onEdit,
-  // --- MODIFICACIÓN: Recibir la lista completa ---
   allActividades,
 }) => {
   if (!actividad) return null;
 
-  // --- MODIFICACIÓN: Lógica para agrupar aprendices ---
-  // Se buscan todas las actividades que coincidan en título, fecha y cultivo.
+  // (Lógica de 'aprendicesAsignados' sin cambios)
   const aprendicesAsignados = useMemo(() => {
     if (!actividad) return [];
     return allActividades
@@ -70,13 +66,12 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
           a.titulo === actividad.titulo &&
           a.fecha === actividad.fecha &&
           a.cultivo?.id === actividad.cultivo?.id &&
-          a.usuario, // Asegurarse de que tenga un usuario
+          a.usuario,
       )
-      .map((a) => a.usuario!); // Obtenemos el objeto usuario
+      .map((a) => a.usuario!); 
   }, [actividad, allActividades]);
-  // --- FIN DE LÓGICA DE AGRUPACIÓN ---
 
-  // Lógica para parsear imágenes (la tenías en tus logs)
+  // (Lógica de parsear 'imagenes' sin cambios)
   let imagenes: string[] = [];
   if (actividad.img) {
     try {
@@ -87,7 +82,6 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
         imagenes = [parsedImgs];
       }
     } catch (e) {
-      // Si no es JSON, es un string único
       if (typeof actividad.img === 'string') {
         imagenes = [actividad.img];
       }
@@ -96,14 +90,20 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
 
   const estadoTexto = getEstadoTexto(actividad.estado);
   const fechaProgramada = new Date(actividad.fecha).toLocaleDateString('es-ES', {
-    timeZone: 'UTC', // Asegurar que la fecha sea la correcta
+    timeZone: 'UTC', 
   });
 
+  // --- INICIO DE CORRECCIÓN: Lógica de Costos y Pago ---
+  const costoManoDeObra = (actividad.horas || 0) * (actividad.tarifaHora || 0);
+  // Basamos el estado del pago en el estado de la actividad
+  const estadoPago = actividad.estado === 'completado' ? 'Pagado' : 'Pendiente de Pago';
+  const colorEstadoPago = actividad.estado === 'completado' ? 'text-green-600' : 'text-yellow-600';
+  // --- FIN DE CORRECCIÓN ---
+
   return (
-    // Quitamos 'title' del Modal, ya que el diseño lo tiene dentro
     <Modal isOpen={!!actividad} onClose={onClose} title="">
       <div className="space-y-6">
-        {/* Cabecera del Modal */}
+        {/* (Cabecera del Modal sin cambios) */}
         <div
           className={`p-4 rounded-t-lg flex justify-between items-center text-white font-bold ${
             actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'
@@ -117,11 +117,10 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
           </span>
         </div>
 
-        {/* --- MODIFICACIÓN: Reestructurado para 2 columnas y añadir materiales --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
           {/* Columna Izquierda: Detalles */}
           <div className="space-y-4">
-            {/* Info Básica */}
+            {/* (Info Básica sin cambios) */}
             <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
               <h3 className="font-bold text-gray-700">Información Básica</h3>
               <p className="text-sm flex items-center gap-2">
@@ -139,7 +138,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
               </p>
             </div>
 
-            {/* Aprendices Asignados (Lógica corregida) */}
+            {/* (Aprendices Asignados sin cambios) */}
             <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
               <h3 className="font-bold text-gray-700 flex items-center gap-2">
                 <Users size={16} /> Aprendices Asignados
@@ -157,7 +156,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
               )}
             </div>
 
-            {/* Materiales Utilizados (NUEVO) */}
+            {/* (Materiales Utilizados sin cambios) */}
             <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
               <h3 className="font-bold text-gray-700 flex items-center gap-2">
                 <Package size={16} /> Materiales Utilizados
@@ -180,11 +179,40 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 </p>
               )}
             </div>
+            
+            {/* --- INICIO DE CORRECCIÓN: Mostrar Costo y Estado de Pago --- */}
+            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+              <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                <DollarSign size={16} /> Costo Mano de Obra
+              </h3>
+              {costoManoDeObra > 0 ? (
+                <div className="text-sm text-gray-700 space-y-1 pl-2">
+                  <p>
+                    <strong>Horas:</strong> {actividad.horas}
+                  </p>
+                  <p>
+                    <strong>Tarifa:</strong> ${new Intl.NumberFormat('es-CO').format(actividad.tarifaHora || 0)} / hora
+                  </p>
+                  <p className="font-medium text-gray-800">
+                    <strong>Total:</strong> ${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}
+                  </p>
+                  <p className={`font-medium ${colorEstadoPago}`}>
+                    <strong>Estado de Pago:</strong> {estadoPago}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">
+                  No se registraron costos de mano de obra.
+                </p>
+              )}
+            </div>
+            {/* --- FIN DE CORRECCIÓN --- */}
+            
           </div>
 
           {/* Columna Derecha: Descripción e Imágenes */}
           <div className="space-y-4">
-            {/* Descripción */}
+            {/* (Descripción sin cambios) */}
             <div className="p-3">
               <h3 className="font-bold text-gray-700 mb-2">
                 Descripción Completa
@@ -194,7 +222,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
               </p>
             </div>
 
-            {/* Sección de Imágenes */}
+            {/* (Sección de Imágenes sin cambios) */}
             {imagenes.length > 0 && (
               <div className="p-3">
                 <h3 className="font-bold text-gray-700 mb-2">
@@ -219,9 +247,8 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
             )}
           </div>
         </div>
-        {/* --- FIN DE MODIFICACIÓN --- */}
 
-        {/* Botón de Editar */}
+        {/* (Botón de Editar sin cambios) */}
         <div className="flex justify-end p-4 border-t">
           <button
             onClick={() => onEdit(actividad)}
@@ -234,13 +261,11 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
     </Modal>
   );
 };
-// ------------------------------------------------------------
-// FIN: Componente de Detalles de Actividad
-// ------------------------------------------------------------
+// --- FIN: Componente ModalDetalles ---
 
+// ... (El resto del archivo 'GestionActividadesPage' continúa igual) ...
 // (Componente StatCard sin cambios)
 const StatCard = ({ title, value, icon, colorClass }: any) => (
-  // ... (código sin cambios)
   <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
     <div className={`p-3 rounded-full ${colorClass}`}>{icon}</div>
     <div>
@@ -253,7 +278,7 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 const GestionActividadesPage: React.FC = () => {
   const { userData } = useAuth();
   const [actividades, setActividades] = useState<Actividad[]>([]);
-  const [, setUsuarios] = useState<UsuarioSimple[]>([]); // (Se mantiene, aunque no se use en filtros)
+  const [, setUsuarios] = useState<UsuarioSimple[]>([]); 
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<EstadoActividad | 'Todos'>(
     'Todos',
@@ -275,9 +300,6 @@ const GestionActividadesPage: React.FC = () => {
         obtenerCultivosParaActividades(),
       ]);
       
-      // --- MODIFICACIÓN: Limpiar los logs de diagnóstico ---
-      // console.log("🔍 Diagnóstico de actividades cargadas:", ...);
-      
       setActividades(actividadesData || []);
       setUsuarios(usuariosData || []);
       setCultivos(cultivosData || []);
@@ -292,9 +314,8 @@ const GestionActividadesPage: React.FC = () => {
     cargarDatos();
   }, [cargarDatos]);
 
-  // (Función mostrarNotificacionesPendientes sin cambios)
+  // (mostrarNotificacionesPendientes sin cambios)
   const mostrarNotificacionesPendientes = useCallback(() => {
-    // ... (código sin cambios)
     if (!userData || !actividades.length) return;
     const actividadesPendientesUsuario = actividades.filter(act =>
       act.estado === 'pendiente' &&
@@ -303,7 +324,11 @@ const GestionActividadesPage: React.FC = () => {
     if (actividadesPendientesUsuario.length > 0) {
       toast.warning(
         `Tienes ${actividadesPendientesUsuario.length} actividad(es) pendiente(s) por completar.`,
-        // ... (resto de la notificación)
+        {
+           description: 'Ve a la sección de actividades para ver los detalles.',
+           duration: 10000,
+           position: 'top-right',
+        }
       );
     }
   }, [actividades, userData]);
@@ -314,7 +339,7 @@ const GestionActividadesPage: React.FC = () => {
     }
   }, [cargando, actividades, mostrarNotificacionesPendientes]);
 
-  // (Lógica para abrir/cerrar modales sin cambios)
+  // (Lógica de modales sin cambios)
   const handleOpenEditModal = (actividad?: Actividad) => {
     setActividadAVer(null);
     setActividadAEditar(actividad || {});
@@ -331,7 +356,7 @@ const GestionActividadesPage: React.FC = () => {
     setActividadAVer(null);
   };
 
-  // (Lógica de handleSave sin cambios)
+  // (handleSave sin cambios)
   const handleSave = async (payload: FormData | UpdateActividadPayload) => {
     const isEditing = actividadAEditar && actividadAEditar.id;
     const toastId = toast.loading(isEditing ? 'Actualizando...' : 'Creando...');
@@ -347,16 +372,14 @@ const GestionActividadesPage: React.FC = () => {
       toast.success('Actividad guardada', { id: toastId });
       handleCloseEditModal();
       await cargarDatos();
-    } catch (err: any) { // --- MODIFICACIÓN: Capturar error del backend ---
+    } catch (err: any) { 
       const errorMsg = err.response?.data?.message || 'Error al guardar la actividad.';
       toast.error(errorMsg, { id: toastId });
-      // --- FIN MODIFICACIÓN ---
     }
   };
 
-  // (Lógica de handleDelete sin cambios)
+  // (handleDelete sin cambios)
   const handleDelete = async (id: number) => {
-    // ... (código sin cambios)
     toast.error('¿Seguro que deseas eliminar esta actividad?', {
       description: 'Esta acción no se puede deshacer.',
       action: {
@@ -380,7 +403,7 @@ const GestionActividadesPage: React.FC = () => {
     });
   };
 
-  // (useMemo para stats y filteredActividades sin cambios)
+  // (stats y filteredActividades sin cambios)
   const stats = useMemo(() => {
     return {
       pendientes: actividades.filter((a) => a.estado === 'pendiente').length,
@@ -394,63 +417,51 @@ const GestionActividadesPage: React.FC = () => {
     return actividades.filter((a) => a.estado === filtroEstado);
   }, [actividades, filtroEstado]);
 
-  // (Función exportarPDF sin cambios)
-  // Función para exportar PDF
-  const exportarPDF = useCallback(async () => {
-    try {
-      // --- INICIO DE LA CORRECCIÓN ---
-      // jsPDF es un export por defecto, por eso se importa con "default"
-      const { default: jsPDF } = await import('jspdf');
-      // --- FIN DE LA CORRECCIÓN ---
+  // (exportarPDF sin cambios)
+  const exportarPDF = useCallback(async () => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
 
-      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text('Reporte de Actividades', 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+      doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
+      doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
+      doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
+      doc.text(`Completadas: ${stats.completadas}`, 20, 80);
 
-      // Título
-      doc.setFontSize(20);
-      doc.text('Reporte de Actividades', 20, 20);
+      const tableData = filteredActividades.map(act => [
+        act.titulo,
+        act.cultivo?.nombre || 'No especificado',
+        `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
+        new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }), 
+        getEstadoTexto(act.estado),
+        act.descripcion || 'Sin descripción'
+      ]);
+      
+      const { default: autoTable } = await import('jspdf-autotable');
+      
+      autoTable(doc, {
+        head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
+        body: tableData,
+        startY: 90,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
 
-      // Fecha de generación
-      doc.setFontSize(12);
-      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+      doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF generado correctamente');
 
-      // Estadísticas
-      doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
-      doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
-      doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
-      doc.text(`Completadas: ${stats.completadas}`, 20, 80);
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      toast.error('Error al generar el PDF');
+    }
+  }, [actividades, filteredActividades, stats]);
 
-      // Tabla de actividades
-      const tableData = filteredActividades.map(act => [
-        act.titulo,
-        act.cultivo?.nombre || 'No especificado',
-        `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
-        new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }), // Añadir UTC para consistencia
-        getEstadoTexto(act.estado),
-        act.descripcion || 'Sin descripción'
-      ]);
-
-      // Importar autoTable dinámicamente (Esta línea estaba correcta)
-      const { default: autoTable } = await import('jspdf-autotable');
-      
-      autoTable(doc, {
-        head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
-        body: tableData,
-        startY: 90,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
-      });
-
-      // Guardar el PDF
-      doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('PDF generado correctamente');
-
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      toast.error('Error al generar el PDF');
-    }
-  }, [actividades, filteredActividades, stats]);
-
+  // (JSX principal sin cambios)
   if (cargando)
     return (
       <div className="flex justify-center items-center h-64">
@@ -482,7 +493,7 @@ const GestionActividadesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* (Sección de Estadísticas sin cambios) */}
+      {/* (Stats sin cambios) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Pendientes"
@@ -504,7 +515,7 @@ const GestionActividadesPage: React.FC = () => {
         />
       </div>
 
-      {/* (Contenedor de la lista de actividades sin cambios) */}
+      {/* (Lista de actividades sin cambios) */}
       <div className="bg-white shadow-xl rounded-xl p-6 w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-600">
@@ -543,11 +554,11 @@ const GestionActividadesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* (Modal de CREACIÓN / EDICIÓN sin cambios) */}
+      {/* (Modal de Edición sin cambios) */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
-        title={actividadAEditar?.id ? 'Editar Actividad' : 'Nueva Actividad'}
+        title={actividadAEditar?.id ? '' : 'Nueva Actividad'}
       >
         <FormularioActividad
           actividadInicial={actividadAEditar || {}}
@@ -557,12 +568,11 @@ const GestionActividadesPage: React.FC = () => {
         />
       </Modal>
 
-      {/* Modal de DETALLES DE ACTIVIDAD (MODIFICADO) */}
-      {/* Se pasa 'allActividades' para agrupar aprendices */}
+      {/* (Modal de Detalles sin cambios) */}
       <ModalDetalles
         actividad={actividadAVer}
         onClose={handleCloseDetailsModal}
-        allActividades={actividades} // <-- MODIFICACIÓN
+        allActividades={actividades}
         onEdit={(act: Actividad) => {
           handleCloseDetailsModal();
           handleOpenEditModal(act);

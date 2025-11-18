@@ -37,7 +37,8 @@ export interface Actividad {
   descripcion?: string;
   img?: string;
   estado: EstadoActividad;
-
+  horas?: number;
+  tarifaHora?: number;
   // Relaciones que vienen del backend
   usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
