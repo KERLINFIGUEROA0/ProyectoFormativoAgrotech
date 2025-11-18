@@ -1,8 +1,12 @@
 // src/features/cultivos/components/CultivoForm.tsx
 import { useState, useEffect, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input, Button } from "@heroui/react";
 import { toast } from "sonner";
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, AlertTriangle, ArrowRight } from 'lucide-react';
+import { obtenerLotes } from '../api/lotesApi';
+import { obtenerSurcosPorLote } from '../api/surcosApi';
+import type { Lote } from '../interfaces/cultivos';
 
 interface CultivoFormProps {
   initialData?: any;
@@ -12,10 +16,14 @@ interface CultivoFormProps {
 }
 
 export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, onCancel }: CultivoFormProps): ReactElement {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ Estado: 'Activo', ...initialData });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showNewTipoInput, setShowNewTipoInput] = useState(false);
   const [newTipoCultivoName, setNewTipoCultivoName] = useState("");
+  const [hasLotes, setHasLotes] = useState(false);
+  const [hasSurcos, setHasSurcos] = useState(false);
+  const [checkingDeps, setCheckingDeps] = useState(true);
 
   useEffect(() => {
     setFormData({ Estado: 'Activo', ...initialData });
@@ -23,6 +31,34 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
     setNewTipoCultivoName("");
     setImageFile(null);
   }, [initialData]);
+
+  useEffect(() => {
+    const checkDependencies = async () => {
+      try {
+        setCheckingDeps(true);
+        const lotesResponse = await obtenerLotes();
+        const lotes: Lote[] = lotesResponse.data || [];
+        const activeLotes = lotes.filter(l => l.estado === 'Activo');
+        setHasLotes(activeLotes.length > 0);
+
+        if (activeLotes.length > 0) {
+          // Check surcos for the first active lote
+          const surcosResponse = await obtenerSurcosPorLote(activeLotes[0].id);
+          const surcos = surcosResponse.data || [];
+          setHasSurcos(surcos.length > 0);
+        } else {
+          setHasSurcos(false);
+        }
+      } catch (error) {
+        console.error('Error checking dependencies:', error);
+        setHasLotes(false);
+        setHasSurcos(false);
+      } finally {
+        setCheckingDeps(false);
+      }
+    };
+    checkDependencies();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -79,6 +115,49 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      {/* Sección de Ayuda para Dependencias */}
+      {!checkingDeps && (!hasLotes || !hasSurcos) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-yellow-600 mt-0.5" size={20} />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-yellow-800 mb-2">
+                Para crear un cultivo, necesitas configurar primero:
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {!hasLotes && (
+                  <button
+                    onClick={() => {
+                      onCancel();
+                      navigate('/cultivos/lotes');
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                  >
+                    <ArrowRight size={14} />
+                    Crear Lote Primero
+                  </button>
+                )}
+                {!hasSurcos && hasLotes && (
+                  <button
+                    onClick={() => {
+                      onCancel();
+                      navigate('/cultivos/surcos');
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                  >
+                    <ArrowRight size={14} />
+                    Crear Surcos Después
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-yellow-700 mt-2">
+                Después de crearlos, regresa aquí para continuar con el cultivo.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input label="Nombre del Cultivo" name="nombre" value={formData.nombre || ''} onChange={handleChange} />
         
@@ -136,9 +215,19 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
           <input type="file" name="file_upload" className="hidden" onChange={handleFileChange} accept="image/*" />
       </label>
 
-      <div className="flex justify-end gap-3 mt-4">
-        <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
-        <Button onClick={handleSubmit} className="bg-blue-600 text-white font-bold hover:bg-blue-700">Guardar Cultivo</Button>
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onCancel}
+          className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+        >
+          {initialData?.id ? 'Actualizar Cultivo' : 'Registrar Cultivo'}
+        </button>
       </div>
     </div>
   );

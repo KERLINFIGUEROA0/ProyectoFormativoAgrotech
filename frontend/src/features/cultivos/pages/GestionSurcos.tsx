@@ -1,9 +1,8 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2 } from 'lucide-react';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { Plus, Edit } from 'lucide-react';
 import { obtenerLotes } from '../api/lotesApi';
-import { obtenerSurcosPorLote, obtenerCultivos, crearSurco, actualizarSurco, eliminarSurco, actualizarEstadoSurco } from '../api/surcosApi';
+import { obtenerSurcosPorLote, obtenerCultivos, crearSurco, actualizarSurco, actualizarEstadoSurco } from '../api/surcosApi';
 import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import FormModal from '../../../components/FormModal';
 import SurcoForm from '../components/SurcoForm';
@@ -24,8 +23,6 @@ export default function GestionSurcos(): ReactElement {
   const [editingSurco, setEditingSurco] = useState<Surco | null>(null);
   const [selectedSurco, setSelectedSurco] = useState<Surco | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingSurco, setDeletingSurco] = useState<Surco | null>(null);
 
   const fetchSurcos = (loteId: number) => {
     setLoadingSurcos(true);
@@ -114,29 +111,6 @@ export default function GestionSurcos(): ReactElement {
     });
   };
 
-  const handleDeleteSurco = (surco: Surco) => {
-    setDeletingSurco(surco);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setDeletingSurco(null);
-    setIsDeleteModalOpen(false);
-  };
-
-  const confirmDeleteSurco = async () => {
-    if (!deletingSurco) return;
-    const toastId = toast.loading("Eliminando surco...");
-    try {
-      await eliminarSurco(deletingSurco.id);
-      toast.success("Surco eliminado con éxito.", { id: toastId });
-      if (selectedLoteId) fetchSurcos(selectedLoteId);
-      closeDeleteModal();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al eliminar el surco.";
-      toast.error(errorMessage, { id: toastId });
-    }
-  };
 
   const handleEstadoChange = (surcoId: number, nuevoEstado: string) => {
     const surco = surcos.find(s => s.id === surcoId);
@@ -240,7 +214,6 @@ export default function GestionSurcos(): ReactElement {
                   <h4 className="text-lg font-bold text-green-800">{selectedSurco.nombre}</h4>
                   <div className="flex gap-3">
                     <button onClick={() => handleOpenModal(selectedSurco)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                    <button onClick={() => handleDeleteSurco(selectedSurco)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -328,25 +301,6 @@ export default function GestionSurcos(): ReactElement {
         )}
       </FormModal>
 
-      <HeroModal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col items-center gap-3 text-center">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-              <FaExclamationTriangle className="text-red-600" size={24} />
-            </div>
-            <h4 className="text-lg font-semibold text-center">¿Eliminar Surco?</h4>
-          </ModalHeader>
-          <ModalBody className="text-center">
-            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold text-center">{deletingSurco?.nombre}</div>
-            <div className="w-full bg-blue-50 border border-blue-100 rounded px-3 py-2 text-sm text-blue-700 font-medium text-center mt-2">{deletingSurco?.lote.nombre}</div>
-            <p className="text-xs text-gray-500 mt-2 text-center">Esta acción no se puede deshacer. Se eliminará permanentemente el surco.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={closeDeleteModal} variant="light">Cancelar</Button>
-            <Button onClick={confirmDeleteSurco} color="danger">Eliminar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </HeroModal>
     </div>
   );
 }
