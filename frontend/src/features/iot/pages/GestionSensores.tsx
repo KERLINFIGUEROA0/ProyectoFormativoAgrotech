@@ -329,7 +329,7 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
                 formatter={(value: number) => [`${value.toFixed(1)}`, "Valor"]}
                 labelFormatter={(label) => `Hora: ${label}`}
               />
-              <Legend layout="vertical" verticalAlign="top" align="right" wrapperStyle={{ paddingLeft: '20px' }} />
+              <Legend />
               <Area type="monotone" dataKey="valor" stroke={color} fill={color} fillOpacity={0.3} name={sensor.nombre} />
             </AreaChart>
           </ResponsiveContainer>
@@ -557,7 +557,7 @@ export default function GestionSensoresPage(): ReactElement {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Monitor de Sensores</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Monitoreo de Sensores</h1>
         {/* Indicadores de colores en el header */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
