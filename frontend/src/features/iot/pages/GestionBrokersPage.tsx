@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Globe, MoreVertical, Power, PowerOff } from 'lucide-react';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import {
   listarBrokers,
   eliminarBroker,
@@ -67,9 +68,11 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete, onToggleEs
 // --- Componente Principal ---
 export default function GestionBrokersPage(): ReactElement {
   const [brokers, setBrokers] = useState<Broker[]>([]);
-  
+
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
   const [editingBroker, setEditingBroker] = useState<Broker | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingBroker, setDeletingBroker] = useState<Broker | null>(null);
 
   const fetchData = async () => {
     try {
@@ -86,23 +89,28 @@ export default function GestionBrokersPage(): ReactElement {
 
 
   const handleDeleteBroker = (broker: Broker) => {
-    toast.warning(`¿Eliminar el broker "${broker.nombre}"?`, {
-      description: 'Esto eliminará también todos sus tópicos suscritos.',
-      action: {
-        label: 'Eliminar',
-        onClick: async () => {
-          const toastId = toast.loading("Eliminando broker...");
-          try {
-            await eliminarBroker(broker.id);
-            toast.success("Broker eliminado.", { id: toastId });
-            await fetchData();
-          } catch (error) {
-            toast.error("No se pudo eliminar el broker.", { id: toastId });
-          }
-        }
-      },
-      cancel: { label: 'Cancelar', onClick: () => {} }, // ✅ CORRECCIÓN AQUÍ
-    });
+    setDeletingBroker(broker);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteBroker = async () => {
+    if (!deletingBroker) return;
+
+    const toastId = toast.loading("Eliminando broker...");
+    try {
+      await eliminarBroker(deletingBroker.id);
+      toast.success("Broker eliminado.", { id: toastId });
+      await fetchData();
+      setIsDeleteModalOpen(false);
+      setDeletingBroker(null);
+    } catch (error) {
+      toast.error("No se pudo eliminar el broker.", { id: toastId });
+    }
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeletingBroker(null);
   };
 
   const handleToggleEstado = async (broker: Broker) => {
@@ -161,6 +169,39 @@ export default function GestionBrokersPage(): ReactElement {
         onSuccess={fetchData}
         broker={editingBroker}
       />
+
+      {isDeleteModalOpen && deletingBroker && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <FaExclamationTriangle className="text-red-600" size={24} />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900">¿Eliminar broker?</h4>
+              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
+                {deletingBroker.nombre}
+              </div>
+              <p className="text-xs text-gray-500">
+                Esta acción no se puede deshacer. Se eliminará permanentemente el broker y todos sus tópicos suscritos.
+              </p>
+              <div className="flex gap-3 mt-4 w-full">
+                <button
+                  onClick={closeDeleteModal}
+                  className="flex-1 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-gray-700 font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteBroker}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

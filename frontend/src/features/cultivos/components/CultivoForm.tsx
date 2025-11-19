@@ -1,7 +1,7 @@
 // src/features/cultivos/components/CultivoForm.tsx
 import { useState, useEffect, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button } from "@heroui/react";
+import { Input } from "@heroui/react";
 import { toast } from "sonner";
 import { UploadCloud, AlertTriangle, ArrowRight, Settings, Edit, Trash2, X } from 'lucide-react';
 import { obtenerLotes } from '../api/lotesApi';

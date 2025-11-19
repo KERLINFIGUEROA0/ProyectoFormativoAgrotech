@@ -74,7 +74,6 @@ export default function GestionSurcos(): ReactElement {
     if (selectedLoteId !== null) {
       fetchSurcos(selectedLoteId);
     } else {
-      // Si no hay lote seleccionado, vaciamos la lista de surcos
       setSurcos([]);
       setSelectedSurco(null);
     }
@@ -169,7 +168,7 @@ export default function GestionSurcos(): ReactElement {
               <option value="">No hay lotes activos</option> // Mensaje informativo
             )}
           </select>
-          <button onClick={() => handleOpenModal()} disabled={!selectedLoteId} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition disabled:bg-gray-400">
+          <button onClick={() => handleOpenModal()} disabled={!selectedLoteId} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:bg-gray-400">
             <Plus size={20} /> Nuevo Surco
           </button>
         </div>
