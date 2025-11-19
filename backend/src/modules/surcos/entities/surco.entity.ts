@@ -22,12 +22,12 @@ export class Surco {
   activo_mqtt: boolean;
 
   @ManyToOne(() => Lote, (lote) => lote.surcos, { onDelete: 'CASCADE' })
-    lote: Lote;
+  lote: Lote;
 
   @ManyToOne(() => Cultivo, (cultivo) => cultivo.surcos, { onDelete: 'CASCADE', nullable: true })
-    cultivo: Cultivo | null;
+  cultivo: Cultivo | null;
 
-  @ManyToOne(() => Broker, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Broker, (broker) => broker.surcos, { nullable: true, onDelete: 'SET NULL' })
   broker: Broker | null;
 
   @OneToMany(() => Sensor, (s) => s.surco)

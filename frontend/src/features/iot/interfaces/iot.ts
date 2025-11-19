@@ -1,4 +1,4 @@
-// Interfaces para los datos que vienen del backend
+// src/features/iot/interfaces/iot.ts
 
 export interface Surco {
   id: number;
@@ -7,6 +7,11 @@ export interface Surco {
     id: number;
     nombre: string;
   };
+  // Agregamos el cultivo opcional para el filtro
+  cultivo?: {
+    id: number;
+    nombre: string;
+  } | null;
   broker?: {
     id: number;
     nombre: string;
@@ -24,6 +29,11 @@ export interface Sensor {
   valor_minimo_alerta: number;
   valor_maximo_alerta: number;
   topic: string | null;
+  
+  // ✅ NUEVA PROPIEDAD
+  frecuencia_escaneo?: number; 
+  latestData?: LatestSensorData;
+  
   surco: Surco;
 }
 
@@ -64,17 +74,16 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
-  surco?: Surco | null;
+  // Ya no usamos surco único aquí si cambiamos a 1:N, pero lo dejamos por compatibilidad
+  surco?: Surco | null; 
   prefijoTopicos?: string;
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';
-  subscripciones: Subscripcion[]; // El backend las incluye (eager: true)
+  subscripciones: Subscripcion[];
 }
 
-// Para el formulario de crear Broker
 export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones' | 'estado'>;
 
-// Para el formulario de crear Subscripción
 export interface CreateSubscripcionDto {
   brokerId: number;
   topic: string;

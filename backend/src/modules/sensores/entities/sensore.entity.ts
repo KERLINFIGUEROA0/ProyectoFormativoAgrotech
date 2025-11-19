@@ -37,6 +37,9 @@ export class Sensor {
 
   @Column({ name: 'Estado', length: 20, default: 'Activo' })
   estado: string;
+  
+  @Column({ name: 'Frecuencia_Escaneo', type: 'int', default: 60 })
+  frecuencia_escaneo: number;
 
   @Column({ name: 'mqtt_topic', type: 'varchar', length: 255, nullable: true })
   topic: string | null;
