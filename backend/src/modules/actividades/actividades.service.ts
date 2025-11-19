@@ -33,7 +33,7 @@ export class ActividadesService {
     private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(Cultivo)
     private readonly cultivoRepository: Repository<Cultivo>,
-  ) {}
+  ) { }
 
   // --- MÉTODO 'create' ACTUALIZADO ---
   async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
@@ -60,10 +60,10 @@ export class ActividadesService {
         select: ['nombre', 'apellidos'], // Solo traemos lo que necesitamos
       });
       const nombreUsuario = `${usuario?.nombre || 'Usuario'} ${usuario?.apellidos || ''}`.trim();
-      
+
       const actividad = this.actividadRepository.create({
         ...dtoActividad,
-        horas, 
+        horas,
         tarifaHora,
         usuario: { identificacion: usuarioIdentificacion },
         cultivo: cultivoEntidad ?? undefined,
@@ -126,12 +126,13 @@ export class ActividadesService {
       await queryRunner.release();
     }
   }
-  
+
   // ... (findAll y findOne quedan igual) ...
   async findAll() {
     return this.actividadRepository.find({
       relations: [
         'usuario',
+        'usuario.ficha',
         'cultivo',
         'actividadMaterial',
         'actividadMaterial.material',
@@ -144,6 +145,7 @@ export class ActividadesService {
       where: { id },
       relations: [
         'usuario',
+        'usuario.ficha',
         'cultivo',
         'actividadMaterial',
         'actividadMaterial.material',
@@ -168,11 +170,11 @@ export class ActividadesService {
       if (!actividad) {
         throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
       }
-      
+
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
       const materialRepo = queryRunner.manager.getRepository(Material);
       const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
-      
+
       // Obtenemos el nombre del usuario asignado (ej. "David")
       const nombreUsuario = `${actividad.usuario?.nombre || 'Usuario'} ${actividad.usuario?.apellidos || ''}`.trim();
 
@@ -182,36 +184,36 @@ export class ActividadesService {
         for (const am of actividad.actividadMaterial) {
           const material = await materialRepo.findOneBy({ id: am.material.id });
           if (material) {
-            material.cantidad += am.cantidadUsada; 
+            material.cantidad += am.cantidadUsada;
             await queryRunner.manager.save(material);
           }
-          await queryRunner.manager.remove(am); 
+          await queryRunner.manager.remove(am);
         }
       }
-      
+
       // --- 2. BORRAR GASTOS USANDO EL TÍTULO ANTIGUO ---
       // (Esta es la forma más segura que teníamos)
       if (actividad.cultivo) {
-          await gastoRepo.delete({
-            cultivo: { id: actividad.cultivo.id },
-            descripcion: Like(`%(Act: ${actividad.titulo})%`) // Borra todo lo que contenga `(Act: TítuloAntiguo)`
-          });
+        await gastoRepo.delete({
+          cultivo: { id: actividad.cultivo.id },
+          descripcion: Like(`%(Act: ${actividad.titulo})%`) // Borra todo lo que contenga `(Act: TítuloAntiguo)`
+        });
       }
 
       // --- 5. ACTUALIZAR LOS DATOS SIMPLES DE LA ACTIVIDAD ---
       // (Lógica de actualizar cultivo, horas y tarifa queda igual)
       let cultivoEntidad: Cultivo | null = actividad.cultivo;
       if (cultivoId) {
-          cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
-          if (!cultivoEntidad) {
-              throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
-          }
+        cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
+        if (!cultivoEntidad) {
+          throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
+        }
       }
-      Object.assign(actividad, dtoActividad); 
+      Object.assign(actividad, dtoActividad);
       actividad.cultivo = cultivoEntidad;
-      actividad.horas = horas; 
+      actividad.horas = horas;
       actividad.tarifaHora = tarifaHora;
-      
+
       const saved = await queryRunner.manager.save(actividad); // 'saved' ahora tiene el título NUEVO
 
       // --- 6. APLICAR LÓGICA DE 'CREATE' PARA LOS NUEVOS MATERIALES ---
@@ -237,7 +239,7 @@ export class ActividadesService {
             const nuevoGasto = gastoRepo.create({
               descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
               monto: costoTotal,
-              fecha: saved.fecha, 
+              fecha: saved.fecha,
               tipo: TipoMovimiento.EGRESO,
               cultivo: cultivoEntidad ?? undefined,
             });
@@ -261,7 +263,7 @@ export class ActividadesService {
       // --- FIN DE CAMBIOS EN 'update' ---
 
       await queryRunner.commitTransaction();
-      return this.findOne(id); 
+      return this.findOne(id);
 
     } catch (error) {
       await queryRunner.rollbackTransaction();

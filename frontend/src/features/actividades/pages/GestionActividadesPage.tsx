@@ -68,7 +68,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
           a.cultivo?.id === actividad.cultivo?.id &&
           a.usuario,
       )
-      .map((a) => a.usuario!); 
+      .map((a) => a.usuario!);
   }, [actividad, allActividades]);
 
   // (Lógica de parsear 'imagenes' sin cambios)
@@ -90,7 +90,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
 
   const estadoTexto = getEstadoTexto(actividad.estado);
   const fechaProgramada = new Date(actividad.fecha).toLocaleDateString('es-ES', {
-    timeZone: 'UTC', 
+    timeZone: 'UTC',
   });
 
   // --- INICIO DE CORRECCIÓN: Lógica de Costos y Pago ---
@@ -105,9 +105,8 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
       <div className="space-y-6">
         {/* (Cabecera del Modal sin cambios) */}
         <div
-          className={`p-4 rounded-t-lg flex justify-between items-center text-white font-bold ${
-            actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'
-          }`}
+          className={`p-4 rounded-t-lg flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'
+            }`}
         >
           <h2 className="text-xl">{actividad.titulo}</h2>
           <span
@@ -147,7 +146,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 <ul className="list-disc list-inside pl-2 space-y-1">
                   {aprendicesAsignados.map((user) => (
                     <li key={user.identificacion} className="text-sm text-gray-700">
-                      {user.nombre} {user.apellidos}
+                      {user.nombre} {user.apellidos} {user.ficha?.id_ficha ? `(Ficha: ${user.ficha.id_ficha})` : ''}
                     </li>
                   ))}
                 </ul>
@@ -162,7 +161,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 <Package size={16} /> Materiales Utilizados
               </h3>
               {actividad.actividadMaterial &&
-              actividad.actividadMaterial.length > 0 ? (
+                actividad.actividadMaterial.length > 0 ? (
                 <ul className="list-disc list-inside pl-2 space-y-1">
                   {actividad.actividadMaterial.map((item, index) => (
                     <li key={index} className="text-sm text-gray-700">
@@ -179,7 +178,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 </p>
               )}
             </div>
-            
+
             {/* --- INICIO DE CORRECCIÓN: Mostrar Costo y Estado de Pago --- */}
             <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
               <h3 className="font-bold text-gray-700 flex items-center gap-2">
@@ -207,7 +206,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
               )}
             </div>
             {/* --- FIN DE CORRECCIÓN --- */}
-            
+
           </div>
 
           {/* Columna Derecha: Descripción e Imágenes */}
@@ -278,7 +277,7 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 const GestionActividadesPage: React.FC = () => {
   const { userData } = useAuth();
   const [actividades, setActividades] = useState<Actividad[]>([]);
-  const [, setUsuarios] = useState<UsuarioSimple[]>([]); 
+  const [, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<EstadoActividad | 'Todos'>(
     'Todos',
@@ -299,7 +298,7 @@ const GestionActividadesPage: React.FC = () => {
         obtenerUsuariosParaActividades(),
         obtenerCultivosParaActividades(),
       ]);
-      
+
       setActividades(actividadesData || []);
       setUsuarios(usuariosData || []);
       setCultivos(cultivosData || []);
@@ -325,9 +324,9 @@ const GestionActividadesPage: React.FC = () => {
       toast.warning(
         `Tienes ${actividadesPendientesUsuario.length} actividad(es) pendiente(s) por completar.`,
         {
-           description: 'Ve a la sección de actividades para ver los detalles.',
-           duration: 10000,
-           position: 'top-right',
+          description: 'Ve a la sección de actividades para ver los detalles.',
+          duration: 10000,
+          position: 'top-right',
         }
       );
     }
@@ -372,7 +371,7 @@ const GestionActividadesPage: React.FC = () => {
       toast.success('Actividad guardada', { id: toastId });
       handleCloseEditModal();
       await cargarDatos();
-    } catch (err: any) { 
+    } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al guardar la actividad.';
       toast.error(errorMsg, { id: toastId });
     }
@@ -389,7 +388,7 @@ const GestionActividadesPage: React.FC = () => {
           try {
             await eliminarActividad(id);
             toast.success('Actividad eliminada', { id: toastId });
-            await cargarDatos(); 
+            await cargarDatos();
           } catch (err) {
             toast.error('Error al eliminar.', { id: toastId });
           }
@@ -397,7 +396,7 @@ const GestionActividadesPage: React.FC = () => {
       },
       cancel: {
         label: 'Cancelar',
-        onClick: () => {}, 
+        onClick: () => { },
       },
       duration: 10000
     });
@@ -436,13 +435,13 @@ const GestionActividadesPage: React.FC = () => {
         act.titulo,
         act.cultivo?.nombre || 'No especificado',
         `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
-        new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }), 
+        new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }),
         getEstadoTexto(act.estado),
         act.descripcion || 'Sin descripción'
       ]);
-      
+
       const { default: autoTable } = await import('jspdf-autotable');
-      
+
       autoTable(doc, {
         head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
         body: tableData,
