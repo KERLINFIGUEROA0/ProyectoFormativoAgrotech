@@ -21,6 +21,7 @@ import {
 
 import logoAgroFull from "../assets/logo.png";
 import logoAgroMini from "../assets/logo1.png";
+import { useModulePermissions } from "../features/user/hooks/useModulePermissions";
 
 //--- TIPOS ---//
 interface MenuItemType {
@@ -30,6 +31,7 @@ interface MenuItemType {
   logo?: string;
   notification?: number;
   children?: MenuItemType[];
+  module?: string; // Módulo para permisos
 }
 
 interface SidebarProps {
@@ -39,7 +41,7 @@ interface SidebarProps {
 }
 
 //--- DATOS ---//
-const menuItems: MenuItemType[] = [
+const baseMenuItems: MenuItemType[] = [
   {
     id: "home",
     label: "Inicio",
@@ -49,17 +51,18 @@ const menuItems: MenuItemType[] = [
     id: "iot",
     label: "IoT",
     icon: Cpu,
+    module: "Iot",
     children: [
       // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
       { id: "gestion-sensores", label: "Monitoreo de Sensores", icon: Activity },
-  { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
+      { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon },
     ],
   },
   {
     id: "cultivos",
     label: "Cultivos",
-// ... (El resto del archivo no cambia) ...
     icon: Sprout,
+    module: "Cultivos",
     children: [
       { id: "gestion-cultivos", label: "Gestion de cultivos", icon: Sprout },
       { id: "gestion-lotes", label: "Gestion de lotes", icon: Sprout },
@@ -70,6 +73,7 @@ const menuItems: MenuItemType[] = [
     id: "inventario",
     label: "Inventario",
     icon: Package,
+    module: "Inventario",
     children: [
       { id: "stock", label: "Stock", icon: Package },
       { id: "movimientos", label: "Movimientos", icon: TrendingUp },
@@ -79,6 +83,7 @@ const menuItems: MenuItemType[] = [
     id: "fitosanitario",
     label: "Fitosanitario",
     icon: Activity,
+    module: "Fitosanitario",
     children: [
       { id: "fitosanitario", label: "EPA", icon: Activity },
       // { id: "tratamientos", label: "Tratamientos", icon: TrendingUp },
@@ -89,6 +94,7 @@ const menuItems: MenuItemType[] = [
     id: "actividades-menu",
     label: "Actividades",
     icon: ClipboardList,
+    module: "Actividades",
     children: [
       { id: "gestion-actividades", label: "Tareas", icon: Activity },
       { id: "cronograma", label: "Cronograma", icon: Calendar },
@@ -99,6 +105,7 @@ const menuItems: MenuItemType[] = [
     id: "finanzas",
     label: "Finanzas",
     icon: TrendingUp,
+    module: "Finanzas",
     children: [
       { id: "ingresos", label: "Inicio", icon: TrendingUp },
       { id: "egresos", label: "Transacciones", icon: Package },
@@ -108,10 +115,11 @@ const menuItems: MenuItemType[] = [
     id: "usuarios",
     label: "Usuarios",
     icon: Settings,
+    module: "Usuarios",
     children: [
       { id: "gestion-usuarios", label: "Gestion Usuarios", icon: User },
       { id: "gestion-roles", label: "Gestion Roles", icon: Settings },
-        {id: "gestion-fichas", label: "Gestion Fichas", icon: Package },
+      { id: "gestion-fichas", label: "Gestion Fichas", icon: Package },
     ],
   },
 ];
@@ -125,6 +133,15 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { hasAnyPermissionInModule } = useModulePermissions();
+
+  // Filtrar menús basados en permisos
+  const menuItems = baseMenuItems.filter((item) => {
+    // Siempre mostrar home
+    if (item.id === "home") return true;
+    // Mostrar solo si tiene permisos en el módulo
+    return item.module ? hasAnyPermissionInModule(item.module) : true;
+  });
 
   const toggleMenu = (id: string) => {
     setOpenMenu(openMenu === id ? null : id);

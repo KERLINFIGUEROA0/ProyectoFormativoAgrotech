@@ -25,6 +25,7 @@ export interface Lote {
    area: number;
    estado: string;
    coordenadas?: CoordenadasGeo;
+   surcos?: Surco[];
  }
 
 /**

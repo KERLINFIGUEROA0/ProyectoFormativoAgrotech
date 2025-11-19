@@ -12,9 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
   Search,
-  Trash2,
 } from "lucide-react";
-import { FaExclamationTriangle } from "react-icons/fa";
 import { toast } from "sonner";
 import type { Usuario, Rol } from "../interfaces/usuarios";
 import type { FichaOption } from "../../fichas/interfaces/fichas";
@@ -25,7 +23,6 @@ import {
   updateUsuario,
   obtenerPerfil,
   deleteUsuario,
-  deleteUsuarioPermanente,
   reactivarUsuario,
   exportarUsuariosExcel,
   cargarUsuariosExcel,
@@ -34,6 +31,7 @@ import { getFichasOpcionesFromUsuarios } from "../../fichas/api/fichas";
 import UserForm from "./UserForm";
 import PermissionsModal from "./PermissionsModal";
 import { api } from "../../../lib/axios";
+import PermissionWrapper from "../../../components/PermissionWrapper";
 
 export default function GestionUsuarios(): ReactElement {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -62,8 +60,6 @@ export default function GestionUsuarios(): ReactElement {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingUser, setDeletingUser] = useState<Usuario | null>(null);
 
   const applyFilter = (usersToFilter: Usuario[]) => {
     let filtered = usersToFilter;
@@ -368,29 +364,6 @@ export default function GestionUsuarios(): ReactElement {
     }
   };
 
-  const handleDeletePermanent = async (usuario: Usuario) => {
-    setDeletingUser(usuario);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDeletePermanent = async () => {
-    if (!deletingUser) return;
-
-    const toastId = toast.loading("Eliminando usuario permanentemente...");
-    try {
-      await deleteUsuarioPermanente(deletingUser.id);
-      toast.success("Usuario eliminado permanentemente", { id: toastId });
-      await fetchData();
-      setIsDeleteModalOpen(false);
-      setDeletingUser(null);
-    } catch (error: unknown) {
-      console.error("Error eliminando usuario:", error);
-      const errorMessage =
-        (error as any).response?.data?.message || "Error al eliminar usuario.";
-      toast.error(errorMessage, { id: toastId });
-    }
-  };
-
   const handleExportExcel = async () => {
     const toastId = toast.loading("Exportando a Excel...");
     try {
@@ -570,24 +543,30 @@ export default function GestionUsuarios(): ReactElement {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={openModal}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm text-sm transition-colors"
-              >
-                <UserPlus size={16} /> Nuevo Usuario
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm transition-colors"
-              >
-                <FileSpreadsheet size={16} /> Cargar Excel
-              </button>
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg shadow-sm text-sm transition-colors"
-              >
-                <FileUp size={16} /> Exportar
-              </button>
+              <PermissionWrapper module="Usuarios" permission="Crear">
+                <button
+                  onClick={openModal}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                >
+                  <UserPlus size={16} /> Nuevo Usuario
+                </button>
+              </PermissionWrapper>
+              <PermissionWrapper module="Usuarios" permission="Crear">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                >
+                  <FileSpreadsheet size={16} /> Cargar Excel
+                </button>
+              </PermissionWrapper>
+              <PermissionWrapper module="Usuarios" permission="Ver">
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                >
+                  <FileUp size={16} /> Exportar
+                </button>
+              </PermissionWrapper>
             </div>
           </div>
           <input
@@ -858,62 +837,61 @@ export default function GestionUsuarios(): ReactElement {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex justify-center items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(usuario)}
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                        title="Editar usuario"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePermanent(usuario)}
-                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
-                        title="Eliminar usuario permanentemente"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                      <label
-                        className="flex items-center cursor-pointer"
-                        title={
-                          usuario.estado
-                            ? "Desactivar usuario"
-                            : "Activar usuario"
-                        }
-                      >
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={usuario.estado}
-                            onChange={() => handleToggleActive(usuario)}
-                          />
-                          <div
-                            className={`block w-12 h-6 rounded-full transition-all duration-300 ${
-                              usuario.estado ? "bg-green-400" : "bg-gray-300"
-                            }`}
-                          ></div>
-                          <div
-                            className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
-                              usuario.estado ? "transform translate-x-6" : ""
-                            }`}
-                          ></div>
-                        </div>
-                      </label>
+                      <PermissionWrapper module="Usuarios" permission="Editar">
+                        <button
+                          onClick={() => openEditModal(usuario)}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                          title="Editar usuario"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      </PermissionWrapper>
+                      <PermissionWrapper module="Usuarios" permission="Editar">
+                        <label
+                          className="flex items-center cursor-pointer"
+                          title={
+                            usuario.estado
+                              ? "Desactivar usuario"
+                              : "Activar usuario"
+                          }
+                        >
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={usuario.estado}
+                              onChange={() => handleToggleActive(usuario)}
+                            />
+                            <div
+                              className={`block w-12 h-6 rounded-full transition-all duration-300 ${
+                                usuario.estado ? "bg-green-400" : "bg-gray-300"
+                              }`}
+                            ></div>
+                            <div
+                              className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
+                                usuario.estado ? "transform translate-x-6" : ""
+                              }`}
+                            ></div>
+                          </div>
+                        </label>
+                      </PermissionWrapper>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-center">
-                    <button
-                      onClick={() => {
-                        setPermUser(usuario);
-                        setIsPermOpen(true);
-                      }}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                      title={`Gestionar permisos - ${
-                        userRolePermissions[usuario.tipoUsuario?.id || 0] || 0
-                      } activos`}
-                    >
-                      <UserCog size={18} />
-                    </button>
+                    <PermissionWrapper module="Usuarios" permission="Asignar">
+                      <button
+                        onClick={() => {
+                          setPermUser(usuario);
+                          setIsPermOpen(true);
+                        }}
+                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                        title={`Gestionar permisos - ${
+                          userRolePermissions[usuario.tipoUsuario?.id || 0] || 0
+                        } activos`}
+                      >
+                        <UserCog size={18} />
+                      </button>
+                    </PermissionWrapper>
                   </td>
                 </tr>
               ))}
@@ -1057,42 +1035,6 @@ export default function GestionUsuarios(): ReactElement {
                 type: "usuario",
               }}
             />
-          </div>
-        </div>
-      )}
-
-      {isDeleteModalOpen && deletingUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <FaExclamationTriangle className="text-red-600" size={24} />
-              </div>
-              <h4 className="text-lg font-semibold text-gray-900">¿Eliminar usuario permanentemente?</h4>
-              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
-                {deletingUser.nombre} {deletingUser.apellidos || ""}
-              </div>
-              <p className="text-xs text-gray-500">
-                Esta acción no se puede deshacer. Se eliminará permanentemente el usuario y todos sus datos asociados.
-              </p>
-              <div className="flex gap-3 mt-4 w-full">
-                <button
-                  onClick={() => {
-                    setIsDeleteModalOpen(false);
-                    setDeletingUser(null);
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-gray-700 font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmDeletePermanent}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

@@ -91,12 +91,7 @@ export class LotesController {
     };
   }
 
-  @Delete('eliminar/:id')
-  async eliminar(@Param('id', ParseIntPipe) id: number) {
-    await this.lotesService.eliminar(id);
-    return {
-      success: true,
-      message: `El lote con ID ${id} fue eliminado correctamente`,
-    };
-  }
+  // ✅ ELIMINADOS: Endpoints de eliminación y archivado
+  // Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
+  // Esto preserva toda la trazabilidad histórica
 }

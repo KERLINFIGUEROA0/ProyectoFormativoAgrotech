@@ -93,6 +93,22 @@ export default function GestionRoles(): ReactElement {
 
   const handleDelete = async () => {
     if (!deletingRole) return;
+
+    // Verificar si es un rol predeterminado
+    const defaultRoles = ['aprendiz', 'pasante', 'invitado', 'instructor'];
+    if (defaultRoles.includes(deletingRole.nombre.toLowerCase())) {
+      toast.error("No se puede eliminar este rol predeterminado del sistema.");
+      closeDeleteModal();
+      return;
+    }
+
+    // Verificar si tiene usuarios asociados
+    if (deletingRole.usuariosAsignados && deletingRole.usuariosAsignados > 0) {
+      toast.error("No se puede eliminar el rol porque tiene usuarios asociados.");
+      closeDeleteModal();
+      return;
+    }
+
     const toastId = toast.loading("Eliminando rol...");
     try {
       await deleteRole(deletingRole.id);
@@ -180,13 +196,15 @@ export default function GestionRoles(): ReactElement {
                      >
                        <FaEdit size={16} />
                      </button>
-                     <button
-                       onClick={() => openDeleteModal(r)}
-                       className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
-                       title="Eliminar rol"
-                     >
-                       <FaTrash size={16} />
-                     </button>
+                     {!['aprendiz', 'pasante', 'invitado', 'instructor'].includes(r.nombre.toLowerCase()) && (
+                       <button
+                         onClick={() => openDeleteModal(r)}
+                         className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200"
+                         title="Eliminar rol"
+                       >
+                         <FaTrash size={16} />
+                       </button>
+                     )}
                    </div>
                  </td>
                  <td className="px-4 py-4 text-center">

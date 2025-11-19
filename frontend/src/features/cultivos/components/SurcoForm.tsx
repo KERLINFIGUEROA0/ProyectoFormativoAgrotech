@@ -144,13 +144,19 @@ export default function SurcoForm({ initialData = {}, lotes, cultivos, brokers, 
         </p>
       </label>
 
-      <div className="flex justify-end gap-3 mt-4">
-        <Button onClick={onCancel} color="danger" variant="light">
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onCancel}
+          className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+        >
           Cancelar
-        </Button>
-        <Button onClick={handleSubmit} className="bg-blue-600 text-white font-bold hover:bg-blue-700">
-          Guardar Surco
-        </Button>
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+        >
+          {isEditing ? 'Actualizar Surco' : 'Registrar Surco'}
+        </button>
       </div>
     </div>
   );

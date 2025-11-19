@@ -6,6 +6,7 @@ import {
   useJsApiLoader,
   Polygon,
   InfoWindow,
+  Marker,
 } from "@react-google-maps/api";
 import type { Coordenada, Lote } from '../interfaces/cultivos';
 
@@ -14,6 +15,7 @@ interface LotesMapProps {
   lotes: Lote[];
   selectedLote: Lote | null;
   onSelectLote: (lote: Lote | null) => void;
+  customInfo?: (lote: Lote) => ReactElement;
 }
 
 const containerStyle = {
@@ -43,7 +45,16 @@ export default function LotesMap({
   lotes,
   selectedLote,
   onSelectLote,
+  customInfo,
 }: LotesMapProps): ReactElement {
+  // Parse coordenadas if they are strings
+  const parsedLotes = lotes.map(lote => ({
+    ...lote,
+    coordenadas: typeof lote.coordenadas === 'string'
+      ? JSON.parse(lote.coordenadas)
+      : lote.coordenadas
+  }));
+  console.log('Lotes en LotesMap:', parsedLotes);
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -65,6 +76,20 @@ export default function LotesMap({
     ? getPolygonCenter(selectedLote.coordenadas.coordinates as Coordenada[])
     : undefined;
 
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-200 rounded-2xl">
+        <div className="text-center p-4">
+          <p className="text-red-600 font-semibold">Error: API Key de Google Maps no configurada</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Configure VITE_GOOGLE_MAPS_API_KEY en el archivo .env
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return isLoaded ? (
     <GoogleMap
       mapContainerStyle={containerStyle}
@@ -80,7 +105,7 @@ export default function LotesMap({
         mapRef.current = map;
       }}
     >
-      {lotes.map(
+      {parsedLotes.map(
         (lote) =>
           lote.coordenadas &&
           lote.coordenadas.type === 'polygon' &&
@@ -100,22 +125,44 @@ export default function LotesMap({
           )
       )}
 
+      {/* Marcadores para lotes con cultivos */}
+      {lotes.map(
+        (lote: Lote) => {
+          const hasCultivos = lote.surcos && lote.surcos.some((s: any) => s.cultivo);
+          if (!hasCultivos || !lote.coordenadas || lote.coordenadas.type !== 'polygon' || !(lote.coordenadas.coordinates as Coordenada[]).length) {
+            return null;
+          }
+          const center = getPolygonCenter(lote.coordenadas.coordinates as Coordenada[]);
+          const cultivosCount = lote.surcos?.filter((s: any) => s.cultivo).length || 0;
+          return (
+            <Marker
+              key={`marker-${lote.id}`}
+              position={center}
+              onClick={() => onSelectLote(lote)}
+              title={`${lote.nombre}: ${cultivosCount} cultivo${cultivosCount !== 1 ? 's' : ''}`}
+            />
+          );
+        }
+      )}
+
       {selectedLote && centerForInfoWindow && (
         <InfoWindow
           position={centerForInfoWindow}
           onCloseClick={() => onSelectLote(null)}
         >
-          <div className="p-1">
-            <h4 className="font-bold text-md text-gray-800">
-              {selectedLote.nombre}
-            </h4>
-            <p className="text-sm text-gray-600">
-              <strong>Área:</strong> {selectedLote.area} m²
-            </p>
-            <p className="text-sm text-gray-600">
-              <strong>Estado:</strong> {selectedLote.estado}
-            </p>
-          </div>
+          {customInfo ? customInfo(selectedLote) : (
+            <div className="p-1">
+              <h4 className="font-bold text-md text-gray-800">
+                {selectedLote.nombre}
+              </h4>
+              <p className="text-sm text-gray-600">
+                <strong>Área:</strong> {selectedLote.area} m²
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Estado:</strong> {selectedLote.estado}
+              </p>
+            </div>
+          )}
         </InfoWindow>
       )}
     </GoogleMap>
