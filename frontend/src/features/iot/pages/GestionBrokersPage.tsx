@@ -129,7 +129,7 @@ export default function GestionBrokersPage(): ReactElement {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Configuración de Brokers MQTT</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Configuración de Brokers </h1>
         <button onClick={() => openBrokerModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
           <Plus /> Nuevo Broker
         </button>

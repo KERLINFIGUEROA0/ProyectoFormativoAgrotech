@@ -3,9 +3,10 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button } from "@heroui/react";
 import { toast } from "sonner";
-import { UploadCloud, AlertTriangle, ArrowRight } from 'lucide-react';
+import { UploadCloud, AlertTriangle, ArrowRight, Settings, Edit, Trash2, X } from 'lucide-react';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSurcosPorLote } from '../api/surcosApi';
+import { actualizarTipoCultivo, eliminarTipoCultivo } from '../api/cultivosApi';
 import type { Lote } from '../interfaces/cultivos';
 
 interface CultivoFormProps {
@@ -24,6 +25,9 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
   const [hasLotes, setHasLotes] = useState(false);
   const [hasSurcos, setHasSurcos] = useState(false);
   const [checkingDeps, setCheckingDeps] = useState(true);
+  const [showTipoModal, setShowTipoModal] = useState(false);
+  const [editingTipo, setEditingTipo] = useState<any>(null);
+  const [editTipoName, setEditTipoName] = useState("");
 
   useEffect(() => {
     setFormData({ Estado: 'Activo', ...initialData });
@@ -83,6 +87,38 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
     }
   };
 
+  const handleEditTipo = (tipo: any) => {
+    setEditingTipo(tipo);
+    setEditTipoName(tipo.nombre);
+  };
+
+  const handleSaveTipoEdit = async () => {
+    if (!editingTipo || !editTipoName.trim()) return;
+
+    try {
+      await actualizarTipoCultivo(editingTipo.id, { nombre: editTipoName.trim() });
+      toast.success("Tipo de cultivo actualizado correctamente");
+      setEditingTipo(null);
+      setEditTipoName("");
+      // Refresh tiposCultivo - this would need to be passed as prop or callback
+      window.location.reload(); // Simple refresh for now
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error al actualizar tipo de cultivo");
+    }
+  };
+
+  const handleDeleteTipo = async (tipo: any) => {
+    if (!confirm(`¿Estás seguro de eliminar "${tipo.nombre}"?`)) return;
+
+    try {
+      await eliminarTipoCultivo(tipo.id);
+      toast.success("Tipo de cultivo eliminado correctamente");
+      window.location.reload(); // Simple refresh for now
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error al eliminar tipo de cultivo");
+    }
+  };
+
   const handleSubmit = () => {
     const { nombre, cantidad, Fecha_Plantado } = formData;
     const tipoCultivoId = formData.tipoCultivoId;
@@ -105,9 +141,9 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
       Estado: formData.Estado,
       img: formData.img || 'https://via.placeholder.com/150'
     };
-    
-    onSave({ 
-      ...payload, 
+
+    onSave({
+      ...payload,
       imageFile,
       newTipoCultivoName: showNewTipoInput ? newTipoCultivoName : null,
     });
@@ -162,7 +198,17 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
         <Input label="Nombre del Cultivo" name="nombre" value={formData.nombre || ''} onChange={handleChange} />
         
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-gray-700">Tipo de Cultivo</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Tipo de Cultivo</span>
+            <button
+              type="button"
+              onClick={() => setShowTipoModal(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+            >
+              <Settings size={12} />
+              Gestionar tipos
+            </button>
+          </div>
           <select name="tipoCultivoId" value={showNewTipoInput ? 'otro' : formData.tipoCultivoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
             <option value="" disabled>Seleccionar tipo</option>
             {tiposCultivo.map(tipo => (
@@ -229,6 +275,85 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, onSave, on
           {initialData?.id ? 'Actualizar Cultivo' : 'Registrar Cultivo'}
         </button>
       </div>
+
+      {/* Modal para gestionar tipos de cultivo */}
+      {showTipoModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Gestionar Tipos de Cultivo</h3>
+              <button
+                onClick={() => setShowTipoModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {tiposCultivo.map((tipo) => (
+                <div key={tipo.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  {editingTipo?.id === tipo.id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="text"
+                        value={editTipoName}
+                        onChange={(e) => setEditTipoName(e.target.value)}
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSaveTipoEdit}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingTipo(null);
+                          setEditTipoName("");
+                        }}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="font-medium text-gray-900">{tipo.nombre}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditTipo(tipo)}
+                          className="p-1 text-blue-600 hover:text-blue-800"
+                          title="Editar"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTipo(tipo)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowTipoModal(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

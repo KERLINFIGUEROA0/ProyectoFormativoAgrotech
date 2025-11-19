@@ -45,6 +45,16 @@ export const crearTipoCultivo = async (data: { nombre: string }) => {
     return response.data;
 };
 
+export const actualizarTipoCultivo = async (id: number, data: { nombre: string }) => {
+    const response = await api.put(`/tipo-cultivo/actualizar/${id}`, data);
+    return response.data;
+};
+
+export const eliminarTipoCultivo = async (id: number) => {
+    const response = await api.delete(`/tipo-cultivo/eliminar/${id}`);
+    return response.data;
+};
+
 
 // --- FUNCIÓN PARA TRAZABILIDAD ---
 export const obtenerTrazabilidad = async (cultivoId: number) => {

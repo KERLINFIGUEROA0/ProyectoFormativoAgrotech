@@ -41,7 +41,7 @@ export class LotesService {
 
   async listar(): Promise<Lote[]> {
     return await this.loteRepository.find({
-      relations: ['surcos'],
+      relations: ['surcos', 'surcos.cultivo'],
     });
   }
 
@@ -68,11 +68,8 @@ export class LotesService {
     return loteActualizado;
   }
 
-  async eliminar(id: number): Promise<void> {
-    const lote = await this.buscarPorId(id);
-    await this.loteRepository.remove(lote);
-    await this.clearCache(id);
-  }
+  // ❌ ELIMINADO: Método eliminar - Los lotes se reutilizan, nunca se eliminan
+  // Esto preserva toda la trazabilidad histórica
 
   async actualizarEstado(id: number, dto: UpdateLoteEstadoDto): Promise<Lote> {
     const lote = await this.buscarPorId(id);
@@ -81,6 +78,9 @@ export class LotesService {
     await this.clearCache(id);
     return loteActualizado;
   }
+
+  // ✅ MANTENIDO: Solo cambio de estado - Los lotes se reutilizan cambiando coordenadas
+  // Esto permite "reiniciar" un lote para nuevo uso sin perder trazabilidad
 
   async obtenerEstadisticas() {
     const total = await this.loteRepository.count();

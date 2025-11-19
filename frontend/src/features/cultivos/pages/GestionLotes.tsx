@@ -1,13 +1,13 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaTrash, FaExclamationTriangle, FaEdit } from 'react-icons/fa';
-import { obtenerLotes, crearLote, actualizarLote, eliminarLote, actualizarEstadoLote, obtenerEstadisticasLotes } from '../api/lotesApi';
+import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
+import { obtenerLotes, crearLote, actualizarLote, actualizarEstadoLote, obtenerEstadisticasLotes } from '../api/lotesApi';
 import FormModal from '../../../components/FormModal';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
 import type { Lote, LoteData, StatCardProps } from '../interfaces/cultivos';
-import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
+import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination } from '@heroui/react';
 
 // --- Componente StatCard con Hero UI ---
 const StatCard = ({ icon, title, value, color }: StatCardProps): ReactElement => {
@@ -37,8 +37,6 @@ export default function GestionLotesPage(): ReactElement {
   const [selectedLote, setSelectedLote] = useState<Lote | null>(null);
   const [stats, setStats] = useState({ enCultivo: 0, total: 0, enPreparacion: 0 });
   const [filterStatus, setFilterStatus] = useState<'all' | 'Activo' | 'Inactivo' | 'En preparación'>('all');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingLote, setDeletingLote] = useState<Lote | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const location = useLocation(); 
@@ -104,29 +102,8 @@ const handleSave = async (data: LoteData) => {
     setEditingLote(null);
   };
   
-  const openDeleteModal = (lote: Lote) => {
-    setDeletingLote(lote);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setDeletingLote(null);
-    setIsDeleteModalOpen(false);
-  };
-
-  const handleDelete = async () => {
-    if (!deletingLote) return;
-    const toastId = toast.loading("Eliminando lote...");
-    try {
-      await eliminarLote(deletingLote.id);
-      toast.success("Lote eliminado con éxito.", { id: toastId });
-      fetchData();
-      closeDeleteModal();
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al eliminar el lote.";
-      toast.error(message, { id: toastId });
-    }
-  };
+  // ✅ ELIMINADAS: Funciones de eliminación
+  // Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
 
 const handleViewLocation = (lote: Lote) => {
     setSelectedLote(lote);
@@ -228,15 +205,6 @@ const handleViewLocation = (lote: Lote) => {
                           >
                             <FaEdit />
                           </Button>
-                          <Button
-                            onClick={() => openDeleteModal(lote)}
-                            color="danger"
-                            variant="light"
-                            size="sm"
-                            isIconOnly
-                          >
-                            <FaTrash />
-                          </Button>
                           <Select
                             selectedKeys={[lote.estado]}
                             onSelectionChange={(keys) => handleEstadoChange(lote.id, Array.from(keys)[0] as string)}
@@ -288,24 +256,6 @@ const handleViewLocation = (lote: Lote) => {
       >
         <LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} />
       </FormModal>
-      <HeroModal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col items-center gap-3 text-center">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-              <FaExclamationTriangle className="text-red-600" size={24} />
-            </div>
-            <h4 className="text-lg font-semibold text-center">¿Eliminar Lote?</h4>
-          </ModalHeader>
-          <ModalBody className="text-center">
-            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold text-center">{deletingLote?.nombre}</div>
-            <p className="text-xs text-gray-500 mt-2 text-center">Esta acción no se puede deshacer. Se eliminará permanentemente el lote.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={closeDeleteModal} variant="light">Cancelar</Button>
-            <Button onClick={handleDelete} color="danger">Eliminar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </HeroModal>
     </div>
   );
 }
