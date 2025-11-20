@@ -17,39 +17,185 @@ const endpoints = [
   {
     method: "GET",
     path: "/lotes/listar",
-    description: "Lista todos los lotes con sus surcos y cultivos relacionados."
+    description: "Lista todos los lotes con sus surcos y cultivos relacionados.",
+    response: `{
+  "success": true,
+  "total": 2,
+  "data": [
+    {
+      "id": 1,
+      "localizacion": null,
+      "nombre": "Lote Norte",
+      "area": "1500.50",
+      "estado": "Activo",
+      "coordenadas": {
+        "type": "polygon",
+        "coordinates": [
+          { "lat": 4.6097, "lng": -74.0817 },
+          { "lat": 4.6107, "lng": -74.0817 },
+          { "lat": 4.6107, "lng": -74.0807 },
+          { "lat": 4.6097, "lng": -74.0807 }
+        ]
+      },
+      "surcos": [
+        {
+          "id": 1,
+          "numero": 1,
+          "cultivo": {
+            "id": 1,
+            "nombre": "Tomate cherry"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "localizacion": null,
+      "nombre": "Lote Sur",
+      "area": "800.25",
+      "estado": "En preparación",
+      "coordenadas": null,
+      "surcos": []
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/lotes/:id",
     description: "Obtiene un lote específico por ID con sus surcos.",
-    params: ["id (number): ID del lote"]
+    params: ["id (number): ID del lote"],
+    response: `{
+  "success": true,
+  "data": {
+    "id": 1,
+    "localizacion": null,
+    "nombre": "Lote Norte",
+    "area": "1500.50",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": [
+      {
+        "id": 1,
+        "numero": 1,
+        "cultivo": {
+          "id": 1,
+          "nombre": "Tomate cherry"
+        }
+      }
+    ]
+  }
+}`
   },
   {
     method: "POST",
     path: "/lotes/crear",
     description: "Crea un nuevo lote.",
-    dto: "CreateLoteDto",
-    params: [
-      "nombre (string, requerido): Nombre del lote",
-      "area (number, requerido): Área del lote en m² (máx. 3000)",
-      "estado (string, opcional): Estado del lote (\"Activo\", \"Inactivo\", \"En preparación\")",
-      "coordenadas (object, opcional): Coordenadas geográficas"
+    request: `{
+  "nombre": "Lote Este",
+  "area": 2000.75,
+  "estado": "En preparación",
+  "coordenadas": {
+    "type": "polygon",
+    "coordinates": [
+      { "lat": 4.6097, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0807 },
+      { "lat": 4.6097, "lng": -74.0807 }
     ]
+  }
+}`,
+    response: `{
+  "success": true,
+  "message": "El lote \"Lote Este\" se creó correctamente",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este",
+    "area": "2000.75",
+    "estado": "En preparación",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}`
   },
   {
     method: "PUT",
     path: "/lotes/actualizar/:id",
     description: "Actualiza un lote existente.",
-    dto: "UpdateLoteDto",
-    params: ["id (number): ID del lote"]
+    params: ["id (number): ID del lote"],
+    request: `{
+  "nombre": "Lote Este Premium",
+  "area": 2200.00,
+  "estado": "Activo"
+}`,
+    response: `{
+  "success": true,
+  "message": "El lote con ID 3 se actualizó correctamente",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este Premium",
+    "area": "2200.00",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}`
   },
   {
     method: "PATCH",
     path: "/lotes/:id/estado",
     description: "Actualiza solo el estado de un lote.",
-    dto: "UpdateLoteEstadoDto",
-    params: ["id (number): ID del lote", "estado (string, requerido): Nuevo estado"]
+    params: ["id (number): ID del lote"],
+    request: `{
+  "estado": "Activo"
+}`,
+    response: `{
+  "success": true,
+  "message": "El estado del lote con ID 3 se actualizó a \"Activo\"",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este Premium",
+    "area": "2200.00",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}`
   }
 ];
 
@@ -223,6 +369,28 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+			.request-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.request-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
 			.response-code {
 				background: #2d3748;
 				color: #e2e8f0;
@@ -308,10 +476,16 @@ const features = [
 							<pre class="response-code"><code>{endpoint.response}</code></pre>
 						</div>
 					)}
+					{endpoint.request && (
+						<div>
+							<strong>Request Body:</strong>
+							<pre class="request-code">{endpoint.request}</pre>
+						</div>
+					)}
 					{endpoint.params && endpoint.params.length > 0 && (
 						<div>
 							<strong>Parámetros:</strong>
-							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+							<pre class="params-code">{endpoint.params.join('\n')}</pre>
 						</div>
 					)}
 				</div>

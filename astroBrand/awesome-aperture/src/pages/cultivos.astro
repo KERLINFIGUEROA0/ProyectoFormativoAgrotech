@@ -4,57 +4,157 @@ const endpoints = [
     method: "POST",
     path: "/cultivos/crear",
     description: "Crea un nuevo cultivo.",
-    dto: "CreateCultivoDto",
-    params: [
-      "nombre (string, requerido): Nombre del cultivo (máx. 20 caracteres)",
-      "cantidad (number, requerido): Cantidad inicial del cultivo",
-      "img (string, opcional): Ruta de la imagen del cultivo",
-      "descripcion (string, opcional): Descripción del cultivo",
-      "tipoCultivoId (number, requerido): ID del tipo de cultivo relacionado",
-      "Estado (string, opcional): Estado del cultivo (ej: \"Activo\", \"Inactivo\")",
-      "Fecha_Plantado (string, opcional): Fecha de plantado en formato ISO"
-    ]
+    request: `{
+  "nombre": "Tomate cherry",
+  "cantidad": 100,
+  "img": "cultivos-pic/tomate-123456789.jpg",
+  "descripcion": "Cultivo de tomate cherry orgánico",
+  "tipoCultivoId": 1,
+  "Estado": "Activo",
+  "Fecha_Plantado": "2024-01-15"
+}`,
+    response: `{
+  "success": true,
+  "message": "El cultivo se creó correctamente",
+  "data": {
+    "id": 1,
+    "nombre": "Tomate cherry",
+    "cantidad": 100,
+    "img": "cultivos-pic/tomate-123456789.jpg",
+    "descripcion": "Cultivo de tomate cherry orgánico",
+    "Estado": "Activo",
+    "Fecha_Plantado": "2024-01-15T00:00:00.000Z",
+    "tipoCultivo": {
+      "id": 1,
+      "nombre": "Hortalizas"
+    }
+  }
+}`
   },
   {
     method: "GET",
     path: "/cultivos/listar",
-    description: "Lista todos los cultivos con sus tipos relacionados."
+    description: "Lista todos los cultivos con sus tipos relacionados.",
+    response: `{
+  "success": true,
+  "total": 2,
+  "data": [
+    {
+      "id": 1,
+      "nombre": "Tomate cherry",
+      "cantidad": 100,
+      "img": "cultivos-pic/tomate-123456789.jpg",
+      "descripcion": "Cultivo de tomate cherry orgánico",
+      "Estado": "Activo",
+      "Fecha_Plantado": "2024-01-15T00:00:00.000Z",
+      "tipoCultivo": {
+        "id": 1,
+        "nombre": "Hortalizas"
+      }
+    },
+    {
+      "id": 2,
+      "nombre": "Lechuga romana",
+      "cantidad": 50,
+      "img": null,
+      "descripcion": "Cultivo de lechuga hidropónica",
+      "Estado": "Activo",
+      "Fecha_Plantado": "2024-01-20T00:00:00.000Z",
+      "tipoCultivo": {
+        "id": 1,
+        "nombre": "Hortalizas"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/cultivos/:id",
     description: "Obtiene un cultivo específico por ID.",
-    params: ["id (number): ID del cultivo"]
+    params: ["id (number): ID del cultivo"],
+    response: `{
+  "success": true,
+  "data": {
+    "id": 1,
+    "nombre": "Tomate cherry",
+    "cantidad": 100,
+    "img": "cultivos-pic/tomate-123456789.jpg",
+    "descripcion": "Cultivo de tomate cherry orgánico",
+    "Estado": "Activo",
+    "Fecha_Plantado": "2024-01-15T00:00:00.000Z",
+    "tipoCultivo": {
+      "id": 1,
+      "nombre": "Hortalizas"
+    }
+  }
+}`
   },
   {
     method: "PUT",
     path: "/cultivos/actualizar/:id",
     description: "Actualiza un cultivo existente.",
-    dto: "UpdateCultivoDto",
-    params: ["id (number): ID del cultivo"]
+    params: ["id (number): ID del cultivo"],
+    request: `{
+  "nombre": "Tomate cherry premium",
+  "cantidad": 120,
+  "descripcion": "Cultivo de tomate cherry orgánico premium"
+}`,
+    response: `{
+  "success": true,
+  "message": "El cultivo se actualizó",
+  "data": {
+    "id": 1,
+    "nombre": "Tomate cherry premium",
+    "cantidad": 120,
+    "img": "cultivos-pic/tomate-123456789.jpg",
+    "descripcion": "Cultivo de tomate cherry orgánico premium",
+    "Estado": "Activo",
+    "Fecha_Plantado": "2024-01-15T00:00:00.000Z",
+    "tipoCultivo": {
+      "id": 1,
+      "nombre": "Hortalizas"
+    }
+  }
+}`
   },
   {
     method: "DELETE",
     path: "/cultivos/eliminar/:id",
     description: "Elimina un cultivo por ID.",
-    params: ["id (number): ID del cultivo"]
+    params: ["id (number): ID del cultivo"],
+    response: `{
+  "success": true,
+  "message": "El cultivo fue eliminado"
+}`
   },
   {
     method: "POST",
     path: "/cultivos/:id/imagen",
     description: "Sube una imagen para un cultivo específico.",
-    params: ["id (number): ID del cultivo", "file (file): Archivo de imagen a subir"]
+    params: ["id (number): ID del cultivo", "file (file): Archivo de imagen a subir"],
+    response: `{
+  "success": true,
+  "message": "Imagen subida con éxito",
+  "data": {
+    "id": 1,
+    "nombre": "Tomate cherry",
+    "img": "cultivos-pic/tomate-123456789.jpg"
+  }
+}`
   },
   {
     method: "GET",
     path: "/cultivos/:id/exportar-excel",
     description: "Exporta un reporte Excel detallado de un cultivo específico.",
-    params: ["id (number): ID del cultivo"]
+    params: ["id (number): ID del cultivo"],
+    response: `Archivo Excel descargado con nombre: cultivo-1-reporte-2024-01-15_143022.xlsx`
   },
   {
     method: "GET",
     path: "/cultivos/exportar-excel/general",
-    description: "Exporta un reporte Excel general de todos los cultivos con estadísticas."
+    description: "Exporta un reporte Excel general de todos los cultivos con estadísticas.",
+    response: `Archivo Excel descargado con nombre: cultivos-reporte-general-2024-01-15_143022.xlsx`
   }
 ];
 
@@ -231,6 +331,28 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+			.request-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.request-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
 			h1, h2, h3 {
 				color: #2c3e50;
 			}
@@ -288,10 +410,22 @@ const features = [
 					<h3>{endpoint.method} {endpoint.path}</h3>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
 					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
+					{endpoint.request && (
+						<div>
+							<strong>Request Body:</strong>
+							<pre class="request-code">{endpoint.request}</pre>
+						</div>
+					)}
 					{endpoint.params && endpoint.params.length > 0 && (
 						<div>
 							<strong>Parámetros:</strong>
-							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+							<pre class="params-code">{endpoint.params.join('\n')}</pre>
+						</div>
+					)}
+					{endpoint.response && (
+						<div>
+							<strong>Response:</strong>
+							<pre class="response-code">{endpoint.response}</pre>
 						</div>
 					)}
 				</div>

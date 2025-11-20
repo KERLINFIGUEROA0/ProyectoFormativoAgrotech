@@ -4,26 +4,73 @@ const endpoints = [
     method: "POST",
     path: "/ventas",
     description: "Registra una nueva venta y actualiza el inventario de producción.",
-    dto: "CreateVentaDto",
-    params: [
-      "descripcion (string, opcional): Descripción de la venta",
-      "monto (number, requerido): Precio unitario de venta",
-      "fecha (string, requerido): Fecha de la venta en formato ISO",
-      "cantidad (number, requerido): Cantidad vendida",
-      "produccionId (number, requerido): ID de la producción a vender",
-      "tipo (TipoMovimiento, opcional): Tipo de movimiento (default: INGRESO)"
-    ]
+    request: `{
+  "descripcion": "Venta de tomate cherry al mercado local",
+  "monto": 8000,
+  "fecha": "2024-01-20",
+  "cantidad": 25,
+  "produccionId": 1,
+  "tipo": "INGRESO"
+}`,
+    response: `{
+  "success": true,
+  "message": "Venta registrada con éxito.",
+  "data": {
+    "id": 5,
+    "descripcion": "Venta de tomate cherry al mercado local",
+    "fecha": "2024-01-20",
+    "precioUnitario": 8000,
+    "cantidadVenta": 25,
+    "valorTotalVenta": 200000,
+    "tipo": "INGRESO",
+    "rutaFacturaPdf": "uploads/facturas/factura-5.pdf",
+    "produccion": {
+      "id": 1,
+      "cantidad": 75,
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    }
+  }
+}`
   },
   {
     method: "GET",
     path: "/ventas",
-    description: "Lista todas las ventas con información de producción y cultivo."
+    description: "Lista todas las ventas con información de producción y cultivo.",
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "descripcion": "Venta de lechuga al restaurante",
+      "monto": 120000,
+      "fecha": "2024-01-15",
+      "cantidad": 50,
+      "precioUnitario": 2400,
+      "tipo": "INGRESO",
+      "rutaFacturaPdf": "uploads/facturas/factura-1.pdf"
+    },
+    {
+      "id": 2,
+      "descripcion": "Venta de tomate al supermercado",
+      "monto": 160000,
+      "fecha": "2024-01-18",
+      "cantidad": 40,
+      "precioUnitario": 4000,
+      "tipo": "INGRESO",
+      "rutaFacturaPdf": "uploads/facturas/factura-2.pdf"
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/ventas/:id/factura",
     description: "Descarga la factura PDF de una venta específica.",
-    params: ["id (number): ID de la venta"]
+    params: ["id (number): ID de la venta"],
+    response: `Archivo PDF descargado con nombre: factura-venta-1.pdf`
   },
   {
     method: "GET",
@@ -33,9 +80,34 @@ const endpoints = [
   "success": true,
   "data": [
     {
+      "mes": "Ago",
+      "ingresos": 2500000,
+      "egresos": 1200000
+    },
+    {
+      "mes": "Sep",
+      "ingresos": 3200000,
+      "egresos": 1500000
+    },
+    {
+      "mes": "Oct",
+      "ingresos": 2800000,
+      "egresos": 1350000
+    },
+    {
+      "mes": "Nov",
+      "ingresos": 3500000,
+      "egresos": 1600000
+    },
+    {
+      "mes": "Dic",
+      "ingresos": 4200000,
+      "egresos": 1800000
+    },
+    {
       "mes": "Ene",
-      "ingresos": 1500000,
-      "egresos": 800000
+      "ingresos": 3800000,
+      "egresos": 1700000
     }
   ]
 }`
@@ -44,7 +116,11 @@ const endpoints = [
     method: "DELETE",
     path: "/ventas/:id",
     description: "Elimina una venta y elimina el archivo PDF asociado.",
-    params: ["id (number): ID de la venta"]
+    params: ["id (number): ID de la venta"],
+    response: `{
+  "success": true,
+  "message": "Venta eliminada con éxito."
+}`
   }
 ];
 
@@ -219,6 +295,28 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+			.request-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.request-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
 			.response-code {
 				background: #2d3748;
 				color: #e2e8f0;
@@ -297,17 +395,22 @@ const features = [
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
-					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
-					{endpoint.response && (
+					{endpoint.request && (
 						<div>
-							<strong>Respuesta:</strong>
-							<pre class="response-code"><code>{endpoint.response}</code></pre>
+							<strong>Request Body:</strong>
+							<pre class="request-code">{endpoint.request}</pre>
 						</div>
 					)}
 					{endpoint.params && endpoint.params.length > 0 && (
 						<div>
 							<strong>Parámetros:</strong>
-							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+							<pre class="params-code">{endpoint.params.join('\n')}</pre>
+						</div>
+					)}
+					{endpoint.response && (
+						<div>
+							<strong>Respuesta:</strong>
+							<pre class="response-code">{endpoint.response}</pre>
 						</div>
 					)}
 				</div>
