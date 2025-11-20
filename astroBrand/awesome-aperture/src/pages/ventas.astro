@@ -1,0 +1,327 @@
+---
+const endpoints = [
+  {
+    method: "POST",
+    path: "/ventas",
+    description: "Registra una nueva venta y actualiza el inventario de producción.",
+    dto: "CreateVentaDto",
+    params: [
+      "descripcion (string, opcional): Descripción de la venta",
+      "monto (number, requerido): Precio unitario de venta",
+      "fecha (string, requerido): Fecha de la venta en formato ISO",
+      "cantidad (number, requerido): Cantidad vendida",
+      "produccionId (number, requerido): ID de la producción a vender",
+      "tipo (TipoMovimiento, opcional): Tipo de movimiento (default: INGRESO)"
+    ]
+  },
+  {
+    method: "GET",
+    path: "/ventas",
+    description: "Lista todas las ventas con información de producción y cultivo."
+  },
+  {
+    method: "GET",
+    path: "/ventas/:id/factura",
+    description: "Descarga la factura PDF de una venta específica.",
+    params: ["id (number): ID de la venta"]
+  },
+  {
+    method: "GET",
+    path: "/ventas/flujo-mensual",
+    description: "Obtiene el flujo mensual de ingresos y egresos de los últimos 6 meses.",
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "mes": "Ene",
+      "ingresos": 1500000,
+      "egresos": 800000
+    }
+  ]
+}`
+  },
+  {
+    method: "DELETE",
+    path: "/ventas/:id",
+    description: "Elimina una venta y elimina el archivo PDF asociado.",
+    params: ["id (number): ID de la venta"]
+  }
+];
+
+const entityContent = `{
+  id: number; // ID único de la venta
+  descripcion: string; // Descripción opcional
+  fecha: string; // Fecha de la venta
+  precioUnitario: number; // Precio unitario
+  cantidadVenta: number; // Cantidad vendida
+  valorTotalVenta: number; // Valor total calculado
+  rutaFacturaPdf: string; // Ruta del archivo PDF generado
+  tipo: TipoMovimiento; // Tipo de movimiento (INGRESO/EGRESO)
+  produccion: Produccion; // Producción relacionada
+}`;
+
+const features = [
+  "Transacciones: Las ventas se procesan en transacciones para garantizar consistencia",
+  "Actualización de Inventario: Al vender, se reduce la cantidad disponible en la producción",
+  "Estado de Producción: Si la cantidad llega a 0, la producción se marca como \"Vendido\"",
+  "Facturación Automática: Genera PDF automáticamente usando Puppeteer",
+  "Flujo Financiero: Reportes mensuales de ingresos vs egresos",
+  "Relaciones: Conectado con producciones para trazabilidad completa"
+];
+---
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Ventas - Documentación API</title>
+		<style>
+			body {
+				font-family: system-ui, -apple-system, sans-serif;
+				margin: 0;
+				padding: 0;
+				line-height: 1.6;
+				background: #f8f9fa;
+			}
+			nav {
+				background: #2c3e50;
+				color: white;
+				padding: 1rem;
+			}
+			nav ul {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+				display: flex;
+				gap: 2rem;
+			}
+			nav a {
+				color: white;
+				text-decoration: none;
+			}
+			nav a:hover {
+				text-decoration: underline;
+			}
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+				background: white;
+				min-height: calc(100vh - 80px);
+				box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			}
+
+			/* Estilos específicos para Ventas - Tema Rojo */
+			.module-header {
+				background: linear-gradient(135deg, #e74c3c, #c0392b);
+				color: white;
+				padding: 2rem;
+				border-radius: 10px;
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.module-header h1 {
+				margin: 0;
+				font-size: 2.5rem;
+				text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+			}
+
+			/* Estilos para endpoints */
+			.endpoint {
+				background: #f8f9fa;
+				border-left: 5px solid #e74c3c;
+				padding: 1.5rem;
+				margin: 1rem 0;
+				border-radius: 0 8px 8px 0;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			.endpoint h3 {
+				margin-top: 0;
+				color: #e74c3c;
+				font-size: 1.2rem;
+			}
+			.endpoint strong {
+				color: #2c3e50;
+			}
+
+			/* DTOs y entidades */
+			.dto-box {
+				background: #f8f9fa;
+				border: 1px solid #dee2e6;
+				padding: 1rem;
+				border-radius: 8px;
+				margin: 1rem 0;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+			}
+			.dto-box h3 {
+				color: #e74c3c;
+				margin-top: 0;
+				border-bottom: 2px solid #e74c3c;
+				padding-bottom: 0.5rem;
+			}
+
+			pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				padding: 1rem;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			code {
+				background: #e8f5e8;
+				color: #e74c3c;
+				padding: 0.2rem 0.4rem;
+				border-radius: 3px;
+				font-weight: bold;
+				font-family: 'Courier New', monospace;
+			}
+			.dto-box pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1.2rem;
+				margin: 1rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.dto-box code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			.params-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.params-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			.response-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.response-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			h1, h2, h3 {
+				color: #2c3e50;
+			}
+			h2 {
+				border-bottom: 3px solid #e74c3c;
+				padding-bottom: 0.5rem;
+				margin-top: 2rem;
+			}
+
+			.back-link {
+				display: inline-block;
+				margin-bottom: 1rem;
+				color: #e74c3c;
+				text-decoration: none;
+				font-weight: bold;
+			}
+			.back-link:hover {
+				text-decoration: underline;
+			}
+
+			/* Lista de funcionalidades */
+			ul {
+				padding-left: 1.5rem;
+			}
+			li {
+				margin: 0.5rem 0;
+			}
+			li strong {
+				color: #e74c3c;
+			}
+		</style>
+	</head>
+	<body>
+		<nav>
+			<ul>
+				<li><a href="/">Inicio</a></li>
+				<li><a href="/cultivos">Cultivos</a></li>
+				<li><a href="/lotes">Lotes</a></li>
+				<li><a href="/materiales">Materiales</a></li>
+				<li><a href="/ventas">Ventas</a></li>
+				<li><a href="/producciones">Producciones</a></li>
+				<li><a href="/usuarios">Usuarios</a></li>
+			</ul>
+		</nav>
+
+		<div class="container">
+			<a href="/" class="back-link">← Volver al inicio</a>
+			<div class="module-header">
+				<h1>Módulo Ventas</h1>
+			</div>
+
+			<h2>Endpoints</h2>
+			{endpoints.map(endpoint => (
+				<div class="endpoint">
+					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>Descripción:</strong> {endpoint.description}</p>
+					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
+					{endpoint.response && (
+						<div>
+							<strong>Respuesta:</strong>
+							<pre class="response-code"><code>{endpoint.response}</code></pre>
+						</div>
+					)}
+					{endpoint.params && endpoint.params.length > 0 && (
+						<div>
+							<strong>Parámetros:</strong>
+							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+						</div>
+					)}
+				</div>
+			))}
+
+			<div class="dto-box">
+				<h3>Entidad Venta</h3>
+				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<h2>Funcionalidades Adicionales</h2>
+			<ul>
+				{features.map(feature => <li><strong>{feature.split(':')[0]}:</strong> {feature.split(':')[1]}</li>)}
+			</ul>
+		</div>
+	</body>
+</html>

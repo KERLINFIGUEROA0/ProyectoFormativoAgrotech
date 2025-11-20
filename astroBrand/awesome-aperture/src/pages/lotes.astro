@@ -1,0 +1,331 @@
+---
+const endpoints = [
+  {
+    method: "GET",
+    path: "/lotes/estadisticas",
+    description: "Obtiene estadísticas generales de los lotes (total, en cultivo, en preparación, alertas).",
+    response: `{
+  "success": true,
+  "data": {
+    "total": 10,
+    "enCultivo": 7,
+    "enPreparacion": 2,
+    "alertas": 1
+  }
+}`
+  },
+  {
+    method: "GET",
+    path: "/lotes/listar",
+    description: "Lista todos los lotes con sus surcos y cultivos relacionados."
+  },
+  {
+    method: "GET",
+    path: "/lotes/:id",
+    description: "Obtiene un lote específico por ID con sus surcos.",
+    params: ["id (number): ID del lote"]
+  },
+  {
+    method: "POST",
+    path: "/lotes/crear",
+    description: "Crea un nuevo lote.",
+    dto: "CreateLoteDto",
+    params: [
+      "nombre (string, requerido): Nombre del lote",
+      "area (number, requerido): Área del lote en m² (máx. 3000)",
+      "estado (string, opcional): Estado del lote (\"Activo\", \"Inactivo\", \"En preparación\")",
+      "coordenadas (object, opcional): Coordenadas geográficas"
+    ]
+  },
+  {
+    method: "PUT",
+    path: "/lotes/actualizar/:id",
+    description: "Actualiza un lote existente.",
+    dto: "UpdateLoteDto",
+    params: ["id (number): ID del lote"]
+  },
+  {
+    method: "PATCH",
+    path: "/lotes/:id/estado",
+    description: "Actualiza solo el estado de un lote.",
+    dto: "UpdateLoteEstadoDto",
+    params: ["id (number): ID del lote", "estado (string, requerido): Nuevo estado"]
+  }
+];
+
+const entityContent = `{
+  id: number; // ID único del lote
+  localizacion: number; // Ubicación geográfica
+  nombre: string; // Nombre del lote
+  area: string; // Área en m² (almacenado como string)
+  estado: string; // Estado actual
+  coordenadas?: {
+    type: 'point' | 'polygon';
+    coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
+  }; // Coordenadas geográficas
+  surcos: Surco[]; // Surcos asociados al lote
+}`;
+
+const features = [
+  "Cache: Los endpoints de estadísticas y listado usan cache Redis (TTL: 5-60 min)",
+  "Coordenadas Geoespaciales: Soporte para puntos y polígonos usando JSONB en PostgreSQL",
+  "Reutilización: Los lotes no se eliminan, solo cambian de estado para preservar trazabilidad",
+  "Validación: Área máxima de 3000 m² por lote"
+];
+---
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Lotes - Documentación API</title>
+		<style>
+			body {
+				font-family: system-ui, -apple-system, sans-serif;
+				margin: 0;
+				padding: 0;
+				line-height: 1.6;
+				background: #f8f9fa;
+			}
+			nav {
+				background: #2c3e50;
+				color: white;
+				padding: 1rem;
+			}
+			nav ul {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+				display: flex;
+				gap: 2rem;
+			}
+			nav a {
+				color: white;
+				text-decoration: none;
+			}
+			nav a:hover {
+				text-decoration: underline;
+			}
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+				background: white;
+				min-height: calc(100vh - 80px);
+				box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			}
+
+			/* Estilos específicos para Lotes - Tema Azul */
+			.module-header {
+				background: linear-gradient(135deg, #3498db, #5dade2);
+				color: white;
+				padding: 2rem;
+				border-radius: 10px;
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.module-header h1 {
+				margin: 0;
+				font-size: 2.5rem;
+				text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+			}
+
+			/* Estilos para endpoints */
+			.endpoint {
+				background: #f8f9fa;
+				border-left: 5px solid #3498db;
+				padding: 1.5rem;
+				margin: 1rem 0;
+				border-radius: 0 8px 8px 0;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			.endpoint h3 {
+				margin-top: 0;
+				color: #3498db;
+				font-size: 1.2rem;
+			}
+			.endpoint strong {
+				color: #2c3e50;
+			}
+
+			/* DTOs y entidades */
+			.dto-box {
+				background: #f8f9fa;
+				border: 1px solid #dee2e6;
+				padding: 1rem;
+				border-radius: 8px;
+				margin: 1rem 0;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+			}
+			.dto-box h3 {
+				color: #3498db;
+				margin-top: 0;
+				border-bottom: 2px solid #3498db;
+				padding-bottom: 0.5rem;
+			}
+
+			pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				padding: 1rem;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			code {
+				background: #ebf5fb;
+				color: #3498db;
+				padding: 0.2rem 0.4rem;
+				border-radius: 3px;
+				font-weight: bold;
+				font-family: 'Courier New', monospace;
+			}
+			.dto-box pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1.2rem;
+				margin: 1rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.dto-box code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			.params-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.params-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			.response-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.response-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			h1, h2, h3 {
+				color: #2c3e50;
+			}
+			h2 {
+				border-bottom: 3px solid #3498db;
+				padding-bottom: 0.5rem;
+				margin-top: 2rem;
+			}
+
+			.back-link {
+				display: inline-block;
+				margin-bottom: 1rem;
+				color: #3498db;
+				text-decoration: none;
+				font-weight: bold;
+			}
+			.back-link:hover {
+				text-decoration: underline;
+			}
+
+			/* Lista de funcionalidades */
+			ul {
+				padding-left: 1.5rem;
+			}
+			li {
+				margin: 0.5rem 0;
+			}
+			li strong {
+				color: #3498db;
+			}
+		</style>
+	</head>
+	<body>
+		<nav>
+			<ul>
+				<li><a href="/">Inicio</a></li>
+				<li><a href="/cultivos">Cultivos</a></li>
+				<li><a href="/lotes">Lotes</a></li>
+				<li><a href="/materiales">Materiales</a></li>
+				<li><a href="/ventas">Ventas</a></li>
+				<li><a href="/producciones">Producciones</a></li>
+				<li><a href="/usuarios">Usuarios</a></li>
+			</ul>
+		</nav>
+
+		<div class="container">
+			<a href="/" class="back-link">← Volver al inicio</a>
+			<div class="module-header">
+				<h1>Módulo Lotes</h1>
+			</div>
+
+			<h2>Endpoints</h2>
+			{endpoints.map(endpoint => (
+				<div class="endpoint">
+					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>Descripción:</strong> {endpoint.description}</p>
+					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
+					{endpoint.response && (
+						<div>
+							<strong>Respuesta:</strong>
+							<pre class="response-code"><code>{endpoint.response}</code></pre>
+						</div>
+					)}
+					{endpoint.params && endpoint.params.length > 0 && (
+						<div>
+							<strong>Parámetros:</strong>
+							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+						</div>
+					)}
+				</div>
+			))}
+
+			<div class="dto-box">
+				<h3>Entidad Lote</h3>
+				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<h2>Funcionalidades Adicionales</h2>
+			<ul>
+				{features.map(feature => <li><strong>{feature.split(':')[0]}:</strong> {feature.split(':')[1]}</li>)}
+			</ul>
+		</div>
+	</body>
+</html>
