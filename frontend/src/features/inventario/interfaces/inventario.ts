@@ -113,6 +113,7 @@ export interface Material {
   pesoPorUnidad: number | null;
   tipoConsumo?: string;
   cantidadPorUnidad?: number;
+  cantidadRestanteEnUnidadActual?: number;
   usosTotales?: number;
   usosActuales?: number;
 }

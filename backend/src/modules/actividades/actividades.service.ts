@@ -57,9 +57,9 @@ export class ActividadesService {
       return { success: true, debeRegistrarEgreso: debeDescontar };
     }
 
-    // Para consumibles: manejar unidades parciales
+    // Para consumibles: manejar unidades parciales si cantidadPorUnidad existe, sino descontar directamente
     if (!material.cantidadPorUnidad) {
-      // Si no hay cantidad por unidad, tratar como items individuales
+      // Si no hay cantidad por unidad, descontar directamente (compatibilidad con materiales existentes)
       if (material.cantidad < cantidadUsada) {
         return { success: false, debeRegistrarEgreso: false };
       }
@@ -147,7 +147,14 @@ export class ActividadesService {
 
           // --- 2. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
           if (resultado.debeRegistrarEgreso) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
+              // Para consumibles, costo proporcional al contenido usado
+              costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
+            } else {
+              // Para no consumibles, costo por unidad descontada
+              costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
                 descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`,
@@ -297,7 +304,14 @@ export class ActividadesService {
 
           // --- 3. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
           if (resultado.debeRegistrarEgreso) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
+              // Para consumibles, costo proporcional al contenido usado
+              costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
+            } else {
+              // Para no consumibles, costo por unidad descontada
+              costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
                 descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
@@ -394,7 +408,14 @@ export class ActividadesService {
           }
           await queryRunner.manager.save(material);
           if (resultado.debeRegistrarEgreso) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
+              // Para consumibles, costo proporcional al contenido usado
+              costoTotal = (Number(material.precio) || 0) * (cantidadTotalUsada / material.cantidadPorUnidad);
+            } else {
+              // Para no consumibles, costo por unidad descontada
+              costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
                 descripcion: `Costo material: ${material.nombre} (Asignación: ${titulo})`,

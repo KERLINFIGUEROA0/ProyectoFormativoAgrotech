@@ -184,10 +184,12 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     if (!material) return;
 
     // Validación de stock total
+    const esConsumible = material.tipoConsumo === 'consumible';
+    const totalDisponible = esConsumible ? material.cantidad * (material.cantidadPorUnidad || 1) : material.cantidad;
     const cantidadTotalRequerida = cantidad * (formData.aprendices.length || 1);
-    if (cantidadTotalRequerida > material.cantidad) {
+    if (cantidadTotalRequerida > totalDisponible) {
       toast.error(
-        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ( ${cantidad} x ${formData.aprendices.length} aprendices). Disponible: ${material.cantidad}`,
+        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} (${cantidad} x ${formData.aprendices.length} aprendices). Disponible: ${totalDisponible}`,
       );
       return;
     }
@@ -199,6 +201,8 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       return;
     }
 
+    const esConsumibleMat = material.tipoConsumo === 'consumible';
+    const totalDisponibleMat = esConsumibleMat ? material.cantidad * (material.cantidadPorUnidad || 1) : material.cantidad;
     setFormData(prev => ({
         ...prev,
         materiales: [
@@ -207,7 +211,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 materialId: material.id,
                 nombre: material.nombre,
                 cantidadUsada: cantidad,
-                stockDisponible: material.cantidad,
+                stockDisponible: totalDisponibleMat,
             }
         ],
         materialActual: '',
@@ -321,11 +325,21 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
                   >
                     <option value="">Seleccionar...</option>
-                    {materialesDisponibles.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (Disp: {m.cantidad})
-                      </option>
-                    ))}
+                    {materialesDisponibles.map((m) => {
+                      const esConsumible = m.tipoConsumo === 'consumible';
+                      let disponible = 0;
+                      if (esConsumible && m.cantidadPorUnidad) {
+                        const restante = m.cantidadRestanteEnUnidadActual ?? m.cantidadPorUnidad;
+                        disponible = (m.cantidad - 1) * m.cantidadPorUnidad + restante;
+                      } else {
+                        disponible = m.cantidad;
+                      }
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre} (Disp: {disponible})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="w-1/3">
@@ -335,6 +349,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     value={Number(formData.cantidadMaterial) || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
+                    placeholder={materialesDisponibles.find(m => m.id === parseInt(formData.materialActual))?.tipoConsumo === 'consumible' ? 'En contenido' : 'Unidades'}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                   />
                 </div>
