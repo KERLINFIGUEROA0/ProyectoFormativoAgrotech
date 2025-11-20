@@ -168,14 +168,14 @@ export default function GestionSurcos(): ReactElement {
       };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Gestión de Surcos</h1>
-        <div className="flex items-center gap-4">
+    <div className="p-3 md:p-6 bg-gray-50 min-h-full">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4 md:mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Gestión de Surcos</h1>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <select
             value={selectedLoteId || ''}
             onChange={handleLoteChange}
-            className="border border-gray-300 rounded-lg p-2 bg-white shadow-sm"
+            className="border border-gray-300 rounded-lg p-2 bg-white shadow-sm text-sm"
             disabled={lotes.length === 0} // Deshabilitamos si no hay lotes activos
           >
             {lotes.length > 0 ? (
@@ -184,30 +184,30 @@ export default function GestionSurcos(): ReactElement {
               <option value="">No hay lotes activos</option> // Mensaje informativo
             )}
           </select>
-          <button onClick={() => handleOpenModal()} disabled={!selectedLoteId} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition disabled:bg-gray-400">
-            <Plus size={20} /> Nuevo Surco
+          <button onClick={() => handleOpenModal()} disabled={!selectedLoteId} className="flex items-center justify-center gap-2 bg-green-600 text-white px-3 md:px-4 py-2 rounded-lg shadow hover:bg-green-700 transition disabled:bg-gray-400 text-sm">
+            <Plus size={16} /> <span className="hidden xs:inline">Nuevo Surco</span><span className="xs:hidden">Nuevo</span>
           </button>
         </div>
       </div>
 
       {/* ...el resto del componente se mantiene igual... */}
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="mb-8 text-center">
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-md">
+        <div className="mb-4 md:mb-8 text-center">
           <div>
-            <p className="text-sm text-gray-500">Total Surcos</p>
-            <p className="text-3xl font-bold text-green-700">{surcos.length}</p>
+            <p className="text-xs md:text-sm text-gray-500">Total Surcos</p>
+            <p className="text-2xl md:text-3xl font-bold text-green-700">{surcos.length}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
           <div className="lg:col-span-2">
-            <h3 className="font-semibold mb-2">Mapa de Surcos</h3>
+            <h3 className="font-semibold mb-2 text-base md:text-lg">Mapa de Surcos</h3>
             
-             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs text-gray-600">
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-400"></div>Disponible</div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-400"></div>En siembra</div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-400"></div>En cosecha</div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-gray-400"></div>Mantenimiento</div>
+             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-xs text-gray-600">
+              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-green-400"></div><span className="hidden sm:inline">Disponible</span><span className="sm:hidden">Disp.</span></div>
+              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-blue-400"></div><span className="hidden sm:inline">En siembra</span><span className="sm:hidden">Siembra</span></div>
+              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div><span className="hidden sm:inline">En cosecha</span><span className="sm:hidden">Cosecha</span></div>
+              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-gray-400"></div><span className="hidden sm:inline">Mantenimiento</span><span className="sm:hidden">Mant.</span></div>
             </div>
 
             {loadingSurcos ? (
@@ -221,27 +221,27 @@ export default function GestionSurcos(): ReactElement {
             )}
           </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Detalles del Surco</h3>
+          <div className="order-1 lg:order-2">
+            <h3 className="font-semibold mb-3 md:mb-4 text-base md:text-lg">Detalles del Surco</h3>
             {selectedSurco ? (
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-lg font-bold text-green-800">{selectedSurco.nombre}</h4>
-                  <div className="flex gap-3">
-                    <button onClick={() => handleOpenModal(selectedSurco)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                    <button onClick={() => handleDeleteSurco(selectedSurco.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
+              <div className="bg-gray-50 p-3 md:p-4 rounded-lg border">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 md:mb-4">
+                  <h4 className="text-base md:text-lg font-bold text-green-800 truncate">{selectedSurco.nombre}</h4>
+                  <div className="flex gap-2 md:gap-3 justify-end">
+                    <button onClick={() => handleOpenModal(selectedSurco)} className="text-blue-600 hover:text-blue-800 p-1"><Edit size={14} /></button>
+                    <button onClick={() => handleDeleteSurco(selectedSurco.id)} className="text-red-600 hover:text-red-800 p-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs md:text-sm">
                   <p><span className="font-semibold">Cultivo:</span> {selectedSurco.cultivo?.nombre || 'No asignado'}</p>
                   <p><span className="font-semibold">Descripción:</span> {selectedSurco.descripcion || 'Sin descripción'}</p>
                   
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold">Estado:</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p className="font-semibold text-xs md:text-sm">Estado:</p>
                     <select
                       value={selectedSurco.estado}
                       onChange={(e) => handleEstadoChange(selectedSurco.id, e.target.value)}
-                      className={`font-medium border rounded-md p-1 text-xs bg-white ${getStatusTextColor(selectedSurco.estado)}`}
+                      className={`font-medium border rounded-md p-1 text-xs bg-white ${getStatusTextColor(selectedSurco.estado)} w-full sm:w-auto`}
                     >
                       <option value="Disponible">Disponible</option>
                       <option value="En siembra">En siembra</option>
@@ -252,7 +252,7 @@ export default function GestionSurcos(): ReactElement {
                 </div>
                 <button 
                   onClick={() => setIsDetailModalOpen(true)} 
-                  className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+                  className="mt-3 md:mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 text-xs md:text-sm"
                 >
                   Ver Detalles
                 </button>
