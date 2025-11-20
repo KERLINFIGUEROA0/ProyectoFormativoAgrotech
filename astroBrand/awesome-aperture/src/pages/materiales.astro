@@ -1,0 +1,349 @@
+---
+const endpoints = [
+  {
+    method: "GET",
+    path: "/materiales/reportes/stock-bajo",
+    description: "Obtiene reporte de materiales con stock bajo.",
+    params: ["limite (number, opcional): Límite de stock para considerar \"bajo\" (default: 5)"]
+  },
+  {
+    method: "POST",
+    path: "/materiales",
+    description: "Crea un nuevo material.",
+    dto: "CreateMaterialeDto",
+    params: [
+      "nombre (string, requerido): Nombre del material (máx. 50 caracteres)",
+      "cantidad (number, requerido): Cantidad disponible (mín. 0)",
+      "tipoCategoria (TipoCategoria, requerido): Categoría principal del material",
+      "tipoMaterial (TipoMaterial, opcional): Subtipo del material",
+      "medidasDeContenido (MedidasDeContenido, opcional): Unidad de medida",
+      "tipoEmpaque (TipoEmpaque, requerido): Tipo de empaque",
+      "precio (number, opcional): Precio unitario",
+      "pesoPorUnidad (number, opcional): Peso por unidad en kg",
+      "descripcion (string, opcional): Descripción del material",
+      "ubicacion (string, opcional): Ubicación en bodega",
+      "proveedor (string, opcional): Nombre del proveedor",
+      "fechaVencimiento (string, opcional): Fecha de vencimiento en formato ISO"
+    ]
+  },
+  {
+    method: "GET",
+    path: "/materiales",
+    description: "Lista todos los materiales."
+  },
+  {
+    method: "GET",
+    path: "/materiales/:id",
+    description: "Obtiene un material específico por ID.",
+    params: ["id (number): ID del material"]
+  },
+  {
+    method: "PATCH",
+    path: "/materiales/:id",
+    description: "Actualiza un material existente.",
+    dto: "UpdateMaterialeDto",
+    params: ["id (number): ID del material"]
+  },
+  {
+    method: "POST",
+    path: "/materiales/:id/imagen",
+    description: "Sube una imagen para un material específico.",
+    params: ["id (number): ID del material", "file (file): Archivo de imagen a subir"]
+  },
+  {
+    method: "PATCH",
+    path: "/materiales/:id/desactivar",
+    description: "Desactiva un material (soft delete).",
+    params: ["id (number): ID del material"]
+  },
+  {
+    method: "PATCH",
+    path: "/materiales/:id/reactivar",
+    description: "Reactiva un material desactivado.",
+    params: ["id (number): ID del material"]
+  }
+];
+
+const entityContent = `{
+  id: number; // ID único del material
+  nombre: string; // Nombre del material
+  precio: number; // Precio unitario
+  descripcion: string; // Descripción opcional
+  cantidad: number; // Cantidad disponible
+  img: string; // Ruta de la imagen
+  ubicacion: string; // Ubicación en bodega
+  proveedor: string; // Proveedor
+  fechaVencimiento: Date; // Fecha de vencimiento
+  pesoPorUnidad: number; // Peso por unidad en kg
+  estado: boolean; // Estado activo/inactivo
+  tipoCategoria: TipoCategoria; // Categoría principal
+  tipoMaterial: TipoMaterial; // Subtipo
+  medidasDeContenido: MedidasDeContenido; // Unidad de contenido
+  tipoEmpaque: TipoEmpaque; // Tipo de empaque
+  actividadMaterial: ActividadMaterial[]; // Relaciones con actividades
+}`;
+
+const enums = {
+  tipoCategoria: ["SEMILLAS", "FERTILIZANTES", "PESTICIDAS", "HERRAMIENTAS", "MAQUINARIA", "OTROS"],
+  tipoMaterial: ["ORGANICO", "QUIMICO", "BIOLOGICO", "MECANICO", "MANUAL"],
+  medidasDeContenido: ["KG", "LITROS", "UNIDADES", "GRAMOS", "MILILITROS"],
+  tipoEmpaque: ["BOLSA", "BOTELLA", "CAJA", "SACO", "BIDON", "OTROS"]
+};
+
+const features = [
+  "Gestión de Stock: Reportes de stock bajo con umbrales configurables",
+  "Estados: Soft delete con desactivación/reactivación",
+  "Categorización: Sistema jerárquico de categorías y subcategorías",
+  "Imágenes: Upload de imágenes con almacenamiento en uploads/materiales-pic/",
+  "Validación: Validaciones estrictas en DTOs con class-validator"
+];
+---
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Materiales - Documentación API</title>
+		<style>
+			body {
+				font-family: system-ui, -apple-system, sans-serif;
+				margin: 0;
+				padding: 0;
+				line-height: 1.6;
+				background: #f8f9fa;
+			}
+			nav {
+				background: #2c3e50;
+				color: white;
+				padding: 1rem;
+			}
+			nav ul {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+				display: flex;
+				gap: 2rem;
+			}
+			nav a {
+				color: white;
+				text-decoration: none;
+			}
+			nav a:hover {
+				text-decoration: underline;
+			}
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+				background: white;
+				min-height: calc(100vh - 80px);
+				box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			}
+
+			/* Estilos específicos para Materiales - Tema Naranja */
+			.module-header {
+				background: linear-gradient(135deg, #e67e22, #f39c12);
+				color: white;
+				padding: 2rem;
+				border-radius: 10px;
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.module-header h1 {
+				margin: 0;
+				font-size: 2.5rem;
+				text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+			}
+
+			/* Estilos para endpoints */
+			.endpoint {
+				background: #f8f9fa;
+				border-left: 5px solid #e67e22;
+				padding: 1.5rem;
+				margin: 1rem 0;
+				border-radius: 0 8px 8px 0;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			.endpoint h3 {
+				margin-top: 0;
+				color: #e67e22;
+				font-size: 1.2rem;
+			}
+			.endpoint strong {
+				color: #2c3e50;
+			}
+
+			/* DTOs y entidades */
+			.dto-box {
+				background: #f8f9fa;
+				border: 1px solid #dee2e6;
+				padding: 1rem;
+				border-radius: 8px;
+				margin: 1rem 0;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+			}
+			.dto-box h3, .dto-box h4 {
+				color: #e67e22;
+				margin-top: 0;
+				border-bottom: 2px solid #e67e22;
+				padding-bottom: 0.5rem;
+			}
+
+			pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				padding: 1rem;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			code {
+				background: #fdf2e9;
+				color: #e67e22;
+				padding: 0.2rem 0.4rem;
+				border-radius: 3px;
+				font-weight: bold;
+				font-family: 'Courier New', monospace;
+			}
+			.dto-box pre {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1.2rem;
+				margin: 1rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.dto-box code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			.enum-value {
+				background: #4a5568;
+				color: #fbbf24;
+				padding: 0.2rem 0.5rem;
+				border-radius: 4px;
+				font-family: 'Courier New', monospace;
+				font-weight: bold;
+				display: inline-block;
+				margin: 0.1rem 0;
+			}
+
+			.params-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.params-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
+			h1, h2, h3 {
+				color: #2c3e50;
+			}
+			h2 {
+				border-bottom: 3px solid #e67e22;
+				padding-bottom: 0.5rem;
+				margin-top: 2rem;
+			}
+
+			.back-link {
+				display: inline-block;
+				margin-bottom: 1rem;
+				color: #e67e22;
+				text-decoration: none;
+				font-weight: bold;
+			}
+			.back-link:hover {
+				text-decoration: underline;
+			}
+
+			/* Lista de funcionalidades */
+			ul {
+				padding-left: 1.5rem;
+			}
+			li {
+				margin: 0.5rem 0;
+			}
+			li strong {
+				color: #e67e22;
+			}
+		</style>
+	</head>
+	<body>
+		<nav>
+			<ul>
+				<li><a href="/">Inicio</a></li>
+				<li><a href="/cultivos">Cultivos</a></li>
+				<li><a href="/lotes">Lotes</a></li>
+				<li><a href="/materiales">Materiales</a></li>
+				<li><a href="/ventas">Ventas</a></li>
+				<li><a href="/producciones">Producciones</a></li>
+				<li><a href="/usuarios">Usuarios</a></li>
+			</ul>
+		</nav>
+
+		<div class="container">
+			<a href="/" class="back-link">← Volver al inicio</a>
+			<div class="module-header">
+				<h1>Módulo Materiales</h1>
+			</div>
+
+			<h2>Endpoints</h2>
+			{endpoints.map(endpoint => (
+				<div class="endpoint">
+					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>Descripción:</strong> {endpoint.description}</p>
+					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
+					{endpoint.params && endpoint.params.length > 0 && (
+						<div>
+							<strong>Parámetros:</strong>
+							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+						</div>
+					)}
+				</div>
+			))}
+
+			<div class="dto-box">
+				<h3>Entidad Material</h3>
+				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<h2>Enums Utilizados</h2>
+			{Object.entries(enums).map(([key, values]) => (
+				<div class="dto-box">
+					<h4>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</h4>
+					<ul>
+						{values.map(value => <li><span class="enum-value">{value}</span></li>)}
+					</ul>
+				</div>
+			))}
+
+			<h2>Funcionalidades Adicionales</h2>
+			<ul>
+				{features.map(feature => <li><strong>{feature.split(':')[0]}:</strong> {feature.split(':')[1]}</li>)}
+			</ul>
+		</div>
+	</body>
+</html>
