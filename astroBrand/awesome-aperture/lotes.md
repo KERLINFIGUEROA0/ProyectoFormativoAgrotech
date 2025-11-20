@@ -72,6 +72,69 @@
 }
 ```
 
+## DTOs y Validaciones
+
+### CreateLoteDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>nombre</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty</td>
+      <td>El nombre del lote es requerido.</td>
+    </tr>
+    <tr>
+      <td>area</td>
+      <td>number</td>
+      <td>@IsNumber, @IsNotEmpty, @Max(3000)</td>
+      <td>El área es requerida. El área del lote no puede superar los 3000 m².</td>
+    </tr>
+    <tr>
+      <td>estado</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación'])</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>coordenadas</td>
+      <td>CoordenadasDto</td>
+      <td>@IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdateLoteDto
+Similar a CreateLoteDto.
+
+### UpdateLoteEstadoDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>estado</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'En preparación'])</td>
+      <td>El estado debe ser "Activo", "Inactivo" o "En preparación".</td>
+    </tr>
+  </tbody>
+</table>
+
 ## Funcionalidades Adicionales
 
 - **Cache**: Los endpoints de estadísticas y listado usan cache Redis (TTL: 5-60 min)

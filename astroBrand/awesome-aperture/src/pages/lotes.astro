@@ -218,6 +218,32 @@ const features = [
   "Reutilización: Los lotes no se eliminan, solo cambian de estado para preservar trazabilidad",
   "Validación: Área máxima de 3000 m² por lote"
 ];
+
+const createLoteDto = `export class CreateLoteDto {
+  // Valida que sea texto y obligatorio
+  @IsString({ message: 'El nombre del lote debe ser un texto.' })
+  @IsNotEmpty({ message: 'El nombre del lote es requerido.' })
+  nombre: string; // Nombre del lote
+
+  // Valida que sea número, obligatorio y máximo 3000
+  @IsNumber({}, { message: 'El área debe ser un valor numérico.' })
+  @IsNotEmpty({ message: 'El área es requerida.' })
+  @Max(3000, { message: 'El área del lote no puede superar los 3000 m².' })
+  area: number; // Área en m²
+
+  // Valida que sea texto opcional, con valores permitidos
+  @IsString()
+  @IsOptional()
+  @IsIn(['Activo', 'Inactivo', 'En preparación'])
+  estado?: string; // Estado del lote (opcional)
+
+  // Valida objeto anidado opcional con coordenadas
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CoordenadasDto)
+  @IsOptional()
+  coordenadas?: CoordenadasDto; // Coordenadas geográficas (opcional)
+}`;
 ---
 
 <html lang="es">
@@ -261,9 +287,9 @@ const features = [
 				box-shadow: 0 0 10px rgba(0,0,0,0.1);
 			}
 
-			/* Estilos específicos para Lotes - Tema Azul */
+			/* Estilos específicos para Lotes - Tema Verde */
 			.module-header {
-				background: linear-gradient(135deg, #3498db, #5dade2);
+				background: linear-gradient(135deg, #27ae60, #2ecc71);
 				color: white;
 				padding: 2rem;
 				border-radius: 10px;
@@ -279,7 +305,7 @@ const features = [
 			/* Estilos para endpoints */
 			.endpoint {
 				background: #f8f9fa;
-				border-left: 5px solid #3498db;
+				border-left: 5px solid #27ae60;
 				padding: 1.5rem;
 				margin: 1rem 0;
 				border-radius: 0 8px 8px 0;
@@ -287,7 +313,7 @@ const features = [
 			}
 			.endpoint h3 {
 				margin-top: 0;
-				color: #3498db;
+				color: #27ae60;
 				font-size: 1.2rem;
 			}
 			.endpoint strong {
@@ -304,9 +330,9 @@ const features = [
 				box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 			}
 			.dto-box h3 {
-				color: #3498db;
+				color: #27ae60;
 				margin-top: 0;
-				border-bottom: 2px solid #3498db;
+				border-bottom: 2px solid #27ae60;
 				padding-bottom: 0.5rem;
 			}
 
@@ -319,7 +345,7 @@ const features = [
 			}
 			code {
 				background: #ebf5fb;
-				color: #3498db;
+				color: #27ae60;
 				padding: 0.2rem 0.4rem;
 				border-radius: 3px;
 				font-weight: bold;
@@ -417,7 +443,7 @@ const features = [
 				color: #2c3e50;
 			}
 			h2 {
-				border-bottom: 3px solid #3498db;
+				border-bottom: 3px solid #27ae60;
 				padding-bottom: 0.5rem;
 				margin-top: 2rem;
 			}
@@ -425,7 +451,7 @@ const features = [
 			.back-link {
 				display: inline-block;
 				margin-bottom: 1rem;
-				color: #3498db;
+				color: #27ae60;
 				text-decoration: none;
 				font-weight: bold;
 			}
@@ -441,7 +467,7 @@ const features = [
 				margin: 0.5rem 0;
 			}
 			li strong {
-				color: #3498db;
+				color: #27ae60;
 			}
 		</style>
 	</head>
@@ -468,6 +494,7 @@ const features = [
 			{endpoints.map(endpoint => (
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>URL completa:</strong> <code>http://localhost:3000{endpoint.path}</code></p>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
 					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
 					{endpoint.response && (
@@ -494,6 +521,16 @@ const features = [
 			<div class="dto-box">
 				<h3>Entidad Lote</h3>
 				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<div class="dto-box">
+				<h3>DTOs y Validaciones</h3>
+				<p>Los DTOs (Data Transfer Objects) definen la estructura de los datos que se envían en las peticiones HTTP. Incluyen decoradores de validación de class-validator para asegurar que los datos cumplan con los requisitos antes de procesarlos en el backend.</p>
+				<h4>CreateLoteDto</h4>
+				<p>Usado para crear un nuevo lote. Campos obligatorios incluyen nombre y área.</p>
+				<pre class="dto-code"><code>{createLoteDto}</code></pre>
+				<h4>UpdateLoteDto</h4>
+				<p>Similar a CreateLoteDto, pero todos los campos son opcionales para actualizaciones parciales.</p>
 			</div>
 
 			<h2>Funcionalidades Adicionales</h2>

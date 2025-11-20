@@ -179,6 +179,42 @@ const features = [
   "Gestión de Imágenes: Upload de imágenes con almacenamiento en uploads/cultivos-pic/",
   "Relaciones: Conectado con producciones, ventas, gastos y actividades para trazabilidad completa"
 ];
+
+const createCultivoDto = `export class CreateCultivoDto {
+  // Valida que sea texto y obligatorio
+  @IsString()
+  @IsNotEmpty()
+  nombre: string; // Nombre del cultivo
+
+  // Valida que sea un número entero
+  @IsInt()
+  cantidad: number; // Cantidad inicial del cultivo
+
+  // Valida que sea texto y opcional
+  @IsString()
+  @IsOptional()
+  img?: string; // Ruta de la imagen (opcional)
+
+  // Valida que sea texto y opcional
+  @IsString()
+  @IsOptional()
+  descripcion?: string; // Descripción del cultivo (opcional)
+
+  // Valida que sea un número entero y obligatorio
+  @IsInt()
+  @IsNotEmpty()
+  tipoCultivoId: number; // ID del tipo de cultivo relacionado
+
+  // Valida que sea texto y opcional
+  @IsString()
+  @IsOptional()
+  Estado?: string; // Estado del cultivo (opcional)
+
+  // Valida que sea una fecha en formato string y opcional
+  @IsDateString()
+  @IsOptional()
+  Fecha_Plantado?: string; // Fecha de plantado (opcional)
+}`;
 ---
 
 <html lang="es">
@@ -309,6 +345,7 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+
 			.params-code {
 				background: #2d3748;
 				color: #e2e8f0;
@@ -408,6 +445,7 @@ const features = [
 			{endpoints.map(endpoint => (
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>URL completa:</strong> <code>http://localhost:3000{endpoint.path}</code></p>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
 					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
 					{endpoint.request && (
@@ -434,6 +472,16 @@ const features = [
 			<div class="dto-box">
 				<h3>Entidad Cultivo</h3>
 				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<div class="dto-box">
+				<h3>DTOs y Validaciones</h3>
+				<p>Los DTOs (Data Transfer Objects) definen la estructura de los datos que se envían en las peticiones HTTP. Incluyen decoradores de validación de class-validator para asegurar que los datos cumplan con los requisitos antes de procesarlos en el backend.</p>
+				<h4>CreateCultivoDto</h4>
+				<p>Usado para crear un nuevo cultivo. Todos los campos marcados con @IsNotEmpty son obligatorios.</p>
+				<pre class="dto-code"><code>{createCultivoDto}</code></pre>
+				<h4>UpdateCultivoDto</h4>
+				<p>Similar a CreateCultivoDto, pero todos los campos son opcionales para actualizaciones parciales.</p>
 			</div>
 
 			<h2>Funcionalidades Adicionales</h2>

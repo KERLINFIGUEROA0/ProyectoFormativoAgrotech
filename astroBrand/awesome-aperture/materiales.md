@@ -118,6 +118,97 @@
 - BIDON
 - OTROS
 
+## DTOs y Validaciones
+
+### CreateMaterialeDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>nombre</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty, @MaxLength(50)</td>
+      <td>El nombre del producto es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>cantidad</td>
+      <td>number</td>
+      <td>@IsNumber, @IsNotEmpty, @Min(0)</td>
+      <td>La cantidad es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>tipoCategoria</td>
+      <td>TipoCategoria</td>
+      <td>@IsEnum(TipoCategoria), @IsNotEmpty</td>
+      <td>La categoría principal es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>tipoMaterial</td>
+      <td>TipoMaterial</td>
+      <td>@IsEnum(TipoMaterial), @IsOptional</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>medidasDeContenido</td>
+      <td>MedidasDeContenido</td>
+      <td>@IsEnum(MedidasDeContenido), @IsOptional</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>tipoEmpaque</td>
+      <td>TipoEmpaque</td>
+      <td>@IsEnum(TipoEmpaque), @IsNotEmpty</td>
+      <td>El tipo de empaque es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>precio</td>
+      <td>number</td>
+      <td>@IsNumber, @IsOptional, @Min(0)</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>pesoPorUnidad</td>
+      <td>number</td>
+      <td>@IsNumber, @IsOptional, @Min(0)</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>descripcion</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional, @MaxLength(255)</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>ubicacion</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>proveedor</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>fechaVencimiento</td>
+      <td>string</td>
+      <td>@IsDateString, @IsOptional</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdateMaterialeDto
+Similar a CreateMaterialeDto, con campos opcionales.
+
 ## Funcionalidades Adicionales
 
 - **Gestión de Stock**: Reportes de stock bajo con umbrales configurables

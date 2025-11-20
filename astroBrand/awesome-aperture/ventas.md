@@ -61,6 +61,61 @@
 }
 ```
 
+## DTOs y Validaciones
+
+### CreateVentaDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>descripcion</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>monto</td>
+      <td>number</td>
+      <td>@IsNumber, @IsNotEmpty</td>
+      <td>El monto (precio unitario) es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>fecha</td>
+      <td>string</td>
+      <td>@IsDateString, @IsNotEmpty</td>
+      <td>La fecha es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>cantidad</td>
+      <td>number</td>
+      <td>@IsInt, @IsNotEmpty</td>
+      <td>La cantidad es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>produccionId</td>
+      <td>number</td>
+      <td>@IsInt, @IsNotEmpty</td>
+      <td>El ID de producción es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>tipo</td>
+      <td>TipoMovimiento</td>
+      <td>@IsEnum(TipoMovimiento), @IsOptional</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdateVentaDto
+Similar a CreateVentaDto.
+
 ## Funcionalidades Adicionales
 
 - **Transacciones**: Las ventas se procesan en transacciones para garantizar consistencia

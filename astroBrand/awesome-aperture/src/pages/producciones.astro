@@ -237,6 +237,30 @@ const features = [
   "Validación: Cantidades positivas, fechas válidas",
   "Disponibilidad: Endpoint específico para producciones vendibles"
 ];
+
+const createProduccioneDto = `export class CreateProduccioneDto {
+  // Valida que sea número entero, positivo y obligatorio
+  @IsInt({ message: 'La cantidad debe ser un número entero.' })
+  @IsPositive({ message: 'La cantidad debe ser un número positivo.' })
+  @IsNotEmpty({ message: 'La cantidad es obligatoria.' })
+  cantidad: number; // Cantidad cosechada
+
+  // Valida que sea fecha en formato string y obligatorio
+  @IsDateString({}, { message: 'La fecha debe tener un formato válido (YYYY-MM-DD).' })
+  @IsNotEmpty({ message: 'La fecha es obligatoria.' })
+  fecha: string; // Fecha de la producción
+
+  // Valida que sea número entero y obligatorio
+  @IsInt({ message: 'El ID del cultivo debe ser un número entero.' })
+  @IsNotEmpty({ message: 'El ID del cultivo es obligatorio.' })
+  cultivoId: number; // ID del cultivo relacionado
+
+  // Valida que sea string opcional, con valores permitidos
+  @IsString()
+  @IsOptional()
+  @IsIn(['Programado', 'En Proceso', 'Cosechado'])
+  estado?: string; // Estado de la producción
+}`;
 ---
 
 <html lang="es">
@@ -487,6 +511,7 @@ const features = [
 			{endpoints.map(endpoint => (
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>URL completa:</strong> <code>http://localhost:3000{endpoint.path}</code></p>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
 					{endpoint.request && (
 						<div>
@@ -512,6 +537,16 @@ const features = [
 			<div class="dto-box">
 				<h3>Entidad Produccion</h3>
 				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<div class="dto-box">
+				<h3>DTOs y Validaciones</h3>
+				<p>Los DTOs (Data Transfer Objects) definen la estructura de los datos que se envían en las peticiones HTTP. Incluyen decoradores de validación de class-validator para asegurar que los datos cumplan con los requisitos antes de procesarlos en el backend.</p>
+				<h4>CreateProduccioneDto</h4>
+				<p>Usado para registrar una nueva producción. Campos obligatorios incluyen cantidad, fecha y cultivoId.</p>
+				<pre class="dto-code"><code>{createProduccioneDto}</code></pre>
+				<h4>UpdateProduccioneDto</h4>
+				<p>Similar a CreateProduccioneDto, con campos opcionales.</p>
 			</div>
 
 			<h2>Estados de Producción</h2>
