@@ -19,7 +19,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { Capacitor } from "@capacitor/core";
+import { checkBackendHealth } from "../features/auth/api/auth";
+
+// Detectar la URL correcta del backend según la plataforma
+const getBackendUrl = () => {
+  const isNative = Capacitor.isNativePlatform();
+  
+  if (isNative) {
+    // Para desarrollo móvil, usar variable específica para móvil
+    return import.meta.env.VITE_MOBILE_BACKEND_URL || 
+           (Capacitor.getPlatform() === 'android' ? 
+             import.meta.env.VITE_EMULATOR_BACKEND_URL : 
+             import.meta.env.VITE_IOS_BACKEND_URL) ||
+           "http://192.168.1.100:3000"; // Fallback con IP local
+  }
+  
+  // Para desarrollo web
+  return import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+};
+
+const BACKEND_URL = getBackendUrl();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
