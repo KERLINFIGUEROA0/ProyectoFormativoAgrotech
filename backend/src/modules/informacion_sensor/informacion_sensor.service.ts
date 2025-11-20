@@ -182,5 +182,111 @@ export class InformacionSensorService {
   remove(id: number) {
     return `This action removes a #${id} informacionSensor`;
   }
+
+  /**
+   * Generate advanced report with statistics and chart data
+   */
   
+  async generateReport(scope: 'surco' | 'cultivo', scopeId: number, timeFilter: 'day' | 'date' | 'month', date?: string) {
+    this.logger.log(`🔍 Generating report: scope=${scope}, scopeId=${scopeId}, timeFilter=${timeFilter}, date=${date}`);
+
+    let startDate: Date;
+    let endDate: Date;
+    const now = new Date();
+
+    // Calculate date range
+    if (timeFilter === 'day') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    } else if (timeFilter === 'date' && date) {
+      const targetDate = new Date(date);
+      startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+    } else if (timeFilter === 'month' && date) {
+      const [year, month] = date.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 1);
+    } else {
+      throw new Error('Invalid time filter parameters');
+    }
+
+    this.logger.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+    // Build query based on scope
+    let queryBuilder = this.infoRepo.createQueryBuilder('info')
+      .innerJoinAndSelect('info.sensor', 'sensor')
+      .innerJoinAndSelect('sensor.surco', 'surco')
+      .where('info.fechaRegistro >= :startDate', { startDate })
+      .andWhere('info.fechaRegistro < :endDate', { endDate })
+      .orderBy('info.fechaRegistro', 'ASC');
+
+    if (scope === 'surco') {
+      queryBuilder = queryBuilder.andWhere('surco.id = :surcoId', { surcoId: scopeId });
+    } else if (scope === 'cultivo') {
+      queryBuilder = queryBuilder
+        .innerJoin('surco.cultivo', 'cultivo')
+        .andWhere('cultivo.id = :cultivoId', { cultivoId: scopeId });
+    }
+
+    const data = await queryBuilder.getMany();
+    this.logger.log(`📊 Found ${data.length} sensor data records`);
+
+    // Group by sensor
+    const sensorData = new Map<number, { sensor: Sensor, values: number[], timestamps: Date[] }>();
+
+    data.forEach(item => {
+      if (!sensorData.has(item.sensor.id)) {
+        sensorData.set(item.sensor.id, {
+          sensor: item.sensor,
+          values: [],
+          timestamps: []
+        });
+      }
+      const sensorInfo = sensorData.get(item.sensor.id)!;
+      sensorInfo.values.push(Number(item.valor));
+      sensorInfo.timestamps.push(item.fechaRegistro);
+    });
+
+    this.logger.log(`📈 Grouped into ${sensorData.size} sensors`);
+
+    // Calculate statistics for each sensor
+    const report = Array.from(sensorData.entries()).map(([sensorId, info]) => {
+      const values = info.values;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+
+      // Prepare chart data
+      const chartData = info.timestamps.map((timestamp, index) => ({
+        timestamp: timestamp.toISOString(),
+        value: values[index]
+      }));
+
+      return {
+        sensorId,
+        sensorName: info.sensor.nombre,
+        statistics: {
+          min,
+          max,
+          average: Number(avg.toFixed(2)),
+          standardDeviation: Number(stdDev.toFixed(2))
+        },
+        chartData
+      };
+    });
+
+    return {
+      scope,
+      scopeId,
+      timeFilter,
+      dateRange: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+      },
+      sensors: report
+    };
+  }
+
 }

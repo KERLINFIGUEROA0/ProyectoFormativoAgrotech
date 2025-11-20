@@ -54,9 +54,23 @@ export class InformacionSensorController {
     return this.informacionSensorService.findAll();
   }
 
+  /**
+   * Generate advanced report with statistics and chart data
+   */
+  @Get('report')
+  async generateReport(
+    @Query('scope') scope: 'surco' | 'cultivo',
+    @Query('scopeId', ParseIntPipe) scopeId: number,
+    @Query('timeFilter') timeFilter: 'day' | 'date' | 'month',
+    @Query('date') date?: string,
+  ) {
+    const report = await this.informacionSensorService.generateReport(scope, scopeId, timeFilter, date);
+    return { success: true, data: report };
+  }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.informacionSensorService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.informacionSensorService.findOne(id);
   }
 
   @Patch(':id')
@@ -73,4 +87,6 @@ export class InformacionSensorController {
   remove(@Param('id') id: string) {
     return this.informacionSensorService.remove(+id);
   }
+
+
 }

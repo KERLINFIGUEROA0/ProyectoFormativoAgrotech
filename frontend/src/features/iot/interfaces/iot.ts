@@ -89,3 +89,35 @@ export interface CreateSubscripcionDto {
   topic: string;
   qos: number;
 }
+
+// --- Interfaces for Reports ---
+
+export interface SensorStatistics {
+  min: number;
+  max: number;
+  average: number;
+  standardDeviation: number;
+}
+
+export interface ChartDataPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface SensorReport {
+  sensorId: number;
+  sensorName: string;
+  statistics: SensorStatistics;
+  chartData: ChartDataPoint[];
+}
+
+export interface ReportData {
+  scope: 'surco' | 'cultivo';
+  scopeId: number;
+  timeFilter: 'day' | 'date' | 'month';
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  sensors: SensorReport[];
+}

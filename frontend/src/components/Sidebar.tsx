@@ -52,7 +52,8 @@ const menuItems: MenuItemType[] = [
     children: [
       // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
       { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity },
-  { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
+      { id: "reportes-sensores", label: "Reportes Avanzados", icon: TrendingUp },
+{ id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
     ],
   },
   {
