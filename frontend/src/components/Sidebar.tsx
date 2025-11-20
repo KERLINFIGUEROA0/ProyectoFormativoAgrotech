@@ -54,8 +54,9 @@ const baseMenuItems: MenuItemType[] = [
     module: "Iot",
     children: [
       // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
-      { id: "gestion-sensores", label: "Monitoreo de Sensores", icon: Activity },
-      { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon },
+      { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity },
+      { id: "reportes-sensores", label: "Reportes Avanzados", icon: TrendingUp },
+{ id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
     ],
   },
   {
