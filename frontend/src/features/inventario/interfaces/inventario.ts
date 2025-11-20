@@ -111,6 +111,10 @@ export interface Material {
   tipoEmpaque: TipoEmpaque;
   medidasDeContenido?: MedidaDeContenido;
   pesoPorUnidad: number | null;
+  tipoConsumo?: string;
+  cantidadPorUnidad?: number;
+  usosTotales?: number;
+  usosActuales?: number;
 }
 
 export interface MaterialData {
@@ -128,4 +132,7 @@ export interface MaterialData {
   proveedor?: string | null;
   fechaVencimiento?: string | null;
   imageFile?: File | null;
+  tipoConsumo?: string;
+  cantidadPorUnidad?: number;
+  usosTotales?: number;
 }

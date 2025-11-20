@@ -132,6 +132,13 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
     return !categoriasSinContenido.includes(formData.tipoCategoria);
   }, [formData.tipoCategoria]);
 
+  // Inferir tipo de consumo basado en categoría
+  const tipoConsumoInferido = useMemo(() => {
+    if (!formData.tipoCategoria) return null;
+    const categoriasNoConsumibles: TipoCategoria[] = [TipoCategoria.HERRAMIENTAS_MANUALES, TipoCategoria.MAQUINARIA_Y_EQUIPOS, TipoCategoria.PROTECCION_Y_SEGURIDAD];
+    return categoriasNoConsumibles.includes(formData.tipoCategoria) ? 'no_consumible' : 'consumible';
+  }, [formData.tipoCategoria]);
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -151,7 +158,7 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
     if (!formData.tipoCategoria) newErrors.tipoCategoria = true;
     if (!formData.tipoEmpaque) newErrors.tipoEmpaque = true;
     if (!formData.cantidad || Number(formData.cantidad) <= 0) newErrors.cantidad = true;
-    
+
     setErrors(newErrors);
     // Devuelve `true` si no hay errores, `false` si hay al menos uno
     return Object.keys(newErrors).length === 0;
@@ -178,6 +185,8 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       proveedor: formData.proveedor,
       fechaVencimiento: formData.fechaVencimiento,
       imageFile: imageFile || undefined,
+      tipoConsumo: tipoConsumoInferido || undefined,
+      usosTotales: formData.usosTotales ? Number(formData.usosTotales) : undefined,
     };
 
     if (mostrarSeccionContenido && cantidadContenido) {
@@ -192,9 +201,11 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           case 'L': pesoFinalEnKg = cantContenidoNum; break;
           case 'ml': pesoFinalEnKg = cantContenidoNum / 1000; break;
           case 'lb': pesoFinalEnKg = cantContenidoNum * 0.453592; break;
+          case 'unidades': pesoFinalEnKg = cantContenidoNum; break; // Para unidades, usar como cantidad
           default: pesoFinalEnKg = undefined;
         }
         payload.pesoPorUnidad = pesoFinalEnKg;
+
       }
     }
 
@@ -245,26 +256,40 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormSelect
           icon={Archive}
-          label="Tipo de Empaque *"
+          label={mostrarSeccionContenido ? "Tipo de Empaque *" : "Tipo de Unidad *"}
           name="tipoEmpaque"
           value={formData.tipoEmpaque || ''}
           onChange={handleChange}
           error={errors.tipoEmpaque}
         >
-          <option value="" disabled>Selecciona un empaque</option>
+          <option value="" disabled>{mostrarSeccionContenido ? "Selecciona un empaque" : "Selecciona una unidad"}</option>
           {Object.values(TipoEmpaque).map(emp => (<option key={emp} value={emp}>{emp}</option>))}
         </FormSelect>
         <FormInput
           icon={Hash}
-          label="Cantidad de Empaques *"
+          label={mostrarSeccionContenido ? "Cantidad de Empaques *" : "Cantidad de Unidades *"}
           name="cantidad"
           type="number"
           value={formData.cantidad || ''}
           onChange={handleChange}
-          placeholder="Ej: 50"
+          placeholder={mostrarSeccionContenido ? "Ej: 50" : "Ej: 10"}
           error={errors.cantidad}
         />
       </div>
+
+      {tipoConsumoInferido === 'no_consumible' && (
+        <div>
+          <FormInput
+            icon={Hash}
+            label="Usos Totales"
+            name="usosTotales"
+            type="number"
+            value={formData.usosTotales || ''}
+            onChange={handleChange}
+            placeholder="Ej: 100 (usos de la pala)"
+          />
+        </div>
+      )}
 
       {mostrarSeccionContenido && (
         <div className="p-4 border-2 border-dashed rounded-lg bg-gray-50 grid grid-cols-2 gap-4">

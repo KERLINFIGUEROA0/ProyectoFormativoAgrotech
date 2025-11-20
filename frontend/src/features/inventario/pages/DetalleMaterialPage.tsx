@@ -107,6 +107,7 @@ export default function DetalleMaterialPage() {
   if (!material) return <div className="text-center p-8">Material no encontrado.</div>;
 
   // --- ✅ 4. Lógica de Stock (Mejorada) ---
+  const esConsumible = material.tipoConsumo === 'consumible';
   const stockMinimoPaquetes = 10; // Valor de ejemplo para mínimo
   const stockObjetivoPaquetes = 50; // Valor de ejemplo para "lleno"
 
@@ -172,6 +173,9 @@ export default function DetalleMaterialPage() {
               <InfoItem label="Costo por Paquete" value={`$${Number(material.precio).toLocaleString('es-CO')}`} />
               <InfoItem label="Fecha de Caducidad" value={material.fechaVencimiento ? new Date(material.fechaVencimiento).toLocaleDateString('es-ES') : null} />
               <InfoItem label="Contenido/Paquete" value={formatarContenido(material.pesoPorUnidad, material.medidasDeContenido)} />
+              {material.tipoConsumo === 'no_consumible' && material.usosTotales && (
+                <InfoItem label="Usos" value={`${material.usosActuales || 0} / ${material.usosTotales}`} />
+              )}
             </div>
           </div>
           
@@ -184,7 +188,7 @@ export default function DetalleMaterialPage() {
               valorObjetivo={stockObjetivoPaquetes}
               unidad={material.tipoEmpaque || 'Paquetes'}
             />
-            
+
             {totalContenido !== null && stockMinimoContenido !== null && stockObjetivoContenido !== null && (
               <StockBar
                 label="Stock por Contenido Total"

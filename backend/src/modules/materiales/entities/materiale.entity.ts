@@ -5,6 +5,7 @@ import { TipoCategoria } from '../../../common/enums/tipo-categoria.enum';
 import { TipoMaterial } from '../../../common/enums/tipo-material.enum';
 import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum';
 import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
+import { TipoConsumo } from '../../../common/enums/tipo-consumo.enum';
 
 @Entity('materiales')
 export class Material {
@@ -40,7 +41,28 @@ export class Material {
   
   @Column({ name: 'estado', type: 'boolean', default: true })
   estado: boolean;
-  
+
+  @Column({
+    name: 'tipo_consumo',
+    type: 'enum',
+    enumName: 'tipo_consumo_enum',
+    enum: TipoConsumo,
+    default: TipoConsumo.CONSUMIBLE,
+    nullable: false,
+  })
+  tipoConsumo: TipoConsumo;
+
+  @Column({ name: 'cantidad_por_unidad', type: 'integer', nullable: true })
+  cantidadPorUnidad: number | null;
+
+  @Column({ name: 'cantidad_restante_unidad_actual', type: 'integer', nullable: true })
+  cantidadRestanteEnUnidadActual: number | null;
+
+  @Column({ name: 'usos_totales', type: 'integer', nullable: true })
+  usosTotales: number | null;
+
+  @Column({ name: 'usos_actuales', type: 'integer', default: 0 })
+  usosActuales: number;
 
   // --- NUEVAS COLUMNAS ---
   @Column({

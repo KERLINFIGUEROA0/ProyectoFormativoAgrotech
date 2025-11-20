@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CreateMaterialeDto } from './dto/create-materiale.dto';
 import { UpdateMaterialeDto } from './dto/update-materiale.dto';
 import { Material } from './entities/materiale.entity';
+import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
 
 @Injectable()
 export class MaterialesService {
@@ -14,6 +15,10 @@ export class MaterialesService {
 
   async create(createMaterialeDto: CreateMaterialeDto): Promise<Material> {
     const material = this.materialRepository.create(createMaterialeDto);
+    // Inicializar cantidadRestanteEnUnidadActual para consumibles
+    if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
+      material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad;
+    }
     return this.materialRepository.save(material);
   }
   async desactivar(id: number): Promise<Material> {

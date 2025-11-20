@@ -18,6 +18,7 @@ import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
+import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
 
 @Injectable()
 export class ActividadesService {
@@ -34,6 +35,60 @@ export class ActividadesService {
     @InjectRepository(Cultivo)
     private readonly cultivoRepository: Repository<Cultivo>,
   ) { }
+
+  // --- FUNCIÓN HELPER PARA DESCONTAR MATERIALES ---
+  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean } {
+    if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+      // Para no consumibles, manejar por usos
+      if (!material.usosTotales) {
+        // Si no hay usos totales, asumir ilimitado, no descontar
+        return { success: true, debeRegistrarEgreso: false };
+      }
+      material.usosActuales += cantidadUsada;
+      let debeDescontar = false;
+      while (material.usosActuales >= material.usosTotales) {
+        if (material.cantidad <= 0) {
+          return { success: false, debeRegistrarEgreso: false };
+        }
+        material.usosActuales -= material.usosTotales;
+        material.cantidad -= 1;
+        debeDescontar = true;
+      }
+      return { success: true, debeRegistrarEgreso: debeDescontar };
+    }
+
+    // Para consumibles: manejar unidades parciales
+    if (!material.cantidadPorUnidad) {
+      // Si no hay cantidad por unidad, tratar como items individuales
+      if (material.cantidad < cantidadUsada) {
+        return { success: false, debeRegistrarEgreso: false };
+      }
+      material.cantidad -= cantidadUsada;
+      return { success: true, debeRegistrarEgreso: true };
+    }
+
+    // Lógica para consumibles con unidades
+    let restante = material.cantidadRestanteEnUnidadActual ?? material.cantidadPorUnidad;
+
+    if (cantidadUsada <= restante) {
+      // Suficiente en la unidad actual
+      material.cantidadRestanteEnUnidadActual = restante - cantidadUsada;
+      return { success: true, debeRegistrarEgreso: true };
+    } else {
+      // Necesita abrir nuevas unidades
+      let adicionalNecesario = cantidadUsada - restante;
+      let unidadesAAbrir = Math.ceil(adicionalNecesario / material.cantidadPorUnidad);
+
+      if (material.cantidad < unidadesAAbrir) {
+        return { success: false, debeRegistrarEgreso: false }; // No hay suficientes unidades
+      }
+
+      // Usar el restante de la actual y abrir nuevas
+      material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - adicionalNecesario;
+      material.cantidad -= unidadesAAbrir;
+      return { success: true, debeRegistrarEgreso: true };
+    }
+  }
 
   // --- MÉTODO 'create' ACTUALIZADO ---
   async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
@@ -78,8 +133,10 @@ export class ActividadesService {
           const { materialId, cantidadUsada } = item;
           const material = await queryRunner.manager.findOne(Material, { where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          if (material.cantidad < cantidadUsada) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
-          material.cantidad -= cantidadUsada;
+          const resultado = this.descontarMaterial(material, cantidadUsada);
+          if (!resultado.success) {
+            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
+          }
           await queryRunner.manager.save(material);
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: saved,
@@ -89,16 +146,18 @@ export class ActividadesService {
           await queryRunner.manager.save(nuevaUnion);
 
           // --- 2. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`,
-              monto: costoTotal,
-              fecha: saved.fecha,
-              tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivoEntidad ?? undefined,
-            });
-            await queryRunner.manager.save(nuevoGasto);
+          if (resultado.debeRegistrarEgreso) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            if (costoTotal > 0) {
+              const nuevoGasto = gastoRepo.create({
+                descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`,
+                monto: costoTotal,
+                fecha: saved.fecha,
+                tipo: TipoMovimiento.EGRESO,
+                cultivo: cultivoEntidad ?? undefined,
+              });
+              await queryRunner.manager.save(nuevoGasto);
+            }
           }
         }
       }
@@ -179,11 +238,12 @@ export class ActividadesService {
       const nombreUsuario = `${actividad.usuario?.nombre || 'Usuario'} ${actividad.usuario?.apellidos || ''}`.trim();
 
       // --- 4. REVERTIR GASTOS Y MATERIALES ANTIGUOS ---
-      // (Lógica de revertir stock de materiales queda igual)
+      // (Lógica de revertir stock de materiales)
       if (actividad.actividadMaterial && actividad.actividadMaterial.length > 0) {
         for (const am of actividad.actividadMaterial) {
           const material = await materialRepo.findOneBy({ id: am.material.id });
           if (material) {
+            // Para revertir, simplemente agregar de vuelta la cantidad usada
             material.cantidad += am.cantidadUsada;
             await queryRunner.manager.save(material);
           }
@@ -219,12 +279,14 @@ export class ActividadesService {
       // --- 6. APLICAR LÓGICA DE 'CREATE' PARA LOS NUEVOS MATERIALES ---
       if (materiales && materiales.length > 0) {
         for (const item of materiales) {
-          // ... (lógica de restar stock y crear ActividadMaterial queda igual) ...
+          // ... (lógica de restar stock y crear ActividadMaterial) ...
           const { materialId, cantidadUsada } = item;
           const material = await materialRepo.findOne({ where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          if (material.cantidad < cantidadUsada) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
-          material.cantidad -= cantidadUsada;
+          const resultado = this.descontarMaterial(material, cantidadUsada);
+          if (!resultado.success) {
+            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
+          }
           await queryRunner.manager.save(material);
           const nuevaUnion = actMaterialRepo.create({
             actividad: saved,
@@ -234,16 +296,18 @@ export class ActividadesService {
           await queryRunner.manager.save(nuevaUnion);
 
           // --- 3. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
-              monto: costoTotal,
-              fecha: saved.fecha,
-              tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivoEntidad ?? undefined,
-            });
-            await queryRunner.manager.save(nuevoGasto);
+          if (resultado.debeRegistrarEgreso) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+            if (costoTotal > 0) {
+              const nuevoGasto = gastoRepo.create({
+                descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
+                monto: costoTotal,
+                fecha: saved.fecha,
+                tipo: TipoMovimiento.EGRESO,
+                cultivo: cultivoEntidad ?? undefined,
+              });
+              await queryRunner.manager.save(nuevoGasto);
+            }
           }
         }
       }
@@ -324,21 +388,23 @@ export class ActividadesService {
           const material = await queryRunner.manager.findOne(Material, { where: { id: item.materialId } });
           if (!material) throw new NotFoundException(`Material ${item.materialId} no encontrado.`);
           const cantidadTotalUsada = item.cantidadUsada * aprendices.length;
-          if (material.cantidad < cantidadTotalUsada) {
-            throw new BadRequestException(`Stock insuficiente para ${material.nombre}. Se necesitan ${cantidadTotalUsada}, disponibles: ${material.cantidad}`);
+          const resultado = this.descontarMaterial(material, cantidadTotalUsada);
+          if (!resultado.success) {
+            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
-          material.cantidad -= cantidadTotalUsada;
           await queryRunner.manager.save(material);
-          const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Costo material: ${material.nombre} (Asignación: ${titulo})`,
-              monto: costoTotal,
-              fecha: fechaActividad,
-              tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivo,
-            });
-            await queryRunner.manager.save(nuevoGasto);
+          if (resultado.debeRegistrarEgreso) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
+            if (costoTotal > 0) {
+              const nuevoGasto = gastoRepo.create({
+                descripcion: `Costo material: ${material.nombre} (Asignación: ${titulo})`,
+                monto: costoTotal,
+                fecha: fechaActividad,
+                tipo: TipoMovimiento.EGRESO,
+                cultivo: cultivo,
+              });
+              await queryRunner.manager.save(nuevoGasto);
+            }
           }
           for (const actividad of actividadesAGuardar) {
             const nuevaUnion = this.actMaterialRepository.create({
