@@ -46,6 +46,7 @@ export interface Surco {
   cultivo: Cultivo | null;
   estado: string;
   lote: Lote;
+  activo_mqtt?: boolean;
 }
 
 /**

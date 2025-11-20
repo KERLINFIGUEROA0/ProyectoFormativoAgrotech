@@ -97,6 +97,21 @@ export class InformacionSensorService {
       take: 50,
     });
   }
+  // Reemplaza el método 'findByCultivo' con esto:
+  async findByCultivo(cultivoId: number) {
+    return this.infoRepo.createQueryBuilder('info')
+      // 1. Unimos la tabla de sensores
+      .innerJoinAndSelect('info.sensor', 'sensor')
+      // 2. Unimos la tabla de surcos (donde está el sensor)
+      .innerJoinAndSelect('sensor.surco', 'surco')
+      // 3. Unimos la tabla de cultivos (para filtrar)
+      .innerJoinAndSelect('surco.cultivo', 'cultivo')
+      // 4. Filtramos por el ID del cultivo que recibimos
+      .where('cultivo.id = :cultivoId', { cultivoId })
+      // 5. Ordenamos por fecha (más reciente primero)
+      .orderBy('info.fechaRegistro', 'DESC')
+      .getMany();
+  }
 
   async findAllBySensor(sensorId: number, take: number = 100): Promise<InformacionSensor[]> {
     return this.infoRepo.find({
@@ -194,4 +209,5 @@ export class InformacionSensorService {
   remove(id: number) {
     return `This action removes a #${id} informacionSensor`;
   }
+  
 }

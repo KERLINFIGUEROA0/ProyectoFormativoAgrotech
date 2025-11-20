@@ -17,6 +17,6 @@ import { SensoresModule } from '../sensores/sensores.module';
   ],
   controllers: [MqttConfigController],
   providers: [MqttConfigService, MqttClientService],
-  exports: [MqttClientService], // Exportar para que otros módulos puedan usarlo
+  exports: [MqttConfigService, MqttClientService],
 })
 export class MqttConfigModule {}

@@ -25,7 +25,7 @@ export class MqttConfigService {
     @Inject(forwardRef(() => SensoresService))
     private readonly sensoresService: SensoresService,
     private readonly mqttClientService: MqttClientService,
-  ) {}
+  ) { }
 
   // --- Lógica de Brokers ---
   async createBroker(dto: CreateBrokerDto): Promise<Broker> {
@@ -183,7 +183,7 @@ export class MqttConfigService {
   }
 
   // --- Método auxiliar para crear sensores ---
-  private async crearSensoresParaTopicos(broker: Broker, surcoId: number, topicos: string[]): Promise<void> {
+  public async crearSensoresParaTopicos(broker: Broker, surcoId: number, topicos: string[]): Promise<void> {
     const topicDefaults = {
       'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 }, // 1500-50000 lux
       'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },

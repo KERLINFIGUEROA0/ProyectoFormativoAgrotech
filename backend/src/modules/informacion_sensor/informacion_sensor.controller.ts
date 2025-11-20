@@ -5,7 +5,7 @@ import { UpdateInformacionSensorDto } from './dto/update-informacion_sensor.dto'
 
 @Controller('informacion-sensor')
 export class InformacionSensorController {
-  constructor(private readonly informacionSensorService: InformacionSensorService) {}
+  constructor(private readonly informacionSensorService: InformacionSensorService) { }
 
   /**
    * ✅ NUEVO: Devuelve el último dato de CADA sensor.
@@ -63,6 +63,11 @@ export class InformacionSensorController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateInformacionSensorDto: UpdateInformacionSensorDto) {
     return this.informacionSensorService.update(+id, updateInformacionSensorDto);
+  }
+  
+  @Get('cultivo/:id')
+  findByCultivo(@Param('id', ParseIntPipe) id: number) {
+    return this.informacionSensorService.findByCultivo(id);
   }
 
   @Delete(':id')

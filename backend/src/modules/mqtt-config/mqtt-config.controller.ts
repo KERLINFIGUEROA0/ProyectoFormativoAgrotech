@@ -8,6 +8,8 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  UseInterceptors, // <--- IMPORTAR
+  ClassSerializerInterceptor, // <--- IMPORTAR
 } from '@nestjs/common';
 import { MqttConfigService } from './mqtt-config.service';
 import { CreateBrokerDto } from './dto/create-broker.dto';
@@ -17,7 +19,9 @@ import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('mqtt-config')
-@UseGuards(JwtAuthGuard, PermissionGuard) // Protegemos todo el módulo
+
+@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseInterceptors(ClassSerializerInterceptor) // Protegemos todo el módulo
 export class MqttConfigController {
   constructor(private readonly configService: MqttConfigService) {}
 

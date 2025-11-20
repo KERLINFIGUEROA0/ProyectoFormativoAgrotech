@@ -24,6 +24,9 @@ export class SensoresService {
     private readonly mqttClientService: MqttClientService,
   ) {}
 
+
+  
+
   async findOne(id: number): Promise<Sensor> {
     const sensor = await this.sensorRepo.findOne({
       where: { id },
@@ -34,6 +37,44 @@ export class SensoresService {
     }
     return sensor;
   }
+
+
+  /**
+   * Función para actualizar el tiempo de escaneo de un sensor específico
+   * y notificar al dispositivo IoT si está conectado.
+   */
+  async actualizarFrecuenciaEscaneo(id: number, segundos: number): Promise<Sensor> {
+    const sensor = await this.findOne(id);
+    
+    // 1. Actualizar en Base de Datos
+    sensor.frecuencia_escaneo = segundos;
+    const sensorActualizado = await this.sensorRepo.save(sensor);
+
+    // 2. (Opcional) Enviar comando al dispositivo IoT vía MQTT
+    // Esto permite que el dispositivo físico sepa que debe cambiar su ritmo.
+    if (sensor.topic && sensor.surco?.broker) {
+       // Construimos un tópico de configuración, ej: "granja/surco1/sensorLuz/config"
+       const configTopic = `${sensor.topic}/config`;
+       const payload = JSON.stringify({ 
+         tipo: 'UPDATE_INTERVAL', 
+         valor: segundos 
+       });
+
+       try {
+         await this.mqttClientService.publishToBroker(
+           sensor.surco.broker.id, 
+           configTopic, 
+           payload
+         );
+         console.log(`📡 Comando de frecuencia enviado a ${configTopic}`);
+       } catch (error) {
+         console.warn(`No se pudo enviar comando MQTT: ${error.message}`);
+       }
+    }
+
+    return sensorActualizado;
+  }
+
 
   async create(createSensoreDto: CreateSensoreDto): Promise<Sensor> {
     const { surcoId, topic, broker } = createSensoreDto;
@@ -120,8 +161,11 @@ export class SensoresService {
   }
 
   async findAll(): Promise<Sensor[]> {
-    return this.sensorRepo.find({ relations: ['surco', 'surco.lote', 'surco.broker'] });
-  }
+  // Agrega 'surco.cultivo' a la lista de relaciones
+  return this.sensorRepo.find({ 
+    relations: ['surco', 'surco.lote', 'surco.cultivo', 'surco.broker'] 
+  });
+}
 
   async update(id: number, updateSensoreDto: UpdateSensoreDto): Promise<Sensor> {
     const sensor = await this.findOne(id);

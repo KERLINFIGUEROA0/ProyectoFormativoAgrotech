@@ -105,4 +105,9 @@ export class SurcosController {
       data: actualizado,
     };
   }
+
+  @Post(':id/sincronizar')
+  sincronizarSensores(@Param('id') id: string) {
+    return this.surcosService.sincronizarSensores(+id);
+  }
 }

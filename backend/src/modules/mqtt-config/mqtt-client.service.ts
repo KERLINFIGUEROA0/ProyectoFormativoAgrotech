@@ -17,7 +17,36 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
     @InjectRepository(Sensor)
     private readonly sensorRepo: Repository<Sensor>,
     private readonly infoSensorService: InformacionSensorService,
-  ) {}
+  ) { }
+  
+  async publishToBroker(brokerId: number, topic: string, payload: string): Promise<void> {
+    const client = this.clients.get(brokerId);
+
+    // 1. Validar que existe el cliente
+    if (!client) {
+      this.logger.warn(`Intento de publicar en Broker ID ${brokerId}, pero no hay cliente inicializado.`);
+      throw new Error(`No hay conexión activa con el Broker ID ${brokerId}`);
+    }
+
+    // 2. Validar que está conectado
+    if (!client.connected) {
+      this.logger.warn(`El cliente del Broker ID ${brokerId} está desconectado. No se pudo enviar el mensaje.`);
+      throw new Error(`El Broker ID ${brokerId} está desconectado.`);
+    }
+
+    // 3. Publicar el mensaje (usamos una Promesa para poder usar await)
+    return new Promise((resolve, reject) => {
+      client.publish(topic, payload, { qos: 1 }, (error) => {
+        if (error) {
+          this.logger.error(`Error publicando mensaje en [${topic}]: ${error.message}`);
+          reject(error);
+        } else {
+          this.logger.log(`📤 Mensaje enviado a [${topic}] en Broker ID ${brokerId}: ${payload}`);
+          resolve();
+        }
+      });
+    });
+  }
 
   async onModuleInit() {
     this.logger.log('Inicializando servicio MQTT...');
@@ -59,7 +88,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
 
       // Construir la URL del broker
       const brokerUrl = `${broker.protocolo}${broker.host}:${broker.puerto}`;
-      
+
       this.logger.log(`Conectando a broker: ${brokerUrl}`);
 
       // Opciones de conexión
@@ -104,7 +133,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       client.on('message', async (topic, message) => {
         const payload = message.toString();
         this.logger.log(`📨 Mensaje recibido en [${topic}]: ${payload}`);
-        
+
         try {
           await this.infoSensorService.createFromMqtt(topic, payload);
         } catch (error) {
