@@ -109,6 +109,8 @@ export interface SensorReport {
   sensorName: string;
   statistics: SensorStatistics;
   chartData: ChartDataPoint[];
+  alertas: string[];
+  fechasCriticas: string[];
 }
 
 export interface ReportData {

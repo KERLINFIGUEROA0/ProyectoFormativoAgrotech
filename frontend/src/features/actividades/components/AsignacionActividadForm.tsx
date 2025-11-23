@@ -53,6 +53,7 @@ interface AsignacionFormState {
   materiales: MaterialSeleccionado[];
   materialActual: string; // ID
   cantidadMaterial: number | string;
+  archivosIniciales: FileList | null;
   // --- FIN CAMPOS ---
 }
 
@@ -74,6 +75,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     materiales: [],
     materialActual: '',
     cantidadMaterial: 1,
+    archivosIniciales: null,
     // --- FIN ESTADO ---
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -260,7 +262,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     const toastId = toast.loading('Asignando actividades...');
 
     try {
-      await asignarActividad(payload);
+      await asignarActividad(payload, formData.archivosIniciales || undefined);
       toast.success(`Actividades asignadas exitosamente.`, { id: toastId });
       onSuccess();
       onCancel();
@@ -305,6 +307,26 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">Fecha de Realización</label>
             <input type="date" name="fecha" id="fecha" value={formData.fecha} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
           </div>
+
+          {/* --- AÑADIR CAMPO PARA ARCHIVOS INICIALES --- */}
+          <div>
+            <label htmlFor="archivosIniciales" className="block text-sm font-medium text-gray-700">
+              Archivo Inicial (PDF, Excel, Imagen, etc.) - Opcional
+            </label>
+            <input
+              type="file"
+              name="archivosIniciales"
+              id="archivosIniciales"
+              multiple
+              accept=".pdf,.xlsx,.xls,.doc,.docx,.jpg,.jpeg,.png,.gif"
+              onChange={(e) => setFormData(prev => ({ ...prev, archivosIniciales: e.target.files }))}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Sube un archivo que los aprendices puedan descargar y usar como referencia para su respuesta.
+            </p>
+          </div>
+          {/* --- FIN CAMPO ARCHIVOS --- */}
 
           {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
           <div className="space-y-3 pt-2">

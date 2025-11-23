@@ -13,16 +13,20 @@ import { ActividadMaterial } from '../actividades_materiales/entities/actividade
 import { MaterialesModule } from '../materiales/materiales.module';
 import { ActividadesMaterialesModule } from '../actividades_materiales/actividades_materiales.module';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
+import { RespuestaActividad } from './entities/respuesta_actividad.entity';
+import { ActividadUsuario } from './entities/actividad_usuario.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Actividad, 
-      Usuario, 
-      Cultivo, 
-      Material, 
-      ActividadMaterial, 
-      Gasto // <-- 2. AÑADIR GASTO AQUÍ
+      Actividad,
+      Usuario,
+      Cultivo,
+      Material,
+      ActividadMaterial,
+      Gasto, // <-- 2. AÑADIR GASTO AQUÍ
+      RespuestaActividad,
+      ActividadUsuario
     ]),
     MulterModule.register({
       // ... (configuración de multer)

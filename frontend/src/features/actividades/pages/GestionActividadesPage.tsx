@@ -17,6 +17,8 @@ import {
 
 import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
+import ModalResponderActividad from '../components/ModalResponderActividad';
+import ModalVerRespuestas from '../components/ModalVerRespuestas';
 import Modal from '../../../components/Modal';
 import { useAuth } from '../../../context/AuthContext';
 import type {
@@ -46,30 +48,35 @@ interface ModalDetallesProps {
   }) | null;
   onClose: () => void;
   onEdit: (actividad: Actividad) => void;
-  allActividades: Actividad[];
 }
 
 const ModalDetalles: React.FC<ModalDetallesProps> = ({
   actividad,
   onClose,
   onEdit,
-  allActividades,
 }) => {
   if (!actividad) return null;
 
-  // (Lógica de 'aprendicesAsignados' sin cambios)
-  const aprendicesAsignados = useMemo(() => {
+  // Lógica de 'aprendicesAsignados' usando el campo asignados
+  const aprendicesAsignados: UsuarioSimple[] = useMemo(() => {
     if (!actividad) return [];
-    return allActividades
-      .filter(
-        (a) =>
-          a.titulo === actividad.titulo &&
-          a.fecha === actividad.fecha &&
-          a.cultivo?.id === actividad.cultivo?.id &&
-          a.usuario,
-      )
-      .map((a) => a.usuario!);
-  }, [actividad, allActividades]);
+    try {
+      if (actividad.asignados) {
+        // Si hay asignados guardados, intentar parsear y crear objetos UsuarioSimple
+        const nombres = JSON.parse(actividad.asignados);
+        return nombres.map((nombre: string, index: number) => ({
+          id: index + 1, // ID temporal
+          identificacion: index + 1, // Identificación temporal
+          nombre: nombre.split(' ')[0] || 'Usuario',
+          apellidos: nombre.split(' ').slice(1).join(' ') || '',
+        }));
+      }
+    } catch {
+      // Si falla el parseo, usar respuestas como fallback
+    }
+    // Fallback: usar respuestas si no hay asignados
+    return actividad.respuestas?.map(r => r.usuario) || [];
+  }, [actividad]);
 
   // (Lógica de parsear 'imagenes' sin cambios)
   let imagenes: string[] = [];
@@ -276,6 +283,7 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
 
 const GestionActividadesPage: React.FC = () => {
   const { userData } = useAuth();
+  const currentUserRole = userData?.rolNombre;
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
@@ -289,6 +297,9 @@ const GestionActividadesPage: React.FC = () => {
     useState<Partial<Actividad> | null>(null);
 
   const [actividadAVer, setActividadAVer] = useState<Actividad | null>(null);
+  const [actividadAResponder, setActividadAResponder] = useState<Actividad | null>(null);
+  const [actividadVerRespuestas, setActividadVerRespuestas] = useState<Actividad | null>(null);
+  const [respuestasKey, setRespuestasKey] = useState(0); // Para forzar recarga del modal
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -318,7 +329,7 @@ const GestionActividadesPage: React.FC = () => {
     if (!userData || !actividades.length) return;
     const actividadesPendientesUsuario = actividades.filter(act =>
       act.estado === 'pendiente' &&
-      act.usuario?.identificacion === userData.identificacion
+      true // Por ahora, mostrar todas las actividades
     );
     if (actividadesPendientesUsuario.length > 0) {
       toast.warning(
@@ -353,6 +364,22 @@ const GestionActividadesPage: React.FC = () => {
   };
   const handleCloseDetailsModal = () => {
     setActividadAVer(null);
+  };
+
+  const handleResponder = (actividad: Actividad) => {
+    setActividadAResponder(actividad);
+  };
+
+  const handleCloseResponderModal = () => {
+    setActividadAResponder(null);
+  };
+
+  const handleVerRespuestas = (actividad: Actividad) => {
+    setActividadVerRespuestas(actividad);
+  };
+
+  const handleCloseVerRespuestasModal = () => {
+    setActividadVerRespuestas(null);
   };
 
   // (handleSave sin cambios)
@@ -434,7 +461,13 @@ const GestionActividadesPage: React.FC = () => {
       const tableData = filteredActividades.map(act => [
         act.titulo,
         act.cultivo?.nombre || 'No especificado',
-        `${act.usuario?.nombre || 'N/A'} ${act.usuario?.apellidos || ''}`,
+        (() => {
+          try {
+            return act.asignados ? JSON.parse(act.asignados).join(', ') : 'Ejecutar migraciones para ver asignados';
+          } catch {
+            return 'Ejecutar migraciones para ver asignados';
+          }
+        })(),
         new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }),
         getEstadoTexto(act.estado),
         act.descripcion || 'Sin descripción'
@@ -547,6 +580,11 @@ const GestionActividadesPage: React.FC = () => {
                 onEdit={handleOpenEditModal}
                 onDelete={handleDelete}
                 onView={handleViewDetails}
+                onResponder={handleResponder}
+                onVerRespuestas={handleVerRespuestas}
+                currentUserIdentificacion={userData?.identificacion}
+                currentUserRole={currentUserRole}
+                currentUserNombre={`${userData?.nombres || ''} ${userData?.apellidos || ''}`.trim()}
               />
             ))
           )}
@@ -571,11 +609,31 @@ const GestionActividadesPage: React.FC = () => {
       <ModalDetalles
         actividad={actividadAVer}
         onClose={handleCloseDetailsModal}
-        allActividades={actividades}
         onEdit={(act: Actividad) => {
           handleCloseDetailsModal();
           handleOpenEditModal(act);
         }}
+      />
+
+      {/* Modal de Responder Actividad */}
+      <ModalResponderActividad
+        actividad={actividadAResponder!}
+        isOpen={!!actividadAResponder}
+        onClose={handleCloseResponderModal}
+        onSuccess={() => {
+          cargarDatos();
+          setRespuestasKey(prev => prev + 1); // Forzar recarga del modal de respuestas
+          handleCloseResponderModal();
+        }}
+        currentUserIdentificacion={userData?.identificacion}
+      />
+
+      {/* Modal de Ver Respuestas */}
+      <ModalVerRespuestas
+        key={respuestasKey}
+        actividad={actividadVerRespuestas!}
+        isOpen={!!actividadVerRespuestas}
+        onClose={handleCloseVerRespuestasModal}
       />
     </div>
   );

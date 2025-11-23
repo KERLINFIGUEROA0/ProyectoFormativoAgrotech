@@ -22,6 +22,11 @@ async function bootstrap() {
     prefix: '/uploads', // Las URLs de las imágenes empezarán con /uploads
   });
 
+  // Servir archivos desde el directorio temp-uploads para actividades
+  app.useStaticAssets(join(process.cwd(), 'temp-uploads'), {
+    prefix: '/temp-uploads', // Las URLs de los archivos temporales empezarán con /temp-uploads
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

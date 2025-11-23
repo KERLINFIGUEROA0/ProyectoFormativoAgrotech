@@ -11,3 +11,14 @@ export const multerConfig = {
   }),
 };
 
+export const multerConfigActividades = {
+  storage: diskStorage({
+    destination: './temp-uploads/actividades',
+    filename: (req, file, cb) => {
+      // Formato simple: timestamp-random-originalname
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${file.originalname}`;
+      cb(null, uniqueName);
+    },
+  }),
+};
+

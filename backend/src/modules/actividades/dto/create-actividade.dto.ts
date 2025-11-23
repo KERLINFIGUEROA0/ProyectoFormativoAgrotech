@@ -70,9 +70,9 @@ export class CreateActividadDto {
   @IsNumber()
   cultivo: number;
 
-  @IsIn(['pendiente', 'en proceso', 'completado'])
+  @IsIn(['pendiente', 'en proceso', 'enviado', 'aprobado', 'rechazado', 'completado'])
   @IsOptional()
-  estado?: 'pendiente' | 'en proceso' | 'completado';
+  estado?: 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado';
 
   @IsNumber()
   @IsOptional()

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import  { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { FileText, BarChart3, TrendingUp, Calendar, Filter, Download } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { FileText, BarChart3, TrendingUp, Filter, Download } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -157,6 +157,19 @@ export default function ReportesSensoresPage() {
         pdf.text(`Promedio: ${stats.average.toFixed(2)} | Desv. Estándar: ${stats.standardDeviation.toFixed(2)}`, 20, yPosition);
         yPosition += 15;
 
+        // Agregar alertas de pronósticos
+        if (sensor.alertas.length > 0) {
+          pdf.setFontSize(12);
+          pdf.text('Alertas de Pronósticos:', 20, yPosition);
+          yPosition += 8;
+          pdf.setFontSize(10);
+          sensor.alertas.forEach(alerta => {
+            pdf.text(`• ${alerta}`, 25, yPosition);
+            yPosition += 5;
+          });
+          yPosition += 5;
+        }
+
         // Try to capture chart image
         let chartAdded = false;
         try {
@@ -259,6 +272,18 @@ export default function ReportesSensoresPage() {
           <div className="text-sm text-gray-500">Desv. Estándar</div>
         </div>
       </div>
+
+      {/* Alertas de Pronósticos */}
+      {sensor.alertas.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h4 className="text-sm font-semibold text-yellow-800 mb-2">🚨 Alertas de Pronósticos</h4>
+          <ul className="text-sm text-yellow-700 space-y-1">
+            {sensor.alertas.map((alerta, index) => (
+              <li key={index}>• {alerta}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="h-48" data-sensor-id={sensor.sensorId}>
         <ResponsiveContainer width="100%" height="100%">

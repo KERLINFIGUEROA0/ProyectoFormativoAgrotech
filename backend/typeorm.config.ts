@@ -5,6 +5,7 @@ import { join } from 'path';
 dotenv.config();
 
 import { Actividad } from './src/modules/actividades/entities/actividade.entity';
+import { RespuestaActividad } from './src/modules/actividades/entities/respuesta_actividad.entity';
 import { ActividadMaterial } from './src/modules/actividades_materiales/entities/actividades_materiale.entity';
 import { Cultivo } from './src/modules/cultivos/entities/cultivo.entity';
 import { Epa } from './src/modules/epa/entities/epa.entity';
@@ -42,6 +43,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   entities: [
     Actividad,
+    RespuestaActividad,
     ActividadMaterial,
     Cultivo,
     Epa,

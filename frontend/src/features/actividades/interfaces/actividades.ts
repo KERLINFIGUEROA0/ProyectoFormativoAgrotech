@@ -1,7 +1,7 @@
 // src/features/actividades/interfaces/actividades.ts
 
-// El tipo de estado no cambia
-export type EstadoActividad = 'pendiente' | 'en proceso' | 'completado';
+// El tipo de estado ampliado
+export type EstadoActividad = 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado';
 
 
 export interface MaterialUsado {
@@ -36,11 +36,11 @@ export interface Actividad {
   fecha: string; // formato ISO string
   descripcion?: string;
   img?: string;
+  archivoInicial?: string; // JSON string de filenames para el archivo inicial
   estado: EstadoActividad;
   horas?: number;
   tarifaHora?: number;
   // Relaciones que vienen del backend
-  usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
   actividadMaterial?: {
     cantidadUsada: number;
@@ -49,6 +49,8 @@ export interface Actividad {
       nombre: string;
     };
   }[];
+  respuestas?: RespuestaActividad[];
+  asignados?: string; // JSON string con nombres de asignados
 }
 
 // 2. Payload para CREAR una actividad (lo que se envía a la API)
@@ -67,6 +69,35 @@ export interface CreateActividadPayload {
 export interface UpdateActividadPayload extends Partial<CreateActividadPayload> {
   estado?: EstadoActividad;
 }
+
+// 4. Payload para ENVIAR RESPUESTA
+export interface SubmitRespuestaPayload {
+  respuestaTexto?: string;
+  respuestaArchivos?: string; // JSON string
+}
+
+// 5. Payload para ENVIAR RESPUESTA
+export interface EnviarRespuestaPayload {
+  descripcion?: string;
+  archivos?: string; // JSON string
+}
+
+// 6. Payload para CALIFICAR ACTIVIDAD
+export interface CalificarActividadPayload {
+  calificacion: 'aprobado' | 'rechazado';
+  comentarioInstructor?: string;
+}
+
+// 7. Interfaz para RespuestaActividad
+export interface RespuestaActividad {
+  id: number;
+  descripcion?: string;
+  archivos?: string;
+  fechaEnvio: string;
+  estado: 'pendiente' | 'aprobado' | 'rechazado';
+  comentarioInstructor?: string;
+  usuario: UsuarioSimple;
+}
 // Refleja AsignarActividadDto del backend
 export interface AsignarActividadPayload {
   cultivo: number;        // ID del cultivo
@@ -76,4 +107,5 @@ export interface AsignarActividadPayload {
   // Array de IDENTIFICACIONES de los aprendices seleccionados
   aprendices: number[];
   materiales?: MaterialUsado[];
+  archivoInicial?: string; // JSON string de filenames para el archivo inicial
 }
