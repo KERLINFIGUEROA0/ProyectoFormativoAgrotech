@@ -259,25 +259,27 @@ export class InformacionSensorService {
     this.logger.log(`📊 Found ${data.length} sensor data records`);
 
     // Group by sensor
-    const sensorData = new Map<number, { sensor: Sensor, values: number[], timestamps: Date[] }>();
+    const sensorData = new Map<number, { sensor: Sensor, values: number[], timestamps: Date[], rawData: InformacionSensor[] }>();
 
     data.forEach(item => {
       if (!sensorData.has(item.sensor.id)) {
         sensorData.set(item.sensor.id, {
           sensor: item.sensor,
           values: [],
-          timestamps: []
+          timestamps: [],
+          rawData: []
         });
       }
       const sensorInfo = sensorData.get(item.sensor.id)!;
       sensorInfo.values.push(Number(item.valor));
       sensorInfo.timestamps.push(item.fechaRegistro);
+      sensorInfo.rawData.push(item);
     });
 
     this.logger.log(`📈 Grouped into ${sensorData.size} sensors`);
 
     // Calculate statistics for each sensor
-    const report = Array.from(sensorData.entries()).map(([sensorId, info]) => {
+    const report = await Promise.all(Array.from(sensorData.entries()).map(async ([sensorId, info]) => {
       const values = info.values;
       const min = Math.min(...values);
       const max = Math.max(...values);
@@ -291,6 +293,9 @@ export class InformacionSensorService {
         value: values[index]
       }));
 
+      // Detectar pronósticos para este sensor
+      const pronosticos = await this.detectarPronosticos(info.sensor, info.rawData);
+
       return {
         sensorId,
         sensorName: info.sensor.nombre,
@@ -300,9 +305,11 @@ export class InformacionSensorService {
           average: Number(avg.toFixed(2)),
           standardDeviation: Number(stdDev.toFixed(2))
         },
-        chartData
+        chartData,
+        alertas: pronosticos.alertas,
+        fechasCriticas: pronosticos.fechasCriticas.map(d => d.toISOString())
       };
-    });
+    }));
 
     return {
       scope,
@@ -314,6 +321,66 @@ export class InformacionSensorService {
       },
       sensors: report
     };
+  }
+
+  /**
+   * Detecta pronósticos de heladas y sequías basados en los últimos 10 datos de temperatura más altos
+   * Solo aplica a sensores de temperatura (que manejan clima en °C)
+   */
+  async detectarPronosticos(sensor: Sensor, data: InformacionSensor[]): Promise<{ alertas: string[], fechasCriticas: Date[] }> {
+    // Solo procesar si es un sensor de temperatura (por nombre)
+    const esSensorTemperatura = sensor.nombre.toLowerCase().includes('temperatura') ||
+                                sensor.nombre.toLowerCase().includes('clima') ||
+                                sensor.nombre.toLowerCase().includes('temp');
+
+    if (!esSensorTemperatura) {
+      return { alertas: [], fechasCriticas: [] };
+    }
+
+    const UMBRAL_HELADA = 15; // °C para posible helada
+    const UMBRAL_SEQUIA = 30; // °C para posible sequía
+
+    const alertas: string[] = [];
+    const fechasCriticas: Date[] = [];
+
+    // Obtener los últimos 10 datos de temperatura (ordenados por fecha descendente)
+    const ultimos10 = data.slice(0, 10);
+
+    if (ultimos10.length === 0) {
+      return { alertas, fechasCriticas };
+    }
+
+    // Calcular estadísticas de los últimos 10 datos
+    const valores = ultimos10.map(d => d.valor);
+    const promedio = valores.reduce((sum, val) => sum + val, 0) / valores.length;
+    const maxTemp = Math.max(...valores);
+    const minTemp = Math.min(...valores);
+
+    // Contar cuántos están por encima del umbral de sequía
+    const conteoSequias = valores.filter(v => v > UMBRAL_SEQUIA).length;
+    const conteoHeladas = valores.filter(v => v < UMBRAL_HELADA).length;
+
+    // Detectar eventos pasados en los últimos 10
+    ultimos10.forEach(dato => {
+      if (dato.valor < UMBRAL_HELADA) {
+        alertas.push(`Temperatura baja (${dato.valor}°C) el ${dato.fechaRegistro.toLocaleDateString('es-ES')} - Posible helada si sigue bajando.`);
+        fechasCriticas.push(dato.fechaRegistro);
+      }
+      if (dato.valor > UMBRAL_SEQUIA) {
+        alertas.push(`Temperatura alta (${dato.valor}°C) el ${dato.fechaRegistro.toLocaleDateString('es-ES')} - Posible sequía si sigue subiendo.`);
+        fechasCriticas.push(dato.fechaRegistro);
+      }
+    });
+
+    // Pronóstico basado en análisis de los últimos 10 datos
+    if (conteoHeladas >= 5 || promedio < UMBRAL_HELADA) {
+      alertas.push(`Pronóstico: Posible helada - Promedio de últimos 10 datos: ${promedio.toFixed(1)}°C (mín: ${minTemp}°C).`);
+    }
+    if (conteoSequias >= 5 || promedio > UMBRAL_SEQUIA) {
+      alertas.push(`Pronóstico: Posible sequía - Promedio de últimos 10 datos: ${promedio.toFixed(1)}°C (máx: ${maxTemp}°C).`);
+    }
+
+    return { alertas, fechasCriticas };
   }
 
 }

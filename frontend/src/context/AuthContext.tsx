@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: userProfile.correo || "",
           telefono: userProfile.telefono || "",
           fotoUrl: userProfile.fotoUrl || "",
+          rolNombre: userProfile.rolNombre || "",
         };
         setUserData(usuario);
 

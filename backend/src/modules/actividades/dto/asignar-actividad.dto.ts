@@ -30,4 +30,8 @@ export class AsignarActividadDto {
   @IsIn(['pendiente', 'en proceso', 'completado'])
   @IsOptional()
   estado?: 'pendiente' | 'en proceso' | 'completado';
+
+  @IsString()
+  @IsOptional()
+  archivoInicial?: string; // JSON string de filenames para el archivo inicial
 }
