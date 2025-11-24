@@ -66,7 +66,19 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
   let statusColor: string;
 
   if (actividad.estado === 'completado') {
-    statusText = `Completado por ${actividad.usuario?.nombre || 'N/A'}`;
+    // Para actividades asignadas, mostrar "Completado" sin nombre específico
+    const asignados = (() => {
+      try {
+        return actividad.asignados ? JSON.parse(actividad.asignados) : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (asignados.length > 0) {
+      statusText = 'Completado';
+    } else {
+      statusText = `Completado por ${actividad.usuario?.nombre || 'N/A'}`;
+    }
     statusColor = 'text-green-600';
   } else if (actividad.estado === 'pendiente') {
     statusText = 'Pendiente';

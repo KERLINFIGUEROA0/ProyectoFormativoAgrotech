@@ -214,7 +214,7 @@ export class InformacionSensorService {
    * Generate advanced report with statistics and chart data
    */
   
-  async generateReport(scope: 'surco' | 'cultivo', scopeId: number, timeFilter: 'day' | 'date' | 'month', date?: string) {
+  async generateReport(scope: 'surco' | 'cultivo', scopeId: number, timeFilter: 'day' | 'date' | 'month', date?: string, sensorId?: number) {
     this.logger.log(`🔍 Generating report: scope=${scope}, scopeId=${scopeId}, timeFilter=${timeFilter}, date=${date}`);
 
     let startDate: Date;
@@ -253,6 +253,11 @@ export class InformacionSensorService {
       queryBuilder = queryBuilder
         .innerJoin('surco.cultivo', 'cultivo')
         .andWhere('cultivo.id = :cultivoId', { cultivoId: scopeId });
+    }
+
+    // Filter by specific sensor if provided
+    if (sensorId) {
+      queryBuilder = queryBuilder.andWhere('sensor.id = :sensorId', { sensorId });
     }
 
     const data = await queryBuilder.getMany();
@@ -324,63 +329,289 @@ export class InformacionSensorService {
   }
 
   /**
-   * Detecta pronósticos de heladas y sequías basados en los últimos 10 datos de temperatura más altos
-   * Solo aplica a sensores de temperatura (que manejan clima en °C)
-   */
-  async detectarPronosticos(sensor: Sensor, data: InformacionSensor[]): Promise<{ alertas: string[], fechasCriticas: Date[] }> {
-    // Solo procesar si es un sensor de temperatura (por nombre)
-    const esSensorTemperatura = sensor.nombre.toLowerCase().includes('temperatura') ||
-                                sensor.nombre.toLowerCase().includes('clima') ||
-                                sensor.nombre.toLowerCase().includes('temp');
+    * Detecta pronósticos basados en los últimos 10 datos según el tipo de sensor
+    */
+   async detectarPronosticos(sensor: Sensor, data: InformacionSensor[]): Promise<{ alertas: string[], fechasCriticas: Date[] }> {
+     const nombreSensor = sensor.nombre.toLowerCase();
+     const alertas: string[] = [];
+     const fechasCriticas: Date[] = [];
 
-    if (!esSensorTemperatura) {
-      return { alertas: [], fechasCriticas: [] };
-    }
+     // Obtener los últimos 10 datos (ordenados por fecha descendente)
+     const ultimos10 = data.slice(0, 10);
 
-    const UMBRAL_HELADA = 15; // °C para posible helada
-    const UMBRAL_SEQUIA = 30; // °C para posible sequía
+     if (ultimos10.length === 0) {
+       return { alertas, fechasCriticas };
+     }
 
-    const alertas: string[] = [];
-    const fechasCriticas: Date[] = [];
+     // Calcular estadísticas de los últimos 10 datos
+     const valores = ultimos10.map(d => d.valor);
+     const promedio = valores.reduce((sum, val) => sum + val, 0) / valores.length;
+     const maxValor = Math.max(...valores);
+     const minValor = Math.min(...valores);
 
-    // Obtener los últimos 10 datos de temperatura (ordenados por fecha descendente)
-    const ultimos10 = data.slice(0, 10);
+     // Detectar pronósticos según el tipo de sensor
+     if (nombreSensor.includes('temperatura') || nombreSensor.includes('clima') || nombreSensor.includes('temp')) {
+       // PRONÓSTICOS PARA TEMPERATURA
+       const UMBRAL_HELADA = 15; // °C para posible helada
+       const UMBRAL_SEQUIA = 30; // °C para posible sequía
 
-    if (ultimos10.length === 0) {
-      return { alertas, fechasCriticas };
-    }
+       const conteoHeladas = valores.filter(v => v < UMBRAL_HELADA).length;
+       const conteoSequias = valores.filter(v => v > UMBRAL_SEQUIA).length;
 
-    // Calcular estadísticas de los últimos 10 datos
-    const valores = ultimos10.map(d => d.valor);
-    const promedio = valores.reduce((sum, val) => sum + val, 0) / valores.length;
-    const maxTemp = Math.max(...valores);
-    const minTemp = Math.min(...valores);
+       // Eventos críticos en los últimos 10 datos
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_HELADA) {
+           alertas.push(`Temperatura baja (${dato.valor}°C) el ${fechaHora} - Riesgo de helada.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_SEQUIA) {
+           alertas.push(`Temperatura alta (${dato.valor}°C) el ${fechaHora} - Riesgo de estrés térmico.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
 
-    // Contar cuántos están por encima del umbral de sequía
-    const conteoSequias = valores.filter(v => v > UMBRAL_SEQUIA).length;
-    const conteoHeladas = valores.filter(v => v < UMBRAL_HELADA).length;
+       // Pronósticos basados en tendencia
+       if (conteoHeladas >= 5 || promedio < UMBRAL_HELADA) {
+         alertas.push(`Pronóstico: Posible helada - Promedio últimos 10: ${promedio.toFixed(1)}°C (mín: ${minValor}°C).`);
+       }
+       if (conteoSequias >= 5 || promedio > UMBRAL_SEQUIA) {
+         alertas.push(`Pronóstico: Posible sequía por calor - Promedio últimos 10: ${promedio.toFixed(1)}°C (máx: ${maxValor}°C).`);
+       }
 
-    // Detectar eventos pasados en los últimos 10
-    ultimos10.forEach(dato => {
-      if (dato.valor < UMBRAL_HELADA) {
-        alertas.push(`Temperatura baja (${dato.valor}°C) el ${dato.fechaRegistro.toLocaleDateString('es-ES')} - Posible helada si sigue bajando.`);
-        fechasCriticas.push(dato.fechaRegistro);
-      }
-      if (dato.valor > UMBRAL_SEQUIA) {
-        alertas.push(`Temperatura alta (${dato.valor}°C) el ${dato.fechaRegistro.toLocaleDateString('es-ES')} - Posible sequía si sigue subiendo.`);
-        fechasCriticas.push(dato.fechaRegistro);
-      }
-    });
+     } else if (nombreSensor.includes('humedad') && nombreSensor.includes('suelo')) {
+       // PRONÓSTICOS PARA HUMEDAD DEL SUELO
+       const UMBRAL_SECO = 20; // % humedad baja
+       const UMBRAL_INUNDADO = 80; // % humedad alta
 
-    // Pronóstico basado en análisis de los últimos 10 datos
-    if (conteoHeladas >= 5 || promedio < UMBRAL_HELADA) {
-      alertas.push(`Pronóstico: Posible helada - Promedio de últimos 10 datos: ${promedio.toFixed(1)}°C (mín: ${minTemp}°C).`);
-    }
-    if (conteoSequias >= 5 || promedio > UMBRAL_SEQUIA) {
-      alertas.push(`Pronóstico: Posible sequía - Promedio de últimos 10 datos: ${promedio.toFixed(1)}°C (máx: ${maxTemp}°C).`);
-    }
+       const conteoSeco = valores.filter(v => v < UMBRAL_SECO).length;
+       const conteoInundado = valores.filter(v => v > UMBRAL_INUNDADO).length;
 
-    return { alertas, fechasCriticas };
-  }
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_SECO) {
+           alertas.push(`Suelo seco (${dato.valor}%) el ${fechaHora} - Necesario riego.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_INUNDADO) {
+           alertas.push(`Suelo inundado (${dato.valor}%) el ${fechaHora} - Riesgo de pudrición.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (conteoSeco >= 5 || promedio < UMBRAL_SECO) {
+         alertas.push(`Pronóstico: Sequía del suelo - Promedio últimos 10: ${promedio.toFixed(1)}% (mín: ${minValor}%).`);
+       }
+       if (conteoInundado >= 5 || promedio > UMBRAL_INUNDADO) {
+         alertas.push(`Pronóstico: Exceso de humedad - Promedio últimos 10: ${promedio.toFixed(1)}% (máx: ${maxValor}%).`);
+       }
+
+     } else if (nombreSensor.includes('humedad') && nombreSensor.includes('aire')) {
+       // PRONÓSTICOS PARA HUMEDAD DEL AIRE
+       const UMBRAL_SECO = 30; // % humedad relativa baja
+       const UMBRAL_HUMEDO = 80; // % humedad relativa alta
+
+       const conteoSeco = valores.filter(v => v < UMBRAL_SECO).length;
+       const conteoHumendo = valores.filter(v => v > UMBRAL_HUMEDO).length;
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_SECO) {
+           alertas.push(`Aire seco (${dato.valor}%) el ${fechaHora} - Riesgo de estrés hídrico.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_HUMEDO) {
+           alertas.push(`Aire muy húmedo (${dato.valor}%) el ${fechaHora} - Riesgo de enfermedades fúngicas.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (conteoSeco >= 5 || promedio < UMBRAL_SECO) {
+         alertas.push(`Pronóstico: Ambiente seco - Promedio últimos 10: ${promedio.toFixed(1)}% (mín: ${minValor}%).`);
+       }
+       if (conteoHumendo >= 5 || promedio > UMBRAL_HUMEDO) {
+         alertas.push(`Pronóstico: Ambiente húmedo - Promedio últimos 10: ${promedio.toFixed(1)}% (máx: ${maxValor}%).`);
+       }
+
+     } else if (nombreSensor.includes('ph') || nombreSensor.includes('acidez')) {
+       // PRONÓSTICOS PARA pH DEL SUELO
+       const UMBRAL_ACIDO = 5.5; // pH ácido
+       const UMBRAL_ALCALINO = 8.5; // pH alcalino
+       const PH_OPTIMO_MIN = 6.0;
+       const PH_OPTIMO_MAX = 7.5;
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_ACIDO) {
+           alertas.push(`Suelo muy ácido (pH ${dato.valor}) el ${fechaHora} - Necesario encalado.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_ALCALINO) {
+           alertas.push(`Suelo muy alcalino (pH ${dato.valor}) el ${fechaHora} - Necesario acidificación.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (promedio < PH_OPTIMO_MIN) {
+         alertas.push(`Pronóstico: Suelo ácido - Promedio pH últimos 10: ${promedio.toFixed(1)} (rango óptimo: 6.0-7.5).`);
+       }
+       if (promedio > PH_OPTIMO_MAX) {
+         alertas.push(`Pronóstico: Suelo alcalino - Promedio pH últimos 10: ${promedio.toFixed(1)} (rango óptimo: 6.0-7.5).`);
+       }
+
+     } else if (nombreSensor.includes('luz') || nombreSensor.includes('uv') || nombreSensor.includes('radiacion')) {
+       // PRONÓSTICOS PARA LUZ/UV
+       const UMBRAL_BAJA = 100; // Lux o unidad de luz baja
+       const UMBRAL_ALTA = 10000; // Lux o unidad de luz muy alta
+
+       const conteoBaja = valores.filter(v => v < UMBRAL_BAJA).length;
+       const conteoAlta = valores.filter(v => v > UMBRAL_ALTA).length;
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_BAJA) {
+           alertas.push(`Iluminación baja (${dato.valor} lux) el ${fechaHora} - Puede afectar crecimiento.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_ALTA) {
+           alertas.push(`Iluminación excesiva (${dato.valor} lux) el ${fechaHora} - Riesgo de quemaduras.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (conteoBaja >= 5 || promedio < UMBRAL_BAJA) {
+         alertas.push(`Pronóstico: Iluminación insuficiente - Promedio últimos 10: ${promedio.toFixed(0)} lux.`);
+       }
+       if (conteoAlta >= 5 || promedio > UMBRAL_ALTA) {
+         alertas.push(`Pronóstico: Iluminación excesiva - Promedio últimos 10: ${promedio.toFixed(0)} lux.`);
+       }
+
+     } else if (nombreSensor.includes('co2') || nombreSensor.includes('dióxido') || nombreSensor.includes('gas')) {
+       // PRONÓSTICOS PARA CO2
+       const UMBRAL_BAJO = 300; // ppm CO2 bajo
+       const UMBRAL_ALTO = 1000; // ppm CO2 alto
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_BAJO) {
+           alertas.push(`CO2 bajo (${dato.valor} ppm) el ${fechaHora} - Puede limitar fotosíntesis.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_ALTO) {
+           alertas.push(`CO2 alto (${dato.valor} ppm) el ${fechaHora} - Riesgo de toxicidad.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (promedio < UMBRAL_BAJO) {
+         alertas.push(`Pronóstico: Niveles bajos de CO2 - Promedio últimos 10: ${promedio.toFixed(0)} ppm.`);
+       }
+       if (promedio > UMBRAL_ALTO) {
+         alertas.push(`Pronóstico: Niveles altos de CO2 - Promedio últimos 10: ${promedio.toFixed(0)} ppm.`);
+       }
+
+     } else if (nombreSensor.includes('nivel') || nombreSensor.includes('agua') || nombreSensor.includes('tanque')) {
+       // PRONÓSTICOS PARA NIVEL DE AGUA
+       const UMBRAL_BAJO = 20; // % nivel bajo
+       const UMBRAL_ALTO = 90; // % nivel alto
+
+       const conteoBajo = valores.filter(v => v < UMBRAL_BAJO).length;
+       const conteoAlto = valores.filter(v => v > UMBRAL_ALTO).length;
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < UMBRAL_BAJO) {
+           alertas.push(`Nivel de agua bajo (${dato.valor}%) el ${fechaHora} - Necesario rellenar.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > UMBRAL_ALTO) {
+           alertas.push(`Nivel de agua alto (${dato.valor}%) el ${fechaHora} - Riesgo de desbordamiento.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (conteoBajo >= 5 || promedio < UMBRAL_BAJO) {
+         alertas.push(`Pronóstico: Nivel de agua bajo - Promedio últimos 10: ${promedio.toFixed(1)}%.`);
+       }
+       if (conteoAlto >= 5 || promedio > UMBRAL_ALTO) {
+         alertas.push(`Pronóstico: Nivel de agua alto - Promedio últimos 10: ${promedio.toFixed(1)}%.`);
+       }
+
+     } else {
+       // PRONÓSTICOS GENÉRICOS PARA OTROS SENSORES
+       // Usar los umbrales configurados en el sensor
+       const umbralMin = sensor.valor_minimo_alerta || 0;
+       const umbralMax = sensor.valor_maximo_alerta || 100;
+
+       ultimos10.forEach(dato => {
+         const fechaHora = dato.fechaRegistro.toLocaleString('es-ES', {
+           year: 'numeric',
+           month: '2-digit',
+           day: '2-digit',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+         if (dato.valor < umbralMin) {
+           alertas.push(`Valor bajo (${dato.valor}) el ${fechaHora} - Fuera del rango normal.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+         if (dato.valor > umbralMax) {
+           alertas.push(`Valor alto (${dato.valor}) el ${fechaHora} - Fuera del rango normal.`);
+           fechasCriticas.push(dato.fechaRegistro);
+         }
+       });
+
+       if (promedio < umbralMin) {
+         alertas.push(`Pronóstico: Valores persistentemente bajos - Promedio últimos 10: ${promedio.toFixed(2)}.`);
+       }
+       if (promedio > umbralMax) {
+         alertas.push(`Pronóstico: Valores persistentemente altos - Promedio últimos 10: ${promedio.toFixed(2)}.`);
+       }
+     }
+
+     return { alertas, fechasCriticas };
+   }
 
 }

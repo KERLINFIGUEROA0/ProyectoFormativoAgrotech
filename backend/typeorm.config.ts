@@ -6,6 +6,7 @@ dotenv.config();
 
 import { Actividad } from './src/modules/actividades/entities/actividade.entity';
 import { RespuestaActividad } from './src/modules/actividades/entities/respuesta_actividad.entity';
+import { ActividadUsuario } from './src/modules/actividades/entities/actividad_usuario.entity';
 import { ActividadMaterial } from './src/modules/actividades_materiales/entities/actividades_materiale.entity';
 import { Cultivo } from './src/modules/cultivos/entities/cultivo.entity';
 import { Epa } from './src/modules/epa/entities/epa.entity';
@@ -31,6 +32,7 @@ import { Modulo } from './src/modules/modulos/entities/modulo.entity';
 import { Ficha } from './src/modules/fichas/entities/ficha.entity';
 import { Broker } from './src/modules/mqtt-config/entities/broker.entity';
 import { Subscripcion } from './src/modules/mqtt-config/entities/subscripcion.entity';
+import { Movimiento } from './src/movimientos/entities/movimiento.entity';
 
 const isCompiled = __dirname.includes('dist');
 
@@ -44,6 +46,7 @@ export const AppDataSource = new DataSource({
   entities: [
     Actividad,
     RespuestaActividad,
+    ActividadUsuario,
     ActividadMaterial,
     Cultivo,
     Epa,
@@ -69,6 +72,7 @@ export const AppDataSource = new DataSource({
     Ficha,
     Broker,
     Subscripcion,
+    Movimiento,
   ],
   migrations: [
     isCompiled

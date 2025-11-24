@@ -41,6 +41,7 @@ export interface Actividad {
   horas?: number;
   tarifaHora?: number;
   // Relaciones que vienen del backend
+  usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
   actividadMaterial?: {
     cantidadUsada: number;

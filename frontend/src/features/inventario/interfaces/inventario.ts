@@ -60,7 +60,11 @@ export const MedidasDeContenido = {
   MILIGRAMO: 'mg',
   LITRO: 'L',
   MILILITRO: 'ml',
-  UNIDADES: 'unidades',
+  CENTIMETRO_CUBICO: 'cm³',
+  METRO_CUBICO: 'm³',
+  GALON: 'gal',
+  ONZA_LIQUIDA: 'oz',
+  UNIDAD: 'unidad',
 } as const;
 export type MedidaDeContenido = typeof MedidasDeContenido[keyof typeof MedidasDeContenido];
 
@@ -135,4 +139,27 @@ export interface MaterialData {
   tipoConsumo?: string;
   cantidadPorUnidad?: number;
   usosTotales?: number;
+}
+
+// --- Interfaces para Movimientos ---
+export interface UsuarioMovimiento {
+  identificacion: number;
+  nombre: string;
+  apellidos: string;
+}
+
+export interface MaterialMovimiento {
+  id: number;
+  nombre: string;
+}
+
+export interface MovimientoData {
+  id: number;
+  tipo: string;
+  cantidad: number;
+  descripcion: string;
+  fecha: string;
+  referencia?: string;
+  material?: MaterialMovimiento;
+  usuario?: UsuarioMovimiento;
 }

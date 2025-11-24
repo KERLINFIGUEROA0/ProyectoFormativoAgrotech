@@ -124,6 +124,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   }, []);
   // --- FIN USEEFFECT ---
 
+  // Obtener material seleccionado para mostrar unidad
+  const materialSeleccionado = materialesDisponibles.find(m => m.id === parseInt(formData.materialActual));
+
   // ... (funciones de seleccionar/deseleccionar ficha sin cambios) ...
   const seleccionarTodosDeFicha = (fichaId: string) => {
     const aprendicesDeFicha = usuarios
@@ -186,10 +189,19 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     if (!material) return;
 
     // Validación de stock total
-    const cantidadTotalRequerida = cantidad * (formData.aprendices.length || 1);
-    if (cantidadTotalRequerida > material.cantidad) {
+    const cantidadTotalRequerida = cantidad; // Cantidad total para la actividad
+
+    // Calcular stock disponible total considerando unidades
+    let stockDisponibleTotal = material.cantidad;
+    if (material.cantidadPorUnidad && material.cantidadPorUnidad > 0) {
+      // Si tiene cantidad por unidad, calcular stock total disponible
+      stockDisponibleTotal = material.cantidad * material.cantidadPorUnidad;
+    }
+
+    if (cantidadTotalRequerida > stockDisponibleTotal) {
+      const unidadTexto = material.medidasDeContenido || 'unidades';
       toast.error(
-        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ( ${cantidad} x ${formData.aprendices.length} aprendices). Disponible: ${material.cantidad}`,
+        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ${unidadTexto}. Disponible: ${stockDisponibleTotal} ${unidadTexto}`,
       );
       return;
     }
@@ -331,7 +343,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
           {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-medium text-gray-700">
-              Materiales a Utilizar (por aprendiz)
+              Materiales a Utilizar (cantidad total)
             </label>
             <div className="p-4 border rounded-lg bg-white space-y-3">
               <div className="flex items-end gap-2">
@@ -343,20 +355,27 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
                   >
                     <option value="">Seleccionar...</option>
-                    {materialesDisponibles.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (Disp: {m.cantidad})
-                      </option>
-                    ))}
+                    {materialesDisponibles.map((m) => {
+                      const stockTotal = m.cantidadPorUnidad && m.cantidadPorUnidad > 0
+                        ? m.cantidad * m.cantidadPorUnidad
+                        : m.cantidad;
+                      const unidadTexto = m.medidasDeContenido || 'unidades';
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre} (Disp: {stockTotal} {unidadTexto})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="w-1/3">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad ({materialSeleccionado?.medidasDeContenido || 'unidades'})</label>
                   <input
                     type="number"
                     value={Number(formData.cantidadMaterial) || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
+                    placeholder={`En ${materialSeleccionado?.medidasDeContenido || 'unidades'}`}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                   />
                 </div>
@@ -378,7 +397,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     <div className="text-sm">
                       <p className="font-medium">{m.nombre}</p>
                       <p className="text-xs text-gray-500">
-                        Cantidad por aprendiz: {m.cantidadUsada}
+                        Cantidad total: {m.cantidadUsada}
                       </p>
                     </div>
                     <button
