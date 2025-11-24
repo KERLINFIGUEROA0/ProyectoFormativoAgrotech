@@ -84,6 +84,49 @@
 - **Cosechado**: Producción completada
 - **Vendido**: Toda la producción ha sido vendida
 
+## DTOs y Validaciones
+
+### CreateProduccioneDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>cantidad</td>
+      <td>number</td>
+      <td>@IsInt, @IsPositive, @IsNotEmpty</td>
+      <td>La cantidad debe ser un número entero positivo. La cantidad es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>fecha</td>
+      <td>string</td>
+      <td>@IsDateString, @IsNotEmpty</td>
+      <td>La fecha debe tener un formato válido (YYYY-MM-DD). La fecha es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>cultivoId</td>
+      <td>number</td>
+      <td>@IsInt, @IsNotEmpty</td>
+      <td>El ID del cultivo debe ser un número entero. El ID del cultivo es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>estado</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional, @IsIn(['Programado', 'En Proceso', 'Cosechado'])</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdateProduccioneDto
+Similar a CreateProduccioneDto.
+
 ## Funcionalidades Adicionales
 
 - **Gestión de Inventario**: Seguimiento de cantidad disponible vs original

@@ -138,6 +138,246 @@
 }
 ```
 
+## DTOs y Validaciones
+
+### CreateUsuarioDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tipo_Identificacion</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty, @IsIn(['CC', 'TI'])</td>
+      <td>El tipo de identificación debe ser "CC" o "TI".</td>
+    </tr>
+    <tr>
+      <td>identificacion</td>
+      <td>number</td>
+      <td>@IsNumber, @IsNotEmpty</td>
+      <td>La identificación es obligatoria.</td>
+    </tr>
+    <tr>
+      <td>nombre</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty</td>
+      <td>El nombre es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>apellidos</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty</td>
+      <td>Los apellidos son obligatorios.</td>
+    </tr>
+    <tr>
+      <td>telefono</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty, @Length(10,10)</td>
+      <td>El teléfono debe tener 10 dígitos.</td>
+    </tr>
+    <tr>
+      <td>correo</td>
+      <td>string</td>
+      <td>@IsEmail, @IsNotEmpty</td>
+      <td>El formato del correo no es válido.</td>
+    </tr>
+    <tr>
+      <td>password</td>
+      <td>string</td>
+      <td>@IsString, @IsNotEmpty, @MinLength(8)</td>
+      <td>La contraseña debe tener al menos 8 caracteres.</td>
+    </tr>
+    <tr>
+      <td>tipoUsuario</td>
+      <td>number</td>
+      <td>@IsNumber, @IsNotEmpty</td>
+      <td>El rol es obligatorio.</td>
+    </tr>
+    <tr>
+      <td>id_ficha</td>
+      <td>string</td>
+      <td>@IsString, @IsOptional, @Length(6,8), @Matches(/^\d+$/)</td>
+      <td>El id_ficha debe tener entre 6 y 8 caracteres y contener solo números.</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdateUsuarioDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tipo_Identificacion</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString, @IsIn(['CC', 'TI'])</td>
+      <td>El tipo de identificación debe ser "CC" o "TI".</td>
+    </tr>
+    <tr>
+      <td>identificacion</td>
+      <td>number</td>
+      <td>@IsOptional, @IsNumber</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>nombre</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>El nombre debe ser un texto.</td>
+    </tr>
+    <tr>
+      <td>apellidos</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>Los apellidos deben ser un texto.</td>
+    </tr>
+    <tr>
+      <td>telefono</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString, @Length(10,10)</td>
+      <td>El teléfono debe tener 10 dígitos.</td>
+    </tr>
+    <tr>
+      <td>correo</td>
+      <td>string</td>
+      <td>@IsOptional, @IsEmail</td>
+      <td>El formato del correo no es válido.</td>
+    </tr>
+    <tr>
+      <td>password</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString, @MinLength(8)</td>
+      <td>La contraseña debe tener al menos 8 caracteres.</td>
+    </tr>
+    <tr>
+      <td>tipoUsuario</td>
+      <td>number</td>
+      <td>@IsOptional, @IsNumber</td>
+      <td>El ID del rol debe ser un número.</td>
+    </tr>
+    <tr>
+      <td>id_ficha</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString, @Length(6,8), @Matches(/^\d+$/)</td>
+      <td>El id_ficha debe tener entre 6 y 8 caracteres y contener solo números.</td>
+    </tr>
+  </tbody>
+</table>
+
+### UpdatePerfilDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>tipoIdentificacion</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>identificacion</td>
+      <td>number</td>
+      <td>@IsOptional, @IsNumber, @Transform</td>
+      <td>La identificación debe ser un número válido.</td>
+    </tr>
+    <tr>
+      <td>nombres</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>apellidos</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>correo</td>
+      <td>string</td>
+      <td>@IsOptional, @IsEmail</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>telefono</td>
+      <td>string</td>
+      <td>@IsOptional, @IsString</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+### CambiarPasswordDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>actual</td>
+      <td>string</td>
+      <td>@IsString</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>nueva</td>
+      <td>string</td>
+      <td>@IsString, @MinLength(8)</td>
+      <td>La nueva contraseña debe tener al menos 8 caracteres.</td>
+    </tr>
+  </tbody>
+</table>
+
+### ResetPasswordDto
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Tipo</th>
+      <th>Validaciones</th>
+      <th>Mensaje de Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>token</td>
+      <td>string</td>
+      <td>@IsString</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>nueva</td>
+      <td>string</td>
+      <td>@IsString, @MinLength(8)</td>
+      <td>La nueva contraseña debe tener mínimo 8 caracteres.</td>
+    </tr>
+  </tbody>
+</table>
+
 ## Funcionalidades Adicionales
 
 - **Autenticación**: Hashing con bcrypt, recuperación de contraseña por email

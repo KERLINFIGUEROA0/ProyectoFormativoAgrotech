@@ -75,6 +75,43 @@
 }
 ```
 
+## DTOs y Validaciones
+
+### CreateCultivoDto
+```typescript
+export class CreateCultivoDto {
+  @IsString()
+  @IsNotEmpty()
+  nombre: string;
+
+  @IsInt()
+  cantidad: number;
+
+  @IsString()
+  @IsOptional()
+  img?: string;
+
+  @IsString()
+  @IsOptional()
+  descripcion?: string;
+
+  @IsInt()
+  @IsNotEmpty()
+  tipoCultivoId: number;
+
+  @IsString()
+  @IsOptional()
+  Estado?: string;
+
+  @IsDateString()
+  @IsOptional()
+  Fecha_Plantado?: string;
+}
+```
+
+### UpdateCultivoDto
+Similar a CreateCultivoDto, con campos opcionales.
+
 ## Funcionalidades Adicionales
 
 - **Exportación Excel**: Genera reportes con múltiples hojas incluyendo información general, producciones, ventas y gastos

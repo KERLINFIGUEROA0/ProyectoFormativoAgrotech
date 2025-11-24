@@ -4,24 +4,92 @@ const endpoints = [
     method: "POST",
     path: "/producciones",
     description: "Registra una nueva producción de un cultivo.",
-    dto: "CreateProduccioneDto",
-    params: [
-      "cantidad (number, requerido): Cantidad producida (entero positivo)",
-      "fecha (string, requerido): Fecha de la producción en formato ISO",
-      "cultivoId (number, requerido): ID del cultivo relacionado",
-      "estado (string, opcional): Estado de la producción (\"Programado\", \"En Proceso\", \"Cosechado\")"
-    ]
+    request: `{
+  "cantidad": 200,
+  "fecha": "2024-01-20T10:30:00.000Z",
+  "cultivoId": 1,
+  "estado": "Cosechado"
+}`,
+    response: `{
+  "success": true,
+  "message": "Producción registrada con éxito.",
+  "data": {
+    "id": 5,
+    "cantidad": 200,
+    "cantidadOriginal": 200,
+    "fecha": "2024-01-20T10:30:00.000Z",
+    "estado": "Cosechado",
+    "cultivo": {
+      "id": 1,
+      "nombre": "Tomate cherry"
+    }
+  }
+}`
   },
   {
     method: "GET",
     path: "/producciones",
-    description: "Lista todas las producciones con relaciones a cultivos."
+    description: "Lista todas las producciones con relaciones a cultivos.",
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "cantidad": 150,
+      "cantidadOriginal": 200,
+      "fecha": "2024-01-15T08:00:00.000Z",
+      "estado": "Cosechado",
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    },
+    {
+      "id": 2,
+      "cantidad": 80,
+      "cantidadOriginal": 120,
+      "fecha": "2024-01-18T09:15:00.000Z",
+      "estado": "En Proceso",
+      "cultivo": {
+        "id": 2,
+        "nombre": "Lechuga romana"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/producciones/cultivo/:cultivoId",
     description: "Lista todas las producciones de un cultivo específico.",
-    params: ["cultivoId (number): ID del cultivo"]
+    params: ["cultivoId (number): ID del cultivo"],
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "cantidad": 150,
+      "cantidadOriginal": 200,
+      "fecha": "2024-01-15T08:00:00.000Z",
+      "estado": "Cosechado",
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    },
+    {
+      "id": 3,
+      "cantidad": 180,
+      "cantidadOriginal": 180,
+      "fecha": "2024-01-22T07:45:00.000Z",
+      "estado": "Cosechado",
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
@@ -31,10 +99,10 @@ const endpoints = [
     response: `{
   "success": true,
   "data": {
-    "totalCosechado": 1500,
-    "ingresosTotales": 7500000,
-    "gastosTotales": 3200000,
-    "cosechaVendida": 1200
+    "totalCosechado": 380,
+    "ingresosTotales": 1520000,
+    "gastosTotales": 456000,
+    "cosechaVendida": 190
   }
 }`
   },
@@ -42,25 +110,105 @@ const endpoints = [
     method: "GET",
     path: "/producciones/:id",
     description: "Obtiene una producción específica con ventas y gastos.",
-    params: ["id (number): ID de la producción"]
+    params: ["id (number): ID de la producción"],
+    response: `{
+  "success": true,
+  "data": {
+    "id": 1,
+    "cantidad": 150,
+    "cantidadOriginal": 200,
+    "fecha": "2024-01-15T08:00:00.000Z",
+    "estado": "Cosechado",
+    "cultivo": {
+      "id": 1,
+      "nombre": "Tomate cherry"
+    },
+    "ventas": [
+      {
+        "id": 1,
+        "descripcion": "Venta al mercado local",
+        "cantidadVenta": 50,
+        "valorTotalVenta": 200000,
+        "fecha": "2024-01-16"
+      }
+    ],
+    "gastos": [
+      {
+        "id": 1,
+        "descripcion": "Fertilizante orgánico",
+        "monto": 75000,
+        "fecha": "2024-01-10"
+      }
+    ]
+  }
+}`
   },
   {
     method: "PUT",
     path: "/producciones/:id",
     description: "Actualiza una producción existente.",
-    dto: "UpdateProduccioneDto",
-    params: ["id (number): ID de la producción"]
+    params: ["id (number): ID de la producción"],
+    request: `{
+  "cantidad": 180,
+  "estado": "Cosechado"
+}`,
+    response: `{
+  "success": true,
+  "message": "Producción actualizada con éxito.",
+  "data": {
+    "id": 1,
+    "cantidad": 180,
+    "cantidadOriginal": 200,
+    "fecha": "2024-01-15T08:00:00.000Z",
+    "estado": "Cosechado",
+    "cultivo": {
+      "id": 1,
+      "nombre": "Tomate cherry"
+    }
+  }
+}`
   },
   {
     method: "DELETE",
     path: "/producciones/:id",
     description: "Elimina una producción.",
-    params: ["id (number): ID de la producción"]
+    params: ["id (number): ID de la producción"],
+    response: `{
+  "success": true,
+  "message": "Producción eliminada con éxito."
+}`
   },
   {
     method: "GET",
     path: "/producciones/available-for-sale",
-    description: "Lista producciones disponibles para venta (con cantidad > 0)."
+    description: "Lista producciones disponibles para venta (con cantidad > 0).",
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "cantidad": 150,
+      "cantidadOriginal": 200,
+      "fecha": "2024-01-15T08:00:00.000Z",
+      "estado": "Cosechado",
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    },
+    {
+      "id": 3,
+      "cantidad": 180,
+      "cantidadOriginal": 180,
+      "fecha": "2024-01-22T07:45:00.000Z",
+      "estado": "Cosechado",
+      "cultivo": {
+        "id": 1,
+        "nombre": "Tomate cherry"
+      }
+    }
+  ]
+}`
   }
 ];
 
@@ -89,6 +237,30 @@ const features = [
   "Validación: Cantidades positivas, fechas válidas",
   "Disponibilidad: Endpoint específico para producciones vendibles"
 ];
+
+const createProduccioneDto = `export class CreateProduccioneDto {
+  // Valida que sea número entero, positivo y obligatorio
+  @IsInt({ message: 'La cantidad debe ser un número entero.' })
+  @IsPositive({ message: 'La cantidad debe ser un número positivo.' })
+  @IsNotEmpty({ message: 'La cantidad es obligatoria.' })
+  cantidad: number; // Cantidad cosechada
+
+  // Valida que sea fecha en formato string y obligatorio
+  @IsDateString({}, { message: 'La fecha debe tener un formato válido (YYYY-MM-DD).' })
+  @IsNotEmpty({ message: 'La fecha es obligatoria.' })
+  fecha: string; // Fecha de la producción
+
+  // Valida que sea número entero y obligatorio
+  @IsInt({ message: 'El ID del cultivo debe ser un número entero.' })
+  @IsNotEmpty({ message: 'El ID del cultivo es obligatorio.' })
+  cultivoId: number; // ID del cultivo relacionado
+
+  // Valida que sea string opcional, con valores permitidos
+  @IsString()
+  @IsOptional()
+  @IsIn(['Programado', 'En Proceso', 'Cosechado'])
+  estado?: string; // Estado de la producción
+}`;
 ---
 
 <html lang="es">
@@ -240,6 +412,28 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+			.request-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.request-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
 			.response-code {
 				background: #2d3748;
 				color: #e2e8f0;
@@ -317,18 +511,24 @@ const features = [
 			{endpoints.map(endpoint => (
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>URL completa:</strong> <code>http://localhost:3000{endpoint.path}</code></p>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
-					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
-					{endpoint.response && (
+					{endpoint.request && (
 						<div>
-							<strong>Respuesta:</strong>
-							<pre class="response-code"><code>{endpoint.response}</code></pre>
+							<strong>Request Body:</strong>
+							<pre class="request-code">{endpoint.request}</pre>
 						</div>
 					)}
 					{endpoint.params && endpoint.params.length > 0 && (
 						<div>
 							<strong>Parámetros:</strong>
-							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+							<pre class="params-code">{endpoint.params.join('\n')}</pre>
+						</div>
+					)}
+					{endpoint.response && (
+						<div>
+							<strong>Respuesta:</strong>
+							<pre class="response-code">{endpoint.response}</pre>
 						</div>
 					)}
 				</div>
@@ -337,6 +537,16 @@ const features = [
 			<div class="dto-box">
 				<h3>Entidad Produccion</h3>
 				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<div class="dto-box">
+				<h3>DTOs y Validaciones</h3>
+				<p>Los DTOs (Data Transfer Objects) definen la estructura de los datos que se envían en las peticiones HTTP. Incluyen decoradores de validación de class-validator para asegurar que los datos cumplan con los requisitos antes de procesarlos en el backend.</p>
+				<h4>CreateProduccioneDto</h4>
+				<p>Usado para registrar una nueva producción. Campos obligatorios incluyen cantidad, fecha y cultivoId.</p>
+				<pre class="dto-code"><code>{createProduccioneDto}</code></pre>
+				<h4>UpdateProduccioneDto</h4>
+				<p>Similar a CreateProduccioneDto, con campos opcionales.</p>
 			</div>
 
 			<h2>Estados de Producción</h2>

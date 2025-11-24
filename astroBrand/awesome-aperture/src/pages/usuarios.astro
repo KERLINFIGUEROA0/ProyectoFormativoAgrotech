@@ -4,34 +4,105 @@ const endpoints = [
     method: "POST",
     path: "/usuarios/crear",
     description: "Crea un nuevo usuario.",
-    dto: "CreateUsuarioDto",
-    params: [
-      "Tipo_Identificacion (string, requerido): Tipo de ID (\"CC\" o \"TI\")",
-      "identificacion (number, requerido): Número de identificación",
-      "nombre (string, requerido): Nombre del usuario",
-      "apellidos (string, requerido): Apellidos del usuario",
-      "telefono (string, requerido): Teléfono (10 dígitos)",
-      "correo (string, requerido): Correo electrónico único",
-      "password (string, requerido): Contraseña (mín. 8 caracteres)",
-      "tipoUsuario (number, requerido): ID del rol/usuario",
-      "id_ficha (string, opcional): ID de ficha para aprendices/pasantes (6-8 dígitos)"
-    ]
+    request: `{
+  "Tipo_Identificacion": "CC",
+  "identificacion": 1234567890,
+  "nombre": "Juan Carlos",
+  "apellidos": "Pérez López",
+  "telefono": "3001234567",
+  "correo": "juan.perez@email.com",
+  "password": "password123",
+  "tipoUsuario": 2,
+  "id_ficha": "12345678"
+}`,
+    response: `{
+  "success": true,
+  "message": "Usuario registrado exitosamente",
+  "data": {
+    "id": 15,
+    "Tipo_Identificacion": "CC",
+    "identificacion": 1234567890,
+    "nombre": "Juan Carlos",
+    "apellidos": "Pérez López",
+    "telefono": "3001234567",
+    "correo": "juan.perez@email.com",
+    "estado": true,
+    "tipoUsuario": {
+      "id": 2,
+      "nombre": "Aprendiz"
+    },
+    "ficha": {
+      "id": 1,
+      "id_ficha": "12345678",
+      "nombre": "Ficha Desarrollo Web"
+    }
+  }
+}`
   },
   {
     method: "POST",
     path: "/usuarios/cargar-excel",
     description: "Carga usuarios masivamente desde archivo Excel.",
-    params: ["file (file): Archivo Excel con columnas específicas"]
+    params: ["file (file): Archivo Excel con columnas específicas"],
+    response: `{
+  "success": true,
+  "message": "Carga de usuarios desde Excel completada. Creados: 25. Errores: 0",
+  "data": {
+    "creados": 25,
+    "errores": []
+  }
+}`
   },
   {
     method: "GET",
     path: "/usuarios/exportar-excel",
-    description: "Exporta lista de usuarios a Excel (excluye administradores)."
+    description: "Exporta lista de usuarios a Excel (excluye administradores).",
+    response: `Archivo Excel descargado con nombre: usuarios.xlsx`
   },
   {
     method: "GET",
     path: "/usuarios",
-    description: "Lista todos los usuarios."
+    description: "Lista todos los usuarios.",
+    response: `{
+  "success": true,
+  "message": "Lista de usuarios obtenida",
+  "data": [
+    {
+      "id": 1,
+      "Tipo_Identificacion": "CC",
+      "identificacion": 9876543210,
+      "nombre": "María José",
+      "apellidos": "García Rodríguez",
+      "correo": "maria.garcia@email.com",
+      "telefono": "3019876543",
+      "estado": true,
+      "tipoUsuario": {
+        "id": 1,
+        "nombre": "Instructor"
+      },
+      "ficha": null
+    },
+    {
+      "id": 2,
+      "Tipo_Identificacion": "TI",
+      "identificacion": 1234567890,
+      "nombre": "Carlos Andrés",
+      "apellidos": "Martínez Silva",
+      "correo": "carlos.martinez@email.com",
+      "telefono": "3024567890",
+      "estado": true,
+      "tipoUsuario": {
+        "id": 2,
+        "nombre": "Aprendiz"
+      },
+      "ficha": {
+        "id": 1,
+        "id_ficha": "12345678",
+        "nombre": "Ficha Desarrollo Web"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
@@ -41,99 +112,290 @@ const endpoints = [
       "nombre (string, opcional): Búsqueda por nombre/apellidos",
       "identificacion (string, opcional): Búsqueda por identificación",
       "rol (string, opcional): Búsqueda por nombre de rol"
-    ]
+    ],
+    response: `{
+  "success": true,
+  "message": "Usuarios encontrados según los criterios.",
+  "data": [
+    {
+      "id": 2,
+      "Tipo_Identificacion": "TI",
+      "identificacion": 1234567890,
+      "nombre": "Carlos Andrés",
+      "apellidos": "Martínez Silva",
+      "correo": "carlos.martinez@email.com",
+      "estado": true,
+      "tipoUsuario": {
+        "id": 2,
+        "nombre": "Aprendiz"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/usuarios/asignables",
-    description: "Lista usuarios asignables (aprendices y pasantes activos)."
+    description: "Lista usuarios asignables (aprendices y pasantes activos).",
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 2,
+      "identificacion": 1234567890,
+      "nombre": "Carlos Andrés",
+      "apellidos": "Martínez Silva",
+      "ficha": {
+        "id": 1,
+        "nombre": "Ficha Desarrollo Web",
+        "id_ficha": "12345678"
+      }
+    },
+    {
+      "id": 5,
+      "identificacion": 1357924680,
+      "nombre": "Ana María",
+      "apellidos": "López Gutiérrez",
+      "ficha": {
+        "id": 2,
+        "nombre": "Ficha Diseño Gráfico",
+        "id_ficha": "87654321"
+      }
+    }
+  ]
+}`
   },
   {
     method: "GET",
     path: "/usuarios/buscar/:id",
     description: "Obtiene un usuario específico por ID.",
-    params: ["id (number): ID del usuario"]
+    params: ["id (number): ID del usuario"],
+    response: `{
+  "success": true,
+  "message": "Usuario con id 2 encontrado",
+  "data": {
+    "id": 2,
+    "Tipo_Identificacion": "TI",
+    "identificacion": 1234567890,
+    "foto": "profile-pic-1643723400000.jpg",
+    "nombre": "Carlos Andrés",
+    "apellidos": "Martínez Silva",
+    "telefono": "3024567890",
+    "correo": "carlos.martinez@email.com",
+    "estado": true,
+    "tipoUsuario": {
+      "id": 2,
+      "nombre": "Aprendiz",
+      "rolPermisos": [
+        {
+          "permiso": {
+            "id": 1,
+            "nombre": "Actividades.Ver"
+          }
+        }
+      ]
+    },
+    "ficha": {
+      "id": 1,
+      "id_ficha": "12345678",
+      "nombre": "Ficha Desarrollo Web"
+    }
+  }
+}`
   },
   {
     method: "PUT",
     path: "/usuarios/actualizar/:id",
     description: "Actualiza un usuario existente.",
-    dto: "UpdateUsuarioDto",
-    params: ["id (number): ID del usuario"]
+    params: ["id (number): ID del usuario"],
+    request: `{
+  "nombre": "Carlos Andrés",
+  "apellidos": "Martínez Silva",
+  "telefono": "3024567891",
+  "tipoUsuario": 3
+}`,
+    response: `{
+  "success": true,
+  "message": "Usuario con id 2 actualizado exitosamente",
+  "data": {
+    "id": 2,
+    "Tipo_Identificacion": "TI",
+    "identificacion": 1234567890,
+    "nombre": "Carlos Andrés",
+    "apellidos": "Martínez Silva",
+    "telefono": "3024567891",
+    "correo": "carlos.martinez@email.com",
+    "estado": true,
+    "tipoUsuario": {
+      "id": 3,
+      "nombre": "Pasante"
+    }
+  },
+  "note": "Los permisos del usuario se actualizarán en el próximo login"
+}`
   },
   {
     method: "DELETE",
     path: "/usuarios/eliminar/:id",
     description: "Desactiva un usuario (soft delete).",
-    params: ["id (number): ID del usuario"]
+    params: ["id (number): ID del usuario"],
+    response: `{
+  "success": true,
+  "message": "Usuario con id 2 eliminado exitosamente"
+}`
   },
   {
     method: "PATCH",
     path: "/usuarios/reactivar/:id",
     description: "Reactiva un usuario desactivado.",
-    params: ["id (number): ID del usuario"]
+    params: ["id (number): ID del usuario"],
+    response: `{
+  "success": true,
+  "message": "Usuario con id 2 reactivado exitosamente"
+}`
   },
   {
     method: "DELETE",
     path: "/usuarios/eliminar-permanente/:id",
     description: "Elimina permanentemente un usuario.",
-    params: ["id (number): ID del usuario"]
+    params: ["id (number): ID del usuario"],
+    response: `{
+  "success": true,
+  "message": "Usuario con id 2 eliminado permanentemente"
+}`
   },
   {
     method: "GET",
     path: "/usuarios/identificacion/:identificacion",
     description: "Busca usuario por número de identificación.",
-    params: ["identificacion (number): Número de identificación"]
+    params: ["identificacion (number): Número de identificación"],
+    response: `{
+  "success": true,
+  "message": "Usuario encontrado",
+  "data": {
+    "id": 2,
+    "Tipo_Identificacion": "TI",
+    "identificacion": 1234567890,
+    "nombre": "Carlos Andrés",
+    "apellidos": "Martínez Silva",
+    "correo": "carlos.martinez@email.com",
+    "estado": true
+  }
+}`
   },
   {
     method: "POST",
     path: "/usuarios/cambiarpassword",
     description: "Cambia la contraseña del usuario autenticado.",
-    params: [
-      "actual (string): Contraseña actual",
-      "nueva (string): Nueva contraseña"
-    ]
+    request: `{
+  "actual": "password123",
+  "nueva": "newpassword456"
+}`,
+    response: `{
+  "success": true,
+  "message": "Contraseña actualizada correctamente"
+}`
   },
   {
     method: "GET",
     path: "/usuarios/perfil",
-    description: "Obtiene el perfil del usuario autenticado con permisos."
+    description: "Obtiene el perfil del usuario autenticado con permisos.",
+    response: `{
+  "success": true,
+  "message": "Perfil obtenido correctamente",
+  "data": {
+    "tipoIdentificacion": "TI",
+    "identificacion": 1234567890,
+    "nombres": "Carlos Andrés",
+    "apellidos": "Martínez Silva",
+    "correo": "carlos.martinez@email.com",
+    "telefono": "3024567890",
+    "rolNombre": "Aprendiz",
+    "permisos": [
+      "Actividades.Ver",
+      "Actividades.Crear",
+      "Cultivos.Ver"
+    ],
+    "modulos": {
+      "Actividades": ["Ver", "Crear"],
+      "Cultivos": ["Ver"],
+      "Lotes": ["Ver"]
+    }
+  }
+}`
   },
   {
     method: "PUT",
     path: "/usuarios/editarperfil",
     description: "Actualiza el perfil del usuario autenticado.",
-    dto: "UpdatePerfilDto",
-    params: [
-      "tipoIdentificacion (string, opcional): Tipo de ID",
-      "identificacion (number, opcional): Número de ID",
-      "nombres (string, opcional): Nombre",
-      "apellidos (string, opcional): Apellidos",
-      "correo (string, opcional): Correo",
-      "telefono (string, opcional): Teléfono"
-    ]
+    request: `{
+  "nombres": "Carlos Andrés",
+  "apellidos": "Martínez Silva",
+  "telefono": "3024567892",
+  "correo": "carlos.martinez.nuevo@email.com"
+}`,
+    response: `{
+  "success": true,
+  "message": "Perfil actualizado correctamente",
+  "data": {
+    "Tipo_Identificacion": "TI",
+    "identificacion": 1234567890,
+    "nombre": "Carlos Andrés",
+    "apellidos": "Martínez Silva",
+    "telefono": "3024567892",
+    "correo": "carlos.martinez.nuevo@email.com"
+  }
+}`
   },
   {
     method: "POST",
     path: "/usuarios/fotoperfil",
     description: "Sube foto de perfil del usuario autenticado.",
-    params: ["file (file): Archivo de imagen"]
+    params: ["file (file): Archivo de imagen"],
+    response: `{
+  "success": true,
+  "message": "Foto de perfil actualizada correctamente",
+  "foto": "profile-pic-1643723400000.jpg"
+}`
   },
   {
     method: "GET",
     path: "/usuarios/fotoperfil",
-    description: "Obtiene la foto de perfil del usuario autenticado."
+    description: "Obtiene la foto de perfil del usuario autenticado.",
+    response: `Imagen de perfil descargada`
   },
   {
     method: "GET",
     path: "/usuarios/fichas/opciones",
-    description: "Lista opciones de fichas disponibles."
+    description: "Lista opciones de fichas disponibles.",
+    response: `{
+  "success": true,
+  "message": "Opciones de fichas obtenidas",
+  "data": [
+    {
+      "id": 1,
+      "id_ficha": "12345678",
+      "nombre": "Ficha Desarrollo Web"
+    },
+    {
+      "id": 2,
+      "id_ficha": "87654321",
+      "nombre": "Ficha Diseño Gráfico"
+    }
+  ]
+}`
   },
   {
     method: "POST",
     path: "/usuarios/exportar-excel-filtrado",
     description: "Exporta usuarios filtrados a Excel.",
-    params: ["Body: Objeto con filtros (searchTerm, filterStatus, filterRol, filterFicha)"]
+    request: `{
+  "searchTerm": "Carlos",
+  "filterStatus": "active",
+  "filterRol": 2,
+  "filterFicha": "12345678"
+}`,
+    response: `Archivo Excel descargado con nombre: usuarios_filtrados.xlsx`
   }
 ];
 
@@ -166,6 +428,60 @@ const features = [
   "Foto de Perfil: Upload y gestión de imágenes",
   "Validación: Unicidad de correo e identificación"
 ];
+
+const createUsuarioDto = `export class CreateUsuarioDto {
+  // Valida que sea "CC" o "TI" y obligatorio
+  @IsString()
+  @IsNotEmpty({ message: 'El tipo de identificación es obligatorio.' })
+  @IsIn(['CC', 'TI'], {
+    message: 'El tipo de identificación debe ser "CC" o "TI".',
+  })
+  Tipo_Identificacion: string; // Tipo de identificación
+
+  // Valida que sea número y obligatorio
+  @IsNumber({}, { message: 'La identificación debe ser un número.' })
+  @IsNotEmpty({ message: 'La identificación es obligatoria.' })
+  identificacion: number; // Número de identificación
+
+  // Valida que sea texto y obligatorio
+  @IsString({ message: 'El nombre debe ser un texto.' })
+  @IsNotEmpty({ message: 'El nombre es obligatorio.' })
+  nombre: string; // Nombre del usuario
+
+  // Valida que sea texto y obligatorio
+  @IsString({ message: 'Los apellidos deben ser un texto.' })
+  @IsNotEmpty({ message: 'Los apellidos son obligatorios.' })
+  apellidos: string; // Apellidos del usuario
+
+  // Valida que sea texto y obligatorio, con longitud exacta
+  @IsString({ message: 'El teléfono debe ser un texto.' })
+  @IsNotEmpty({ message: 'El teléfono es obligatorio.' })
+  @Length(10, 10, { message: 'El teléfono debe tener 10 dígitos.' })
+  telefono: string; // Teléfono (10 dígitos)
+
+  // Valida formato de email y obligatorio
+  @IsEmail({}, { message: 'El formato del correo no es válido.' })
+  @IsNotEmpty({ message: 'El correo es obligatorio.' })
+  correo: string; // Correo electrónico
+
+  // Valida que sea texto y obligatorio, con longitud mínima
+  @IsString()
+  @IsNotEmpty({ message: 'La contraseña es obligatoria.' })
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
+  password: string; // Contraseña
+
+  // Valida que sea número y obligatorio
+  @IsNumber({}, { message: 'El ID del rol debe ser un número.' })
+  @IsNotEmpty({ message: 'El rol es obligatorio.' })
+  tipoUsuario: number; // ID del rol de usuario
+
+  // Valida que sea texto opcional, con longitud específica y solo números
+  @IsString({ message: 'El id_ficha debe ser un texto.' })
+  @IsOptional()
+  @Length(6, 8, { message: 'El id_ficha debe tener entre 6 y 8 caracteres.' })
+  @Matches(/^\\d+$/, { message: 'El id_ficha debe contener solo números.' })
+  id_ficha?: string; // ID de ficha (opcional)
+}`;
 ---
 
 <html lang="es">
@@ -209,9 +525,9 @@ const features = [
 				box-shadow: 0 0 10px rgba(0,0,0,0.1);
 			}
 
-			/* Estilos específicos para Usuarios - Tema Morado */
+			/* Estilos específicos para Usuarios - Tema Verde */
 			.module-header {
-				background: linear-gradient(135deg, #9b59b6, #8e44ad);
+				background: linear-gradient(135deg, #27ae60, #2ecc71);
 				color: white;
 				padding: 2rem;
 				border-radius: 10px;
@@ -227,7 +543,7 @@ const features = [
 			/* Estilos para endpoints */
 			.endpoint {
 				background: #f8f9fa;
-				border-left: 5px solid #9b59b6;
+				border-left: 5px solid #27ae60;
 				padding: 1.5rem;
 				margin: 1rem 0;
 				border-radius: 0 8px 8px 0;
@@ -235,7 +551,7 @@ const features = [
 			}
 			.endpoint h3 {
 				margin-top: 0;
-				color: #9b59b6;
+				color: #27ae60;
 				font-size: 1.2rem;
 			}
 			.endpoint strong {
@@ -252,9 +568,9 @@ const features = [
 				box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 			}
 			.dto-box h3 {
-				color: #9b59b6;
+				color: #27ae60;
 				margin-top: 0;
-				border-bottom: 2px solid #9b59b6;
+				border-bottom: 2px solid #27ae60;
 				padding-bottom: 0.5rem;
 			}
 
@@ -266,8 +582,8 @@ const features = [
 				overflow-x: auto;
 			}
 			code {
-				background: #f3e5f5;
-				color: #9b59b6;
+				background: #e8f5e8;
+				color: #27ae60;
 				padding: 0.2rem 0.4rem;
 				border-radius: 3px;
 				font-weight: bold;
@@ -317,11 +633,33 @@ const features = [
 				font-family: 'Courier New', monospace;
 			}
 
+			.request-code {
+				background: #2d3748;
+				color: #e2e8f0;
+				border: 1px solid #4a5568;
+				border-radius: 6px;
+				padding: 1rem;
+				margin: 0.5rem 0;
+				font-family: 'Courier New', monospace;
+				font-size: 0.9rem;
+				line-height: 1.5;
+				overflow-x: auto;
+				box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+			}
+			.request-code code {
+				background: transparent;
+				color: #e2e8f0;
+				padding: 0;
+				border-radius: 0;
+				font-weight: normal;
+				font-family: 'Courier New', monospace;
+			}
+
 			h1, h2, h3 {
 				color: #2c3e50;
 			}
 			h2 {
-				border-bottom: 3px solid #9b59b6;
+				border-bottom: 3px solid #27ae60;
 				padding-bottom: 0.5rem;
 				margin-top: 2rem;
 			}
@@ -329,7 +667,7 @@ const features = [
 			.back-link {
 				display: inline-block;
 				margin-bottom: 1rem;
-				color: #9b59b6;
+				color: #27ae60;
 				text-decoration: none;
 				font-weight: bold;
 			}
@@ -345,7 +683,7 @@ const features = [
 				margin: 0.5rem 0;
 			}
 			li strong {
-				color: #9b59b6;
+				color: #27ae60;
 			}
 		</style>
 	</head>
@@ -372,12 +710,24 @@ const features = [
 			{endpoints.map(endpoint => (
 				<div class="endpoint">
 					<h3>{endpoint.method} {endpoint.path}</h3>
+					<p><strong>URL completa:</strong> <code>http://localhost:3000{endpoint.path}</code></p>
 					<p><strong>Descripción:</strong> {endpoint.description}</p>
-					{endpoint.dto && <p><strong>DTO:</strong> <code>{endpoint.dto}</code></p>}
+					{endpoint.request && (
+						<div>
+							<strong>Request Body:</strong>
+							<pre class="request-code">{endpoint.request}</pre>
+						</div>
+					)}
 					{endpoint.params && endpoint.params.length > 0 && (
 						<div>
 							<strong>Parámetros:</strong>
-							<pre class="params-code"><code>{endpoint.params.join('\n')}</code></pre>
+							<pre class="params-code">{endpoint.params.join('\n')}</pre>
+						</div>
+					)}
+					{endpoint.response && (
+						<div>
+							<strong>Respuesta:</strong>
+							<pre class="response-code">{endpoint.response}</pre>
 						</div>
 					)}
 				</div>
@@ -386,6 +736,16 @@ const features = [
 			<div class="dto-box">
 				<h3>Entidad Usuario</h3>
 				<pre><code>{entityContent}</code></pre>
+			</div>
+
+			<div class="dto-box">
+				<h3>DTOs y Validaciones</h3>
+				<p>Los DTOs (Data Transfer Objects) definen la estructura de los datos que se envían en las peticiones HTTP. Incluyen decoradores de validación de class-validator para asegurar que los datos cumplan con los requisitos antes de procesarlos en el backend.</p>
+				<h4>CreateUsuarioDto</h4>
+				<p>Usado para crear un nuevo usuario. Todos los campos marcados con @IsNotEmpty son obligatorios.</p>
+				<pre class="dto-code"><code>{createUsuarioDto}</code></pre>
+				<h4>UpdateUsuarioDto</h4>
+				<p>Similar a CreateUsuarioDto, pero todos los campos son opcionales para actualizaciones parciales.</p>
 			</div>
 
 			<h2>Funcionalidades Adicionales</h2>
