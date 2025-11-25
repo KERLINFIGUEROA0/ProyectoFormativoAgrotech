@@ -9,7 +9,9 @@ title: "Módulo Lotes"
 ### GET /lotes/estadisticas
 **Descripción**: Obtiene estadísticas generales de los lotes (total, en cultivo, en preparación, alertas).
 
-**Respuesta**:
+**URL completa:** `http://localhost:3000/lotes/estadisticas`
+
+**Response:**
 ```json
 {
   "success": true,
@@ -25,119 +27,272 @@ title: "Módulo Lotes"
 ### GET /lotes/listar
 **Descripción**: Lista todos los lotes con sus surcos y cultivos relacionados.
 
+**URL completa:** `http://localhost:3000/lotes/listar`
+
+**Response:**
+```json
+{
+  "success": true,
+  "total": 2,
+  "data": [
+    {
+      "id": 1,
+      "localizacion": null,
+      "nombre": "Lote Norte",
+      "area": "1500.50",
+      "estado": "Activo",
+      "coordenadas": {
+        "type": "polygon",
+        "coordinates": [
+          { "lat": 4.6097, "lng": -74.0817 },
+          { "lat": 4.6107, "lng": -74.0817 },
+          { "lat": 4.6107, "lng": -74.0807 },
+          { "lat": 4.6097, "lng": -74.0807 }
+        ]
+      },
+      "surcos": [
+        {
+          "id": 1,
+          "numero": 1,
+          "cultivo": {
+            "id": 1,
+            "nombre": "Tomate cherry"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "localizacion": null,
+      "nombre": "Lote Sur",
+      "area": "800.25",
+      "estado": "En preparación",
+      "coordenadas": null,
+      "surcos": []
+    }
+  ]
+}
+```
+
 ### GET /lotes/:id
 **Descripción**: Obtiene un lote específico por ID con sus surcos.
 
+**URL completa:** `http://localhost:3000/lotes/:id`
+
 **Parámetros URL**:
 - `id` (number): ID del lote
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "localizacion": null,
+    "nombre": "Lote Norte",
+    "area": "1500.50",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": [
+      {
+        "id": 1,
+        "numero": 1,
+        "cultivo": {
+          "id": 1,
+          "nombre": "Tomate cherry"
+        }
+      }
+    ]
+  }
+}
+```
 
 ### POST /lotes/crear
 **Descripción**: Crea un nuevo lote.
 
-**DTO: CreateLoteDto**
-- `nombre` (string, requerido): Nombre del lote
-- `area` (number, requerido): Área del lote en m² (máx. 3000)
-- `estado` (string, opcional): Estado del lote ("Activo", "Inactivo", "En preparación")
-- `coordenadas` (object, opcional): Coordenadas geográficas
-  - `type`: "point" | "polygon"
-  - `coordinates`: Para point: {lat: number, lng: number}, para polygon: Array<{lat: number, lng: number}>
+**URL completa:** `http://localhost:3000/lotes/crear`
+
+**Request Body:**
+```json
+{
+  "nombre": "Lote Este",
+  "area": 2000.75,
+  "estado": "En preparación",
+  "coordenadas": {
+    "type": "polygon",
+    "coordinates": [
+      { "lat": 4.6097, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0807 },
+      { "lat": 4.6097, "lng": -74.0807 }
+    ]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "El lote \"Lote Este\" se creó correctamente",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este",
+    "area": "2000.75",
+    "estado": "En preparación",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}
+```
 
 ### PUT /lotes/actualizar/:id
 **Descripción**: Actualiza un lote existente.
 
+**URL completa:** `http://localhost:3000/lotes/actualizar/:id`
+
 **Parámetros URL**:
 - `id` (number): ID del lote
 
-**DTO: UpdateLoteDto** (mismos campos que CreateLoteDto, todos opcionales)
+**Request Body:**
+```json
+{
+  "nombre": "Lote Este Premium",
+  "area": 2200.00,
+  "estado": "Activo"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "El lote con ID 3 se actualizó correctamente",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este Premium",
+    "area": "2200.00",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}
+```
 
 ### PATCH /lotes/:id/estado
 **Descripción**: Actualiza solo el estado de un lote.
 
+**URL completa:** `http://localhost:3000/lotes/:id/estado`
+
 **Parámetros URL**:
 - `id` (number): ID del lote
 
-**DTO: UpdateLoteEstadoDto**
-- `estado` (string, requerido): Nuevo estado ("Activo", "Inactivo", "En preparación")
+**Request Body:**
+```json
+{
+  "estado": "Activo"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "El estado del lote con ID 3 se actualizó a \"Activo\"",
+  "data": {
+    "id": 3,
+    "localizacion": null,
+    "nombre": "Lote Este Premium",
+    "area": "2200.00",
+    "estado": "Activo",
+    "coordenadas": {
+      "type": "polygon",
+      "coordinates": [
+        { "lat": 4.6097, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0817 },
+        { "lat": 4.6107, "lng": -74.0807 },
+        { "lat": 4.6097, "lng": -74.0807 }
+      ]
+    },
+    "surcos": []
+  }
+}
+```
 
 ## Entidad Lote
 
-```typescript
+**Ejemplo en formato JSON:**
+```json
 {
-  id: number; // ID único del lote
-  localizacion: number; // Ubicación geográfica
-  nombre: string; // Nombre del lote
-  area: string; // Área en m² (almacenado como string)
-  estado: string; // Estado actual
-  coordenadas?: {
-    type: 'point' | 'polygon';
-    coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
-  }; // Coordenadas geográficas
-  surcos: Surco[]; // Surcos asociados al lote
+  "id": 1,
+  "localizacion": null,
+  "nombre": "Lote Norte",
+  "area": "1500.50",
+  "estado": "Activo",
+  "coordenadas": {
+    "type": "polygon",
+    "coordinates": [
+      { "lat": 4.6097, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0817 },
+      { "lat": 4.6107, "lng": -74.0807 },
+      { "lat": 4.6097, "lng": -74.0807 }
+    ]
+  },
+  "surcos": [
+    {
+      "id": 1,
+      "numero": 1,
+      "estado": "Activo",
+      "cultivoId": 1,
+      "loteId": 1
+    }
+  ]
 }
 ```
 
 ## DTOs y Validaciones
 
-### CreateLoteDto
-<table>
-  <thead>
-    <tr>
-      <th>Campo</th>
-      <th>Tipo</th>
-      <th>Validaciones</th>
-      <th>Mensaje de Error</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>nombre</td>
-      <td>string</td>
-      <td>@IsString, @IsNotEmpty</td>
-      <td>El nombre del lote es requerido.</td>
-    </tr>
-    <tr>
-      <td>area</td>
-      <td>number</td>
-      <td>@IsNumber, @IsNotEmpty, @Max(3000)</td>
-      <td>El área es requerida. El área del lote no puede superar los 3000 m².</td>
-    </tr>
-    <tr>
-      <td>estado</td>
-      <td>string</td>
-      <td>@IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación'])</td>
-      <td>-</td>
-    </tr>
-    <tr>
-      <td>coordenadas</td>
-      <td>CoordenadasDto</td>
-      <td>@IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional</td>
-      <td>-</td>
-    </tr>
-  </tbody>
-</table>
+### 📝 CreateLoteDto
+| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+|-------|------|----------------|-------------------|
+| `nombre` | `string` | `@IsString, @IsNotEmpty` | El nombre del lote es requerido. |
+| `area` | `number` | `@IsNumber, @IsNotEmpty, @Max(3000)` | El área es requerida. El área del lote no puede superar los 3000 m². |
+| `estado` | `string` | `@IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | - |
+| `coordenadas` | `CoordenadasDto` | `@IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional` | - |
 
 ### UpdateLoteDto
 Similar a CreateLoteDto.
 
-### UpdateLoteEstadoDto
-<table>
-  <thead>
-    <tr>
-      <th>Campo</th>
-      <th>Tipo</th>
-      <th>Validaciones</th>
-      <th>Mensaje de Error</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>estado</td>
-      <td>string</td>
-      <td>@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'En preparación'])</td>
-      <td>El estado debe ser "Activo", "Inactivo" o "En preparación".</td>
-    </tr>
-  </tbody>
-</table>
+### 🔄 UpdateLoteEstadoDto
+| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+|-------|------|----------------|-------------------|
+| `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | El estado debe ser "Activo", "Inactivo" o "En preparación". |
 
 ## Funcionalidades Adicionales
 
