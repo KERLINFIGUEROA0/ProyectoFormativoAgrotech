@@ -5,7 +5,6 @@ import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
 import { Surco } from '../surcos/entities/surco.entity';
-import { Lote } from '../lotes/entities/lote.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
 import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
 import { MqttClientService } from '../mqtt-config/mqtt-client.service';
@@ -31,7 +30,7 @@ export class SensoresService {
   async findOne(id: number): Promise<Sensor> {
     const sensor = await this.sensorRepo.findOne({
       where: { id },
-      relations: ['lote', 'surco', 'surco.lote'],
+      relations: ['surco', 'surco.lote', 'surco.broker'],
     });
     if (!sensor) {
       throw new NotFoundException(`Sensor con ID ${id} no encontrado.`);
@@ -53,83 +52,79 @@ export class SensoresService {
 
     // 2. (Opcional) Enviar comando al dispositivo IoT vía MQTT
     // Esto permite que el dispositivo físico sepa que debe cambiar su ritmo.
-    if (sensor.topic && sensor.lote) {
-       // Construimos un tópico de configuración, ej: "granja/lote1/sensorLuz/config"
+    if (sensor.topic && sensor.surco?.broker) {
+       // Construimos un tópico de configuración, ej: "granja/surco1/sensorLuz/config"
        const configTopic = `${sensor.topic}/config`;
-       const payload = JSON.stringify({
-         tipo: 'UPDATE_INTERVAL',
-         valor: segundos
+       const payload = JSON.stringify({ 
+         tipo: 'UPDATE_INTERVAL', 
+         valor: segundos 
        });
 
-       // Enviar a todos los brokers del lote
-       const brokers = await this.brokerRepo.find({ where: { lote: { id: sensor.lote.id } } });
-       for (const broker of brokers) {
-         try {
-           await this.mqttClientService.publishToBroker(
-             broker.id,
-             configTopic,
-             payload
-           );
-           console.log(`📡 Comando de frecuencia enviado a ${configTopic} via broker ${broker.nombre}`);
-         } catch (error) {
-           console.warn(`No se pudo enviar comando MQTT via broker ${broker.nombre}: ${error.message}`);
-         }
+       try {
+         await this.mqttClientService.publishToBroker(
+           sensor.surco.broker.id, 
+           configTopic, 
+           payload
+         );
+         console.log(`📡 Comando de frecuencia enviado a ${configTopic}`);
+       } catch (error) {
+         console.warn(`No se pudo enviar comando MQTT: ${error.message}`);
        }
-     }
+    }
 
     return sensorActualizado;
   }
 
 
   async create(createSensoreDto: CreateSensoreDto): Promise<Sensor> {
-    const { loteId: dtoLoteId, surcoId: dtoSurcoId, topic, broker: dtoBroker } = createSensoreDto;
+    const { surcoId, topic, broker } = createSensoreDto;
 
     // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
-    // Cada sensor guardará los datos en su propio lote
+    // Cada sensor guardará los datos en su propio surco/lote
 
-    const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: dtoLoteId } });
-    if (!lote) throw new NotFoundException(`El lote con ID ${dtoLoteId} no fue encontrado.`);
-
-    let surco: Surco | null = null;
-    if (dtoSurcoId) {
-      surco = await this.surcoRepo.findOne({ where: { id: dtoSurcoId } });
-      if (!surco) throw new NotFoundException(`El surco con ID ${dtoSurcoId} no fue encontrado.`);
-    }
+    const surco = await this.surcoRepo.findOne({ 
+      where: { id: surcoId },
+      relations: ['broker']
+    });
+    if (!surco) throw new NotFoundException(`El surco con ID ${surcoId} no fue encontrado.`);
 
     // Si se proporciona información del broker, crear o actualizar el broker
     let brokerEntity: Broker | null = null;
-    if (dtoBroker) {
+    if (broker) {
       // Buscar si ya existe un broker con el mismo nombre
       let existingBroker = await this.brokerRepo.findOne({
-        where: { nombre: dtoBroker.nombre }
+        where: { nombre: broker.nombre }
       });
 
       if (existingBroker) {
         // Si existe, actualizarlo con los nuevos datos
-        existingBroker.host = dtoBroker.host;
-        existingBroker.puerto = dtoBroker.puerto;
-        existingBroker.protocolo = dtoBroker.protocolo;
-        if (dtoBroker.usuario !== undefined) existingBroker.usuario = dtoBroker.usuario;
-        if (dtoBroker.password !== undefined) existingBroker.password = dtoBroker.password;
+        existingBroker.host = broker.host;
+        existingBroker.puerto = broker.puerto;
+        existingBroker.protocolo = broker.protocolo;
+        if (broker.usuario !== undefined) existingBroker.usuario = broker.usuario;
+        if (broker.password !== undefined) existingBroker.password = broker.password;
         brokerEntity = await this.brokerRepo.save(existingBroker);
       } else {
         // Si no existe, crear uno nuevo
         const nuevoBroker = this.brokerRepo.create({
-          nombre: dtoBroker.nombre,
-          host: dtoBroker.host,
-          puerto: dtoBroker.puerto,
-          protocolo: dtoBroker.protocolo,
-          usuario: dtoBroker.usuario,
-          password: dtoBroker.password,
-          lote: lote,
+          nombre: broker.nombre,
+          host: broker.host,
+          puerto: broker.puerto,
+          protocolo: broker.protocolo,
+          usuario: broker.usuario,
+          password: broker.password,
         });
         brokerEntity = await this.brokerRepo.save(nuevoBroker);
       }
+
+      // Asociar el broker al surco
+      surco.broker = brokerEntity;
+      await this.surcoRepo.save(surco);
     }
 
     // Crear el sensor
-    const { broker, loteId, surcoId, ...sensorData } = createSensoreDto; // Excluir broker, loteId, surcoId del DTO
-    const nuevoSensor = this.sensorRepo.create({ ...sensorData, lote, surco });
+    const { broker: _, ...sensorData } = createSensoreDto; // Excluir broker del DTO
+    const nuevoSensor = this.sensorRepo.create({ ...sensorData, surco });
     const sensorGuardado = await this.sensorRepo.save(nuevoSensor);
 
     // Insertar un dato inicial en informacion_sensor
@@ -167,31 +162,26 @@ export class SensoresService {
 
   async findAll(): Promise<Sensor[]> {
   // Agrega 'surco.cultivo' a la lista de relaciones
-  return this.sensorRepo.find({
-    relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+  return this.sensorRepo.find({ 
+    relations: ['surco', 'surco.lote', 'surco.cultivo', 'surco.broker'] 
   });
 }
 
   async update(id: number, updateSensoreDto: UpdateSensoreDto): Promise<Sensor> {
     const sensor = await this.findOne(id);
-    const { loteId, surcoId, topic } = updateSensoreDto;
+    const { surcoId, topic } = updateSensoreDto;
 
     // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
 
-    if (loteId) {
-      const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: loteId } });
-      if (!lote) throw new NotFoundException(`El lote con ID ${loteId} no fue encontrado.`);
-      sensor.lote = lote;
-    }
-
     if (surcoId) {
-      const surco = await this.surcoRepo.findOne({
-        where: { id: surcoId }
+      const surco = await this.surcoRepo.findOne({ 
+        where: { id: surcoId },
+        relations: ['broker']
       });
       if (!surco) throw new NotFoundException(`El surco con ID ${surcoId} no fue encontrado.`);
       sensor.surco = surco;
     }
-
+    
     Object.assign(sensor, updateSensoreDto);
     return this.sensorRepo.save(sensor);
   }
@@ -220,19 +210,6 @@ export class SensoresService {
   }
 
   /**
-   * Obtiene sensores activos por lote
-   */
-  async findByLote(loteId: number): Promise<Sensor[]> {
-    return this.sensorRepo.find({
-      where: {
-        lote: { id: loteId },
-        estado: 'Activo'
-      },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
-    });
-  }
-
-  /**
    * Obtiene sensores activos por surco
    */
   async findBySurco(surcoId: number): Promise<Sensor[]> {
@@ -241,7 +218,7 @@ export class SensoresService {
         surco: { id: surcoId },
         estado: 'Activo'
       },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+      relations: ['surco', 'surco.lote', 'surco.cultivo']
     });
   }
 
@@ -254,7 +231,7 @@ export class SensoresService {
         surco: { cultivo: { id: cultivoId } },
         estado: 'Activo'
       },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+      relations: ['surco', 'surco.lote', 'surco.cultivo']
     });
   }
 }

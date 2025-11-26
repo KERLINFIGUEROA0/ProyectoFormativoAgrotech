@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Lote } from '../../lotes/entities/lote.entity';
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 import { Sensor } from '../../sensores/entities/sensore.entity';
+import { Broker } from '../../mqtt-config/entities/broker.entity';
 
 @Entity('surcos')
 export class Surco {
@@ -25,6 +26,9 @@ export class Surco {
 
   @ManyToOne(() => Cultivo, (cultivo) => cultivo.surcos, { onDelete: 'CASCADE', nullable: true })
   cultivo: Cultivo | null;
+
+  @ManyToOne(() => Broker, (broker) => broker.surcos, { nullable: true, onDelete: 'SET NULL' })
+  broker: Broker | null;
 
   @OneToMany(() => Sensor, (s) => s.surco)
   sensores: Sensor[];

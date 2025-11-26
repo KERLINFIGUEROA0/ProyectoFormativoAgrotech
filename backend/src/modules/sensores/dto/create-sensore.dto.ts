@@ -34,11 +34,7 @@ export class CreateSensoreDto {
 
   @IsNumber()
   @IsNotEmpty()
-  loteId: number;
-
-  @IsNumber()
-  @IsOptional()
-  surcoId?: number;
+  surcoId: number;
 
   @IsDateString()
   @IsNotEmpty()

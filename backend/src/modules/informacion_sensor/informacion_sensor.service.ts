@@ -29,10 +29,10 @@ export class InformacionSensorService {
       return;
     }
 
-    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el lote, surco y brokers del lote
+    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el surco, lote y su broker
     const sensores = await this.sensorRepo.find({
       where: { topic: topic, estado: 'Activo' }, // Solo sensores activos
-      relations: ['lote', 'surco', 'lote.brokers'],
+      relations: ['surco', 'surco.lote', 'surco.broker'],
     });
 
     if (sensores.length === 0) {
@@ -43,15 +43,15 @@ export class InformacionSensorService {
     // Guardar el dato en cada sensor que cumpla las condiciones
     let guardados = 0;
     for (const sensor of sensores) {
-      // Verificar que el lote tenga brokers configurados
-      if (!sensor.lote.brokers || sensor.lote.brokers.length === 0) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en lote [${sensor.lote.nombre}] no tiene brokers configurados. Mensaje descartado para este sensor.`);
+      // Verificar que el surco tenga un broker configurado
+      if (!sensor.surco.broker) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] no tiene broker configurado. Mensaje descartado para este sensor.`);
         continue;
       }
 
-      // Verificar que el surco esté activo para recibir datos MQTT (si tiene surco asignado)
-      if (sensor.surco && !sensor.surco.activo_mqtt) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.nombre}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
+      // Verificar que el surco esté activo para recibir datos MQTT
+      if (!sensor.surco.activo_mqtt) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
         continue;
       }
 
@@ -68,8 +68,7 @@ export class InformacionSensorService {
         await this.sensorRepo.save(sensor);
 
         guardados++;
-        const brokerNames = sensor.lote.brokers.map(b => b.nombre).join(', ');
-        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco?.nombre || 'N/A'}, Lote: ${sensor.lote.nombre}, Brokers: ${brokerNames}) desde topic [${topic}].`);
+        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco.nombre}, Lote: ${sensor.surco.lote?.nombre || 'N/A'}, Broker: ${sensor.surco.broker.nombre}) desde topic [${topic}].`);
       } catch (error) {
         this.logger.error(`Error guardando dato para Sensor ID [${sensor.id}]: ${error.message}`);
       }
@@ -134,7 +133,7 @@ export class InformacionSensorService {
     // Usamos TypeORM QueryBuilder para obtener todos los sensores activos
     const sensores = await this.sensorRepo.find({
       where: { estado: 'Activo' },
-      relations: ['lote', 'surco'],
+      relations: ['surco', 'surco.broker'],
     });
 
     this.logger.log(`✅ Encontrados ${sensores.length} sensores activos`);

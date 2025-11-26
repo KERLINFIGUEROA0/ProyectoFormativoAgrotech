@@ -2,7 +2,6 @@
 
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Surco } from '../../surcos/entities/surco.entity';
-import { Broker } from '../../mqtt-config/entities/broker.entity';
 
 @Entity('lotes')
 export class Lote {
@@ -46,7 +45,4 @@ export class Lote {
 
   @OneToMany(() => Surco, (surco) => surco.lote)
   surcos: Surco[];
-
-  @OneToMany(() => Broker, (broker) => broker.lote)
-  brokers: Broker[];
 }
