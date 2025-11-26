@@ -115,6 +115,13 @@ export default function DetalleMaterialPage() {
   const stockMinimoContenido = material.pesoPorUnidad ? stockMinimoPaquetes * material.pesoPorUnidad : null;
   const stockObjetivoContenido = material.pesoPorUnidad ? stockObjetivoPaquetes * material.pesoPorUnidad : null;
 
+  // Para consumibles, calcular contenido disponible real
+  let contenidoDisponible = null;
+  if (esConsumible && material.cantidadPorUnidad) {
+    const restante = material.cantidadRestanteEnUnidadActual ?? material.cantidadPorUnidad;
+    contenidoDisponible = (material.cantidad - 1) * material.cantidadPorUnidad + restante;
+  }
+
   return (
     <div className="p-2 sm:p-6 bg-gray-50 min-h-full space-y-6">
       <Link to="/stock" className="flex items-center gap-2 text-green-600 hover:underline font-semibold">
@@ -189,14 +196,26 @@ export default function DetalleMaterialPage() {
               unidad={material.tipoEmpaque || 'Paquetes'}
             />
 
-            {totalContenido !== null && stockMinimoContenido !== null && stockObjetivoContenido !== null && (
-              <StockBar
-                label="Stock por Contenido Total"
-                valorActual={Number(totalContenido.toFixed(1))}
-                valorMinimo={Number(stockMinimoContenido.toFixed(1))}
-                valorObjetivo={Number(stockObjetivoContenido.toFixed(1))}
-                unidad={material.medidasDeContenido || 'unidades'}
-              />
+            {esConsumible ? (
+              contenidoDisponible !== null && (
+                <StockBar
+                  label="Contenido Disponible"
+                  valorActual={contenidoDisponible}
+                  valorMinimo={stockMinimoPaquetes * (material.cantidadPorUnidad || 1)}
+                  valorObjetivo={stockObjetivoPaquetes * (material.cantidadPorUnidad || 1)}
+                  unidad={material.medidasDeContenido || 'unidades'}
+                />
+              )
+            ) : (
+              totalContenido !== null && stockMinimoContenido !== null && stockObjetivoContenido !== null && (
+                <StockBar
+                  label="Stock por Contenido Total"
+                  valorActual={Number(totalContenido.toFixed(1))}
+                  valorMinimo={Number(stockMinimoContenido.toFixed(1))}
+                  valorObjetivo={Number(stockObjetivoContenido.toFixed(1))}
+                  unidad={material.medidasDeContenido || 'unidades'}
+                />
+              )
             )}
           </div>
 

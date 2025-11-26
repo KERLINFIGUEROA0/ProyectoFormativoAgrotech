@@ -206,6 +206,10 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
         }
         payload.pesoPorUnidad = pesoFinalEnKg;
 
+        // Para consumibles, usar el contenido como cantidadPorUnidad
+        if (tipoConsumoInferido === 'consumible') {
+          payload.cantidadPorUnidad = cantContenidoNum;
+        }
       }
     }
 

@@ -500,18 +500,36 @@ const GestionActividadesPage: React.FC = () => {
         })(),
         new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }),
         getEstadoTexto(act.estado),
-        act.descripcion || 'Sin descripción'
+        act.descripcion || 'Sin descripción',
+        act.horas ? `${act.horas} horas` : 'No especificado',
+        act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.tarifaHora)}` : 'No especificado',
+        act.horas && act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.horas * act.tarifaHora)}` : 'No especificado',
+        act.actividadMaterial && act.actividadMaterial.length > 0
+          ? act.actividadMaterial.map(am => `${am.material.nombre} (x${am.cantidadUsada})`).join(', ')
+          : 'Sin materiales'
       ]);
 
       const { default: autoTable } = await import('jspdf-autotable');
 
       autoTable(doc, {
-        head: [['Título', 'Cultivo/Lote', 'Aprendiz', 'Fecha', 'Estado', 'Descripción']],
+        head: [['Título', 'Cultivo/Lote', 'Aprendices', 'Fecha', 'Estado', 'Descripción', 'Horas', 'Tarifa/Hora', 'Costo Mano de Obra', 'Materiales']],
         body: tableData,
         startY: 90,
-        styles: { fontSize: 8 },
+        styles: { fontSize: 6 },
         headStyles: { fillColor: [41, 128, 185] },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        columnStyles: {
+          0: { cellWidth: 30 }, // Título
+          1: { cellWidth: 25 }, // Cultivo
+          2: { cellWidth: 30 }, // Aprendices
+          3: { cellWidth: 20 }, // Fecha
+          4: { cellWidth: 15 }, // Estado
+          5: { cellWidth: 40 }, // Descripción
+          6: { cellWidth: 15 }, // Horas
+          7: { cellWidth: 20 }, // Tarifa
+          8: { cellWidth: 20 }, // Costo
+          9: { cellWidth: 40 }  // Materiales
+        }
       });
 
       doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);

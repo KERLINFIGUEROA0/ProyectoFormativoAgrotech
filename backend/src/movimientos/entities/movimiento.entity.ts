@@ -11,7 +11,7 @@ export class Movimiento {
   @Column({ name: 'tipo', type: 'enum', enum: TipoMovimiento })
   tipo: TipoMovimiento;
 
-  @Column({ name: 'cantidad', type: 'numeric', precision: 10, scale: 2 })
+  @Column({ name: 'cantidad', type: 'numeric', precision: 10, scale: 2, nullable: true })
   cantidad: number;
 
   @Column({ name: 'descripcion', type: 'varchar', length: 255, nullable: true })
@@ -23,7 +23,7 @@ export class Movimiento {
   @Column({ name: 'referencia', type: 'varchar', length: 100, nullable: true })
   referencia: string; // ID de actividad, compra, etc.
 
-  @ManyToOne(() => Material, { nullable: false })
+  @ManyToOne(() => Material, { nullable: true })
   @JoinColumn({ name: 'material_id' })
   material: Material;
 

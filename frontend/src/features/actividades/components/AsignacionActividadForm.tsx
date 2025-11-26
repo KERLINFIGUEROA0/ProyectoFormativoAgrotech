@@ -213,6 +213,8 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       return;
     }
 
+    const esConsumibleMat = material.tipoConsumo === 'consumible';
+    const totalDisponibleMat = esConsumibleMat ? material.cantidad * (material.cantidadPorUnidad || 1) : material.cantidad;
     setFormData(prev => ({
         ...prev,
         materiales: [
@@ -221,7 +223,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 materialId: material.id,
                 nombre: material.nombre,
                 cantidadUsada: cantidad,
-                stockDisponible: material.cantidad,
+                stockDisponible: totalDisponibleMat,
             }
         ],
         materialActual: '',
@@ -375,7 +377,6 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     value={Number(formData.cantidadMaterial) || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
-                    placeholder={`En ${materialSeleccionado?.medidasDeContenido || 'unidades'}`}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                   />
                 </div>

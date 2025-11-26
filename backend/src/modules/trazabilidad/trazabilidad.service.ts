@@ -13,13 +13,13 @@ export class TrazabilidadService {
     private readonly ventasService: VentasService,
   ) {}
 
-  async obtenerTrazabilidadPorCultivo(cultivoId: number) {
+  async obtenerTrazabilidadPorCultivo(cultivoId: number, userIdentificacion?: number) {
     const cultivo = await this.cultivosService.buscarPorId(cultivoId);
     if (!cultivo) {
       throw new NotFoundException(`Cultivo con ID ${cultivoId} no encontrado.`);
     }
 
-    const actividades = (await this.actividadesService.findAll()).filter(
+    const actividades = (await this.actividadesService.findAll(userIdentificacion)).filter(
       (act) => act.cultivo?.id === cultivoId,
     );
 

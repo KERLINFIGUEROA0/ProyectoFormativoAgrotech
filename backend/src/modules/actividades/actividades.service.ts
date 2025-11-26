@@ -126,9 +126,9 @@ export class ActividadesService {
       return { success: true, debeRegistrarEgreso: debeDescontar };
     }
 
-    // Para consumibles: manejar unidades parciales
+    // Para consumibles: manejar unidades parciales si cantidadPorUnidad existe, sino descontar directamente
     if (!material.cantidadPorUnidad) {
-      // Si no hay cantidad por unidad, tratar como items individuales
+      // Si no hay cantidad por unidad, descontar directamente (compatibilidad con materiales existentes)
       if (material.cantidad < cantidadUsada) {
         return { success: false, debeRegistrarEgreso: false };
       }

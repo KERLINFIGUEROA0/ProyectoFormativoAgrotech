@@ -198,6 +198,7 @@ export class CultivosService {
   // Crear libro de Excel con múltiples hojas
   const workbook = XLSX.utils.book_new();
 
+
     // Calcular totales y estadísticas
     const totalVentas = cultivo.producciones
       .flatMap(p => p.ventas)
