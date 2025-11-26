@@ -35,8 +35,8 @@ export class CreateBrokerDto {
   password?: string;
 
   @IsInt()
-  @IsOptional()
-  surcoId?: number;
+  @IsNotEmpty()
+  loteId: number;
 
   @IsString()
   @IsOptional()

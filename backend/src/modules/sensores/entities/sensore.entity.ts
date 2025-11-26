@@ -4,8 +4,10 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Surco } from '../../surcos/entities/surco.entity';
+import { Lote } from '../../lotes/entities/lote.entity';
 import { InformacionSensor } from '../../informacion_sensor/entities/informacion_sensor.entity';
 
 @Entity('sensores')
@@ -37,7 +39,7 @@ export class Sensor {
 
   @Column({ name: 'Estado', length: 20, default: 'Activo' })
   estado: string;
-  
+
   @Column({ name: 'Frecuencia_Escaneo', type: 'int', default: 60 })
   frecuencia_escaneo: number;
 
@@ -47,8 +49,13 @@ export class Sensor {
   @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
   ultimo_mqtt_mensaje: Date | null;
 
-  @ManyToOne(() => Surco, (surco) => surco.sensores, { onDelete: 'CASCADE' })
-  surco: Surco;
+  @ManyToOne(() => Lote, (lote) => lote.surcos, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'loteId' })
+  lote: Lote;
+
+  @ManyToOne(() => Surco, (surco) => surco.sensores, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'surcoId' })
+  surco: Surco | null;
 
   @OneToMany(() => InformacionSensor, (info) => info.sensor)
   informaciones: InformacionSensor[];

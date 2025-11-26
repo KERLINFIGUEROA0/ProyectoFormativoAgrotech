@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Server, X, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Broker, Surco } from '../interfaces/iot';
-import { listarSurcos, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
+import type { Broker, Surco, Lote } from '../interfaces/iot';
+import { listarLotes, listarSurcos, listarSurcosPorLote, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
 interface BrokerFormModalProps {
   isOpen: boolean;
@@ -14,7 +14,9 @@ interface BrokerFormModalProps {
 const defaultTopics = ['luz', 'temperatura', 'humedad', 'humedad_suelo'];
 
 export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: BrokerFormModalProps) {
+  const [lotes, setLotes] = useState<Lote[]>([]);
   const [surcos, setSurcos] = useState<Surco[]>([]);
+  const [surcosFiltrados, setSurcosFiltrados] = useState<Surco[]>([]);
   const [topicosAdicionales, setTopicosAdicionales] = useState<string[]>(['']);
   const [defaultTopicsEnabled, setDefaultTopicsEnabled] = useState<Record<string, boolean>>({
     luz: true,
@@ -28,6 +30,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
     protocolo: 'mqtt://',
     host: '',
     puerto: '',
+    loteId: '',
     surcoId: '',
     prefijoTopicos: '',
     usuario: '',
@@ -36,15 +39,19 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
 
   useEffect(() => {
     if (isOpen) {
-      const cargarSurcos = async () => {
+      const cargarDatos = async () => {
         try {
-          const data = await listarSurcos();
-          setSurcos(data);
+          const [lotesData, surcosData] = await Promise.all([
+            listarLotes(),
+            listarSurcos()
+          ]);
+          setLotes(lotesData);
+          setSurcos(surcosData);
         } catch (error) {
-          console.error('Error cargando surcos:', error);
+          console.error('Error cargando datos:', error);
         }
       };
-      cargarSurcos();
+      cargarDatos();
 
       // Si hay broker para editar, cargar sus datos
       if (broker) {
@@ -53,7 +60,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
           protocolo: broker.protocolo,
           host: broker.host,
           puerto: broker.puerto.toString(),
-          surcoId: broker.surco?.id.toString() || '',
+          loteId: broker.lote.id.toString(),
+          surcoId: '',
           prefijoTopicos: broker.prefijoTopicos || '',
           usuario: broker.usuario || '',
           password: broker.password || '',
@@ -80,6 +88,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
           protocolo: 'mqtt://',
           host: '',
           puerto: '',
+          loteId: '',
           surcoId: '',
           prefijoTopicos: '',
           usuario: '',
@@ -89,6 +98,27 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
       }
     }
   }, [isOpen, broker]);
+
+  // Cargar surcos cuando cambia loteId
+  useEffect(() => {
+    if (formData.loteId) {
+      const cargarSurcosPorLote = async () => {
+        try {
+          const surcosData = await listarSurcosPorLote(parseInt(formData.loteId));
+          setSurcosFiltrados(surcosData);
+        } catch (error) {
+          console.error('Error cargando surcos por lote:', error);
+          setSurcosFiltrados([]);
+        }
+      };
+      cargarSurcosPorLote();
+      // Limpiar surcoId cuando cambia loteId
+      setFormData(prev => ({ ...prev, surcoId: '' }));
+    } else {
+      setSurcosFiltrados([]);
+      setFormData(prev => ({ ...prev, surcoId: '' }));
+    }
+  }, [formData.loteId]);
 
   // Normalizar el prefijo para que no empiece con '/' y no termine con '/', y sin múltiples '/'
   const normalizedPrefix = (formData.prefijoTopicos || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\/+/g, '/');
@@ -101,7 +131,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
         protocolo: formData.protocolo,
         host: formData.host,
         puerto: parseInt(formData.puerto),
-        surcoId: formData.surcoId ? parseInt(formData.surcoId) : undefined,
+        loteId: parseInt(formData.loteId),
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
@@ -134,7 +164,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
         protocolo: formData.protocolo,
         host: formData.host,
         puerto: parseInt(formData.puerto),
-        surcoId: formData.surcoId ? parseInt(formData.surcoId) : undefined,
+        loteId: parseInt(formData.loteId),
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
@@ -163,7 +193,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
         protocolo: formData.protocolo,
         host: formData.host,
         puerto: parseInt(formData.puerto),
-        surcoId: formData.surcoId ? parseInt(formData.surcoId) : undefined,
+        loteId: parseInt(formData.loteId),
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
@@ -188,6 +218,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
           protocolo: 'mqtt',
           host: '',
           puerto: '',
+          loteId: '',
           surcoId: '',
           prefijoTopicos: '',
           usuario: '',
@@ -298,8 +329,26 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                   </div>
                 </div>
 
-                {/* Tercera fila: Surco, Prefijo y Botón */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Tercera fila: Lote, Surco, Prefijo y Botón */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lote *
+                    </label>
+                    <select
+                      value={formData.loteId}
+                      onChange={(e) => setFormData({ ...formData, loteId: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      required
+                    >
+                      <option value="">Seleccionar lote</option>
+                      {lotes.map((lote) => (
+                        <option key={lote.id} value={lote.id}>
+                          {lote.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Surco
@@ -308,11 +357,14 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                       value={formData.surcoId}
                       onChange={(e) => setFormData({ ...formData, surcoId: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      disabled={!formData.loteId}
                     >
-                      <option value="">Seleccionar surco (opcional)</option>
-                      {surcos.map((surco) => (
+                      <option value="">
+                        {formData.loteId ? 'Seleccionar surco (opcional)' : 'Primero selecciona un lote'}
+                      </option>
+                      {surcosFiltrados.map((surco) => (
                         <option key={surco.id} value={surco.id}>
-                          {surco.nombre} - {surco.lote.nombre}
+                          {surco.nombre}
                         </option>
                       ))}
                     </select>
@@ -333,7 +385,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
                     <button
                       type="button"
                       onClick={handleTestConnection}
-                      disabled={isTestingConnection || !formData.host || !formData.puerto}
+                      disabled={isTestingConnection || !formData.host || !formData.puerto || !formData.loteId}
                       className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md text-sm transition-colors flex items-center justify-center gap-1"
                       title="Probar conexión al broker"
                     >
