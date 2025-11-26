@@ -208,4 +208,30 @@ export class SensoresService {
     const sensor = await this.findOne(id);
     await this.sensorRepo.remove(sensor);
   }
+
+  /**
+   * Obtiene sensores activos por surco
+   */
+  async findBySurco(surcoId: number): Promise<Sensor[]> {
+    return this.sensorRepo.find({
+      where: {
+        surco: { id: surcoId },
+        estado: 'Activo'
+      },
+      relations: ['surco', 'surco.lote', 'surco.cultivo']
+    });
+  }
+
+  /**
+   * Obtiene sensores activos por cultivo
+   */
+  async findByCultivo(cultivoId: number): Promise<Sensor[]> {
+    return this.sensorRepo.find({
+      where: {
+        surco: { cultivo: { id: cultivoId } },
+        estado: 'Activo'
+      },
+      relations: ['surco', 'surco.lote', 'surco.cultivo']
+    });
+  }
 }

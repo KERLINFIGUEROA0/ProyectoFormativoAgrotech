@@ -24,8 +24,10 @@ import { ActividadUsuario } from './entities/actividad_usuario.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
+import { MovimientosService } from '../../movimientos/movimientos.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ActividadesService {
@@ -45,6 +47,7 @@ export class ActividadesService {
     private readonly respuestaRepository: Repository<RespuestaActividad>,
     @InjectRepository(ActividadUsuario)
     private readonly actividadUsuarioRepository: Repository<ActividadUsuario>,
+    private readonly movimientosService: MovimientosService,
   ) { }
 
   // --- FUNCIÓN HELPER PARA ELIMINAR ARCHIVOS FÍSICOS ---
@@ -62,6 +65,43 @@ export class ActividadesService {
       }
     } catch (error) {
       console.error('Error al eliminar archivos físicos:', error);
+    }
+  }
+
+  // --- FUNCIÓN HELPER PARA VERIFICAR ESTADO DE LA ACTIVIDAD ---
+  private async verificarEstadoActividad(actividad: Actividad) {
+    if (!actividad.asignados) return;
+
+    try {
+      const asignados = JSON.parse(actividad.asignados);
+      if (!Array.isArray(asignados) || asignados.length === 0) return;
+
+      // Obtener todas las respuestas de la actividad
+      const respuestas = await this.respuestaRepository.find({
+        where: { actividad: { id: actividad.id } },
+        relations: ['usuario'],
+      });
+
+      // Contar respuestas únicas por usuario
+      const usuariosQueRespondieron = new Set(respuestas.map(r => r.usuario.identificacion));
+
+      // Si no todos han respondido, mantener pendiente
+      if (usuariosQueRespondieron.size < asignados.length) {
+        actividad.estado = 'pendiente';
+      } else {
+        // Todos han respondido, verificar si todas están calificadas
+        const todasCalificadas = respuestas.every(r => r.estado !== 'pendiente');
+        if (todasCalificadas) {
+          const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
+          actividad.estado = todasAprobadas ? 'completado' : 'rechazado';
+        } else {
+          actividad.estado = 'enviado'; // Todos respondieron, esperando calificación
+        }
+      }
+
+      await this.actividadRepository.save(actividad);
+    } catch (error) {
+      console.error('Error al verificar estado de actividad:', error);
     }
   }
 
@@ -97,26 +137,41 @@ export class ActividadesService {
     }
 
     // Lógica para consumibles con unidades
-    let restante = material.cantidadRestanteEnUnidadActual ?? material.cantidadPorUnidad;
+    let unidadesAAbrir = 0;
 
-    if (cantidadUsada <= restante) {
-      // Suficiente en la unidad actual
-      material.cantidadRestanteEnUnidadActual = restante - cantidadUsada;
-      return { success: true, debeRegistrarEgreso: true };
-    } else {
-      // Necesita abrir nuevas unidades
-      let adicionalNecesario = cantidadUsada - restante;
-      let unidadesAAbrir = Math.ceil(adicionalNecesario / material.cantidadPorUnidad);
-
-      if (material.cantidad < unidadesAAbrir) {
-        return { success: false, debeRegistrarEgreso: false }; // No hay suficientes unidades
+    if (material.cantidadRestanteEnUnidadActual === null || material.cantidadRestanteEnUnidadActual === undefined) {
+      // No hay unidad abierta, necesitamos abrir una
+      if (cantidadUsada <= material.cantidadPorUnidad) {
+        // Suficiente con abrir una unidad
+        material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad - cantidadUsada;
+        unidadesAAbrir = 1;
+      } else {
+        // Necesita más de una unidad
+        unidadesAAbrir = Math.ceil(cantidadUsada / material.cantidadPorUnidad);
+        material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - cantidadUsada;
       }
+    } else {
+      // Hay una unidad parcialmente abierta
+      let restante = material.cantidadRestanteEnUnidadActual;
 
-      // Usar el restante de la actual y abrir nuevas
-      material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - adicionalNecesario;
-      material.cantidad -= unidadesAAbrir;
-      return { success: true, debeRegistrarEgreso: true };
+      if (cantidadUsada <= restante) {
+        // Suficiente en la unidad actual
+        material.cantidadRestanteEnUnidadActual = restante - cantidadUsada;
+        unidadesAAbrir = 0; // No necesitamos abrir más unidades
+      } else {
+        // Necesita abrir unidades adicionales
+        let adicionalNecesario = cantidadUsada - restante;
+        unidadesAAbrir = Math.ceil(adicionalNecesario / material.cantidadPorUnidad);
+        material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - adicionalNecesario;
+      }
     }
+
+    if (material.cantidad < unidadesAAbrir) {
+      return { success: false, debeRegistrarEgreso: false }; // No hay suficientes unidades
+    }
+
+    material.cantidad -= unidadesAAbrir;
+    return { success: true, debeRegistrarEgreso: true };
   }
 
   // --- MÉTODO 'create' ACTUALIZADO ---
@@ -174,19 +229,12 @@ export class ActividadesService {
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 2. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
-              // Para consumibles, costo proporcional al contenido usado
-              costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
-            } else {
-              // Para no consumibles, costo por unidad descontada
-              costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-            }
+          // --- 2. REGISTRO DE GASTO DE MATERIAL (solo para consumibles) ---
+          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`,
+                descripcion: `Material consumible: ${material.nombre} (Act: ${saved.titulo})`,
                 monto: costoTotal,
                 fecha: saved.fecha,
                 tipo: TipoMovimiento.EGRESO,
@@ -377,19 +425,12 @@ export class ActividadesService {
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 3. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
-              // Para consumibles, costo proporcional al contenido usado
-              costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
-            } else {
-              // Para no consumibles, costo por unidad descontada
-              costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-            }
+          // --- 3. REGISTRO DE GASTO DE MATERIAL (solo para consumibles) ---
+          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
+                descripcion: `Material consumible: ${material.nombre} (Act: ${saved.titulo})`,
                 monto: costoTotal,
                 fecha: saved.fecha,
                 tipo: TipoMovimiento.EGRESO,
@@ -473,40 +514,81 @@ export class ActividadesService {
       throw new BadRequestException('La respuesta ya fue aprobada.');
     }
 
-    if (existingRespuesta) {
-      // Eliminar archivos físicos anteriores antes de actualizar
-      if (existingRespuesta.archivos && existingRespuesta.archivos.trim() !== '') {
-        this.eliminarArchivosFisicos(existingRespuesta.archivos);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      let saved: RespuestaActividad;
+
+      if (existingRespuesta) {
+        // Eliminar archivos físicos anteriores antes de actualizar
+        if (existingRespuesta.archivos && existingRespuesta.archivos.trim() !== '') {
+          this.eliminarArchivosFisicos(existingRespuesta.archivos);
+        }
+
+        // Actualizar respuesta existente
+        existingRespuesta.descripcion = dto.descripcion || '';
+        existingRespuesta.archivos = dto.archivos || '';
+        existingRespuesta.estado = 'pendiente';
+        existingRespuesta.comentarioInstructor = undefined;
+        saved = await queryRunner.manager.save(existingRespuesta);
+      } else {
+        // Crear nueva respuesta
+        const respuesta = this.respuestaRepository.create({
+          descripcion: dto.descripcion,
+          archivos: dto.archivos,
+          actividad: { id },
+          usuario: { identificacion: userIdentificacion },
+        });
+
+        saved = await queryRunner.manager.save(respuesta);
       }
 
-      // Actualizar respuesta existente
-      existingRespuesta.descripcion = dto.descripcion || '';
-      existingRespuesta.archivos = dto.archivos || '';
-      existingRespuesta.estado = 'pendiente';
-      existingRespuesta.comentarioInstructor = undefined;
-      const saved = await this.respuestaRepository.save(existingRespuesta);
+      // Procesar devoluciones de materiales si existen
+      if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
+        for (const devolucion of dto.materialesDevueltos) {
+          const material = await queryRunner.manager.findOne(Material, {
+            where: { id: devolucion.materialId }
+          });
 
-      // Cambiar estado de la actividad a 'enviado'
-      actividad.estado = 'enviado';
-      await this.actividadRepository.save(actividad);
+          if (!material) {
+            throw new NotFoundException(`Material con ID ${devolucion.materialId} no encontrado.`);
+          }
+
+          // Aumentar el stock del material devuelto
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            // Para consumibles, devolver a la cantidad disponible
+            material.cantidad += devolucion.cantidadDevuelta;
+          } else {
+            // Para no consumibles, devolver incrementando la cantidad
+            material.cantidad += devolucion.cantidadDevuelta;
+          }
+
+          await queryRunner.manager.save(material);
+
+          // Registrar movimiento de entrada por devolución
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.INGRESO,
+            devolucion.cantidadDevuelta,
+            material.id,
+            `Devolución por respuesta de actividad: ${actividad.titulo}`,
+            `devolucion-actividad-${actividad.id}-usuario-${userIdentificacion}`
+          );
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      // Verificar si todos los asignados han respondido
+      await this.verificarEstadoActividad(actividad);
 
       return saved;
-    } else {
-      // Crear nueva respuesta
-      const respuesta = this.respuestaRepository.create({
-        descripcion: dto.descripcion,
-        archivos: dto.archivos,
-        actividad: { id },
-        usuario: { identificacion: userIdentificacion },
-      });
-
-      const saved = await this.respuestaRepository.save(respuesta);
-
-      // Cambiar estado de la actividad a 'enviado'
-      actividad.estado = 'enviado';
-      await this.actividadRepository.save(actividad);
-
-      return saved;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -544,26 +626,7 @@ export class ActividadesService {
     const savedRespuesta = await this.respuestaRepository.save(respuesta);
 
     // Actualizar estado de la actividad basado en todas las respuestas
-    const actividad = respuesta.actividad;
-
-    // Obtener todas las respuestas de esta actividad
-    const todasLasRespuestas = await this.respuestaRepository.find({
-      where: { actividad: { id: actividad.id } }
-    });
-
-    if (dto.estado === 'aprobado') {
-      // Verificar si todas las respuestas están aprobadas
-      const todasAprobadas = todasLasRespuestas.every(r => r.estado === 'aprobado');
-      if (todasAprobadas) {
-        actividad.estado = 'completado';
-      } else {
-        actividad.estado = 'enviado'; // Aún hay respuestas pendientes
-      }
-    } else {
-      // Si se rechaza alguna respuesta, la actividad queda en estado rechazado
-      actividad.estado = 'rechazado';
-    }
-    await this.actividadRepository.save(actividad);
+    await this.verificarEstadoActividad(respuesta.actividad);
 
     return savedRespuesta;
   }
@@ -583,6 +646,92 @@ export class ActividadesService {
     actividad.estado = dto.calificacion === 'aprobado' ? 'aprobado' : 'rechazado';
 
     return this.actividadRepository.save(actividad);
+  }
+
+  async generarReporteActividad(id: number) {
+    const actividad = await this.findOne(id);
+    if (!actividad) {
+      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
+    }
+
+    let asignados: string[] = [];
+    if (actividad.asignados) {
+      try {
+        asignados = JSON.parse(actividad.asignados);
+      } catch (error) {
+        asignados = [];
+      }
+    }
+
+    // Obtener todas las respuestas
+    const respuestas = await this.respuestaRepository.find({
+      where: { actividad: { id } },
+      relations: ['usuario'],
+    });
+
+    // Crear mapa de respuestas por nombre completo
+    const respuestasMap = new Map<string, RespuestaActividad>();
+    respuestas.forEach(r => {
+      const nombreCompleto = `${r.usuario.nombre} ${r.usuario.apellidos}`.trim();
+      respuestasMap.set(nombreCompleto, r);
+    });
+
+    // Generar reporte
+    const reporte = asignados.map(nombre => {
+      const respuesta = respuestasMap.get(nombre);
+      return {
+        nombre,
+        estado: respuesta ? respuesta.estado : 'pendiente',
+        fechaEnvio: respuesta ? respuesta.fechaEnvio : null,
+        comentarioInstructor: respuesta ? respuesta.comentarioInstructor : null,
+      };
+    });
+
+    return {
+      actividad: {
+        id: actividad.id,
+        titulo: actividad.titulo,
+        descripcion: actividad.descripcion,
+        estado: actividad.estado,
+      },
+      reporte,
+    };
+  }
+
+  async generarReporteExcel(id: number): Promise<Buffer> {
+    const data = await this.generarReporteActividad(id);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Reporte Actividad');
+
+    // Título
+    worksheet.addRow(['Reporte de Actividad']);
+    worksheet.addRow([`Título: ${data.actividad.titulo}`]);
+    worksheet.addRow([`Descripción: ${data.actividad.descripcion}`]);
+    worksheet.addRow([`Estado: ${data.actividad.estado}`]);
+    worksheet.addRow([]); // Línea vacía
+
+    // Encabezados
+    worksheet.addRow(['Nombre', 'Estado', 'Fecha de Envío', 'Comentario Instructor']);
+
+    // Datos
+    data.reporte.forEach(item => {
+      worksheet.addRow([
+        item.nombre,
+        item.estado,
+        item.fechaEnvio ? item.fechaEnvio.toISOString().split('T')[0] : 'N/A',
+        item.comentarioInstructor || 'N/A',
+      ]);
+    });
+
+    // Estilos
+    worksheet.getColumn(1).width = 30;
+    worksheet.getColumn(2).width = 15;
+    worksheet.getColumn(3).width = 15;
+    worksheet.getColumn(4).width = 30;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   async asignarActividad(dto: AsignarActividadDto) {
@@ -644,24 +793,18 @@ export class ActividadesService {
         for (const item of materiales) {
           const material = await queryRunner.manager.findOne(Material, { where: { id: item.materialId } });
           if (!material) throw new NotFoundException(`Material ${item.materialId} no encontrado.`);
-          const cantidadTotalUsada = item.cantidadUsada * aprendices.length;
+          const cantidadTotalUsada = item.cantidadUsada; // Cantidad total para la actividad
           const resultado = this.descontarMaterial(material, cantidadTotalUsada);
           if (!resultado.success) {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
-              // Para consumibles, costo proporcional al contenido usado
-              costoTotal = (Number(material.precio) || 0) * (cantidadTotalUsada / material.cantidadPorUnidad);
-            } else {
-              // Para no consumibles, costo por unidad descontada
-              costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
-            }
+          // Registrar gasto solo para materiales consumibles
+          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Costo material: ${material.nombre} (Asignación: ${titulo})`,
+                descripcion: `Material consumible: ${material.nombre} (Asignación: ${titulo})`,
                 monto: costoTotal,
                 fecha: fechaActividad,
                 tipo: TipoMovimiento.EGRESO,
@@ -670,6 +813,15 @@ export class ActividadesService {
               await queryRunner.manager.save(nuevoGasto);
             }
           }
+
+          // Registrar movimiento de salida
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadTotalUsada,
+            material.id,
+            `Salida por asignación de actividad: ${titulo}`,
+            `actividad-${savedActividad.id}`
+          );
           // Crear ActividadMaterial para la actividad compartida
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: savedActividad,

@@ -13,6 +13,7 @@ import {
   Package,
   Users,
   DollarSign, // <-- AÑADIDO
+  Trash2, // <-- AÑADIDO para el modal de eliminación
 } from 'lucide-react';
 
 import ActividadCard from '../components/ActividadCard';
@@ -300,6 +301,8 @@ const GestionActividadesPage: React.FC = () => {
   const [actividadAResponder, setActividadAResponder] = useState<Actividad | null>(null);
   const [actividadVerRespuestas, setActividadVerRespuestas] = useState<Actividad | null>(null);
   const [respuestasKey, setRespuestasKey] = useState(0); // Para forzar recarga del modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [actividadToDelete, setActividadToDelete] = useState<Actividad | null>(null);
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -404,29 +407,38 @@ const GestionActividadesPage: React.FC = () => {
     }
   };
 
-  // (handleDelete sin cambios)
-  const handleDelete = async (id: number) => {
-    toast.error('¿Seguro que deseas eliminar esta actividad?', {
-      description: 'Esta acción no se puede deshacer.',
-      action: {
-        label: 'Eliminar',
-        onClick: async () => {
-          const toastId = toast.loading('Eliminando...');
-          try {
-            await eliminarActividad(id);
-            toast.success('Actividad eliminada', { id: toastId });
-            await cargarDatos();
-          } catch (err) {
-            toast.error('Error al eliminar.', { id: toastId });
-          }
-        }
-      },
-      cancel: {
-        label: 'Cancelar',
-        onClick: () => { },
-      },
-      duration: 10000
-    });
+  // (handleDeleteClick - abre el modal de eliminación)
+  const handleDeleteClick = (id: number) => {
+    const actividad = actividades.find(a => a.id === id);
+    if (actividad) {
+      setActividadToDelete(actividad);
+      setShowDeleteModal(true);
+    }
+  };
+
+  // (handleDeleteConfirm - confirma la eliminación)
+  const handleDeleteConfirm = async () => {
+    if (!actividadToDelete) return;
+
+    try {
+      await eliminarActividad(actividadToDelete.id);
+      toast.success('Actividad eliminada exitosamente');
+      cargarDatos();
+      setShowDeleteModal(false);
+      setActividadToDelete(null);
+    } catch (error) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar la actividad';
+      toast.error(errorMessage);
+      console.error('Error deleting actividad:', error);
+      setShowDeleteModal(false);
+      setActividadToDelete(null);
+    }
+  };
+
+  // (handleDeleteCancel - cancela la eliminación)
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setActividadToDelete(null);
   };
 
   // (stats y filteredActividades sin cambios)
@@ -443,11 +455,29 @@ const GestionActividadesPage: React.FC = () => {
     return actividades.filter((a) => a.estado === filtroEstado);
   }, [actividades, filtroEstado]);
 
-  // (exportarPDF sin cambios)
+  // (exportarPDF con logo agregado)
   const exportarPDF = useCallback(async () => {
     try {
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF();
+
+      // Agregar logo
+      try {
+        const logoResponse = await fetch('/logo.png');
+        if (logoResponse.ok) {
+          const logoBlob = await logoResponse.blob();
+          const logoBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(logoBlob);
+          });
+
+          // Logo en la esquina superior derecha
+          doc.addImage(logoBase64, 'PNG', 150, 10, 40, 20);
+        }
+      } catch (logoError) {
+        console.warn('No se pudo cargar el logo:', logoError);
+      }
 
       doc.setFontSize(20);
       doc.text('Reporte de Actividades', 20, 20);
@@ -596,7 +626,7 @@ const GestionActividadesPage: React.FC = () => {
                 key={act.id}
                 actividad={act}
                 onEdit={handleOpenEditModal}
-                onDelete={handleDelete}
+                onDelete={handleDeleteClick}
                 onView={handleViewDetails}
                 onResponder={handleResponder}
                 onVerRespuestas={handleVerRespuestas}
@@ -653,6 +683,41 @@ const GestionActividadesPage: React.FC = () => {
         isOpen={!!actividadVerRespuestas}
         onClose={handleCloseVerRespuestasModal}
       />
+
+      {/* Modal de Eliminar Actividad */}
+      {showDeleteModal && actividadToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="text-red-600" size={20} />
+              </div>
+              <h4 className="text-lg font-semibold">¿Eliminar actividad?</h4>
+              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
+                <div className="font-medium">{actividadToDelete.titulo}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {actividadToDelete.cultivo?.nombre || 'Sin cultivo asignado'}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Esta acción no se puede deshacer.</p>
+              <div className="flex gap-3 mt-4 w-full">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 px-4 py-2 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

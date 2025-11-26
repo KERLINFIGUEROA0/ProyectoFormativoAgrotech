@@ -1,4 +1,13 @@
-import { IsOptional, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class MaterialDevueltoDto {
+  @IsNumber()
+  materialId: number;
+
+  @IsNumber()
+  cantidadDevuelta: number;
+}
 
 export class CreateRespuestaDto {
   @IsOptional()
@@ -8,6 +17,12 @@ export class CreateRespuestaDto {
   @IsOptional()
   @IsString()
   archivos?: string; // JSON string
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MaterialDevueltoDto)
+  materialesDevueltos?: MaterialDevueltoDto[];
 }
 
 export class UpdateRespuestaDto {

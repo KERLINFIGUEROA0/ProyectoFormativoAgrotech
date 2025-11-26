@@ -52,4 +52,22 @@ export class SensoresController {
       message: `Sensor con ID ${id} eliminado correctamente.`,
     };
   }
+
+  /**
+   * Obtiene sensores por surco
+   */
+  @Get('por-surco/:surcoId')
+  async findBySurco(@Param('surcoId', ParseIntPipe) surcoId: number) {
+    const sensores = await this.sensoresService.findBySurco(surcoId);
+    return { success: true, data: sensores };
+  }
+
+  /**
+   * Obtiene sensores por cultivo
+   */
+  @Get('por-cultivo/:cultivoId')
+  async findByCultivo(@Param('cultivoId', ParseIntPipe) cultivoId: number) {
+    const sensores = await this.sensoresService.findByCultivo(cultivoId);
+    return { success: true, data: sensores };
+  }
 }

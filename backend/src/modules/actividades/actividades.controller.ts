@@ -23,7 +23,7 @@ import { CreateActividadDto, MaterialUsadoDto } from './dto/create-actividade.dt
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
-import { CreateRespuestaDto, CalificarRespuestaDto } from './dto/create-respuesta.dto';
+import { CreateRespuestaDto, CalificarRespuestaDto, MaterialDevueltoDto } from './dto/create-respuesta.dto';
 import { CalificarActividadDto } from './dto/calificar-actividad.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { plainToInstance } from 'class-transformer';
@@ -161,21 +161,36 @@ export class ActividadesController {
   async enviarRespuesta(
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() dto: CreateRespuestaDto,
+    @Body() body: any, // Recibir como any para procesar FormData
     @Req() req,
   ) {
     const userIdentificacion = req.user?.identificacion;
     const imagenes = files?.map((file) => file.filename) ?? [];
 
-    // SIEMPRE usar los archivos nuevos si se subieron, sino usar los del body
-    // Esto asegura que los nuevos archivos REEMPLAZAN completamente los anteriores
-    const archivos = imagenes.length > 0 ? JSON.stringify(imagenes) : (dto.archivos || '');
+    // Procesar DTO manualmente desde FormData
+    const dto = new CreateRespuestaDto();
+    dto.descripcion = body.descripcion || '';
+    dto.archivos = imagenes.length > 0 ? JSON.stringify(imagenes) : (body.archivos || '');
 
-    console.log('Archivos finales a guardar:', archivos);
+    // Parsear materialesDevueltos si existe
+    if (body.materialesDevueltos && typeof body.materialesDevueltos === 'string') {
+      try {
+        const parsedMateriales = JSON.parse(body.materialesDevueltos);
+        if (Array.isArray(parsedMateriales)) {
+          dto.materialesDevueltos = parsedMateriales.map((item: any) =>
+            plainToInstance(MaterialDevueltoDto, item)
+          );
+        }
+      } catch (e) {
+        console.error('Error al parsear materialesDevueltos:', e);
+        dto.materialesDevueltos = undefined;
+      }
+    }
 
-    console.log('Archivos finales a guardar:', archivos);
+    console.log('Archivos finales a guardar:', dto.archivos);
+    console.log('Materiales devueltos:', dto.materialesDevueltos);
 
-    return this.actividadesService.enviarRespuesta(Number(id), { ...dto, archivos }, userIdentificacion);
+    return this.actividadesService.enviarRespuesta(Number(id), dto, userIdentificacion);
   }
 
   // ✅ Obtener respuestas de una actividad
@@ -264,6 +279,43 @@ export class ActividadesController {
       console.error('Error al descargar archivo:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
     }
+  }
+
+  // ✅ Obtener reporte de actividad
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reporte')
+  async obtenerReporteActividad(@Param('id') id: string, @Req() req) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden ver reportes.');
+    }
+    return this.actividadesService.generarReporteActividad(Number(id));
+  }
+
+  // ✅ Descargar reporte de actividad en Excel
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reporte/excel')
+  async descargarReporteExcel(@Param('id') id: string, @Req() req, @Res() res: Response) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden descargar reportes.');
+    }
+
+    const buffer = await this.actividadesService.generarReporteExcel(Number(id));
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=reporte-actividad-${id}.xlsx`);
+    res.send(buffer);
   }
 
   // ✅ Asignar actividad a aprendices

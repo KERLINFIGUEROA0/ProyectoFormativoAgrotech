@@ -15,6 +15,7 @@ import { ActividadesMaterialesModule } from '../actividades_materiales/actividad
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
 import { RespuestaActividad } from './entities/respuesta_actividad.entity';
 import { ActividadUsuario } from './entities/actividad_usuario.entity';
+import { MovimientosModule } from '../../movimientos/movimientos.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ActividadUsuario } from './entities/actividad_usuario.entity';
     }),
     MaterialesModule,
     ActividadesMaterialesModule,
+    MovimientosModule,
   ],
   controllers: [ActividadesController],
   providers: [ActividadesService],

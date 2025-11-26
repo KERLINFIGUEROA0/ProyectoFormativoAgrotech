@@ -12,4 +12,7 @@ export enum MedidasDeContenido {
   METRO_CUBICO = 'm³',
   GALON = 'gal',
   ONZA_LIQUIDA = 'oz',
+
+  // ---- UNIDADES ----
+  UNIDAD = 'unidad',
 }

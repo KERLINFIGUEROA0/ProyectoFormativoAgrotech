@@ -36,6 +36,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module';
 import { FichasModule } from './modules/fichas/fichas.module';
+import { MovimientosModule } from './movimientos/movimientos.module';
 
 
 @Module({
@@ -85,6 +86,7 @@ import { FichasModule } from './modules/fichas/fichas.module';
     NotificationsModule,
     MqttConfigModule,
     FichasModule,
+    MovimientosModule,
   ],
   providers: [],
   controllers: []
