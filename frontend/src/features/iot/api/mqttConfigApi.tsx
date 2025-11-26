@@ -5,6 +5,7 @@ import type {
   CreateSubscripcionDto,
   Subscripcion,
   Surco,
+  Lote,
 } from "../interfaces/iot";
 
 // --- API para Brokers ---
@@ -52,8 +53,19 @@ export const probarConexionBroker = async (data: CreateBrokerDto): Promise<{ con
   return response.data; // Retorna { success: true, message: string, connected: boolean }
 };
 
+// --- API para Lotes ---
+export const listarLotes = async (): Promise<Lote[]> => {
+  const response = await api.get("/lotes");
+  return response.data.data;
+};
+
 // --- API para Surcos ---
 export const listarSurcos = async (): Promise<Surco[]> => {
   const response = await api.get("/surcos/listar");
+  return response.data.data;
+};
+
+export const listarSurcosPorLote = async (loteId: number): Promise<Surco[]> => {
+  const response = await api.get(`/surcos/lotes/${loteId}/surcos`);
   return response.data.data;
 };

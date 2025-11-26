@@ -1,23 +1,22 @@
 // src/features/iot/interfaces/iot.ts
 
+export interface Lote {
+  id: number;
+  nombre: string;
+  localizacion?: number;
+  area?: string;
+  estado: string;
+  coordenadas?: any;
+}
+
 export interface Surco {
   id: number;
   nombre: string;
-  lote: {
-    id: number;
-    nombre: string;
-  };
+  lote: Lote;
   // Agregamos el cultivo opcional para el filtro
   cultivo?: {
     id: number;
     nombre: string;
-  } | null;
-  broker?: {
-    id: number;
-    nombre: string;
-    host: string;
-    puerto: number;
-    protocolo: string;
   } | null;
 }
 
@@ -29,12 +28,13 @@ export interface Sensor {
   valor_minimo_alerta: number;
   valor_maximo_alerta: number;
   topic: string | null;
-  
+
   // ✅ NUEVA PROPIEDAD
-  frecuencia_escaneo?: number; 
+  frecuencia_escaneo?: number;
   latestData?: LatestSensorData;
-  
-  surco: Surco;
+
+  lote: Lote;
+  surco?: Surco | null;
 }
 
 // Para los datos del dashboard
@@ -74,15 +74,24 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
-  // Ya no usamos surco único aquí si cambiamos a 1:N, pero lo dejamos por compatibilidad
-  surco?: Surco | null; 
+  lote: Lote;
   prefijoTopicos?: string;
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';
   subscripciones: Subscripcion[];
 }
 
-export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones' | 'estado'>;
+export interface CreateBrokerDto {
+  nombre: string;
+  protocolo: string;
+  host: string;
+  puerto: number;
+  usuario?: string;
+  password?: string;
+  loteId: number;
+  prefijoTopicos?: string;
+  topicosAdicionales?: string[];
+}
 
 export interface CreateSubscripcionDto {
   brokerId: number;

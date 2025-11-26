@@ -175,12 +175,12 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
     // También suscribirse a tópicos de sensores existentes (por compatibilidad)
     const sensores = await this.sensorRepo.find({
       where: {
-        surco: {
-          broker: { id: brokerId },
+        lote: {
+          brokers: { id: brokerId },
         },
         estado: 'Activo',
       },
-      relations: ['surco', 'surco.broker'],
+      relations: ['lote', 'surco'],
     });
 
     for (const sensor of sensores) {
@@ -201,17 +201,17 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
    * Se suscribe a un nuevo tópico cuando se crea un sensor
    */
   async subscribeToNewSensor(sensor: Sensor) {
-    if (!sensor.surco?.broker || !sensor.topic || sensor.estado !== 'Activo') {
+    if (!sensor.lote?.brokers || sensor.lote.brokers.length === 0 || !sensor.topic || sensor.estado !== 'Activo') {
       return;
     }
 
-    const brokerId = sensor.surco.broker.id;
-    const client = this.clients.get(brokerId);
+    // Usar el primer broker del lote
+    const broker = sensor.lote.brokers[0];
+    const client = this.clients.get(broker.id);
 
     if (!client || !client.connected) {
       // Si no hay cliente o no está conectado, reconectar
-      const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
-      if (broker && broker.estado === 'Activo') {
+      if (broker.estado === 'Activo') {
         await this.connectToBroker(broker);
       }
       return;
@@ -243,24 +243,26 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
    * Desuscribe un sensor de su tópico
    */
   async unsubscribeSensor(sensor: Sensor) {
-    if (!sensor.surco?.broker || !sensor.topic) {
+    if (!sensor.lote?.brokers || sensor.lote.brokers.length === 0 || !sensor.topic) {
       return;
     }
 
-    const brokerId = sensor.surco.broker.id;
-    const client = this.clients.get(brokerId);
+    // Desuscribir de todos los brokers del lote
+    for (const broker of sensor.lote.brokers) {
+      const client = this.clients.get(broker.id);
 
-    if (!client || !client.connected) {
-      return;
-    }
-
-    client.unsubscribe(sensor.topic, (err) => {
-      if (err) {
-        this.logger.error(`Error desuscribiéndose de [${sensor.topic}]: ${err.message}`);
-      } else {
-        this.logger.log(`✅ Desuscrito de tópico: [${sensor.topic}] (Sensor: ${sensor.nombre})`);
+      if (!client || !client.connected) {
+        continue;
       }
-    });
+
+      client.unsubscribe(sensor.topic, (err) => {
+        if (err) {
+          this.logger.error(`Error desuscribiéndose de [${sensor.topic}] en broker ${broker.nombre}: ${err.message}`);
+        } else {
+          this.logger.log(`✅ Desuscrito de tópico: [${sensor.topic}] (Sensor: ${sensor.nombre}, Broker: ${broker.nombre})`);
+        }
+      });
+    }
   }
 
   /**

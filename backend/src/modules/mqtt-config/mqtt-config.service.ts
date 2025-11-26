@@ -5,6 +5,7 @@ import * as mqtt from 'mqtt';
 import { Broker } from './entities/broker.entity';
 import { Subscripcion } from './entities/subscripcion.entity';
 import { Sensor } from '../sensores/entities/sensore.entity';
+import { Lote } from '../lotes/entities/lote.entity';
 import { CreateBrokerDto } from './dto/create-broker.dto';
 import { CreateSubscripcionDto } from './dto/create-subscripcion.dto';
 import { SensoresService } from '../sensores/sensores.service';
@@ -29,12 +30,16 @@ export class MqttConfigService {
 
   // --- Lógica de Brokers ---
   async createBroker(dto: CreateBrokerDto): Promise<Broker> {
-    const nuevoBroker = this.brokerRepo.create(dto);
+    const { loteId, ...brokerData } = dto;
+    const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: loteId } });
+    if (!lote) throw new NotFoundException(`Lote con ID ${loteId} no encontrado.`);
+
+    const nuevoBroker = this.brokerRepo.create({ ...brokerData, lote });
     const brokerGuardado = await this.brokerRepo.save(nuevoBroker);
 
-    // Crear sensores automáticamente para los tópicos si hay surcoId
-    if (dto.surcoId && dto.topicosAdicionales && dto.topicosAdicionales.length > 0) {
-      await this.crearSensoresParaTopicos(brokerGuardado, dto.surcoId, dto.topicosAdicionales);
+    // Crear sensores automáticamente para los tópicos si hay loteId
+    if (dto.topicosAdicionales && dto.topicosAdicionales.length > 0) {
+      await this.crearSensoresParaTopicos(brokerGuardado, loteId, dto.topicosAdicionales);
     }
 
     // Conectar al broker para recibir datos en tiempo real
@@ -52,7 +57,10 @@ export class MqttConfigService {
   }
 
   async findOneBroker(id: number): Promise<Broker> {
-    const broker = await this.brokerRepo.findOneBy({ id });
+    const broker = await this.brokerRepo.findOne({
+      where: { id },
+      relations: ['lote'],
+    });
     if (!broker) {
       throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
     }
@@ -75,12 +83,18 @@ export class MqttConfigService {
   }
 
   async deleteBroker(id: number): Promise<void> {
-    const broker = await this.findOneBroker(id);
+    const broker = await this.brokerRepo.findOne({
+      where: { id },
+      relations: ['lote'],
+    });
+    if (!broker) {
+      throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
+    }
 
     // Eliminar sensores asociados al broker
     const sensores = await this.sensorRepo.find({
-      where: { surco: { broker: { id } } },
-      relations: ['surco'],
+      where: { lote: { id: broker.lote.id } },
+      relations: ['lote'],
     });
 
     for (const sensor of sensores) {
@@ -91,14 +105,20 @@ export class MqttConfigService {
   }
 
   async updateBrokerEstado(id: number, estado: 'Activo' | 'Inactivo'): Promise<Broker> {
-    const broker = await this.findOneBroker(id);
+    const broker = await this.brokerRepo.findOne({
+      where: { id },
+      relations: ['lote'],
+    });
+    if (!broker) {
+      throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
+    }
     broker.estado = estado;
     const updated = await this.brokerRepo.save(broker);
 
     // Cambiar estado de sensores asociados
     const sensores = await this.sensorRepo.find({
-      where: { surco: { broker: { id } } },
-      relations: ['surco'],
+      where: { lote: { id: broker.lote.id } },
+      relations: ['lote'],
     });
 
     for (const sensor of sensores) {
@@ -183,7 +203,7 @@ export class MqttConfigService {
   }
 
   // --- Método auxiliar para crear sensores ---
-  public async crearSensoresParaTopicos(broker: Broker, surcoId: number, topicos: string[]): Promise<void> {
+  public async crearSensoresParaTopicos(broker: Broker, loteId: number, topicos: string[]): Promise<void> {
     const topicDefaults = {
       'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 }, // 1500-50000 lux
       'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },
@@ -197,7 +217,7 @@ export class MqttConfigService {
 
       const sensorDto: CreateSensoreDto = {
         nombre: defaults.nombre,
-        surcoId: surcoId,
+        loteId: loteId,
         fecha_instalacion: new Date().toISOString().split('T')[0], // Fecha actual en formato YYYY-MM-DD
         valor_minimo_alerta: defaults.min,
         valor_maximo_alerta: defaults.max,
