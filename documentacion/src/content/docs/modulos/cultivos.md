@@ -264,8 +264,8 @@ file: [Archivo de imagen]
 
 ## DTOs y Validaciones
 
-### 📝 CreateCultivoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateCultivoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | - |
 | `cantidad` | `number` | `@IsInt` | - |

@@ -309,8 +309,8 @@ title: "Módulo Producciones"
 
 ## DTOs y Validaciones
 
-### 📝 CreateProduccioneDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+### CreateProduccioneDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `cantidad` | `number` | `@IsInt, @IsPositive, @IsNotEmpty` | La cantidad debe ser un número entero positivo. La cantidad es obligatoria. |
 | `fecha` | `string` | `@IsDateString, @IsNotEmpty` | La fecha debe tener un formato válido (YYYY-MM-DD). La fecha es obligatoria. |

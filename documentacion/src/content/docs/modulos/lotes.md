@@ -278,8 +278,8 @@ title: "Módulo Lotes"
 
 ## DTOs y Validaciones
 
-### 📝 CreateLoteDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateLoteDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | El nombre del lote es requerido. |
 | `area` | `number` | `@IsNumber, @IsNotEmpty, @Max(3000)` | El área es requerida. El área del lote no puede superar los 3000 m². |
@@ -289,8 +289,8 @@ title: "Módulo Lotes"
 ### UpdateLoteDto
 Similar a CreateLoteDto.
 
-### 🔄 UpdateLoteEstadoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateLoteEstadoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | El estado debe ser "Activo", "Inactivo" o "En preparación". |
 

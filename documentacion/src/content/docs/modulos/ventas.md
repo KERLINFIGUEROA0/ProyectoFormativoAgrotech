@@ -181,8 +181,8 @@ title: "Módulo Ventas"
 
 ## DTOs y Validaciones
 
-### 📝 CreateVentaDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateVentaDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `descripcion` | `string` | `@IsString, @IsOptional` | - |
 | `monto` | `number` | `@IsNumber, @IsNotEmpty` | El monto (precio unitario) es obligatorio. |

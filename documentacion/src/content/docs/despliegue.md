@@ -67,9 +67,6 @@ cd backend
 # Levantar servicios de base de datos
 docker-compose up -d
 
-# Verificar que los contenedores estén corriendo
-docker ps
-
 # Ejecutar seed para crear usuario administrador
 npm run seed
 
@@ -109,7 +106,7 @@ npm run dev
 ### Paso 4: Ejecutar Documentación (Opcional)
 ```bash
 # Navegar al directorio de documentación
-cd docu
+cd documentacion
 
 # Instalar dependencias
 npm install
@@ -120,35 +117,6 @@ npm run dev
 
 **Verificación**: `http://localhost:4321` debería mostrar la documentación completa.
 
-## 🐳 Despliegue con Docker (Producción)
-
-### Construir Imágenes
-```bash
-# Backend
-cd backend
-docker build -t agrotech-backend:latest .
-
-# Frontend
-cd frontend
-docker build -t agrotech-frontend:latest .
-```
-
-### Ejecutar con Docker Compose (Completo)
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-services:
-  # Base de Datos
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: prod_user
-      POSTGRES_PASSWORD: prod_password
-      POSTGRES_DB: agrotech_prod
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   # Cache
   redis:
@@ -278,7 +246,6 @@ graph TB
 cd backend
 npm run start:dev          # Desarrollo con hot reload
 npm run build             # Build de producción
-npm run test              # Ejecutar tests
 npm run seed              # Poblar base de datos
 ```
 
@@ -296,11 +263,6 @@ npm run lint              # Verificar código
 # Desarrollo
 docker-compose up -d       # Levantar DB y Redis
 docker-compose down        # Detener servicios
-
-# Producción
-docker-compose -f docker-compose.prod.yml up -d
-docker-compose -f docker-compose.prod.yml down
-```
 
 ## 🚨 Solución de Problemas
 

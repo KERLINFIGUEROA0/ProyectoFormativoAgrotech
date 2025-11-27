@@ -572,8 +572,8 @@ files: [instrucciones.pdf, plano_suelo.jpg]
 
 ## DTOs y Validaciones
 
-### 📝 CreateActividadDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+### CreateActividadDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `titulo` | `string` | - | - |
 | `fecha` | `Date` | - | - |
@@ -586,17 +586,17 @@ files: [instrucciones.pdf, plano_suelo.jpg]
 | `horas` | `number` | `@IsOptional, @Min(0)` | - |
 | `tarifaHora` | `number` | `@IsOptional, @Min(0)` | - |
 
-### 📝 MaterialUsadoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  MaterialUsadoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `materialId` | `number` | `@IsNumber, @IsPositive` | - |
 | `cantidadUsada` | `number` | `@IsNumber, @IsPositive` | - |
 
-### 📝 UpdateActividadDto
+###  UpdateActividadDto
 Similar a CreateActividadDto con campos opcionales.
 
-### 📝 AsignarActividadDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  AsignarActividadDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `cultivo` | `number` | - | - |
 | `titulo` | `string` | - | - |

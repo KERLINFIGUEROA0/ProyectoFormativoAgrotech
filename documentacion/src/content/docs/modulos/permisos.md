@@ -226,13 +226,13 @@ Los permisos siguen una convención de nomenclatura jerárquica:
 
 ## DTOs y Validaciones
 
-### 📝 CreatePermisoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreatePermisoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty, @MaxLength(50)` | El nombre del permiso es obligatorio. El nombre no puede tener más de 50 caracteres. |
 | `descripcion` | `string` | `@IsString, @IsOptional, @MaxLength(150)` | La descripción no puede tener más de 150 caracteres. |
 
-### 📝 UpdatePermisoDto
+###  UpdatePermisoDto
 Similar a CreatePermisoDto con campos opcionales.
 
 ## Sistema de Control de Acceso

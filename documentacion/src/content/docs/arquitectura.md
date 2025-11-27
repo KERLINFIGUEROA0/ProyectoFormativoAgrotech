@@ -483,21 +483,21 @@ sequenceDiagram
 ## Diagramas de Casos de Uso - Sistema AgroTech
 
 ### Actores del Sistema
-- **👤 Administrador**: Control total del sistema, gestión de usuarios y configuración
-- **👨‍🌾 Agricultor**: Gestión operativa de cultivos, lotes, producciones y ventas
-- **👨‍🎓 Aprendiz**: Participación en actividades de aprendizaje y formación
-- **📡 Sistema IoT**: Sensores y dispositivos que envían datos automáticamente
+- **Administrador**: Control total del sistema, gestión de usuarios y configuración
+- **Agricultor**: Gestión operativa de cultivos, lotes, producciones y ventas
+- **Aprendiz**: Participación en actividades de aprendizaje y formación
+- **Sistema IoT**: Sensores y dispositivos que envían datos automáticamente
 
 ---
 
-### 📋 Diagrama 1: Gestión de Usuarios y Seguridad
+### Diagrama 1: Gestión de Usuarios y Seguridad
 
 ```mermaid
 graph TD
     subgraph "Actores"
-        A1[👤 Administrador]
-        A2[👨‍🌾 Agricultor]
-        A3[👨‍🎓 Aprendiz]
+        A1[Administrador]
+        A2[Agricultor]
+        A3[Aprendiz]
     end
 
     subgraph "Gestión de Usuarios"
@@ -548,13 +548,13 @@ graph TD
 
 ---
 
-### 🌾 Diagrama 2: Sistema Agrícola y Producción
+### Diagrama 2: Sistema Agrícola y Producción
 
 ```mermaid
 graph TD
     subgraph "Actores"
-        A1[👤 Administrador]
-        A2[👨‍🌾 Agricultor]
+        A1[Administrador]
+        A2[Agricultor]
     end
 
     subgraph "Gestión de Terrenos"
@@ -624,14 +624,14 @@ graph TD
 
 ---
 
-### 📡 Diagrama 3: Sistema IoT y Monitoreo
+### Diagrama 3: Sistema IoT y Monitoreo
 
 ```mermaid
 graph TD
     subgraph "Actores"
-        A1[👤 Administrador]
-        A2[👨‍🌾 Agricultor]
-        A3[📡 Sistema IoT]
+        A1[Administrador]
+        A2[Agricultor]
+        A3[Sistema IoT]
     end
 
     subgraph "Configuración IoT"
@@ -696,14 +696,14 @@ graph TD
 
 ---
 
-### 📦 Diagrama 4: Inventario y Actividades
+### Diagrama 4: Inventario y Actividades
 
 ```mermaid
 graph TD
     subgraph "Actores"
-        A1[👤 Administrador]
-        A2[👨‍🌾 Agricultor]
-        A3[👨‍🎓 Aprendiz]
+        A1[Administrador]
+        A2[Agricultor]
+        A3[Aprendiz]
     end
 
     subgraph "Gestión de Inventario"
@@ -781,13 +781,13 @@ graph TD
 
 ---
 
-### 💰 Diagrama 5: Ventas, Finanzas y Fitosanitario
+### Diagrama 5: Ventas, Finanzas y Fitosanitario
 
 ```mermaid
 graph TD
     subgraph "Actores"
-        A1[👤 Administrador]
-        A2[👨‍🌾 Agricultor]
+        A1[ Administrador]
+        A2[ Agricultor]
     end
 
     subgraph "Sistema Comercial"
@@ -858,19 +858,6 @@ graph TD
     class A2 agricultor
 ```
 
----
-
-### 📊 Resumen de Funcionalidades por Actor
-
-| Funcionalidad | 👤 Admin | 👨‍🌾 Agricultor | 👨‍🎓 Aprendiz | 📡 IoT |
-|---------------|----------|------------------|---------------|--------|
-| **Gestión de Usuarios** | ✅ Completo | ⚠️ Básico | ⚠️ Perfil | ❌ |
-| **Sistema Agrícola** | ✅ Completo | ✅ Completo | ❌ | ❌ |
-| **IoT y Sensores** | ✅ Completo | ⚠️ Monitoreo | ❌ | ✅ Automático |
-| **Inventario** | ✅ Completo | ⚠️ Consulta/Edición | ❌ | ❌ |
-| **Actividades** | ✅ Completo | ⚠️ Creación/Asignación | ⚠️ Respuestas | ❌ |
-| **Ventas/Finanzas** | ✅ Completo | ✅ Completo | ❌ | ❌ |
-| **Fitosanitario** | ✅ Completo | ✅ Completo | ❌ | ⚠️ Alertas |
 
 ## Diagrama ER Detallado - Todas las Entidades
 
@@ -1168,38 +1155,38 @@ erDiagram
 
 #### **Entidades y Atributos Principales:**
 
-**👤 Usuarios y Seguridad:**
+**Usuarios y Seguridad:**
 - `Usuario`: Información personal, credenciales, rol
 - `Tipo_Usuario`: Roles (Admin, Agricultor, Instructor, Aprendiz)
 - `Permiso`: Accesos específicos del sistema
 - `Usuario_Permisos`: Relación muchos-muchos
 - `Ficha`: Información académica
 
-**🌍 Geografía Agrícola:**
+**Geografía Agrícola:**
 - `Lote`: Áreas de terreno con coordenadas GPS
 - `Surco`: Subdivisiones dentro de lotes
 - `Cultivo`: Plantaciones específicas
 - `Tipo_Cultivo`: Catálogo de tipos de cultivos
 
-**🌾 Producción y Ventas:**
+**Producción y Ventas:**
 - `Produccione`: Cosechas y rendimientos
 - `Venta`: Transacciones comerciales
 - `Gastos_Produccion`: Costos asociados
 
-**📦 Inventario:**
+**Inventario:**
 - `Materiale`: Insumos agrícolas con categorías
 
-**🔧 Actividades:**
+**Actividades:**
 - `Actividade`: Trabajos realizados
 - `Actividad_Materiale`: Consumo de materiales
 
-**📡 IoT:**
+**IoT:**
 - `Sensore`: Dispositivos de medición
 - `Tipo_Sensor`: Clasificación de sensores
 - `Broker`: Servidores MQTT
 - `Subscripcion`: Tópicos suscritos
 
-**🩺 Fitosanitario:**
+**Fitosanitario:**
 - `Tratamiento`: Soluciones aplicadas
 - `Epa`: Problemas detectados
 - `Cultivos_Epa`: Relaciones cultivo-problema

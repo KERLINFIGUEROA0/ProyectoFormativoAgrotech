@@ -205,8 +205,8 @@ title: "Módulo Sensores"
 
 ## DTOs y Validaciones
 
-### 📝 CreateSensoreDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateSensoreDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | - |
 | `surcoId` | `number` | `@IsNumber, @IsNotEmpty` | - |
@@ -217,8 +217,8 @@ title: "Módulo Sensores"
 | `topic` | `string` | `@IsString, @IsNotEmpty` | - |
 | `broker` | `BrokerDto` | `@IsObject, @ValidateNested, @Type(() => BrokerDto), @IsOptional` | - |
 
-### 📝 UpdateSensoreDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateSensoreDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsOptional, @IsString` | - |
 | `surcoId` | `number` | `@IsOptional, @IsNumber` | - |
@@ -228,8 +228,8 @@ title: "Módulo Sensores"
 | `estado` | `string` | `@IsOptional, @IsString` | - |
 | `topic` | `string` | `@IsOptional, @IsString` | - |
 
-### 📝 UpdateSensoreEstadoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateSensoreEstadoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'Mantenimiento'])` | - |
 
