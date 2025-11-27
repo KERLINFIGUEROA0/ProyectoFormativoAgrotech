@@ -8,14 +8,14 @@ title: "Despliegue"
 
 El proyecto **AgroTech** es una aplicación web completa que consta de tres componentes principales:
 
-- **📊 Frontend**: Interfaz de usuario desarrollada con React + Vite
-- **🔧 Backend**: API REST desarrollada con NestJS + TypeORM
-- **🗄️ Base de Datos**: PostgreSQL con Redis para cache
+- **Frontend**: Interfaz de usuario desarrollada con React + Vite
+- **Backend**: API REST desarrollada con NestJS + TypeORM
+- **Base de Datos**: PostgreSQL con Redis para cache
 
 ## Requisitos del Sistema
 
 ### Requisitos Mínimos:
-- **Node.js** 18+ y npm
+- **Node.js** v22.20.0 y npm
 - **Docker** y Docker Compose
 - **Git** para control de versiones
 - **4GB RAM** mínimo
@@ -28,7 +28,7 @@ El proyecto **AgroTech** es una aplicación web completa que consta de tres comp
 - **6379**: Redis
 - **4321**: Documentación (Starlight)
 
-## 🚀 Despliegue Completo del Sistema
+##  Despliegue Completo del Sistema
 
 ### Paso 1: Clonar el Repositorio
 ```bash
@@ -165,7 +165,7 @@ volumes:
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-## 📊 Diagrama de Despliegue Completo
+##  Diagrama de Despliegue Completo
 
 ```mermaid
 graph TB
@@ -239,7 +239,7 @@ graph TB
 - **Persistencia**: Configurado para desarrollo/producción
 - **TTL**: Time-to-live para expiración automática
 
-## 🔧 Comandos Útiles de Desarrollo
+##  Comandos Útiles de Desarrollo
 
 ### Backend
 ```bash
@@ -264,7 +264,7 @@ npm run lint              # Verificar código
 docker-compose up -d       # Levantar DB y Redis
 docker-compose down        # Detener servicios
 
-## 🚨 Solución de Problemas
+##  Solución de Problemas
 
 ### Puerto ya en uso
 ```bash
@@ -299,7 +299,7 @@ npm install
 cat .env
 ```
 
-## 📈 Monitoreo y Logs
+##  Monitoreo y Logs
 
 ### Ver logs en tiempo real
 ```bash
@@ -318,7 +318,7 @@ docker-compose logs -f
 - **Frontend**: Verificar carga inicial en navegador
 - **Database**: Verificar conexión en logs del backend
 
-## 🔒 Configuración de Seguridad
+##  Configuración de Seguridad
 
 ### Variables Sensibles
 - `JWT_SECRET`: Cambiar en producción
@@ -330,7 +330,7 @@ docker-compose logs -f
 - Usar variables de entorno seguras
 - Implementar rate limiting
 
-## 📝 Checklist de Despliegue
+##  Checklist de Despliegue
 
 - [ ] Repositorio clonado
 - [ ] Variables de entorno configuradas
@@ -342,7 +342,7 @@ docker-compose logs -f
 - [ ] Funcionalidades principales probadas
 - [ ] Usuario administrador creado
 
-## 🎯 Próximos Pasos
+##  Próximos Pasos
 
 1. **Configurar dominio y SSL**
 2. **Implementar CI/CD pipeline**
