@@ -83,6 +83,15 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   const [materialesDisponibles, setMaterialesDisponibles] = useState<Material[]>([]);
   // --- FIN ESTADO ---
 
+  // Función para calcular el stock disponible
+  const calcularStockDisponible = (material: Material): number => {
+    if (material.tipoConsumo === 'consumible' && material.cantidadPorUnidad) {
+      const openPackageAdjustment = material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined ? 1 : 0;
+      return (material.cantidad - openPackageAdjustment) * material.cantidadPorUnidad + (material.cantidadRestanteEnUnidadActual || 0);
+    }
+    return material.cantidad;
+  };
+
   // ... (useMemo de fichasUnicas y usuariosFiltrados sin cambios) ...
   const fichasUnicas = useMemo(() => {
     // ...
@@ -191,15 +200,10 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     // Validación de stock total
     const cantidadTotalRequerida = cantidad; // Cantidad total para la actividad
 
-    // Calcular stock disponible total considerando unidades
-    let stockDisponibleTotal = material.cantidad;
-    if (material.cantidadPorUnidad && material.cantidadPorUnidad > 0) {
-      // Si tiene cantidad por unidad, calcular stock total disponible
-      stockDisponibleTotal = material.cantidad * material.cantidadPorUnidad;
-    }
+    const stockDisponibleTotal = calcularStockDisponible(material);
 
     if (cantidadTotalRequerida > stockDisponibleTotal) {
-      const unidadTexto = material.medidasDeContenido || 'unidades';
+      const unidadTexto = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
       toast.error(
         `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ${unidadTexto}. Disponible: ${stockDisponibleTotal} ${unidadTexto}`,
       );
@@ -213,8 +217,6 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       return;
     }
 
-    const esConsumibleMat = material.tipoConsumo === 'consumible';
-    const totalDisponibleMat = esConsumibleMat ? material.cantidad * (material.cantidadPorUnidad || 1) : material.cantidad;
     setFormData(prev => ({
         ...prev,
         materiales: [
@@ -223,7 +225,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 materialId: material.id,
                 nombre: material.nombre,
                 cantidadUsada: cantidad,
-                stockDisponible: totalDisponibleMat,
+                stockDisponible: calcularStockDisponible(material),
             }
         ],
         materialActual: '',
@@ -358,10 +360,8 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                   >
                     <option value="">Seleccionar...</option>
                     {materialesDisponibles.map((m) => {
-                      const stockTotal = m.cantidadPorUnidad && m.cantidadPorUnidad > 0
-                        ? m.cantidad * m.cantidadPorUnidad
-                        : m.cantidad;
-                      const unidadTexto = m.medidasDeContenido || 'unidades';
+                      const stockTotal = calcularStockDisponible(m);
+                      const unidadTexto = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
                       return (
                         <option key={m.id} value={m.id}>
                           {m.nombre} (Disp: {stockTotal} {unidadTexto})
