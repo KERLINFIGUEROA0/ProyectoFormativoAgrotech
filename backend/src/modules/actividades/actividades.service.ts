@@ -277,6 +277,16 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
+
+          // Registrar movimiento de salida
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadUsada,
+            material.id,
+            `Salida por creación de actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: saved,
             material: material,
@@ -484,6 +494,16 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
+
+          // Registrar movimiento de salida
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadUsada,
+            material.id,
+            `Salida por actualización de actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
           const nuevaUnion = actMaterialRepo.create({
             actividad: saved,
             material: material,
