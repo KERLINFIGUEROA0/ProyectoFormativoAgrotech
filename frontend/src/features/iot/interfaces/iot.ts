@@ -74,7 +74,7 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
-  lote: Lote;
+  lotes: Lote[];
   prefijoTopicos?: string;
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';

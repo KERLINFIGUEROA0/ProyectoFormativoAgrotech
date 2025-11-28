@@ -34,7 +34,7 @@ export class MqttConfigService {
     const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: loteId } });
     if (!lote) throw new NotFoundException(`Lote con ID ${loteId} no encontrado.`);
 
-    const nuevoBroker = this.brokerRepo.create({ ...brokerData, lote });
+    const nuevoBroker = this.brokerRepo.create({ ...brokerData, lotes: [lote] });
     const brokerGuardado = await this.brokerRepo.save(nuevoBroker);
 
     // Crear sensores automáticamente para los tópicos si hay loteId
@@ -59,7 +59,7 @@ export class MqttConfigService {
   async findOneBroker(id: number): Promise<Broker> {
     const broker = await this.brokerRepo.findOne({
       where: { id },
-      relations: ['lote'],
+      relations: ['lotes'],
     });
     if (!broker) {
       throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
@@ -85,20 +85,22 @@ export class MqttConfigService {
   async deleteBroker(id: number): Promise<void> {
     const broker = await this.brokerRepo.findOne({
       where: { id },
-      relations: ['lote'],
+      relations: ['lotes'],
     });
     if (!broker) {
       throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
     }
 
-    // Eliminar sensores asociados al broker
-    const sensores = await this.sensorRepo.find({
-      where: { lote: { id: broker.lote.id } },
-      relations: ['lote'],
-    });
+    // Eliminar sensores asociados a los lotes del broker
+    for (const lote of broker.lotes) {
+      const sensores = await this.sensorRepo.find({
+        where: { lote: { id: lote.id } },
+        relations: ['lote'],
+      });
 
-    for (const sensor of sensores) {
-      await this.sensoresService.remove(sensor.id);
+      for (const sensor of sensores) {
+        await this.sensoresService.remove(sensor.id);
+      }
     }
 
     await this.brokerRepo.remove(broker);
@@ -107,7 +109,7 @@ export class MqttConfigService {
   async updateBrokerEstado(id: number, estado: 'Activo' | 'Inactivo'): Promise<Broker> {
     const broker = await this.brokerRepo.findOne({
       where: { id },
-      relations: ['lote'],
+      relations: ['lotes'],
     });
     if (!broker) {
       throw new NotFoundException(`Broker con ID ${id} no encontrado.`);
@@ -115,15 +117,17 @@ export class MqttConfigService {
     broker.estado = estado;
     const updated = await this.brokerRepo.save(broker);
 
-    // Cambiar estado de sensores asociados
-    const sensores = await this.sensorRepo.find({
-      where: { lote: { id: broker.lote.id } },
-      relations: ['lote'],
-    });
+    // Cambiar estado de sensores asociados a los lotes del broker
+    for (const lote of broker.lotes) {
+      const sensores = await this.sensorRepo.find({
+        where: { lote: { id: lote.id } },
+        relations: ['lote'],
+      });
 
-    for (const sensor of sensores) {
-      sensor.estado = estado === 'Activo' ? 'Activo' : 'Inactivo';
-      await this.sensorRepo.save(sensor);
+      for (const sensor of sensores) {
+        sensor.estado = estado === 'Activo' ? 'Activo' : 'Inactivo';
+        await this.sensorRepo.save(sensor);
+      }
     }
 
     // Activar/desactivar conexión MQTT

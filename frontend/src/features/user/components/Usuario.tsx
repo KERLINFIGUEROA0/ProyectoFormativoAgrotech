@@ -1,5 +1,5 @@
 import { type ReactElement, useState, useRef, useEffect } from "react";
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Select, SelectItem } from "@heroui/react";
 import avatarImg from "../../../assets/usuario.png";
 import type { UsuarioData, UpdatePerfilDto } from "../../../types/auth";
 import { obtenerPerfil, editarPerfil, uploadProfilePic, getProfilePic } from "../../auth/api/auth";
@@ -215,33 +215,39 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
               <h3 className="text-xl font-semibold text-gray-800">Información Personal</h3>
 
               {!isEditing && (
-                <button
+                <Button
                   onClick={handleEdit}
-                  className="inline-flex items-center gap-2 bg-[#4CAF50] hover:bg-[#45a049] text-white text-sm px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  isIconOnly
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   title="Editar perfil"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="white" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700">
-                  Tipo de Identificación
-                </label>
-                <select
-                  className="w-full border border-gray-200 rounded-xl p-3 text-sm disabled:bg-gray-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  value={tempForm.tipo}
-                  onChange={(e) => handleChange("tipo", e.target.value)}
-                  disabled={!isEditing}
-                >
-                  <option>Cédula de Ciudadanía</option>
-                  <option>Tarjeta de Identidad</option>
-                </select>
-              </div>
+              <Select
+                label="Tipo de Identificación"
+                placeholder="Selecciona el tipo"
+                selectedKeys={new Set([tempForm.tipo])}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  handleChange("tipo", selected as string);
+                }}
+                isDisabled={!isEditing}
+                className="text-sm"
+                classNames={{
+                  trigger: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500 bg-white",
+                  label: "text-sm font-semibold text-gray-700"
+                }}
+              >
+                <SelectItem key="Cédula de Ciudadanía">Cédula de Ciudadanía</SelectItem>
+                <SelectItem key="Tarjeta de Identidad">Tarjeta de Identidad</SelectItem>
+              </Select>
 
               <Input
                 label="Número de Identificación"
@@ -307,18 +313,21 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
 
             {isEditing && (
               <div className="flex justify-end gap-3 mt-6">
-                <button
+                <Button
                   onClick={handleCancel}
-                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
+                  color="default"
+                  variant="light"
+                  className="font-medium"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
-                  className="px-6 py-2 bg-[#4CAF50] hover:bg-[#45a049] text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+                  color="primary"
+                  className="font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                 >
                   Guardar Cambios
-                </button>
+                </Button>
               </div>
             )}
 

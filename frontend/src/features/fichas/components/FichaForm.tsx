@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactElement } from 'react';
-import { Input } from "@heroui/react";
+import { Input, Button } from "@heroui/react";
 import type { FichaForm } from '../interfaces/fichas';
 
 interface FichaFormProps {
@@ -19,7 +19,6 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
 
   const handleFormChange = (k: keyof FichaForm, v: string) => {
     if (k === "id_ficha") {
-      // Solo permitir números
       const digits = String(v).replace(/\D+/g, "");
       setForm((s) => ({ ...s, [k]: digits }));
       return;
@@ -55,19 +54,19 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
     <>
       <div className="space-y-4">
         {/* Información de la Ficha */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
-          <h4 className="text-sm font-semibold text-green-900 mb-4 flex items-center gap-2">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 md:p-4 rounded-lg border border-green-100">
+          <h4 className="text-sm font-semibold text-green-900 mb-3 md:mb-4 flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             Información de la Ficha
           </h4>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nombre de la Ficha
               </label>
               <Input
                 label=""
-                placeholder="Ej: Ficha de Desarrollo Web"
+                placeholder="Ej: Pae o Produccion Agropecuaria"
                 value={String(form.nombre ?? "")}
                 onChange={(e) => handleFormChange('nombre', e.target.value)}
                 className="w-full"
@@ -104,19 +103,24 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
-          <button
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-3 border-t border-gray-200">
+          <Button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+            color="default"
+            variant="light"
+            size="sm"
+            className="w-full sm:w-auto"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={validateAndSave}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+            color="primary"
+            size="sm"
+            className="w-full sm:w-auto"
           >
             {editingId != null ? 'Actualizar Ficha' : 'Crear Ficha'}
-          </button>
+          </Button>
         </div>
       </div>
     </>

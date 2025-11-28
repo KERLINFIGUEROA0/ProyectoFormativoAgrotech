@@ -9,11 +9,12 @@ interface BrokerFormModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   broker?: Broker | null;
+  brokers?: Broker[]; // Lista de brokers para selección
 }
 
 const defaultTopics = ['luz', 'temperatura', 'humedad', 'humedad_suelo'];
 
-export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: BrokerFormModalProps) {
+export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers }: BrokerFormModalProps) {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [surcos, setSurcos] = useState<Surco[]>([]);
   const [surcosFiltrados, setSurcosFiltrados] = useState<Surco[]>([]);
@@ -25,6 +26,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
     humedad_suelo: true,
   });
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [showBrokerList, setShowBrokerList] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     protocolo: 'mqtt://',
@@ -53,14 +55,33 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker }: 
       };
       cargarDatos();
 
+      // Determinar si mostrar lista de brokers o formulario
+      if (!broker && brokers && brokers.length > 0) {
+        setShowBrokerList(true);
+      } else {
+        setShowBrokerList(false);
+      }
+
       // Si hay broker para editar, cargar sus datos
       if (broker) {
+        // Determinar el loteId - puede venir como array lotes
+        let loteId = '';
+        if (broker.lotes && broker.lotes.length > 0 && broker.lotes[0].id) {
+          loteId = broker.lotes[0].id.toString();
+        } else if ((broker as any).loteId) {
+          loteId = (broker as any).loteId.toString();
+        } else {
+          // Si no hay lote, mostrar error y usar valor vacío
+          console.error('Broker no tiene información de lote asociada:', broker);
+          loteId = '';
+        }
+
         setFormData({
           nombre: broker.nombre,
           protocolo: broker.protocolo,
           host: broker.host,
           puerto: broker.puerto.toString(),
-          loteId: broker.lote.id.toString(),
+          loteId: loteId,
           surcoId: '',
           prefijoTopicos: broker.prefijoTopicos || '',
           usuario: broker.usuario || '',

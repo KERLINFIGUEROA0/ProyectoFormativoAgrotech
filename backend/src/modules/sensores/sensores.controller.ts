@@ -70,4 +70,13 @@ export class SensoresController {
     const sensores = await this.sensoresService.findByCultivo(cultivoId);
     return { success: true, data: sensores };
   }
+
+  /**
+   * Sincroniza sensores para un lote basado en los tópicos de su broker
+   */
+  @Post('sincronizar-lote/:loteId')
+  async sincronizarSensoresLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const result = await this.sensoresService.sincronizarSensoresLote(loteId);
+    return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
+  }
 }

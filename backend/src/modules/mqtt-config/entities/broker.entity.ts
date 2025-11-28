@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 import { Subscripcion } from './subscripcion.entity';
 import { Lote } from '../../lotes/entities/lote.entity';
 
@@ -34,9 +34,13 @@ export class Broker {
   @Column({ type: 'varchar', length: 10, default: 'Activo' })
   estado: 'Activo' | 'Inactivo';
 
-  @ManyToOne(() => Lote, (lote) => lote.brokers, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'loteId' })
-  lote: Lote;
+  @ManyToMany(() => Lote, (lote) => lote.brokers)
+  @JoinTable({
+    name: 'lote_brokers',
+    joinColumn: { name: 'brokerId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'loteId', referencedColumnName: 'id' }
+  })
+  lotes: Lote[];
 
   @OneToMany(() => Subscripcion, (sub) => sub.broker, {
     cascade: true,

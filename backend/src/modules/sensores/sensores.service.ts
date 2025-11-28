@@ -9,6 +9,7 @@ import { Lote } from '../lotes/entities/lote.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
 import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
 import { MqttClientService } from '../mqtt-config/mqtt-client.service';
+import { MqttConfigService } from '../mqtt-config/mqtt-config.service';
 
 @Injectable()
 export class SensoresService {
@@ -23,6 +24,8 @@ export class SensoresService {
     private readonly infoSensorService: InformacionSensorService,
     @Inject(forwardRef(() => MqttClientService))
     private readonly mqttClientService: MqttClientService,
+    @Inject(forwardRef(() => MqttConfigService))
+    private readonly mqttConfigService: MqttConfigService,
   ) {}
 
 
@@ -62,7 +65,7 @@ export class SensoresService {
        });
 
        // Enviar a todos los brokers del lote
-       const brokers = await this.brokerRepo.find({ where: { lote: { id: sensor.lote.id } } });
+       const brokers = await this.brokerRepo.find({ where: { lotes: { id: sensor.lote.id } } });
        for (const broker of brokers) {
          try {
            await this.mqttClientService.publishToBroker(
@@ -121,7 +124,7 @@ export class SensoresService {
           protocolo: dtoBroker.protocolo,
           usuario: dtoBroker.usuario,
           password: dtoBroker.password,
-          lote: lote,
+          lotes: [lote],
         });
         brokerEntity = await this.brokerRepo.save(nuevoBroker);
       }
@@ -256,5 +259,42 @@ export class SensoresService {
       },
       relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
     });
+  }
+
+  /**
+   * Sincroniza sensores para un lote basado en los tópicos de su broker
+   */
+  async sincronizarSensoresLote(loteId: number): Promise<{ message: string, sensoresCreados: number }> {
+    // Buscar brokers que tengan este lote
+    const brokers = await this.brokerRepo.find({
+      where: { lotes: { id: loteId } },
+      relations: ['lotes']
+    });
+
+    if (brokers.length === 0) throw new BadRequestException(`El lote #${loteId} no tiene brokers asignados`);
+
+    // Usar el primer broker
+    const broker = brokers[0];
+    const topicos = broker.topicosAdicionales;
+    if (!topicos || topicos.length === 0) {
+      throw new BadRequestException(`El Broker "${broker.nombre}" no tiene tópicos configurados`);
+    }
+
+    // Obtener sensores existentes del lote
+    const sensoresExistentes = await this.findByLote(loteId);
+    const topicosExistentes = sensoresExistentes.map(s => s.topic);
+    const topicosFaltantes = topicos.filter(t => !topicosExistentes.includes(t));
+
+    if (topicosFaltantes.length === 0) {
+      return { message: 'Todos los sensores ya están creados y sincronizados.', sensoresCreados: 0 };
+    }
+
+    // Crear sensores para tópicos faltantes
+    await this.mqttConfigService.crearSensoresParaTopicos(broker, loteId, topicosFaltantes);
+
+    return {
+      message: `Se crearon ${topicosFaltantes.length} sensores nuevos correctamente.`,
+      sensoresCreados: topicosFaltantes.length
+    };
   }
 }

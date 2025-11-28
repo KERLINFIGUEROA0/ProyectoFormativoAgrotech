@@ -1,14 +1,11 @@
  
 import { useState, useEffect, type ReactElement, useRef } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   UserPlus,
   FileSpreadsheet,
   FileUp,
   Pencil,
   UserCog,
-  X,
   ArrowUp,
   ArrowDown,
   Search,
@@ -32,6 +29,25 @@ import UserForm from "./UserForm";
 import PermissionsModal from "./PermissionsModal";
 import { api } from "../../../lib/axios";
 import PermissionWrapper from "../../../components/PermissionWrapper";
+import {
+  Input,
+  Select,
+  SelectItem,
+  Button,
+  Chip,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Switch,
+} from "@heroui/react";
 
 export default function GestionUsuarios(): ReactElement {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -50,7 +66,7 @@ export default function GestionUsuarios(): ReactElement {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(15);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "inactive"
   >("all");
@@ -531,11 +547,11 @@ export default function GestionUsuarios(): ReactElement {
 
   return (
     <>
-      <div className="bg-white shadow-xl rounded-xl p-6 w-full h-full flex flex-col animate-in fade-in-0 duration-300">
+      <div className="bg-white shadow-xl rounded-xl p-4 md:p-6 w-full h-full flex flex-col animate-in fade-in-0 duration-300">
         <div className="flex-shrink-0">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 md:mb-6 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-700">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-700">
                 Gestión de Usuarios
               </h1>
               <p className="text-sm text-gray-500 mt-1">
@@ -544,28 +560,40 @@ export default function GestionUsuarios(): ReactElement {
             </div>
             <div className="flex flex-wrap gap-2">
               <PermissionWrapper module="Usuarios" permission="Crear">
-                <button
+                <Button
                   onClick={openModal}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                  color="primary"
+                  startContent={<UserPlus size={16} />}
+                  size="sm"
+                  className="text-sm"
                 >
-                  <UserPlus size={16} /> Nuevo Usuario
-                </button>
+                  <span className="hidden sm:inline">Nuevo Usuario</span>
+                  <span className="sm:hidden">Nuevo</span>
+                </Button>
               </PermissionWrapper>
               <PermissionWrapper module="Usuarios" permission="Crear">
-                <button
+                <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                  color="success"
+                  startContent={<FileSpreadsheet size={16} />}
+                  size="sm"
+                  className="text-sm"
                 >
-                  <FileSpreadsheet size={16} /> Cargar Excel
-                </button>
+                  <span className="hidden sm:inline">Cargar Excel</span>
+                  <span className="sm:hidden">Excel</span>
+                </Button>
               </PermissionWrapper>
               <PermissionWrapper module="Usuarios" permission="Ver">
-                <button
+                <Button
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg shadow-sm text-sm transition-colors"
+                  color="default"
+                  startContent={<FileUp size={16} />}
+                  size="sm"
+                  className="text-sm"
                 >
-                  <FileUp size={16} /> Exportar
-                </button>
+                  <span className="hidden sm:inline">Exportar</span>
+                  <span className="sm:hidden">Export</span>
+                </Button>
               </PermissionWrapper>
             </div>
           </div>
@@ -576,61 +604,67 @@ export default function GestionUsuarios(): ReactElement {
             className="hidden"
             accept=".xlsx, .xls"
           />
-          <div className="flex flex-col gap-4 mb-4">
+          <div className="flex flex-col gap-3 md:gap-4 mb-4">
             {/* Filtros principales */}
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1 md:max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre, ID, rol o ficha..."
-                  className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <Input
+                type="text"
+                placeholder="Buscar por nombre, ID, rol o ficha..."
+                startContent={<Search className="text-gray-400 h-4 w-4" />}
+                className="w-full"
+                size="sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
 
-              <select
-                value={filterRol || ""}
-                onChange={(e) =>
-                  setFilterRol(e.target.value ? Number(e.target.value) : null)
-                }
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none md:w-48"
+              <Select
+                placeholder="Todos los roles"
+                className="w-full"
+                size="sm"
+                selectedKeys={filterRol ? new Set([filterRol.toString()]) : new Set()}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  setFilterRol(selected ? Number(selected) : null);
+                }}
               >
-                <option value="">Todos los roles</option>
                 {roles.map((rol) => (
-                  <option key={rol.id} value={rol.id}>
+                  <SelectItem key={rol.id.toString()}>
                     {rol.nombre}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+              </Select>
 
-              <select
-                value={filterFicha || ""}
-                onChange={(e) => setFilterFicha(e.target.value || null)}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none md:w-48"
+              <Select
+                placeholder="Todas las fichas"
+                className="w-full"
+                size="sm"
+                selectedKeys={filterFicha ? new Set([filterFicha]) : new Set()}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  setFilterFicha(selected as string || null);
+                }}
               >
-                <option value="">Todas las fichas</option>
                 {fichasOpciones.map((ficha) => (
-                  <option key={ficha.value} value={ficha.value}>
+                  <SelectItem key={ficha.value}>
                     {ficha.label}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
+              </Select>
 
-              <select
-                value={filterStatus}
-                onChange={(e) =>
-                  setFilterStatus(
-                    e.target.value as "all" | "active" | "inactive"
-                  )
-                }
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none md:w-40"
+              <Select
+                placeholder="Todos los estados"
+                className="w-full"
+                size="sm"
+                selectedKeys={new Set([filterStatus])}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as "all" | "active" | "inactive";
+                  setFilterStatus(selected);
+                }}
               >
-                <option value="all">Todos los estados</option>
-                <option value="active">Activos</option>
-                <option value="inactive">Inactivos</option>
-              </select>
+                <SelectItem key="all">Todos los estados</SelectItem>
+                <SelectItem key="active">Activos</SelectItem>
+                <SelectItem key="inactive">Inactivos</SelectItem>
+              </Select>
             </div>
 
             {/* Chips de filtros activos */}
@@ -640,267 +674,269 @@ export default function GestionUsuarios(): ReactElement {
                   Filtros activos:
                 </span>
                 {activeFilters.map((filter, index) => (
-                  <div
+                  <Chip
                     key={index}
-                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium"
+                    color="primary"
+                    variant="flat"
+                    onClose={() => {
+                      if (filter.includes("Búsqueda:")) clearFilter("search");
+                      else if (filter.includes("Estado:")) clearFilter("status");
+                      else if (filter.includes("Rol:")) clearFilter("rol");
+                      else if (filter.includes("Ficha:")) clearFilter("ficha");
+                    }}
+                    className="text-xs"
                   >
-                    <span>{filter}</span>
-                    <button
-                      onClick={() => {
-                        if (filter.includes("Búsqueda:")) clearFilter("search");
-                        else if (filter.includes("Estado:"))
-                          clearFilter("status");
-                        else if (filter.includes("Rol:")) clearFilter("rol");
-                        else if (filter.includes("Ficha:"))
-                          clearFilter("ficha");
-                      }}
-                      className="hover:bg-blue-200 rounded-full p-0.5"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
+                    {filter}
+                  </Chip>
                 ))}
-                <button
+                <Button
                   onClick={clearAllFilters}
-                  className="text-red-600 hover:text-red-800 text-xs font-medium underline"
+                  color="danger"
+                  variant="light"
+                  size="sm"
                 >
                   Limpiar todo
-                </button>
+                </Button>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex-grow overflow-x-auto relative rounded-lg border border-gray-200">
-          <table className="min-w-full text-sm border-collapse">
-            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 capitalize text-xs sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-4 text-left font-semibold whitespace-nowrap">
-                  <button
-                    onClick={() => handleSort("identificacion")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Identificación
-                    {sortField === "identificacion" &&
-                      (sortDirection === "asc" ? (
+        <div className="overflow-auto flex-grow min-h-0 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <Table aria-label="Tabla de usuarios" className="min-w-[1200px]" removeWrapper>
+            <TableHeader>
+              <TableColumn className="min-w-[110px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("identificacion")}
+                  endContent={
+                    sortField === "identificacion" ? (
+                      sortDirection === "asc" ? (
                         <ArrowUp className="h-3 w-3" />
                       ) : (
                         <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "identificacion" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-left font-semibold whitespace-nowrap">
-                  <button
-                    onClick={() => handleSort("nombre")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Nombres y Apellidos
-                    {sortField === "nombre" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "nombre" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-left font-semibold">
-                  <button
-                    onClick={() => handleSort("correo")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Correo
-                    {sortField === "correo" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "correo" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-left font-semibold">Teléfono</th>
-                <th className="px-4 py-4 text-left font-semibold">
-                  <button
-                    onClick={() => handleSort("rol")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Rol
-                    {sortField === "rol" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "rol" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-left font-semibold">
-                  <button
-                    onClick={() => handleSort("ficha")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Ficha
-                    {sortField === "ficha" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "ficha" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-center font-semibold">
-                  <button
-                    onClick={() => handleSort("estado")}
-                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                  >
-                    Estado
-                    {sortField === "estado" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                    {sortField !== "estado" && ""}
-                  </button>
-                </th>
-                <th className="px-4 py-4 text-center font-semibold">
-                  Acciones
-                </th>
-                <th className="px-4 py-4 text-center font-semibold">
-                  Permisos
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentUsuarios.map((usuario) => (
-                <tr
-                  key={usuario.id}
-                  className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 bg-white"
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
                 >
-                  <td className="px-4 py-4 whitespace-nowrap font-mono text-sm text-gray-800">
+                  ID
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[180px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("nombre")}
+                  endContent={
+                    sortField === "nombre" ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
+                >
+                  Nombre
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[180px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("correo")}
+                  endContent={
+                    sortField === "correo" ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
+                >
+                  Correo
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[120px] py-2 px-3 text-xs font-semibold">Teléfono</TableColumn>
+              <TableColumn className="min-w-[100px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("rol")}
+                  endContent={
+                    sortField === "rol" ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
+                >
+                  Rol
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[90px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("ficha")}
+                  endContent={
+                    sortField === "ficha" ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
+                >
+                  Ficha
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[90px] py-2 px-3 text-xs font-semibold">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => handleSort("estado")}
+                  endContent={
+                    sortField === "estado" ? (
+                      sortDirection === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : null
+                  }
+                  className="h-6 text-xs font-semibold p-0"
+                >
+                  Estado
+                </Button>
+              </TableColumn>
+              <TableColumn className="min-w-[100px] py-2 px-3 text-xs font-semibold">Acciones</TableColumn>
+              <TableColumn className="min-w-[80px] py-2 px-3 text-xs font-semibold">Permisos</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {currentUsuarios.map((usuario) => (
+                <TableRow key={usuario.id} className="h-12">
+                  <TableCell className="py-2 px-3 font-mono text-xs">
                     {usuario.identificacion}
-                  </td>
-                  <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="py-2 px-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         {usuario.nombre[0]}
                         {usuario.apellidos?.[0] || ""}
                       </div>
-                      <span>
+                      <span className="font-medium text-sm truncate max-w-[140px]" title={`${usuario.nombre} ${usuario.apellidos}`}>
                         {usuario.nombre} {usuario.apellidos}
                       </span>
                     </div>
-                  </td>
-                  <td
-                    className="px-4 py-4 text-gray-700 truncate max-w-xs"
-                    title={usuario.correo}
-                  >
-                    <span className="cursor-help">{usuario.correo}</span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-gray-700 font-mono">
+                  </TableCell>
+                  <TableCell className="py-2 px-3 truncate max-w-xs text-sm" title={usuario.correo}>
+                    {usuario.correo}
+                  </TableCell>
+                  <TableCell className="py-2 px-3 font-mono text-xs">
                     {`+57 ${String(usuario.telefono).slice(0, 3)} ${String(
                       usuario.telefono
                     ).slice(3, 6)} ${String(usuario.telefono).slice(6)}`}
-                  </td>
-                  <td className="px-4 py-4 text-gray-800">
-                    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 border border-orange-200">
+                  </TableCell>
+                  <TableCell className="py-2 px-3">
+                    <Chip color="warning" variant="flat" size="sm" className="text-xs px-2 py-1 h-6">
                       {usuario.tipoUsuario?.nombre || "No asignado"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-gray-700">
+                    </Chip>
+                  </TableCell>
+                  <TableCell className="py-2 px-3">
                     {usuario.ficha?.id_ficha ? (
-                      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                      <Chip color="secondary" variant="flat" size="sm" className="text-xs px-2 py-1 h-6">
                         {usuario.ficha.id_ficha}
-                      </span>
+                      </Chip>
                     ) : (
                       <span className="text-gray-400 text-xs">Sin ficha</span>
                     )}
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <div
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
-                        usuario.estado
-                          ? "bg-green-100 text-green-800 border border-green-200"
-                          : "bg-red-100 text-red-800 border border-red-200"
-                      }`}
+                  </TableCell>
+                  <TableCell className="py-2 px-3 text-center">
+                    <Chip
+                      color={usuario.estado ? "success" : "danger"}
+                      variant="flat"
+                      size="sm"
+                      className="text-xs px-2 py-1 h-6"
+                      startContent={
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            usuario.estado ? "bg-green-500" : "bg-red-500"
+                          }`}
+                        />
+                      }
                     >
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          usuario.estado ? "bg-green-500" : "bg-red-500"
-                        }`}
-                      ></div>
                       {usuario.estado ? "Activo" : "Inactivo"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center items-center gap-2">
+                    </Chip>
+                  </TableCell>
+                  <TableCell className="py-2 px-3">
+                    <div className="flex justify-center items-center gap-1">
                       <PermissionWrapper module="Usuarios" permission="Editar">
-                        <button
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          color="primary"
+                          size="sm"
                           onClick={() => openEditModal(usuario)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
                           title="Editar usuario"
+                          className="w-8 h-8"
                         >
-                          <Pencil size={16} />
-                        </button>
+                          <Pencil size={14} />
+                        </Button>
                       </PermissionWrapper>
                       <PermissionWrapper module="Usuarios" permission="Editar">
-                        <label
-                          className="flex items-center cursor-pointer"
+                        <Switch
+                          size="sm"
+                          color="success"
+                          isSelected={usuario.estado}
+                          onValueChange={() => handleToggleActive(usuario)}
                           title={
                             usuario.estado
                               ? "Desactivar usuario"
                               : "Activar usuario"
                           }
-                        >
-                          <div className="relative">
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={usuario.estado}
-                              onChange={() => handleToggleActive(usuario)}
-                            />
-                            <div
-                              className={`block w-12 h-6 rounded-full transition-all duration-300 ${
-                                usuario.estado ? "bg-green-400" : "bg-gray-300"
-                              }`}
-                            ></div>
-                            <div
-                              className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
-                                usuario.estado ? "transform translate-x-6" : ""
-                              }`}
-                            ></div>
-                          </div>
-                        </label>
+                        />
                       </PermissionWrapper>
                     </div>
-                  </td>
-                  <td className="px-4 py-4 text-center">
+                  </TableCell>
+                  <TableCell className="py-2 px-3 text-center">
                     <PermissionWrapper module="Usuarios" permission="Asignar">
-                      <button
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        color="default"
+                        size="sm"
                         onClick={() => {
                           setPermUser(usuario);
                           setIsPermOpen(true);
                         }}
-                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
                         title={`Gestionar permisos - ${
                           userRolePermissions[usuario.tipoUsuario?.id || 0] || 0
                         } activos`}
+                        className="w-8 h-8"
                       >
-                        <UserCog size={18} />
-                      </button>
+                        <UserCog size={16} />
+                      </Button>
                     </PermissionWrapper>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
-        <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-4 bg-gray-50/50 px-4 py-3 rounded-lg">
-          <div className="text-sm text-gray-600">
+        <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-center mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-200 gap-3 md:gap-4 bg-gray-50/50 px-3 md:px-4 py-2 md:py-3 rounded-lg">
+          <div className="text-xs md:text-sm text-gray-600 text-center sm:text-left">
             <span className="font-medium">
               Mostrando {Math.min(indexOfLastItem, usuarios.length)} de{" "}
               {usuarios.length} usuarios
@@ -914,129 +950,62 @@ export default function GestionUsuarios(): ReactElement {
             )}
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-              >
-                <ChevronLeft size={14} />
-                Anterior
-              </button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum =
-                    Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                  if (pageNum > totalPages) return null;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === pageNum
-                          ? "bg-blue-600 text-white"
-                          : "border border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-              >
-                Siguiente
-                <ChevronRight size={14} />
-              </button>
-            </div>
+            <Pagination
+              total={totalPages}
+              page={currentPage}
+              onChange={setCurrentPage}
+              showControls
+              showShadow
+              color="primary"
+              size="sm"
+              className="justify-center sm:justify-end"
+            />
           )}
         </div>
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
-          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-[85vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <UserPlus className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {editingId ? "Actualizar Usuario" : "Registrar Nuevo Usuario"}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Complete toda la información requerida
-                  </p>
-                </div>
+      <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="3xl" scrollBehavior="inside" className="max-h-[85vh]">
+        <ModalContent>
+          <ModalHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <UserPlus className="h-6 w-6 text-blue-600" />
               </div>
-              <button
-                onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {editingId ? "Actualizar Usuario" : "Registrar Nuevo Usuario"}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Complete toda la información requerida
+                </p>
+              </div>
             </div>
-            <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <UserForm
-                initialData={formInitialData}
-                roles={roles}
-                onSave={handleSave}
-                onCancel={closeModal}
-                editingId={editingId}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+          </ModalHeader>
+          <ModalBody>
+            <UserForm
+              initialData={formInitialData}
+              roles={roles}
+              onSave={handleSave}
+              onCancel={closeModal}
+              editingId={editingId}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       {isPermOpen && permUser && (
-        <div
-          className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in-0 duration-500 ease-out ${
-            isPermOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-        >
-          <div
-            className={`w-full max-w-4xl bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out z-[60] ${
-              isPermOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Gestionar Permisos - {permUser.nombre}{" "}
-                {permUser.apellidos || ""}
-              </h3>
-              <button
-                onClick={() => {
-                  setIsPermOpen(false);
-                  setPermUser(null);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
-            <PermissionsModal
-              isOpen={isPermOpen}
-              onClose={() => {
-                setIsPermOpen(false);
-                setPermUser(null);
-              }}
-              target={{
-                id: permUser.id,
-                nombre: `${permUser.nombre} ${permUser.apellidos || ""}`,
-                type: "usuario",
-              }}
-            />
-          </div>
-        </div>
+        <PermissionsModal
+          isOpen={isPermOpen}
+          onClose={() => {
+            setIsPermOpen(false);
+            setPermUser(null);
+          }}
+          target={{
+            id: permUser.id,
+            nombre: `${permUser.nombre} ${permUser.apellidos || ""}`,
+            type: "usuario",
+          }}
+        />
       )}
     </>
   );
