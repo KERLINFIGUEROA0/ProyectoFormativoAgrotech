@@ -32,7 +32,7 @@ export class InformacionSensorService {
     // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el lote, surco y brokers del lote
     const sensores = await this.sensorRepo.find({
       where: { topic: topic, estado: 'Activo' }, // Solo sensores activos
-      relations: ['lote', 'surco', 'lote.brokers'],
+      relations: ['lote', 'surco', 'lote.brokerLotes', 'lote.brokerLotes.broker'],
     });
 
     if (sensores.length === 0) {
@@ -44,7 +44,8 @@ export class InformacionSensorService {
     let guardados = 0;
     for (const sensor of sensores) {
       // Verificar que el lote tenga brokers configurados
-      if (!sensor.lote.brokers || sensor.lote.brokers.length === 0) {
+      const brokersDelLote = sensor.lote.brokerLotes?.map(bl => bl.broker) || [];
+      if (!brokersDelLote || brokersDelLote.length === 0) {
         this.logger.warn(`Sensor ID [${sensor.id}] en lote [${sensor.lote.nombre}] no tiene brokers configurados. Mensaje descartado para este sensor.`);
         continue;
       }
@@ -68,7 +69,7 @@ export class InformacionSensorService {
         await this.sensorRepo.save(sensor);
 
         guardados++;
-        const brokerNames = sensor.lote.brokers.map(b => b.nombre).join(', ');
+        const brokerNames = brokersDelLote.map(b => b.nombre).join(', ');
         this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco?.nombre || 'N/A'}, Lote: ${sensor.lote.nombre}, Brokers: ${brokerNames}) desde topic [${topic}].`);
       } catch (error) {
         this.logger.error(`Error guardando dato para Sensor ID [${sensor.id}]: ${error.message}`);

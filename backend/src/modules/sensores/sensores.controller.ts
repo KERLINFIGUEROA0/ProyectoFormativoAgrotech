@@ -71,6 +71,19 @@ export class SensoresController {
     return { success: true, data: sensores };
   }
 
+
+  /**
+   * Elimina un sensor específico de un lote
+   */
+  @Delete('eliminar-de-lote/:sensorId')
+  async eliminarSensorDeLote(@Param('sensorId', ParseIntPipe) sensorId: number) {
+    await this.sensoresService.eliminarSensorDeLote(sensorId);
+    return {
+      success: true,
+      message: `Sensor eliminado del lote correctamente.`
+    };
+  }
+
   /**
    * Sincroniza sensores para un lote basado en los tópicos de su broker
    */

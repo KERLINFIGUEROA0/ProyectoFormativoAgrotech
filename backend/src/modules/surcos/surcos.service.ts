@@ -14,6 +14,7 @@ import { UpdateSurcoMqttDto } from './dto/update-surco-mqtt.dto';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
+import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
 import { MqttConfigService } from '../mqtt-config/mqtt-config.service'; // Importarar el servicio
 
 @Injectable()
@@ -27,6 +28,8 @@ export class SurcosService {
     private readonly cultivoRepository: Repository<Cultivo>,
     @InjectRepository(Broker)
     private readonly brokerRepository: Repository<Broker>,
+    @InjectRepository(BrokerLote)
+    private readonly brokerLoteRepository: Repository<BrokerLote>,
     @Inject(forwardRef(() => MqttConfigService))
     private readonly mqttConfigService: MqttConfigService,
 
@@ -104,42 +107,23 @@ export class SurcosService {
     return await this.surcoRepository.save(surco);
   }
 async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreados: number }> {
-   // 1. Buscar el surco con su lote y brokers
-   const surco = await this.surcoRepository.findOne({
-     where: { id },
-     relations: ['lote', 'lote.brokers', 'sensores'] // Traemos sensores para no duplicar si ya existen
-   });
+  // 1. Buscar el surco con su lote
+  const surco = await this.surcoRepository.findOne({
+    where: { id },
+    relations: ['lote'] // Traemos el lote
+  });
 
-   if (!surco) throw new NotFoundException(`Surco #${id} no encontrado`);
-   if (!surco.lote.brokers || surco.lote.brokers.length === 0) throw new BadRequestException(`El lote "${surco.lote.nombre}" no tiene brokers asignados`);
+  if (!surco) throw new NotFoundException(`Surco #${id} no encontrado`);
 
-   // Usar el primer broker del lote
-   const broker = surco.lote.brokers[0];
-   const topicos = broker.topicosAdicionales;
-   if (!topicos || topicos.length === 0) {
-     throw new BadRequestException(`El Broker "${broker.nombre}" no tiene tópicos configurados`);
-   }
-
-   // 2. Filtrar tópicos que YA tienen un sensor creado en este surco (para evitar duplicados)
-   const topicosExistentes = surco.sensores.map(s => s.topic);
-   const topicosFaltantes = topicos.filter(t => !topicosExistentes.includes(t));
-
-   if (topicosFaltantes.length === 0) {
-     return { message: 'Todos los sensores ya están creados y sincronizados.', sensoresCreados: 0 };
-   }
-
-   // 3. Llamar al servicio MQTT para crear SOLO los faltantes
-   await this.mqttConfigService.crearSensoresParaTopicos(
-     broker,
-     surco.lote.id, // Usar loteId en lugar de surcoId
-     topicosFaltantes
-   );
-
-   return {
-     message: `Se crearon ${topicosFaltantes.length} sensores nuevos correctamente.`,
-     sensoresCreados: topicosFaltantes.length
-   };
- }
+  // 2. Redirigir a la sincronización por lote, ya que ahora los tópicos están asociados al lote
+  // Importar y usar SensoresService para sincronizar por lote
+  const { SensoresService } = await import('../sensores/sensores.service');
+  // Como no podemos inyectar aquí, devolver mensaje indicando usar sincronización por lote
+  return {
+    message: `La sincronización de sensores ahora se realiza por lote. Use el endpoint de sincronización de sensores del lote ${surco.lote.id}.`,
+    sensoresCreados: 0
+  };
+}
   async eliminar(id: number): Promise<void> {
     const surco = await this.buscarPorId(id);
     await this.surcoRepository.remove(surco);

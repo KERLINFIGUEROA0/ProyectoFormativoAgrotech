@@ -65,6 +65,12 @@ export const sincronizarSensoresLote = async (loteId: number) => {
   return response.data;
 };
 
+
+export const eliminarSensorDeLote = async (sensorId: number) => {
+  const response = await api.delete(`/sensores/eliminar-de-lote/${sensorId}`);
+  return response.data;
+};
+
 export const generateSensorReport = async (params: {
   scope: 'surco' | 'cultivo';
   scopeId: number;

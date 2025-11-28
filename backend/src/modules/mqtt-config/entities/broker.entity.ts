@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Subscripcion } from './subscripcion.entity';
-import { Lote } from '../../lotes/entities/lote.entity';
+import { BrokerLote } from './broker-lote.entity';
 
 @Entity('brokers')
 export class Broker {
@@ -28,19 +28,12 @@ export class Broker {
   @Column({ type: 'varchar', length: 255, nullable: true })
   prefijoTopicos: string;
 
-  @Column({ type: 'json', nullable: true })
-  topicosAdicionales: string[];
-
   @Column({ type: 'varchar', length: 10, default: 'Activo' })
   estado: 'Activo' | 'Inactivo';
 
-  @ManyToMany(() => Lote, (lote) => lote.brokers)
-  @JoinTable({
-    name: 'lote_brokers',
-    joinColumn: { name: 'brokerId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'loteId', referencedColumnName: 'id' }
-  })
-  lotes: Lote[];
+  // CAMBIA la relación @ManyToMany antigua por esta:
+  @OneToMany(() => BrokerLote, (brokerLote) => brokerLote.broker)
+  brokerLotes: BrokerLote[];
 
   @OneToMany(() => Subscripcion, (sub) => sub.broker, {
     cascade: true,

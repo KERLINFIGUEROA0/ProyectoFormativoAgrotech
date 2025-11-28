@@ -1,8 +1,8 @@
 // src/modules/lotes/entities/lote.entity.ts
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Surco } from '../../surcos/entities/surco.entity';
-import { Broker } from '../../mqtt-config/entities/broker.entity';
+import { BrokerLote } from '../../mqtt-config/entities/broker-lote.entity';
 
 @Entity('lotes')
 export class Lote {
@@ -47,6 +47,7 @@ export class Lote {
   @OneToMany(() => Surco, (surco) => surco.lote)
   surcos: Surco[];
 
-  @ManyToMany(() => Broker, (broker) => broker.lotes)
-  brokers: Broker[];
+  // CAMBIA la relación @ManyToMany antigua por esta:
+  @OneToMany(() => BrokerLote, (brokerLote) => brokerLote.lote)
+  brokerLotes: BrokerLote[];
 }

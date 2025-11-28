@@ -2,23 +2,28 @@ import React, { useState, useEffect, useMemo, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff,
-  TrendingUp, MoreVertical, Filter, Sprout, Map, Layers,
+  TrendingUp, MoreVertical, Filter, Map, Layers,
   RefreshCw, Pause, Play, Download, X,
   ChevronLeft, ChevronRight, Server
 } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 // Hero UI Components
-import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection } from "@heroui/react";
 
 // --- APIS ---
 import {
-  listarSensores, eliminarSensor, getLatestSensorData, getSensorHistory, actualizarEstadoSensor, sincronizarSensoresLote
+  listarSensores, eliminarSensor, getLatestSensorData, getSensorHistory, actualizarEstadoSensor, sincronizarSensoresLote, eliminarSensorDeLote
 } from '../api/sensoresApi';
-import { listarBrokers } from '../api/mqttConfigApi';
-import { listarCultivos } from '../../cultivos/api/cultivosApi';
+import {
+  listarBrokers,
+  crearBrokerLote,
+  listarBrokerLotesPorLote,
+  actualizarBrokerLote,
+  eliminarBrokerLote
+} from '../api/mqttConfigApi';
 // Asegúrate de importar 'actualizarLote'
 import { listarSurcos } from '../../cultivos/api/surcosApi';
 import { obtenerLotes, actualizarLote } from '../../cultivos/api/lotesApi';
@@ -28,8 +33,8 @@ import Modal from '../../../components/Modal';
 import BrokerFormModal from '../components/BrokerFormModal';
   
 // --- INTERFACES ---
-import type { Sensor, LatestSensorData, Broker } from '../interfaces/iot';
-import type { Cultivo, Surco, Lote } from '../../cultivos/interfaces/cultivos';
+import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
+import type { Surco, Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 // --- TIPOS GLOBALES ---
@@ -66,11 +71,10 @@ interface SensorCardProps {
   onDelete: (id: number) => void;
   onViewHistory: (sensor: Sensor) => void;
   onToggleEstado: (id: number, estado: 'Activo' | 'Inactivo') => void;
-  menuOpen: string | null;
-  onMenuToggle: (sensorId: string | null) => void;
+  onRemoveFromLote: (sensor: Sensor) => void;
 }
 
-function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, menuOpen, onMenuToggle }: SensorCardProps) {
+function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, onRemoveFromLote }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
@@ -138,19 +142,66 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
         </div>
         
         <div className="absolute top-1.5 right-1.5">
-          <button onClick={() => onMenuToggle(menuOpen === sensor.id.toString() ? null : sensor.id.toString())} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600">
-            <MoreVertical size={12} />
-          </button>
-          {menuOpen === sensor.id.toString() && (
-            <div className="absolute right-0 mt-0.5 w-32 bg-white rounded shadow-lg border border-gray-100 z-20 py-0.5 text-xs animate-in fade-in zoom-in-95 duration-100">
-              <button onClick={() => { onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo'); onMenuToggle(null); }} className="flex items-center gap-1.5 w-full px-3 py-1.5 text-gray-700 hover:bg-gray-50">
-                {isActive ? <PowerOff size={11} /> : <Power size={11} />} {isActive ? 'OFF' : 'ON'}
-              </button>
-              <button onClick={() => { onViewHistory(sensor); onMenuToggle(null); }} className="flex items-center gap-1.5 w-full px-3 py-1.5 text-gray-700 hover:bg-gray-50">
-                <ChartIcon size={11} /> Historial
-              </button>
-            </div>
-          )}
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="w-6 h-6 min-w-6"
+              >
+                <MoreVertical size={12} />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Acciones del sensor"
+              variant="flat"
+              onAction={(key) => {
+                switch (key) {
+                  case 'toggle':
+                    onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo');
+                    break;
+                  case 'history':
+                    onViewHistory(sensor);
+                    break;
+                  case 'delete':
+                    onRemoveFromLote(sensor);
+                    break;
+                }
+              }}
+            >
+              <DropdownSection title="Estado">
+                <DropdownItem
+                  key="toggle"
+                  startContent={isActive ? <PowerOff size={14} /> : <Power size={14} />}
+                  color={isActive ? "danger" : "success"}
+                >
+                  {isActive ? 'Desactivar' : 'Activar'}
+                </DropdownItem>
+              </DropdownSection>
+
+              <DropdownSection title="Acciones">
+                <DropdownItem
+                  key="history"
+                  startContent={<ChartIcon size={14} />}
+                  color="primary"
+                >
+                  Ver Historial
+                </DropdownItem>
+              </DropdownSection>
+
+              <DropdownSection title="Peligroso">
+                <DropdownItem
+                  key="delete"
+                  startContent={<X size={14} />}
+                  color="danger"
+                  className="text-danger"
+                >
+                  Eliminar del Lote
+                </DropdownItem>
+              </DropdownSection>
+            </DropdownMenu>
+          </Dropdown>
         </div>
       </div>
 
@@ -193,6 +244,271 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
     </div>
   );
 }
+// ==========================================
+// COMPONENTE: MODAL PARA CONFIGURACIONES BROKER-LOTE
+// ==========================================
+interface BrokerLoteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (data: CreateBrokerLoteDto) => void;
+  onUpdate: (id: number, topicos: string[]) => void;
+  onDelete: (id: number) => void;
+  onEdit: (brokerLote: BrokerLote) => void;
+  onCreateBroker: () => void;
+  brokerLote: BrokerLote | null;
+  brokerLotes: BrokerLote[];
+  loteId?: number;
+  brokers: Broker[];
+  lotes: Lote[];
+}
+
+function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdit, onCreateBroker, brokerLote, brokerLotes, loteId, brokers, lotes }: BrokerLoteModalProps) {
+  const [selectedBrokerId, setSelectedBrokerId] = useState<number | null>(null);
+  const [topicos, setTopicos] = useState<string[]>([]);
+  const [nuevoTopico, setNuevoTopico] = useState('');
+
+  useEffect(() => {
+    if (brokerLote) {
+      setSelectedBrokerId(brokerLote.broker.id);
+      setTopicos([...brokerLote.topicos]);
+    } else {
+      setSelectedBrokerId(null);
+      setTopicos([]);
+    }
+    setNuevoTopico('');
+  }, [brokerLote]);
+
+  const handleAddTopico = () => {
+    if (nuevoTopico.trim() && !topicos.includes(nuevoTopico.trim())) {
+      setTopicos([...topicos, nuevoTopico.trim()]);
+      setNuevoTopico('');
+    }
+  };
+
+  const handleRemoveTopico = (topico: string) => {
+    setTopicos(topicos.filter(t => t !== topico));
+  };
+
+  const handleSubmit = () => {
+    if (!selectedBrokerId || topicos.length === 0 || !loteId) return;
+
+    if (brokerLote) {
+      // Actualizar
+      onUpdate(brokerLote.id, topicos);
+    } else {
+      // Crear
+      onSuccess({
+        brokerId: selectedBrokerId,
+        loteId: loteId,
+        topicos: topicos
+      });
+    }
+  };
+
+  const loteNombre = loteId ? lotes.find(l => l.id === loteId)?.nombre : '';
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`${brokerLote ? 'Editar' : 'Crear'} Configuración Broker-Lote`} size="3xl">
+      <div className="p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            Lote: {loteNombre}
+          </h3>
+          <p className="text-sm text-gray-600">
+            Configura qué broker usar y qué tópicos MQTT escuchar para este lote.
+          </p>
+        </div>
+
+        {/* Lista de configuraciones existentes */}
+        {brokerLotes.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-md font-semibold text-gray-700 mb-3">Configuraciones Existentes</h4>
+            <div className="space-y-2">
+              {brokerLotes.map(bl => (
+                <div key={bl.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div>
+                    <span className="font-medium text-gray-800">{bl.broker.nombre}</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {bl.topicos.map(topico => (
+                        <span key={topico} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                          {topico}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="primary"
+                      onClick={() => onEdit(bl)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onClick={() => onDelete(bl.id)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Formulario */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Broker MQTT
+            </label>
+            <Select
+              selectedKeys={selectedBrokerId ? new Set([selectedBrokerId.toString()]) : new Set()}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys);
+                setSelectedBrokerId(selected.length > 0 ? Number(selected[0]) : null);
+              }}
+              className="w-full"
+              placeholder={brokers.length === 0 ? "No hay brokers disponibles" : "Seleccionar broker"}
+              disabled={brokers.length === 0}
+            >
+              {brokers.map(broker => (
+                <SelectItem key={broker.id.toString()}>
+                  {broker.nombre} ({broker.host}:{broker.puerto})
+                </SelectItem>
+              ))}
+            </Select>
+            {brokers.length === 0 && (
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-700 mb-2">
+                  ⚠️ No hay brokers configurados.
+                </p>
+                <Button
+                  size="sm"
+                  color="primary"
+                  variant="light"
+                  onClick={onCreateBroker}
+                >
+                  Crear Broker Primero
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tópicos MQTT
+            </label>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={nuevoTopico}
+                onChange={(e) => setNuevoTopico(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
+                placeholder="Ej: temperatura/lote1"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Button
+                onClick={handleAddTopico}
+                color="primary"
+                size="sm"
+                disabled={!nuevoTopico.trim()}
+              >
+                Agregar
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {topicos.map(topico => (
+                <div key={topico} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  {topico}
+                  <button
+                    onClick={() => handleRemoveTopico(topico)}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+          <Button variant="light" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            color="primary"
+            onClick={handleSubmit}
+            disabled={!selectedBrokerId || topicos.length === 0}
+          >
+            {brokerLote ? 'Actualizar' : 'Crear'} Configuración
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ==========================================
+// COMPONENTE: MODAL PARA ELIMINAR SENSOR DEL LOTE
+// ==========================================
+interface DeleteSensorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  sensor: Sensor | null;
+  loteNombre: string;
+}
+
+function DeleteSensorModal({ isOpen, onClose, onConfirm, sensor, loteNombre }: DeleteSensorModalProps) {
+  if (!sensor) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Eliminar Sensor del Lote" size="sm">
+      <div className="p-6">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <X className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            ¿Desea eliminar el sensor del lote?
+          </h3>
+          <div className="mt-2 px-4 py-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Sensor:</span> {sensor.nombre}
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              <span className="font-medium">Lote:</span> {loteNombre}
+            </p>
+          </div>
+          <p className="text-sm text-gray-500 mt-4">
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="light" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            color="danger"
+            onClick={onConfirm}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Eliminar
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ==========================================
 // COMPONENTE: CARRUSEL DE GRÁFICOS
 // ==========================================
@@ -251,7 +567,6 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
             }}
             width={45}
           />
-          <Tooltip />
           <Legend
             wrapperStyle={{
               fontSize: '11px',
@@ -306,16 +621,15 @@ export default function GestionSensoresPage(): ReactElement {
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
   
   // Estados de Filtros
-  const [modoVista, setModoVista] = useState<'GENERAL' | 'CULTIVO' | 'LOTE'>('GENERAL');
-  const [cultivos, setCultivos] = useState<Cultivo[]>([]);
+  const [modoVista, setModoVista] = useState<'GENERAL' | 'LOTE'>('GENERAL');
   const [surcos, setSurcos] = useState<Surco[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
+  const [brokers, setBrokers] = useState<Broker[]>([]);
   const [filtroId, setFiltroId] = useState<number | 'TODOS'>('TODOS');
   const [surcoSeleccionado, setSurcoSeleccionado] = useState<number | 'TODOS'>('TODOS');
 
   // Modales y UI
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
   const [editingBroker, setEditingBroker] = useState<Broker | null>(null);
   const [sensorHistories, setSensorHistories] = useState<{ [sensorId: number]: ChartData[] }>({});
@@ -323,18 +637,26 @@ export default function GestionSensoresPage(): ReactElement {
   const [paginaSensores, setPaginaSensores] = useState(0);
   const tarjetasPorPagina = 4;
 
+  // Estados para BrokerLote
+  const [isBrokerLoteModalOpen, setIsBrokerLoteModalOpen] = useState(false);
+  const [brokerLotes, setBrokerLotes] = useState<BrokerLote[]>([]);
+  const [editingBrokerLote, setEditingBrokerLote] = useState<BrokerLote | null>(null);
+
+  // Estado para modal de eliminación de sensor
+  const [isDeleteSensorModalOpen, setIsDeleteSensorModalOpen] = useState(false);
+  const [sensorToDelete, setSensorToDelete] = useState<Sensor | null>(null);
+
   // 1. CARGA DE ESTRUCTURA
   const loadStructure = async () => {
     try {
-      const [sensoresRes, brokersRes, cultivosRes, surcosRes, lotesRes] = await Promise.all([
+      const [sensoresRes, brokersRes, surcosRes, lotesRes] = await Promise.all([
         listarSensores(),
         listarBrokers(),
-        listarCultivos(),
         listarSurcos(),
         obtenerLotes()
       ]);
       setSensores(sensoresRes.data || []);
-      setCultivos(cultivosRes.data || []);
+      setBrokers(brokersRes || []);
       setSurcos(surcosRes.data || []);
       setLotes(lotesRes.data || []);
 
@@ -347,7 +669,27 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
+  // Cargar configuraciones BrokerLote para un lote específico
+  const loadBrokerLotes = async (loteId: number) => {
+    try {
+      const brokerLotesRes = await listarBrokerLotesPorLote(loteId);
+      setBrokerLotes(brokerLotesRes || []);
+    } catch (error) {
+      console.error("Error cargando configuraciones BrokerLote", error);
+      setBrokerLotes([]);
+    }
+  };
+
   useEffect(() => { loadStructure(); }, []);
+
+  // Cargar configuraciones BrokerLote cuando se selecciona un lote
+  useEffect(() => {
+    if (modoVista === 'LOTE' && filtroId !== 'TODOS') {
+      loadBrokerLotes(filtroId as number);
+    } else {
+      setBrokerLotes([]);
+    }
+  }, [modoVista, filtroId]);
 
   // --- LOGICA DE CONTROL (Backend) ---
 
@@ -403,7 +745,7 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
-  // POLLING CONSTANTE (Cada 3s para mejor respuesta)
+  // POLLING CONSTANTE (Cada 5s para mejor respuesta)
   useEffect(() => {
     // Consultamos siempre, porque aunque el lote esté pausado en Backend,
     // queremos ver el último dato que quedó guardado (congelado).
@@ -411,14 +753,8 @@ export default function GestionSensoresPage(): ReactElement {
 
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [filtroId, surcoSeleccionado, historySensor]);
+  }, [filtroId, surcoSeleccionado, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
 
-  // Cierre menú
-  useEffect(() => {
-    const clickOutside = (e: MouseEvent) => { if (menuOpen && !(e.target as Element).closest('button')) setMenuOpen(null); };
-    document.addEventListener('mousedown', clickOutside);
-    return () => document.removeEventListener('mousedown', clickOutside);
-  }, [menuOpen]);
 
   // Cargar historiales para sensores seleccionados en gráfica
   useEffect(() => {
@@ -448,6 +784,35 @@ export default function GestionSensoresPage(): ReactElement {
     }
   }, [sensoresGrafica]);
 
+  // Cargar historiales para todos los sensores al inicio (para gráfica general)
+  useEffect(() => {
+    if (sensores.length > 0 && Object.keys(sensorHistories).length === 0) {
+      // Solo cargar si no hay historiales cargados aún
+      const promises = sensores.slice(0, 10).map(sensor => // Limitar a primeros 10 para performance inicial
+        getSensorHistory(sensor.id).then(data => {
+          const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => ({
+            time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
+            valor: Number(r.valor),
+            fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
+          }));
+          return { sensorId: sensor.id, history: formatted };
+        }).catch(() => ({ sensorId: sensor.id, history: [] })) // En caso de error, devolver array vacío
+      );
+
+      Promise.all(promises).then(results => {
+        setSensorHistories(prev => {
+          const newHistories = { ...prev };
+          results.forEach(({ sensorId, history }) => {
+            newHistories[sensorId] = history;
+          });
+          return newHistories;
+        });
+      }).catch(() => {
+        // Silenciar errores iniciales para no molestar al usuario
+      });
+    }
+  }, [sensores, sensorHistories]);
+
   const toggleSystemRecording = async () => {
     if (!currentLote) return;
 
@@ -469,7 +834,7 @@ export default function GestionSensoresPage(): ReactElement {
   };
 
   // Handlers UI
-  const handleModoChange = (modo: 'GENERAL' | 'CULTIVO' | 'LOTE') => {
+  const handleModoChange = (modo: 'GENERAL' | 'LOTE') => {
     setModoVista(modo);
     setFiltroId('TODOS');
     setSurcoSeleccionado('TODOS');
@@ -489,13 +854,6 @@ export default function GestionSensoresPage(): ReactElement {
     setEditingBroker(null);
   };
 
-  const selectBrokerForEdit = (broker: Broker) => {
-    setEditingBroker(broker);
-  };
-
-  const createNewBroker = () => {
-    setEditingBroker(null);
-  };
 
   const handleSincronizar = async (loteId: number) => {
     const toastId = toast.loading(`Sincronizando sensores...`);
@@ -503,7 +861,26 @@ export default function GestionSensoresPage(): ReactElement {
       const res = await sincronizarSensoresLote(loteId);
       if (res.sensoresCreados > 0) {
         toast.success(res.message, { id: toastId });
-        loadStructure();
+        // Limpiar TODOS los datos para forzar recarga completa
+        setSensorHistories({});
+        setLatestData([]);
+        setSensoresGrafica([]);
+
+        await loadStructure();
+        await loadBrokerLotes(loteId); // Recargar configuraciones
+
+        // Forzar múltiples cargas inmediatas de datos con intervalos agresivos
+        const fetchIntervals = [100, 500, 1000, 1500, 2000, 3000, 4000];
+        fetchIntervals.forEach(delay => {
+          setTimeout(() => fetchData(), delay);
+        });
+
+        // Después de las cargas iniciales, asegurar que estamos en el modo correcto
+        setTimeout(() => {
+          if (modoVista === 'LOTE' && filtroId === loteId) {
+            setSensoresGrafica([]); // Mostrar todos los sensores del lote
+          }
+        }, 4500);
       } else {
         toast.info("Sensores al día", { id: toastId });
       }
@@ -512,14 +889,116 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
+  // Funciones para BrokerLote
+  const openBrokerLoteModal = (brokerLote: BrokerLote | null = null) => {
+    setEditingBrokerLote(brokerLote);
+    setIsBrokerLoteModalOpen(true);
+  };
+
+  const closeBrokerLoteModal = () => {
+    setIsBrokerLoteModalOpen(false);
+    setEditingBrokerLote(null);
+  };
+
+  const handleCreateBrokerLote = async (data: CreateBrokerLoteDto) => {
+    const toastId = toast.loading("Creando configuración y sensores...");
+    try {
+      await crearBrokerLote(data);
+      toast.success("Configuración creada y sensores generados", { id: toastId });
+      closeBrokerLoteModal();
+
+      // Limpiar TODOS los datos para forzar recarga completa
+      setSensorHistories({});
+      setLatestData([]);
+      setSensoresGrafica([]);
+
+      await loadStructure(); // Recarga brokers también
+      await loadBrokerLotes(data.loteId);
+
+      // Forzar múltiples cargas inmediatas de datos con intervalos agresivos
+      const fetchIntervals = [100, 500, 1000, 1500, 2000, 3000, 4000];
+      fetchIntervals.forEach(delay => {
+        setTimeout(() => fetchData(), delay);
+      });
+
+      // Después de las cargas iniciales, continuar con el polling normal
+      setTimeout(() => {
+        // Cambiar a modo LOTE para mostrar los sensores del lote creado
+        setModoVista('LOTE');
+        setFiltroId(data.loteId);
+        setSensoresGrafica([]); // Mostrar todos los sensores del lote
+      }, 4500);
+
+    } catch (error: any) {
+      toast.error("Error al crear configuración", { id: toastId });
+    }
+  };
+
+  const handleUpdateBrokerLote = async (id: number, topicos: string[]) => {
+    const toastId = toast.loading("Actualizando configuración...");
+    try {
+      await actualizarBrokerLote(id, topicos);
+      toast.success("Configuración actualizada", { id: toastId });
+      closeBrokerLoteModal();
+      if (filtroId !== 'TODOS') {
+        loadBrokerLotes(filtroId as number);
+      }
+    } catch (error: any) {
+      toast.error("Error al actualizar configuración", { id: toastId });
+    }
+  };
+
+  const handleDeleteBrokerLote = async (id: number) => {
+    const toastId = toast.loading("Eliminando configuración...");
+    try {
+      await eliminarBrokerLote(id);
+      toast.success("Configuración eliminada", { id: toastId });
+      if (filtroId !== 'TODOS') {
+        loadBrokerLotes(filtroId as number);
+      }
+      loadStructure();
+    } catch (error: any) {
+      toast.error("Error al eliminar configuración", { id: toastId });
+    }
+  };
+
   const handleToggleEstadoSensor = async (id: number, estado: 'Activo' | 'Inactivo') => {
     try {
       await actualizarEstadoSensor(id, estado);
       toast.success(`Sensor ${estado}`);
-      loadStructure(); 
+      loadStructure();
     } catch (error) {
       toast.error("Error al cambiar estado");
     }
+  };
+
+
+  const handleRemoveSensorFromLote = (sensor: Sensor) => {
+    setSensorToDelete(sensor);
+    setIsDeleteSensorModalOpen(true);
+  };
+
+  const confirmRemoveSensorFromLote = async () => {
+    if (!sensorToDelete) return;
+
+    const toastId = toast.loading(`Eliminando sensor...`);
+    try {
+      await eliminarSensorDeLote(sensorToDelete.id);
+      toast.success("Sensor eliminado del lote", { id: toastId });
+      loadStructure();
+      if (filtroId !== 'TODOS') {
+        loadBrokerLotes(filtroId as number);
+      }
+      setIsDeleteSensorModalOpen(false);
+      setSensorToDelete(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error al eliminar sensor", { id: toastId });
+    }
+  };
+
+  const closeDeleteSensorModal = () => {
+    setIsDeleteSensorModalOpen(false);
+    setSensorToDelete(null);
   };
 
   // Filtrado de datos para render (Siempre sensores con datos)
@@ -534,11 +1013,6 @@ export default function GestionSensoresPage(): ReactElement {
       return res;
     }
 
-    if (modoVista === 'CULTIVO') {
-      // Mostrar sensores de lotes que tienen el cultivo O sensores de surcos del cultivo
-      const lotesConCultivo = new Set(surcos.filter(s => s.cultivo?.id === filtroId).map(s => s.lote.id));
-      res = res.filter(s => lotesConCultivo.has(s.lote?.id) || s.surco?.cultivo?.id === filtroId);
-    }
     if (modoVista === 'LOTE') {
       // Mostrar solo sensores asociados directamente al lote (creados por sincronización)
       res = res.filter(s => s.lote?.id === filtroId);
@@ -581,7 +1055,6 @@ export default function GestionSensoresPage(): ReactElement {
             <div className="flex bg-gray-100 p-1 rounded-lg">
               {[
                 { id: 'GENERAL', icon: Layers, label: 'General', color: 'primary' },
-                { id: 'CULTIVO', icon: Sprout, label: 'Cultivo', color: 'success' },
                 { id: 'LOTE', icon: Map, label: 'Lote', color: 'warning' }
               ].map((m) => (
                 <Button
@@ -616,19 +1089,15 @@ export default function GestionSensoresPage(): ReactElement {
                       setSensorHistories({});
                       setPaginaSensores(0);
                   }}
-                  className="min-w-32"
+                  className="min-w-40 max-w-56"
                   size="sm"
-                  placeholder={`Seleccionar ${modoVista === 'CULTIVO' ? 'Cultivo' : 'Lote'}`}
+                  placeholder="Seleccionar Lote"
+                  items={(lotes || []).map(l => ({ key: l.id.toString(), label: l.nombre }))}
+                  scrollShadowProps={{
+                    isEnabled: false
+                  }}
                 >
-                  {modoVista === 'CULTIVO' ? (
-                    cultivos.map(c => (
-                      <SelectItem key={c.id.toString()}>{c.nombre}</SelectItem>
-                    ))
-                  ) : modoVista === 'LOTE' ? (
-                    lotes.map(l => (
-                      <SelectItem key={l.id.toString()}>{l.nombre}</SelectItem>
-                    ))
-                  ) : null}
+                  {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
                 </Select>
 
                 {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
@@ -668,42 +1137,52 @@ export default function GestionSensoresPage(): ReactElement {
 
             {/* BOTONES DE ACCIÓN */}
             <div className="flex items-center gap-1">
-              <Button
-                onClick={() => openBrokerModal()}
-                variant="light"
-                color="secondary"
-                size="sm"
-                className="min-w-0 px-2"
-                startContent={<Server size={14} />}
-                title="Gestionar Brokers"
-              />
+               <Button
+                 onClick={() => openBrokerModal()}
+                 variant="light"
+                 color="secondary"
+                 size="sm"
+                 className="min-w-0 px-2"
+                 startContent={<Server size={14} />}
+                 title="Gestionar Brokers"
+               />
 
-              {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                <>
-                  <Button
-                    onClick={() => handleSincronizar(filtroId as number)}
-                    variant="light"
-                    color="primary"
-                    size="sm"
-                    className="min-w-0 px-2"
-                    startContent={<RefreshCw size={14} />}
-                    title="Sincronizar Sensores"
-                  />
+               {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
+                 <>
+                   <Button
+                     onClick={() => openBrokerLoteModal()}
+                     variant="light"
+                     color="warning"
+                     size="sm"
+                     className="min-w-0 px-2"
+                     startContent={<Layers size={14} />}
+                     title="Configurar Sensores por Lote"
+                   />
 
-                  <Button
-                    onClick={() => {
-                      toast.info("Función de descarga próximamente disponible");
-                    }}
-                    variant="light"
-                    color="success"
-                    size="sm"
-                    className="min-w-0 px-2"
-                    startContent={<Download size={14} />}
-                    title="Descargar Reporte de Trazabilidad"
-                  />
-                </>
-              )}
-            </div>
+                   <Button
+                     onClick={() => handleSincronizar(filtroId as number)}
+                     variant="light"
+                     color="primary"
+                     size="sm"
+                     className="min-w-0 px-2"
+                     startContent={<RefreshCw size={14} />}
+                     title="Sincronizar Sensores"
+                   />
+
+                   <Button
+                     onClick={() => {
+                       toast.info("Función de descarga próximamente disponible");
+                     }}
+                     variant="light"
+                     color="success"
+                     size="sm"
+                     className="min-w-0 px-2"
+                     startContent={<Download size={14} />}
+                     title="Descargar Reporte de Trazabilidad"
+                   />
+                 </>
+               )}
+             </div>
           </div>
         </div>
       </div>
@@ -715,7 +1194,6 @@ export default function GestionSensoresPage(): ReactElement {
             <div className="flex items-center gap-3">
               <h2 className="text-sm font-semibold text-gray-700">
                 {modoVista === 'GENERAL' ? 'Todos los Sensores' :
-                 modoVista === 'CULTIVO' ? `Cultivo: ${cultivos.find(c=>c.id===filtroId)?.nombre || 'Seleccionar'}` :
                  `Lote: ${lotes.find(l=>l.id===filtroId)?.nombre || 'Seleccionar'}`}
               </h2>
 
@@ -765,8 +1243,7 @@ export default function GestionSensoresPage(): ReactElement {
                       onDelete={(id) => eliminarSensor(id).then(loadStructure)}
                       onViewHistory={setHistorySensor}
                       onToggleEstado={(id, estado) => handleToggleEstadoSensor(id, estado)}
-                      menuOpen={menuOpen}
-                      onMenuToggle={setMenuOpen}
+                      onRemoveFromLote={handleRemoveSensorFromLote}
                     />
                   </div>
                 ))}
@@ -809,15 +1286,13 @@ export default function GestionSensoresPage(): ReactElement {
       </div>
 
       {/* GRÁFICA GENERAL AMPLIADA */}
-      {sensoresFiltrados.length > 0 && Object.keys(sensorHistories).length > 0 && (
+      {sensoresFiltrados.length > 0 && (
         <div className={`flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-100 p-3 animate-in fade-in slide-in-from-bottom-4 ${!isSystemRecording ? 'opacity-70 grayscale' : ''}`}>
           <div className="flex justify-between items-start mb-3">
            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
              <TrendingUp size={14} className="text-blue-600"/>
              {modoVista === 'GENERAL' && filtroId !== 'TODOS'
                ? `Lote: ${lotes.find(l => l.id === filtroId)?.nombre}`
-               : modoVista === 'CULTIVO' && filtroId !== 'TODOS'
-               ? `Cultivo: ${cultivos.find(c => c.id === filtroId)?.nombre}`
                : modoVista === 'LOTE' && filtroId !== 'TODOS'
                ? `Lote: ${lotes.find(l => l.id === filtroId)?.nombre}`
                : sensoresGrafica.length === 1
@@ -831,70 +1306,68 @@ export default function GestionSensoresPage(): ReactElement {
             <div className="flex items-center gap-2">
               {/* FILTRO POR LOTE EN MODO GENERAL */}
               {modoVista === 'GENERAL' && (
-                <select
-                  value={filtroId}
-                  onChange={(e) => {
-                    const value = e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value);
-                    setFiltroId(value);
+                <Select
+                  selectedKeys={filtroId === 'TODOS' ? [] : [filtroId.toString()]}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys);
+                    const value = selected.length > 0 ? selected[0] : 'TODOS';
+                    setFiltroId(value === 'TODOS' ? 'TODOS' : Number(value));
                     setSensoresGrafica([]); // Limpiar selección de gráfica al cambiar filtro
                     setLatestData([]);
                     setSensorHistories({});
                     setPaginaSensores(0);
                   }}
-                  className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 min-w-32 shadow-sm transition-all duration-200 hover:shadow-md"
+                  className="min-w-48 max-w-64"
+                  size="sm"
+                  placeholder="Todos los lotes"
+                  items={[
+                    { key: 'TODOS', label: 'Todos los lotes' },
+                    ...(lotes || []).map(l => ({ key: l.id.toString(), label: l.nombre }))
+                  ]}
+                  scrollShadowProps={{
+                    isEnabled: false
+                  }}
                 >
-                  <option value="TODOS">Todos los lotes</option>
-                  {lotes.map(l => (
-                    <option key={l.id} value={l.id}>{l.nombre}</option>
-                  ))}
-                </select>
+                  {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
+                </Select>
               )}
 
-              <Dropdown>
-                <DropdownTrigger>
-                  <Button
-                    variant={sensoresGrafica.length > 0 ? "solid" : "bordered"}
-                    size="sm"
-                    className="text-xs"
-                    color={sensoresGrafica.length > 0 ? "primary" : "default"}
-                  >
-                    {sensoresGrafica.length === 1
-                      ? sensoresFiltrados.find(s => s.id === sensoresGrafica[0])?.nombre || 'Sensor'
-                      : sensoresGrafica.length > 1
-                      ? `${sensoresGrafica.length} sensores`
-                      : 'Seleccionar sensores'
-                    }
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu
-                  aria-label="Selección de sensores para gráfica"
-                  closeOnSelect={false}
-                  selectionMode="multiple"
-                  selectedKeys={sensoresGrafica.length > 0 ? sensoresGrafica.map(String) : new Set()}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys).map(k => Number(k));
-                    setSensoresGrafica(selected);
-                  }}
-                  className="max-h-60 overflow-y-auto"
-                >
-                  {sensoresFiltrados.map(sensor => (
-                    <DropdownItem key={sensor.id} textValue={sensor.nombre}>
-                      <div className="flex items-center gap-2 w-full">
-                        <span className="text-sm flex-1 truncate">{sensor.nombre}</span>
-                        <div className={`w-2 h-2 rounded-full ${sensor.estado === 'Activo' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      </div>
-                    </DropdownItem>
-                  ))}
-                </DropdownMenu>
-              </Dropdown>
+              <Select
+                selectedKeys={sensoresGrafica.length > 0 ? sensoresGrafica.map(String) : []}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys).map(k => Number(k));
+                  setSensoresGrafica(selected);
+                }}
+                selectionMode="multiple"
+                className="min-w-48 max-w-64"
+                size="sm"
+                placeholder="Seleccionar sensores"
+                items={(sensoresFiltrados || []).map(sensor => ({
+                  key: sensor.id.toString(),
+                  label: `${sensor.nombre} ${sensor.estado === 'Activo' ? '●' : '○'}`
+                }))}
+                scrollShadowProps={{
+                  isEnabled: false
+                }}
+                renderValue={(items) => {
+                  if (items.length === 0) return null;
+                  return (
+                    <span className="text-xs text-gray-600 font-medium">
+                      {items.length} sensor{items.length !== 1 ? 'es' : ''} seleccionado{items.length !== 1 ? 's' : ''}
+                    </span>
+                  );
+                }}
+              >
+                {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
+              </Select>
 
               {sensoresGrafica.length > 0 && sensoresGrafica.length < sensoresFiltrados.length && (
                 <Button
-                  variant="light"
+                  variant="flat"
                   size="sm"
                   onClick={() => setSensoresGrafica([])}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                  startContent={<X size={12} />}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+                  startContent={<RefreshCw size={12} />}
                 >
                   Mostrar Todos
                 </Button>
@@ -942,52 +1415,6 @@ export default function GestionSensoresPage(): ReactElement {
                 return obj;
               });
 
-              // Tooltip personalizado para mostrar valores reales y porcentajes
-              const CustomTooltip = ({ active, payload, label }: any) => {
-                if (!active || !payload || !payload.length) return null;
-
-                return (
-                  <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg min-w-52 max-w-64">
-                    <p className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-100 pb-1 text-center">
-                      🕐 {label}
-                    </p>
-                    <div className="space-y-1.5">
-                      {payload.map((entry: any, index: number) => {
-                        const sensor = sensoresFiltrados.find(s => s.id === Number(entry.dataKey));
-                        const unit = sensor?.nombre.toLowerCase().includes('luz') ? 'lux' :
-                                    sensor?.nombre.toLowerCase().includes('temperatura') ? '°C' :
-                                    sensor?.nombre.toLowerCase().includes('humedad') ? '%' : '';
-                        const porcentaje = Number(entry.value);
-                        const valorReal = entry.payload[`${entry.dataKey}_real`];
-                        const isValidValue = !isNaN(porcentaje) && porcentaje !== null;
-
-                        return (
-                          <div key={index} className="flex items-center justify-between gap-2 p-1 rounded bg-gray-50">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div
-                                className="w-3 h-3 rounded-full border border-white shadow-sm flex-shrink-0"
-                                style={{ backgroundColor: entry.color }}
-                              />
-                              <span className="text-xs font-medium text-gray-700 truncate">
-                                {sensor?.nombre || `Sensor ${entry.dataKey}`}
-                              </span>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-sm font-bold text-gray-900 tabular-nums">
-                                {isValidValue ? `${porcentaje.toFixed(1)}%` : '--'}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {valorReal !== null ? `${valorReal.toFixed(2)} ${unit}`.trim() : '--'}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              };
-
               return (
                 <LineChart data={chartData} margin={{ top: 15, right: 20, left: 15, bottom: 70 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -1005,11 +1432,11 @@ export default function GestionSensoresPage(): ReactElement {
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    domain={[0, 100]}
-                    tickFormatter={(value) => `${value}%`}
+                    domain={['auto', 'auto']}
+                    tickFormatter={(value) => `${value.toFixed(1)}%`}
                     width={45}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  {sensoresGrafica.length <= 4 && sensoresGrafica.length > 0 && <Tooltip />}
                   <Legend
                     wrapperStyle={{
                       fontSize: '11px',
@@ -1060,6 +1487,30 @@ export default function GestionSensoresPage(): ReactElement {
         onSuccess={() => { closeBrokerModal(); loadStructure(); }}
         broker={editingBroker}
         brokers={[]} // TODO: Pasar la lista de brokers desde el estado
+      />
+      <BrokerLoteModal
+        isOpen={isBrokerLoteModalOpen}
+        onClose={closeBrokerLoteModal}
+        onSuccess={handleCreateBrokerLote}
+        onUpdate={handleUpdateBrokerLote}
+        onDelete={handleDeleteBrokerLote}
+        onEdit={(brokerLote) => setEditingBrokerLote(brokerLote)}
+        onCreateBroker={() => {
+          closeBrokerLoteModal();
+          openBrokerModal();
+        }}
+        brokerLote={editingBrokerLote}
+        brokerLotes={brokerLotes}
+        loteId={filtroId !== 'TODOS' ? filtroId as number : undefined}
+        brokers={brokers}
+        lotes={lotes}
+      />
+      <DeleteSensorModal
+        isOpen={isDeleteSensorModalOpen}
+        onClose={closeDeleteSensorModal}
+        onConfirm={confirmRemoveSensorFromLote}
+        sensor={sensorToDelete}
+        loteNombre={sensorToDelete?.lote?.nombre || 'Sin lote asignado'}
       />
     </div>
   );

@@ -6,6 +6,8 @@ import type {
   Subscripcion,
   Surco,
   Lote,
+  BrokerLote,
+  CreateBrokerLoteDto,
 } from "../interfaces/iot";
 
 // --- API para Brokers ---
@@ -68,4 +70,30 @@ export const listarSurcos = async (): Promise<Surco[]> => {
 export const listarSurcosPorLote = async (loteId: number): Promise<Surco[]> => {
   const response = await api.get(`/surcos/lotes/${loteId}/surcos`);
   return response.data.data;
+};
+
+// --- API para BrokerLote (Configuraciones por Lote) ---
+
+export const crearBrokerLote = async (data: CreateBrokerLoteDto): Promise<BrokerLote> => {
+  const response = await api.post("/mqtt-config/broker-lotes", data);
+  return response.data.data;
+};
+
+export const listarBrokerLotesPorLote = async (loteId: number): Promise<BrokerLote[]> => {
+  const response = await api.get(`/mqtt-config/broker-lotes/lote/${loteId}`);
+  return response.data.data;
+};
+
+export const listarBrokerLotesPorBroker = async (brokerId: number): Promise<BrokerLote[]> => {
+  const response = await api.get(`/mqtt-config/broker-lotes/broker/${brokerId}`);
+  return response.data.data;
+};
+
+export const actualizarBrokerLote = async (id: number, topicos: string[]): Promise<BrokerLote> => {
+  const response = await api.put(`/mqtt-config/broker-lotes/${id}`, { topicos });
+  return response.data.data;
+};
+
+export const eliminarBrokerLote = async (id: number): Promise<void> => {
+  await api.delete(`/mqtt-config/broker-lotes/${id}`);
 };

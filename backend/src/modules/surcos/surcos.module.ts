@@ -9,10 +9,11 @@ import { SurcosController } from './surcos.controller';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
+import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
 import { MqttConfigModule } from '../mqtt-config/mqtt-config.module'; // Importar
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Surco, Lote, Cultivo, Broker]),
+    TypeOrmModule.forFeature([Surco, Lote, Cultivo, Broker, BrokerLote]),
     forwardRef(() => MqttConfigModule), // ✅ Agregamos esto
   ],
   controllers: [SurcosController],

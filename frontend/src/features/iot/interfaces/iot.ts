@@ -132,3 +132,18 @@ export interface ReportData {
   };
   sensors: SensorReport[];
 }
+
+// --- Interfaces para BrokerLote (Configuraciones por Lote) ---
+
+export interface BrokerLote {
+  id: number;
+  broker: Broker;
+  lote: Lote;
+  topicos: string[];
+}
+
+export interface CreateBrokerLoteDto {
+  brokerId: number;
+  loteId: number;
+  topicos: string[];
+}

@@ -31,6 +31,7 @@ import { UsuarioPermiso } from './src/modules/usuarios_permisos/entities/usuario
 import { Modulo } from './src/modules/modulos/entities/modulo.entity';
 import { Ficha } from './src/modules/fichas/entities/ficha.entity';
 import { Broker } from './src/modules/mqtt-config/entities/broker.entity';
+import { BrokerLote } from './src/modules/mqtt-config/entities/broker-lote.entity';
 import { Subscripcion } from './src/modules/mqtt-config/entities/subscripcion.entity';
 import { Movimiento } from './src/movimientos/entities/movimiento.entity';
 
@@ -71,6 +72,7 @@ export const AppDataSource = new DataSource({
     Modulo,
     Ficha,
     Broker,
+    BrokerLote,
     Subscripcion,
     Movimiento,
   ],
