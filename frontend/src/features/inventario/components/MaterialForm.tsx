@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type ChangeEvent, type ReactElement, type ComponentType, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react';
-import { Button } from "@heroui/react";
+import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
 import { toast } from 'sonner';
 import {
   UploadCloud,
@@ -28,51 +28,47 @@ import {
 // --- ✅ INICIO DE LA CORRECCIÓN: VALIDACIÓN DE ERRORES ---
 
 // 1. Se añade la propiedad opcional "error" a las interfaces
-interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'defaultValue'> {
   icon: ComponentType<{ size: number, className: string }>;
   label: string;
-  error?: boolean; // <-- Nueva propiedad
+  error?: boolean;
 }
 
-interface FormSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface FormSelectProps {
   icon: ComponentType<{ size: number, className: string }>;
   label: string;
   children: ReactNode;
-  error?: boolean; // <-- Nueva propiedad
+  selectedKeys: string[];
+  onSelectionChange: (keys: Set<string>) => void;
+  error?: boolean;
+  name?: string;
 }
 
-// 2. Se actualizan los componentes para usar la propiedad "error" y cambiar las clases de CSS
+// 2. Se actualizan los componentes para usar HeroUI
 function FormInput({ icon: Icon, label, error, ...props }: FormInputProps) {
-  const baseClasses = "w-full border-2 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition";
-  const errorClasses = "border-red-500 bg-red-50 placeholder-red-400";
-  const normalClasses = "border-gray-200";
-
   return (
-    <div>
-      <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-        <Icon size={16} className="text-green-600" />
-        {label}
-      </label>
-      <input {...props} className={`${baseClasses} ${error ? errorClasses : normalClasses}`} />
-    </div>
+    <Input
+      {...props}
+      value={props.value?.toString() || ''}
+      label={label}
+      startContent={<Icon size={16} className="text-green-600" />}
+      isInvalid={error}
+      errorMessage={error ? "Campo requerido" : undefined}
+    />
   );
 }
 
 function FormSelect({ icon: Icon, label, children, error, ...props }: FormSelectProps) {
-  const baseClasses = "w-full border-2 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition bg-white";
-  const errorClasses = "border-red-500 bg-red-50";
-  const normalClasses = "border-gray-200";
-
   return (
-    <div>
-      <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-        <Icon size={16} className="text-green-600" />
-        {label}
-      </label>
-      <select {...props} className={`${baseClasses} ${error ? errorClasses : normalClasses}`}>
-        {children}
-      </select>
-    </div>
+    <Select
+      {...props}
+      label={label}
+      startContent={<Icon size={16} className="text-green-600" />}
+      isInvalid={error}
+      errorMessage={error ? "Campo requerido" : undefined}
+    >
+      {children}
+    </Select>
   );
 }
 // --- ✅ FIN DE LA CORRECCIÓN ---
@@ -233,12 +229,15 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           icon={LayoutGrid}
           label="Categoría *"
           name="tipoCategoria"
-          value={formData.tipoCategoria || ''}
-          onChange={handleCategoriaChange}
+          selectedKeys={formData.tipoCategoria ? [formData.tipoCategoria] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0] as string;
+            handleCategoriaChange({ target: { value: selected } } as any);
+          }}
           error={errors.tipoCategoria}
         >
-          <option value="" disabled>Selecciona una categoría</option>
-          {Object.values(TipoCategoria).map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+          <SelectItem key="" isDisabled>Selecciona una categoría</SelectItem>
+          {Object.values(TipoCategoria).map(cat => (<SelectItem key={cat}>{cat}</SelectItem>))}
         </FormSelect>
       </div>
 
@@ -248,11 +247,14 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
             icon={Box}
             label="Tipo de Material"
             name="tipoMaterial"
-            value={formData.tipoMaterial || ''}
-            onChange={handleChange}
+            selectedKeys={formData.tipoMaterial ? [formData.tipoMaterial] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFormData(prev => ({ ...prev, tipoMaterial: selected }));
+            }}
           >
-            <option value="">Selecciona el tipo de material</option>
-            {materialesDisponibles.map(mat => (<option key={mat} value={mat}>{mat}</option>))}
+            <SelectItem key="">Selecciona el tipo de material</SelectItem>
+            {materialesDisponibles.map(mat => (<SelectItem key={mat}>{mat}</SelectItem>))}
           </FormSelect>
         </div>
       )}
@@ -262,12 +264,15 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           icon={Archive}
           label={mostrarSeccionContenido ? "Tipo de Empaque *" : "Tipo de Unidad *"}
           name="tipoEmpaque"
-          value={formData.tipoEmpaque || ''}
-          onChange={handleChange}
+          selectedKeys={formData.tipoEmpaque ? [formData.tipoEmpaque] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0];
+            setFormData(prev => ({ ...prev, tipoEmpaque: selected as TipoEmpaque }));
+          }}
           error={errors.tipoEmpaque}
         >
-          <option value="" disabled>{mostrarSeccionContenido ? "Selecciona un empaque" : "Selecciona una unidad"}</option>
-          {Object.values(TipoEmpaque).map(emp => (<option key={emp} value={emp}>{emp}</option>))}
+          <SelectItem key="" isDisabled>{mostrarSeccionContenido ? "Selecciona un empaque" : "Selecciona una unidad"}</SelectItem>
+          {Object.values(TipoEmpaque).map(emp => (<SelectItem key={emp}>{emp}</SelectItem>))}
         </FormSelect>
         <FormInput
           icon={Hash}
@@ -308,10 +313,13 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           <FormSelect
             icon={Ruler}
             label="Unidad de Medida"
-            value={medidaContenido}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setMedidaContenido(e.target.value as MedidaDeContenido)}
+            selectedKeys={[medidaContenido]}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setMedidaContenido(selected as MedidaDeContenido);
+            }}
           >
-            {Object.values(MedidasDeContenido).map(med => (<option key={med} value={med}>{med}</option>))}
+            {Object.values(MedidasDeContenido).map(med => (<SelectItem key={med}>{med}</SelectItem>))}
           </FormSelect>
         </div>
       )}
@@ -353,11 +361,15 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
         />
       </div>
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-          <FileText size={16} className="text-green-600" />
-            Descripción
-        </label>
-        <textarea name="descripcion" value={formData.descripcion || ''} onChange={handleChange} placeholder="Añade una descripción o nota adicional..." className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition" rows={3} />
+        <Textarea
+          name="descripcion"
+          value={formData.descripcion || ''}
+          onChange={handleChange}
+          placeholder="Añade una descripción o nota adicional..."
+          label="Descripción"
+          startContent={<FileText size={16} className="text-green-600" />}
+          rows={3}
+        />
       </div>
 
       <label className="flex flex-col items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-dashed rounded-md cursor-pointer hover:border-gray-300">
@@ -367,10 +379,10 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       </label>
 
       <div className="flex justify-center gap-4">
-        <Button onClick={onCancel} className="bg-red-100 text-red-700 border-2 border-red-200 hover:bg-red-200 w-40">
+        <Button onClick={onCancel} color="danger" variant="light" className="w-40">
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} className="bg-green-600 text-white hover:bg-green-700 w-40">
+        <Button onClick={handleSubmit} color="success" className="w-40">
           Guardar Material
         </Button>
       </div>
