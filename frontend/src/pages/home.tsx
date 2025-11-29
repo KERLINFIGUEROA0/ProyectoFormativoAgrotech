@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useAuth } from "../context/AuthContext";
 import {
   Card,
   CardBody,
@@ -51,7 +52,7 @@ interface StatsData {
 }
 
 export default function HomePage() {
-  const [user, setUser] = useState<any>(null);
+  const { userData } = useAuth();
   const [statsData, setStatsData] = useState<StatsData>({
     cultivosActivos: 0,
     movimientosRecientes: [],
@@ -68,24 +69,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUserData();
     loadDashboardData();
   }, []);
-
-  const loadUserData = () => {
-    try {
-      const userString = localStorage.getItem("user");
-      if (userString) {
-        const userData = JSON.parse(userString);
-        console.log('User data loaded:', userData); // Debug log
-        setUser(userData);
-      } else {
-        console.log('No user data found in localStorage'); // Debug log
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
-  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -210,9 +195,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-1">
-              ¡Bienvenido{user ? ` ${user.nombre?.split(' ')[0] || user.nombres?.split(' ')[0] || user.name?.split(' ')[0] || 'Usuario'}` : ''}!
-              {/* Debug: mostrar user object temporalmente */}
-              {user && <small className="block text-green-200 text-xs mt-1">Debug: {JSON.stringify(user).substring(0, 100)}...</small>}
+              ¡Bienvenido{userData ? ` ${userData.nombres?.split(' ')[0] || 'Usuario'}` : ''}!
             </h2>
             <p className="text-green-100">Sistema de Monitoreo Agrícola - Dashboard Principal</p>
           </div>

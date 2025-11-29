@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { ReactNode } from "react";
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { jwtDecode } from 'jwt-decode';
 import { obtenerPerfil } from "../features/auth/api/auth";
 import type { UsuarioData } from "../types/auth";
 
@@ -73,6 +74,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
       setToken(savedToken);
+
+      // Decodificar el token para obtener el nombre del usuario
+      try {
+        const decoded: any = jwtDecode(savedToken);
+        if (decoded.nombre) {
+          setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
+            tipo: "CC",
+            identificacion: decoded.identificacion || "",
+            nombres: decoded.nombre,
+            apellidos: "",
+            email: decoded.username || "",
+            telefono: "",
+            fotoUrl: "",
+            rolNombre: decoded.rolNombre || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error decodificando token guardado:", error);
+      }
+
       const savedPerms = localStorage.getItem('permissions');
       const savedModules = localStorage.getItem('modules');
       setUserPermissions(savedPerms ? JSON.parse(savedPerms) : []);
@@ -136,6 +157,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
     setIsLoggingOut(false);
+
+    // Decodificar el token para obtener el nombre del usuario
+    try {
+      const decoded: any = jwtDecode(newToken);
+      if (decoded.nombre) {
+        // Actualizar userData con el nombre del token
+        setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
+          tipo: "CC",
+          identificacion: decoded.identificacion || "",
+          nombres: decoded.nombre,
+          apellidos: "",
+          email: decoded.username || "",
+          telefono: "",
+          fotoUrl: "",
+          rolNombre: decoded.rolNombre || "",
+        });
+      }
+    } catch (error) {
+      console.error("Error decodificando token:", error);
+    }
   };
 
   const logout = () => {
