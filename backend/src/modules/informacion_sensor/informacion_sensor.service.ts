@@ -17,11 +17,7 @@ export class InformacionSensorService {
     private readonly sensorRepo: Repository<Sensor>,
   ) {}
 
-  /**
-   * Crea un registro a partir de un mensaje MQTT.
-   * Busca TODOS los sensores con ese tópico y guarda los datos en cada uno que esté activo.
-   * Esto permite que múltiples sensores compartan el mismo tópico pero guarden datos en diferentes surcos/lotes.
-   */
+
   async createFromMqtt(topic: string, payload: string): Promise<void> {
     const valor = parseFloat(payload);
     if (isNaN(valor)) {

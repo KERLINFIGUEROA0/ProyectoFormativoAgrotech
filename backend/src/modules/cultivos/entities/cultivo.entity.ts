@@ -15,7 +15,6 @@ export class Cultivo {
   @Column({ name: 'Nombre', length: 20 })
   nombre: string;
   
-  // ... (img, descripcion, Estado, Fecha_Plantado, tipoCultivo, actividades, producciones, surcos, cultivosEpa...)
   @Column({ name: 'Cantidad', type: 'int' })
   cantidad: number;
 

@@ -20,6 +20,7 @@ export class LotesService {
 
   private async clearCache(id?: number) {
     await this.cacheManager.del('lotes_todos');
+    await this.cacheManager.del('lotes_todos_alt');
     await this.cacheManager.del('lotes_estadisticas');
     if (id) {
       // The default cache key for the interceptor is the request URL
