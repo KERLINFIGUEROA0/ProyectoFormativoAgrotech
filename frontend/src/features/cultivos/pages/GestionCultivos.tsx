@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,7 +14,7 @@ import {
 } from '@heroui/react';
 
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha, actualizarEstadosLotes } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
@@ -310,15 +310,35 @@ export default function GestionCultivosPage(): ReactElement {
             <h1 className="text-3xl font-bold text-gray-800">Gestión de Cultivos</h1>
             <p className="text-gray-500 mt-1">Administra tu producción agrícola de forma eficiente.</p>
           </div>
-          <Button 
-            onPress={() => openModal()} 
-            color="primary" 
-            className="font-semibold shadow-md shadow-blue-500/30"
-            size="lg"
-            startContent={<Plus size={20} strokeWidth={2.5} />}
-          >
-            Nuevo Cultivo
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onPress={async () => {
+                try {
+                  const result = await actualizarEstadosLotes();
+                  toast.success(`Estados actualizados: ${result.data.lotesActualizados} lotes corregidos`);
+                  await fetchData(); // Recargar datos
+                } catch (error: any) {
+                  toast.error(error.response?.data?.message || "Error al actualizar estados");
+                }
+              }}
+              color="secondary"
+              variant="flat"
+              className="font-semibold"
+              size="lg"
+              startContent={<RefreshCw size={20} strokeWidth={2.5} />}
+            >
+              Actualizar Estados
+            </Button>
+            <Button
+              onPress={() => openModal()}
+              color="primary"
+              className="font-semibold shadow-md shadow-blue-500/30"
+              size="lg"
+              startContent={<Plus size={20} strokeWidth={2.5} />}
+            >
+              Nuevo Cultivo
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

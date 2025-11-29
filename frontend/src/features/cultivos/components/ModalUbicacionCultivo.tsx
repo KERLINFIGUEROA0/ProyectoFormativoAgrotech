@@ -83,9 +83,22 @@ export default function ModalUbicacionCultivo({ isOpen, onClose, cultivo }: Moda
                           startContent={<MapPin size={12}/>}
                         >
                           {sub.nombre}
+                          {/* Indicador si es ubicación histórica (sublote eliminado) */}
+                          {sub.deletedAt && (
+                            <span className="ml-1 text-xs opacity-75">(Histórico)</span>
+                          )}
                         </Chip>
                       ))}
                     </div>
+                    {/* Mensaje informativo si hay sublotes históricos */}
+                    {cultivo.sublotes.some((sub: any) => sub.deletedAt) && (
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-xs text-amber-700">
+                          <strong>Nota:</strong> Algunos sublotes marcados como "(Histórico)" fueron eliminados posteriormente.
+                          Esta información se mantiene para preservar el registro de ubicación original del cultivo.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

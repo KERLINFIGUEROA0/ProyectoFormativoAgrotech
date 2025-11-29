@@ -115,7 +115,7 @@ export class CultivosController {
   @Get('exportar-excel/general')
   async exportarExcelGeneral(@Res() res: Response) {
     const excelBuffer = await this.cultivosService.exportarExcelGeneral();
-    
+
     // Añadir fecha al nombre del archivo: YYYY-MM-DD_HHMM
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -126,7 +126,26 @@ export class CultivosController {
       'Content-Disposition': `attachment; filename=cultivos-reporte-general-${dateStr}.xlsx`,
       'Content-Length': excelBuffer.length,
     });
-    
+
     res.send(excelBuffer);
+  }
+
+  @Post('actualizar-estados-lotes')
+  async actualizarEstadosLotes() {
+    const resultado = await this.cultivosService.actualizarEstadosLotes();
+    return {
+      success: true,
+      message: resultado.message,
+      data: { lotesActualizados: resultado.lotesActualizados }
+    };
+  }
+
+  @Get('diagnosticar-estados-lotes')
+  async diagnosticarEstadosLotes() {
+    const diagnostico = await this.cultivosService.diagnosticarEstadosLotes();
+    return {
+      success: true,
+      data: diagnostico
+    };
   }
 }

@@ -71,3 +71,14 @@ export const obtenerTrazabilidad = async (cultivoId: number) => {
   const response = await api.get(`/trazabilidad/cultivo/${cultivoId}`);
   return response.data;
 };
+
+// --- FUNCIONES PARA DIAGNÓSTICO Y ACTUALIZACIÓN DE ESTADOS ---
+export const diagnosticarEstadosLotes = async () => {
+  const response = await api.get('/cultivos/diagnosticar-estados-lotes');
+  return response.data;
+};
+
+export const actualizarEstadosLotes = async () => {
+  const response = await api.post('/cultivos/actualizar-estados-lotes');
+  return response.data;
+};
