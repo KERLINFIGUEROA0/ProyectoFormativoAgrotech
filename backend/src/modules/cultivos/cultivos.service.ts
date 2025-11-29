@@ -72,44 +72,23 @@ export class CultivosService {
         await queryRunner.manager.save(Lote, lote);
 
       } else {
-        // ASIGNACIÓN MASIVA: Solo a los sublotes disponibles del lote
-        const sublotesDisponibles = await this.subloteRepository.find({
-          where: {
-            lote: { id: lote.id },
-            cultivo: IsNull() // Solo sublotes sin cultivo asignado
-          }
+        // ASIGNACIÓN MASIVA: A todos los sublotes del lote
+        const todosSublotes = await this.subloteRepository.find({
+          where: { lote: { id: lote.id } }
         });
 
-        if (sublotesDisponibles.length > 0) {
-          // Asignar el mismo cultivo solo a los sublotes disponibles
-          for (const sub of sublotesDisponibles) {
+        if (todosSublotes.length > 0) {
+          // Asignar el mismo cultivo a todos los sublotes
+          for (const sub of todosSublotes) {
             sub.cultivo = cultivoGuardado;
             sub.estado = 'En cultivación';
             await queryRunner.manager.save(Sublote, sub);
           }
-
-          // Estado del lote: Determinar basado en ocupación
-          const totalSublotes = await this.subloteRepository.count({
-            where: { lote: { id: lote.id } }
-          });
-
-          const sublotesOcupados = await this.subloteRepository.count({
-            where: {
-              lote: { id: lote.id },
-              cultivo: Not(IsNull())
-            }
-          });
-
-          if (sublotesOcupados === totalSublotes) {
-            lote.estado = 'En cultivación'; // Todos ocupados
-          } else {
-            lote.estado = 'Parcialmente ocupado'; // Algunos ocupados
-          }
-          await queryRunner.manager.save(Lote, lote);
-        } else {
-          // No hay sublotes disponibles
-          throw new BadRequestException('No hay sublotes disponibles en este lote para asignar el cultivo');
         }
+
+        // Estado del lote: En cultivación (totalmente ocupado)
+        lote.estado = 'En cultivación';
+        await queryRunner.manager.save(Lote, lote);
       }
 
       await queryRunner.commitTransaction();
