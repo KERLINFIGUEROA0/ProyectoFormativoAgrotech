@@ -19,6 +19,9 @@ export class Cultivo {
   @Column({ name: 'Cantidad', type: 'int' })
   cantidad: number;
 
+  @Column({ name: 'Cantidad_Cosechada', type: 'int', default: 0 })
+  cantidad_cosechada: number;
+
   @Column({ name: 'Img', length: 255 })
   img: string;
 
@@ -30,6 +33,9 @@ export class Cultivo {
 
   @Column({ name: 'Fecha_Plantado', type: 'date', nullable: true })
   Fecha_Plantado: Date;
+
+  @Column({ name: 'Fecha_Fin', type: 'date', nullable: true })
+  Fecha_Fin: Date | null;
 
   @ManyToOne(() => TipoCultivo, (tipoCultivo) => tipoCultivo.cultivos, {
     onDelete: 'SET NULL',

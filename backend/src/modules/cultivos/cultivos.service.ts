@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, Not, In } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { Cultivo } from './entities/cultivo.entity';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
@@ -8,6 +8,7 @@ import { UpdateCultivoDto } from './dto/update-cultivo.dto';
 import { TipoCultivo } from '../tipo_cultivo/entities/tipo_cultivo.entity';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Sublote } from '../sublotes/entities/sublote.entity';
+import { Produccion } from '../producciones/entities/produccione.entity';
 
 @Injectable()
 export class CultivosService {
@@ -135,6 +136,92 @@ export class CultivosService {
     // Simplemente guarda la ruta relativa que el controlador le proporciona.
     cultivo.img = imgUrl;
     return this.cultivoRepository.save(cultivo);
+  }
+
+  async registrarCosecha(id: number, fecha: string, cantidad: number, esFinal: boolean): Promise<Cultivo> {
+    const queryRunner = this.cultivoRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Obtener el cultivo con sus relaciones de terreno
+      const cultivo = await this.cultivoRepository.findOne({
+        where: { id },
+        relations: ['lote', 'sublotes']
+      });
+
+      if (!cultivo) throw new NotFoundException(`Cultivo no encontrado`);
+      if (cultivo.Estado === 'Finalizado') throw new BadRequestException(`Este cultivo ya fue finalizado`);
+
+      // 2. Crear el registro de Producción (Historial de lo que salió hoy)
+      const produccion = new Produccion();
+      produccion.cantidad = cantidad;
+      produccion.cantidadOriginal = cantidad;
+      produccion.fecha = new Date(fecha);
+      produccion.estado = 'Cosechado';
+      produccion.cultivo = cultivo;
+      await queryRunner.manager.save(Produccion, produccion);
+
+      // 3. Actualizar contadores del Cultivo
+      cultivo.cantidad_cosechada = (cultivo.cantidad_cosechada || 0) + Number(cantidad);
+
+      // --- LÓGICA DE ESTADOS ---
+
+      if (esFinal) {
+        // CASO: ÚLTIMA COSECHA (LIBERAR TODO)
+        cultivo.Estado = 'Finalizado';
+        cultivo.Fecha_Fin = new Date(fecha);
+
+        // A. Liberar Sublotes (si tiene)
+        if (cultivo.sublotes && cultivo.sublotes.length > 0) {
+          for (const sub of cultivo.sublotes) {
+            sub.cultivo = null;        // Romper relación
+            sub.estado = 'Disponible'; // Estado libre
+            await queryRunner.manager.save(Sublote, sub);
+          }
+        }
+
+        // B. Liberar Lote Principal
+        if (cultivo.lote) {
+          // Verificamos si hay OTROS sublotes ocupados en este mismo lote por OTROS cultivos
+          const ocupados = await this.subloteRepository.count({
+            where: {
+              lote: { id: cultivo.lote.id },
+              estado: 'En cultivación',
+              id: Not(In(cultivo.sublotes.map(s => s.id))) // Excluir los que acabamos de liberar
+            }
+          });
+
+          // Si nadie más está usando el lote, se libera completo
+          if (ocupados === 0) {
+            const lote = cultivo.lote;
+            lote.estado = 'En preparación'; // Listo para el siguiente ciclo
+            await queryRunner.manager.save(Lote, lote);
+          }
+        }
+
+      } else {
+        // CASO: COSECHA PARCIAL (MANTENER OCUPADO)
+        // El cultivo avanza de etapa, pero NO soltamos el terreno
+        cultivo.Estado = 'En Cosecha';
+      }
+
+      await queryRunner.manager.save(Cultivo, cultivo);
+      await queryRunner.commitTransaction();
+
+      return cultivo;
+
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async finalizarCultivo(id: number, fechaFin: string): Promise<Cultivo> {
+    // Método simplificado que usa registrarCosecha con cantidad 0 y esFinal=true
+    return await this.registrarCosecha(id, fechaFin, 0, true);
   }
 
   async exportarExcelGeneral(): Promise<Buffer> {

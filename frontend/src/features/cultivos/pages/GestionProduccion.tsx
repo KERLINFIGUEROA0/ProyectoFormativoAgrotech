@@ -81,9 +81,8 @@ export default function GestionProduccion(): ReactElement {
         ]);
 
         const todosLosLotes: Lote[] = lotesRes.data || [];
-        const lotesActivos = todosLosLotes.filter(lote => lote.estado === 'Activo');
 
-        setLotes(lotesActivos);
+        setLotes(todosLosLotes);
         setCultivos(cultivosRes.data?.data || cultivosRes.data || []);
         setBrokers(brokersRes || []);
       } catch (error) {
@@ -239,7 +238,7 @@ export default function GestionProduccion(): ReactElement {
         // Vista de Lotes
         <>
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de SubLotes</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Gestión de Lotes y SubLotes</h1>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {lotes.map((lote) => (
@@ -260,6 +259,18 @@ export default function GestionProduccion(): ReactElement {
                     <div className="flex justify-between items-center py-1">
                       <span className="text-sm text-gray-600">Sublotes:</span>
                       <span className="font-semibold text-gray-800">{lote.sublotes?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-sm text-gray-600">Estado:</span>
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
+                        lote.estado === 'Activo'
+                          ? 'bg-green-100 text-green-800 border border-green-200'
+                          : lote.estado === 'Inactivo'
+                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          : 'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}>
+                        {lote.estado}
+                      </span>
                     </div>
                   </div>
                   <Button
@@ -300,7 +311,7 @@ export default function GestionProduccion(): ReactElement {
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Sublotes de {loteSeleccionado.nombre} ({sublotesFiltrados.length})</h3>
-                    <p className="text-sm text-gray-600 mt-1">Área total: {loteSeleccionado.area} m²</p>
+                    <p className="text-sm text-gray-600 mt-1">Área total: {loteSeleccionado.area} m² • Estado: {loteSeleccionado.estado}</p>
                   </div>
                   <Select
                     placeholder="Filtrar por estado"

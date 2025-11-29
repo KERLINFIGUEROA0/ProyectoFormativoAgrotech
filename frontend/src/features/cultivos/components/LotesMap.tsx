@@ -11,11 +11,27 @@ import {
 import type { Coordenada, Lote } from '../interfaces/cultivos';
 
 
+interface SubloteConCultivo {
+  id: number;
+  nombre: string;
+  coordenadas?: any;
+  cultivo: {
+    id: number;
+    nombre: string;
+    tipoCultivo?: { nombre: string };
+    estado: string;
+  };
+  lote?: Lote;
+}
+
 interface LotesMapProps {
   lotes: Lote[];
   selectedLote: Lote | null;
   onSelectLote: (lote: Lote | null) => void;
   customInfo?: (lote: Lote) => ReactElement;
+  sublotesConCultivos?: SubloteConCultivo[];
+  selectedSubloteCultivo?: SubloteConCultivo | null;
+  onSelectSubloteCultivo?: (sublote: SubloteConCultivo | null) => void;
 }
 
 const containerStyle = {
@@ -46,6 +62,9 @@ export default function LotesMap({
   selectedLote,
   onSelectLote,
   customInfo,
+  sublotesConCultivos = [],
+  selectedSubloteCultivo,
+  onSelectSubloteCultivo,
 }: LotesMapProps): ReactElement {
   // Parse coordenadas if they are strings
   const parsedLotes = lotes.map(lote => ({
@@ -125,21 +144,48 @@ export default function LotesMap({
           )
       )}
 
-      {/* Marcadores para lotes con cultivos */}
-      {lotes.map(
-        (lote: Lote) => {
-          const hasCultivos = lote.surcos && lote.surcos.some((s: any) => s.cultivo);
-          if (!hasCultivos || !lote.coordenadas || lote.coordenadas.type !== 'polygon' || !(lote.coordenadas.coordinates as Coordenada[]).length) {
+      {/* Marcadores para sublotes con cultivos */}
+      {sublotesConCultivos.map(
+        (sublote) => {
+          if (!sublote.coordenadas) return null;
+
+          let position: { lat: number; lng: number };
+
+          if (sublote.coordenadas.type === 'point' && sublote.coordenadas.coordinates) {
+            position = {
+              lat: sublote.coordenadas.coordinates.lat,
+              lng: sublote.coordenadas.coordinates.lng
+            };
+          } else if (sublote.coordenadas.type === 'polygon' && sublote.coordenadas.coordinates && sublote.coordenadas.coordinates.length > 0) {
+            // Calcular centro del polígono del sublote
+            const bounds = new window.google.maps.LatLngBounds();
+            sublote.coordenadas.coordinates.forEach((coord: any) => {
+              bounds.extend(new window.google.maps.LatLng(coord.lat, coord.lng));
+            });
+            const center = bounds.getCenter();
+            position = { lat: center.lat(), lng: center.lng() };
+          } else {
             return null;
           }
-          const center = getPolygonCenter(lote.coordenadas.coordinates as Coordenada[]);
-          const cultivosCount = lote.surcos?.filter((s: any) => s.cultivo).length || 0;
+
           return (
             <Marker
-              key={`marker-${lote.id}`}
-              position={center}
-              onClick={() => onSelectLote(lote)}
-              title={`${lote.nombre}: ${cultivosCount} cultivo${cultivosCount !== 1 ? 's' : ''}`}
+              key={`sublote-marker-${sublote.id}`}
+              position={position}
+              icon={{
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" fill="#10B981" stroke="white" stroke-width="3"/>
+                    <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">🌱</text>
+                  </svg>
+                `),
+                scaledSize: new window.google.maps.Size(32, 32),
+                anchor: new window.google.maps.Point(16, 32)
+              }}
+              title={`${sublote.nombre}: ${sublote.cultivo.nombre} (${sublote.cultivo.tipoCultivo?.nombre || 'Sin tipo'})`}
+              onClick={() => {
+                onSelectSubloteCultivo?.(sublote);
+              }}
             />
           );
         }
@@ -163,6 +209,45 @@ export default function LotesMap({
               </p>
             </div>
           )}
+        </InfoWindow>
+      )}
+
+      {/* InfoWindow para cultivo seleccionado en sublote */}
+      {selectedSubloteCultivo && (
+        <InfoWindow
+          position={
+            selectedSubloteCultivo.coordenadas?.type === 'point' && selectedSubloteCultivo.coordenadas.coordinates
+              ? {
+                  lat: selectedSubloteCultivo.coordenadas.coordinates.lat,
+                  lng: selectedSubloteCultivo.coordenadas.coordinates.lng
+                }
+              : selectedSubloteCultivo.coordenadas?.type === 'polygon' && selectedSubloteCultivo.coordenadas.coordinates
+              ? (() => {
+                  const bounds = new window.google.maps.LatLngBounds();
+                  selectedSubloteCultivo.coordenadas!.coordinates.forEach((coord: any) => {
+                    bounds.extend(new window.google.maps.LatLng(coord.lat, coord.lng));
+                  });
+                  const center = bounds.getCenter();
+                  return { lat: center.lat(), lng: center.lng() };
+                })()
+              : { lat: 0, lng: 0 }
+          }
+          onCloseClick={() => onSelectSubloteCultivo?.(null)}
+        >
+          <div className="p-3 min-w-[200px]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1 bg-green-100 rounded">
+                <span className="text-green-600 text-sm">🌱</span>
+              </div>
+              <h4 className="font-bold text-gray-800">{selectedSubloteCultivo.cultivo.nombre}</h4>
+            </div>
+            <div className="space-y-1 text-sm">
+              <p><strong>Sublote:</strong> {selectedSubloteCultivo.nombre}</p>
+              <p><strong>Lote:</strong> {selectedSubloteCultivo.lote?.nombre}</p>
+              <p><strong>Tipo:</strong> {selectedSubloteCultivo.cultivo.tipoCultivo?.nombre || 'No especificado'}</p>
+              <p><strong>Estado:</strong> {selectedSubloteCultivo.cultivo.estado}</p>
+            </div>
+          </div>
         </InfoWindow>
       )}
     </GoogleMap>
