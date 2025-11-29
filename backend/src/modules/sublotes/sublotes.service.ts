@@ -5,7 +5,7 @@ import {
   forwardRef   // <--- IMPORTANTE
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { Sublote } from './entities/sublote.entity';
 import { CreateSubloteDto } from './dto/create-sublote.dto';
 import { UpdateSubloteDto } from './dto/update-sublote.dto';
@@ -35,36 +35,60 @@ export class SublotesService {
 
   ) { }
 
-  // Función privada para actualizar el estado del lote basado en sus sublotes
+  // Función privada para actualizar el estado del lote basado en sus sublotes ACTIVOS y cultivos asignados
   private async actualizarEstadoLote(loteId: number): Promise<void> {
-    // Obtener todos los sublotes del lote
-    const sublotes = await this.subloteRepository.find({
+    // Obtener todos los sublotes ACTIVOS del lote (excluye soft-deleted)
+    const sublotesActivos = await this.subloteRepository.find({
       where: { lote: { id: loteId } },
       relations: ['cultivo']
     });
 
-    if (sublotes.length === 0) return; // No hay sublotes, no cambiar estado
+    // Verificar si hay cultivos activos asignados a los sublotes del lote
+    const cultivosEnSublotes = sublotesActivos
+      .filter(s => s.cultivo !== null && (s.cultivo.Estado === 'Activo' || s.cultivo.Estado === 'En Cosecha'))
+      .length;
 
-    // Contar sublotes con cultivos asignados
-    const sublotesConCultivo = sublotes.filter(s => s.cultivo !== null).length;
-    const totalSublotes = sublotes.length;
+    // Verificar si hay cultivos asignados directamente al lote (sin sublotes)
+    const cultivosDirectosEnLote = await this.cultivoRepository.count({
+      where: {
+        lote: { id: loteId },
+        Estado: In(['Activo', 'En Cosecha']),
+        sublotes: { id: IsNull() } // Cultivos sin sublotes asignados
+      }
+    });
 
-    let nuevoEstado: string;
-
-    if (sublotesConCultivo === 0) {
-      // Ningún sublote tiene cultivo
-      nuevoEstado = 'En preparación';
-    } else if (sublotesConCultivo === totalSublotes) {
-      // Todos los sublotes tienen cultivo
-      nuevoEstado = 'En cultivación';
-    } else {
-      // Algunos sublotes tienen cultivo
-      nuevoEstado = 'Parcialmente ocupado';
+    // Si no hay cultivos activos (ni en sublotes ni directos), el lote está en preparación
+    if (cultivosEnSublotes === 0 && cultivosDirectosEnLote === 0) {
+      await this.loteRepository.update(loteId, { estado: 'En preparación' });
+      console.log(`Lote ${loteId} cambió a estado: En preparación (sin cultivos activos)`);
+      return;
     }
 
-    // Actualizar el estado del lote
-    await this.loteRepository.update(loteId, { estado: nuevoEstado });
-    console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${sublotesConCultivo}/${totalSublotes} sublotes con cultivo)`);
+    // Si hay sublotes activos
+    if (sublotesActivos.length > 0) {
+      const totalSublotesActivos = sublotesActivos.length;
+
+      let nuevoEstado: string;
+
+      if (cultivosEnSublotes === 0) {
+        // Hay sublotes pero ninguno tiene cultivo activo
+        nuevoEstado = 'En preparación';
+      } else if (cultivosEnSublotes === totalSublotesActivos) {
+        // Todos los sublotes activos tienen cultivos activos
+        nuevoEstado = 'En cultivación';
+      } else {
+        // Algunos sublotes tienen cultivos activos
+        nuevoEstado = 'Parcialmente ocupado';
+      }
+
+      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${cultivosEnSublotes}/${totalSublotesActivos} sublotes con cultivos activos)`);
+    } else {
+      // No hay sublotes activos, pero hay cultivos directos
+      const nuevoEstado = cultivosDirectosEnLote > 0 ? 'En cultivación' : 'En preparación';
+      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (sin sublotes activos, ${cultivosDirectosEnLote} cultivos directos activos)`);
+    }
   }
 
   async crear(dto: CreateSubloteDto): Promise<Sublote> {
@@ -174,14 +198,30 @@ async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreado
     sensoresCreados: 0
   };
 }
-  async eliminar(id: number): Promise<void> {
+  async eliminar(id: number): Promise<{ message: string }> {
     const sublote = await this.buscarPorId(id);
     const loteId = sublote.lote.id;
 
-    await this.subloteRepository.remove(sublote);
+    // IMPORTANTE: Cambiamos .remove() por .softDelete()
+    // Esto mantendrá el registro en la BD pero con fecha de eliminación.
+    const result = await this.subloteRepository.softDelete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Sublote con ID ${id} no encontrado`);
+    }
 
     // Actualizar el estado del lote después de eliminar el sublote
     await this.actualizarEstadoLote(loteId);
+
+    return { message: 'Sublote eliminado correctamente (archivado para historial)' };
+  }
+
+  // Si necesitas consultar sublotes eliminados para reportes históricos:
+  async findOneWithDeleted(id: number): Promise<Sublote | null> {
+    return this.subloteRepository.findOne({
+      where: { id },
+      withDeleted: true // <--- Esta opción permite ver los eliminados
+    });
   }
 
   async listarPorLote(loteId: number): Promise<Sublote[]> {

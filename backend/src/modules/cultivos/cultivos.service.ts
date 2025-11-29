@@ -171,32 +171,27 @@ export class CultivosService {
         cultivo.Estado = 'Finalizado';
         cultivo.Fecha_Fin = new Date(fecha);
 
-        // A. Liberar Sublotes (si tiene)
-        if (cultivo.sublotes && cultivo.sublotes.length > 0) {
-          for (const sub of cultivo.sublotes) {
+        // A. Liberar TODOS los sublotes asignados a este cultivo (incluyendo soft-deleted)
+        const todosSublotesAsignados = await this.subloteRepository.find({
+          where: { cultivo: { id: cultivo.id } },
+          withDeleted: true, // Incluir sublotes eliminados que tuvieron este cultivo
+          relations: ['lote']
+        });
+
+        if (todosSublotesAsignados.length > 0) {
+          // Liberar todos los sublotes que estaban asignados a este cultivo
+          for (const sub of todosSublotesAsignados) {
             sub.cultivo = null;        // Romper relación
             sub.estado = 'Disponible'; // Estado libre
             await queryRunner.manager.save(Sublote, sub);
           }
         }
 
-        // B. Liberar Lote Principal
+        // B. Actualizar estado del lote después de liberar sublotes
         if (cultivo.lote) {
-          // Verificamos si hay OTROS sublotes ocupados en este mismo lote por OTROS cultivos
-          const ocupados = await this.subloteRepository.count({
-            where: {
-              lote: { id: cultivo.lote.id },
-              estado: 'En cultivación',
-              id: Not(In(cultivo.sublotes.map(s => s.id))) // Excluir los que acabamos de liberar
-            }
-          });
-
-          // Si nadie más está usando el lote, se libera completo
-          if (ocupados === 0) {
-            const lote = cultivo.lote;
-            lote.estado = 'En preparación'; // Listo para el siguiente ciclo
-            await queryRunner.manager.save(Lote, lote);
-          }
+          // Usar la función auxiliar para actualizar el estado del lote
+          // Esta función considera sublotes activos y cultivos directos en el lote
+          await this.actualizarEstadoLote(cultivo.lote.id);
         }
 
       } else {
@@ -218,9 +213,146 @@ export class CultivosService {
     }
   }
 
+  // Función auxiliar para actualizar el estado del lote basado en sus sublotes ACTIVOS y cultivos asignados
+  private async actualizarEstadoLote(loteId: number): Promise<void> {
+    // Obtener todos los sublotes ACTIVOS del lote (excluye soft-deleted)
+    const sublotesActivos = await this.subloteRepository.find({
+      where: { lote: { id: loteId } },
+      relations: ['cultivo']
+    });
+
+    // Verificar si hay cultivos activos asignados a los sublotes del lote
+    const cultivosEnSublotes = sublotesActivos
+      .filter(s => s.cultivo !== null && (s.cultivo.Estado === 'Activo' || s.cultivo.Estado === 'En Cosecha'))
+      .length;
+
+    // Verificar si hay cultivos asignados directamente al lote (sin sublotes)
+    const cultivosDirectosEnLote = await this.cultivoRepository.count({
+      where: {
+        lote: { id: loteId },
+        Estado: In(['Activo', 'En Cosecha']),
+        sublotes: { id: IsNull() } // Cultivos sin sublotes asignados
+      }
+    });
+
+    // Si no hay cultivos activos (ni en sublotes ni directos), el lote está en preparación
+    if (cultivosEnSublotes === 0 && cultivosDirectosEnLote === 0) {
+      await this.loteRepository.update(loteId, { estado: 'En preparación' });
+      console.log(`Lote ${loteId} cambió a estado: En preparación (sin cultivos activos)`);
+      return;
+    }
+
+    // Si hay sublotes activos
+    if (sublotesActivos.length > 0) {
+      const totalSublotesActivos = sublotesActivos.length;
+
+      let nuevoEstado: string;
+
+      if (cultivosEnSublotes === 0) {
+        // Hay sublotes pero ninguno tiene cultivo activo
+        nuevoEstado = 'En preparación';
+      } else if (cultivosEnSublotes === totalSublotesActivos) {
+        // Todos los sublotes activos tienen cultivos activos
+        nuevoEstado = 'En cultivación';
+      } else {
+        // Algunos sublotes tienen cultivos activos
+        nuevoEstado = 'Parcialmente ocupado';
+      }
+
+      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${cultivosEnSublotes}/${totalSublotesActivos} sublotes con cultivos activos)`);
+    } else {
+      // No hay sublotes activos, pero hay cultivos directos
+      const nuevoEstado = cultivosDirectosEnLote > 0 ? 'En cultivación' : 'En preparación';
+      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (sin sublotes activos, ${cultivosDirectosEnLote} cultivos directos activos)`);
+    }
+  }
+
   async finalizarCultivo(id: number, fechaFin: string): Promise<Cultivo> {
     // Método simplificado que usa registrarCosecha con cantidad 0 y esFinal=true
     return await this.registrarCosecha(id, fechaFin, 0, true);
+  }
+
+  // Método para diagnosticar el estado actual de lotes y cultivos
+  async diagnosticarEstadosLotes(): Promise<any> {
+    const lotes = await this.loteRepository.find({
+      relations: ['sublotes', 'sublotes.cultivo']
+    });
+
+    const diagnostico: any[] = [];
+
+    for (const lote of lotes) {
+      // Cultivos activos en sublotes
+      const cultivosEnSublotes = lote.sublotes
+        .filter(s => s.cultivo !== null && (s.cultivo.Estado === 'Activo' || s.cultivo.Estado === 'En Cosecha'));
+
+      // Cultivos directos en el lote (consulta separada)
+      const cultivosDirectosCount = await this.cultivoRepository.count({
+        where: {
+          lote: { id: lote.id },
+          Estado: In(['Activo', 'En Cosecha']),
+          sublotes: { id: IsNull() }
+        }
+      });
+
+      // Sublotes con cultivos asignados
+      const sublotesOcupados = lote.sublotes.filter(s => s.cultivo !== null);
+
+      const estadoActual = lote.estado;
+      let estadoCorrecto = 'En preparación';
+
+      if (cultivosEnSublotes.length > 0 || cultivosDirectosCount > 0) {
+        if (lote.sublotes.length > 0) {
+          if (cultivosEnSublotes.length === lote.sublotes.length) {
+            estadoCorrecto = 'En cultivación';
+          } else {
+            estadoCorrecto = 'Parcialmente ocupado';
+          }
+        } else {
+          estadoCorrecto = 'En cultivación';
+        }
+      }
+
+      diagnostico.push({
+        loteId: lote.id,
+        loteNombre: lote.nombre,
+        estadoActual,
+        estadoCorrecto,
+        necesitaActualizacion: estadoActual !== estadoCorrecto,
+        resumen: {
+          sublotesTotales: lote.sublotes.length,
+          sublotesOcupados: sublotesOcupados.length,
+          cultivosEnSublotes: cultivosEnSublotes.length,
+          cultivosDirectos: cultivosDirectosCount
+        }
+      });
+    }
+
+    return {
+      totalLotes: lotes.length,
+      lotesNecesitanActualizacion: diagnostico.filter((d: any) => d.necesitaActualizacion).length,
+      diagnostico
+    };
+  }
+
+  // Método para actualizar estados de lotes que podrían estar inconsistentes
+  async actualizarEstadosLotes(): Promise<{ message: string, lotesActualizados: number }> {
+    const diagnostico = await this.diagnosticarEstadosLotes();
+    let actualizados = 0;
+
+    for (const item of diagnostico.diagnostico) {
+      if (item.necesitaActualizacion) {
+        await this.loteRepository.update(item.loteId, { estado: item.estadoCorrecto });
+        actualizados++;
+        console.log(`Lote ${item.loteId} (${item.loteNombre}) actualizado: ${item.estadoActual} → ${item.estadoCorrecto}`);
+      }
+    }
+
+    return {
+      message: `Estados de lotes actualizados correctamente. ${actualizados} lotes corregidos.`,
+      lotesActualizados: actualizados
+    };
   }
 
   async exportarExcelGeneral(): Promise<Buffer> {

@@ -355,20 +355,23 @@ export default function CultivoForm({
   };
 
   const handleSubmit = () => {
-    const { nombre, cantidad, Fecha_Plantado, loteId } = formData;
+    const { nombre, cantidad, Fecha_Plantado, loteId, subloteId } = formData;
     const tipoCultivoId = formData.tipoCultivoId;
 
-    // Validación: Lote es obligatorio
-    if (
-      !nombre ||
-      !cantidad ||
-      (!tipoCultivoId && !showNewTipoInput) ||
-      !Fecha_Plantado ||
-      !loteId
-    ) {
+    // Validación básica
+    if (!nombre || !cantidad || (!tipoCultivoId && !showNewTipoInput) || !Fecha_Plantado || !loteId) {
       toast.error("Nombre, Cantidad, Tipo, Fecha y Lote son obligatorios.");
       return;
     }
+
+    // --- NUEVA VALIDACIÓN ---
+    // Si el lote tiene subdivisiones (tieneSublotes es true) y NO se ha seleccionado subloteId
+    if (tieneSublotes && (!subloteId || subloteId === "null" || subloteId === "")) {
+      toast.error("Este lote tiene divisiones. Debes seleccionar una Ubicación Específica obligatoriamente.");
+      return;
+    }
+    // ------------------------
+
     if (showNewTipoInput && !newTipoCultivoName.trim()) {
       toast.error("Por favor, ingresa el nombre del nuevo tipo de cultivo.");
       return;
@@ -444,31 +447,32 @@ export default function CultivoForm({
 
         <Select
           label="Ubicación Específica"
+          // Cambiamos el placeholder para que sea más claro
           placeholder={
             !formData.loteId
               ? "Primero elige un lote"
               : isLoadingSublotes
               ? "Cargando..."
               : tieneSublotes
-              ? "Dejar vacío para TODO el lote"
-              : "Sin subdivisiones (Aplica a todo)"
+              ? "Selecciona una división (Requerido)"  // <--- Cambio aquí
+              : "Lote completo (Sin divisiones)"
           }
-          selectedKeys={
-            formData.subloteId ? [formData.subloteId.toString()] : []
-          }
+          selectedKeys={formData.subloteId ? [formData.subloteId.toString()] : []}
           onSelectionChange={(keys) => {
             const value = Array.from(keys)[0] as string;
             handleChange({ target: { name: "subloteId", value } } as any);
           }}
           fullWidth
-          isDisabled={
-            !formData.loteId ||
-            isLoadingSublotes ||
-            (!tieneSublotes && !isLoadingSublotes)
-          }
-          onClear={() =>
-            handleChange({ target: { name: "subloteId", value: null } } as any)
-          }
+          // Deshabilitado si no hay lote o está cargando.
+          // OJO: Si tieneSublotes es true, el usuario DEBE poder interactuar, así que NO lo deshabilites si tieneSublotes es true.
+          isDisabled={!formData.loteId || isLoadingSublotes}
+
+          // Solo permitir limpiar (X) si NO tiene sublotes (o sea, si es opcional)
+          isClearable={!tieneSublotes}
+
+          // Marcar visualmente como requerido si tiene sublotes
+          isRequired={tieneSublotes}
+          errorMessage={tieneSublotes && !formData.subloteId ? "Debes seleccionar una división" : ""}
         >
           {Array.isArray(sublotes)
             ? sublotes.map((sub) => (
@@ -481,13 +485,13 @@ export default function CultivoForm({
       </div>
 
       {/* MENSAJES INFORMATIVOS */}
+
+      {/* ELIMINAR O CAMBIAR EL MENSAJE AZUL DE "MODO GENERAL" POR UNA ADVERTENCIA */}
       {formData.loteId && tieneSublotes && !formData.subloteId && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            ℹ️ <b>Modo General:</b> Al no seleccionar un sublote específico,
-            este cultivo se asignará a
-            <b> todos los {sublotes.length} sublotes</b> del lote seleccionado.
-            El estado del lote pasará a "En cultivación".
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700 flex items-center gap-2">
+             ⚠️ <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.
+             Por favor selecciona un <b>Sublote</b> específico.
           </p>
         </div>
       )}

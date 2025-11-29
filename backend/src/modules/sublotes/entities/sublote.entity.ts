@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, DeleteDateColumn } from 'typeorm';
 import { Lote } from '../../lotes/entities/lote.entity';
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 import { Sensor } from '../../sensores/entities/sensore.entity';
@@ -37,4 +37,9 @@ export class Sublote {
 
   @OneToMany(() => Sensor, (s) => s.sublote)
   sensores: Sensor[];
+
+  // Agrega esta columna mágica.
+  // Cuando llames a .softDelete(), TypeORM pondrá la fecha aquí en lugar de borrar la fila.
+  @DeleteDateColumn({ select: false }) // select: false para que no salga en las consultas normales por defecto
+  deletedAt?: Date;
 }
