@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { ShieldCheck, Calendar, Info } from 'lucide-react';
 import type { Epa, Tratamiento } from '../interfaces/fitosanitario';
 import { listarTratamientosPorEpa } from '../api/fitosanitarioApi';
+import { Button } from '@heroui/react';
 
 interface TratamientosRecomendadosModalProps {
   epa: Epa | null;
@@ -65,9 +66,9 @@ export default function TratamientosRecomendadosModal({ epa, onClose, onPlanific
       )}
 
       <div className="mt-6 flex justify-end">
-        <button onClick={onPlanificar} className="px-5 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">
+        <Button onClick={onPlanificar} color="success">
           Ir a Planificar Tratamiento
-        </button>
+        </Button>
       </div>
     </div>
   );

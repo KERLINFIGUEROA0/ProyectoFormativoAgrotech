@@ -2,6 +2,7 @@ import { useState,  type ReactElement } from 'react';
 import { UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Epa, EpaData } from '../interfaces/fitosanitario';
+import { Input, Select, SelectItem, Textarea, Button } from '@heroui/react';
 
 interface EpaFormProps {
   initialData?: Partial<Epa>;
@@ -68,79 +69,67 @@ export default function EpaForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* ... (Input de Nombre) ... */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre *
-          </label>
-          <input
+          <Input
             name="nombre"
             value={formData.nombre}
             onChange={handleChange}
             placeholder="Ej: Roya del Café"
-            className="w-full border border-gray-300 rounded-md p-2"
+            label="Nombre *"
           />
         </div>
         {/* ... (Select de Tipo) ... */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo *
-          </label>
-          <select
+          <Select
             name="tipoEnfermedad"
-            value={formData.tipoEnfermedad}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md p-2 bg-white"
+            selectedKeys={[formData.tipoEnfermedad]}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFormData((prev) => ({ ...prev, tipoEnfermedad: selected as string }));
+            }}
+            label="Tipo *"
           >
             {tiposEnfermedad.map((tipo) => (
-              <option key={tipo} value={tipo}>
+              <SelectItem key={tipo}>
                 {tipo}
-              </option>
+              </SelectItem>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
       {/* Fila 2: Fecha (sin cambios) */}
       {/* ... (Input de Fecha) ... */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Fecha de Encuentro/Registro *
-        </label>
-        <input
+        <Input
           name="fechaEncuentro"
           type="date"
           value={formData.fechaEncuentro}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-md p-2"
+          label="Fecha de Encuentro/Registro *"
         />
       </div>
 
       {/* --- INICIO DE MODIFICACIÓN --- */}
       {/* Fila 3: Descripción Amenaza */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Descripción de la Amenaza
-        </label>
-        <textarea
+        <Textarea
           name="descripcion"
           value={formData.descripcion}
           onChange={handleChange}
           placeholder="Describa la amenaza, síntomas, etc."
-          className="w-full border border-gray-300 rounded-md p-2"
+          label="Descripción de la Amenaza"
           rows={3}
         />
       </div>
 
       {/* Fila 4: Descripción Control (NUEVO) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Posible Control o Tratamiento
-        </label>
-        <textarea
+        <Textarea
           name="complicaciones" // <-- Usamos 'complicaciones'
           value={formData.complicaciones}
           onChange={handleChange}
           placeholder="Describa el manejo, control químico o biológico."
-          className="w-full border border-gray-300 rounded-md p-2"
+          label="Posible Control o Tratamiento"
           rows={3}
         />
       </div>
@@ -168,18 +157,19 @@ export default function EpaForm({
       </label>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <button
+        <Button
           onClick={onCancel}
-          className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+          color="default"
+          variant="light"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSubmit}
-          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+          color="primary"
         >
           {initialData?.id ? 'Actualizar EPA' : 'Registrar EPA'}
-        </button>
+        </Button>
       </div>
     </div>
   );
