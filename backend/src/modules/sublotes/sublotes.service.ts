@@ -35,6 +35,38 @@ export class SublotesService {
 
   ) { }
 
+  // Función privada para actualizar el estado del lote basado en sus sublotes
+  private async actualizarEstadoLote(loteId: number): Promise<void> {
+    // Obtener todos los sublotes del lote
+    const sublotes = await this.subloteRepository.find({
+      where: { lote: { id: loteId } },
+      relations: ['cultivo']
+    });
+
+    if (sublotes.length === 0) return; // No hay sublotes, no cambiar estado
+
+    // Contar sublotes con cultivos asignados
+    const sublotesConCultivo = sublotes.filter(s => s.cultivo !== null).length;
+    const totalSublotes = sublotes.length;
+
+    let nuevoEstado: string;
+
+    if (sublotesConCultivo === 0) {
+      // Ningún sublote tiene cultivo
+      nuevoEstado = 'En preparación';
+    } else if (sublotesConCultivo === totalSublotes) {
+      // Todos los sublotes tienen cultivo
+      nuevoEstado = 'En cultivación';
+    } else {
+      // Algunos sublotes tienen cultivo
+      nuevoEstado = 'Parcialmente ocupado';
+    }
+
+    // Actualizar el estado del lote
+    await this.loteRepository.update(loteId, { estado: nuevoEstado });
+    console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${sublotesConCultivo}/${totalSublotes} sublotes con cultivo)`);
+  }
+
   async crear(dto: CreateSubloteDto): Promise<Sublote> {
     const { loteId, cultivoId, activo_mqtt, coordenadas } = dto;
 
@@ -66,6 +98,9 @@ export class SublotesService {
 
     const subloteGuardado = await this.subloteRepository.save(sublote);
     console.log('Sublote guardado:', subloteGuardado.id);
+
+    // Actualizar el estado del lote después de crear el sublote
+    await this.actualizarEstadoLote(loteId);
 
     return subloteGuardado;
   }
@@ -114,7 +149,12 @@ export class SublotesService {
       }
     }
 
-    return await this.subloteRepository.save(sublote);
+    const subloteActualizado = await this.subloteRepository.save(sublote);
+
+    // Actualizar el estado del lote después de actualizar el sublote
+    await this.actualizarEstadoLote(sublote.lote.id);
+
+    return subloteActualizado;
   }
 async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreados: number }> {
   // 1. Buscar el sublote con su lote
@@ -136,7 +176,12 @@ async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreado
 }
   async eliminar(id: number): Promise<void> {
     const sublote = await this.buscarPorId(id);
+    const loteId = sublote.lote.id;
+
     await this.subloteRepository.remove(sublote);
+
+    // Actualizar el estado del lote después de eliminar el sublote
+    await this.actualizarEstadoLote(loteId);
   }
 
   async listarPorLote(loteId: number): Promise<Sublote[]> {

@@ -84,7 +84,7 @@ export interface StatCardProps {
   icon: ReactElement;
   title: string;
   value: number | string;
-  color: 'blue' | 'red' | 'green' | 'yellow';
+  color: 'blue' | 'red' | 'green' | 'yellow' | 'success' | 'danger';
 }
 
 export interface Produccion {

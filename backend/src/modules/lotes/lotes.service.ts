@@ -29,10 +29,11 @@ export class LotesService {
   }
 
   async crear(dto: CreateLoteDto): Promise<Lote> {
-    // Convertimos el área a string antes de crear
+    // Convertimos el área a string antes de crear y asignamos estado por defecto
     const loteData = {
       ...dto,
       area: String(dto.area),
+      estado: dto.estado || 'En preparación', // Estado por defecto
     };
     const lote = this.loteRepository.create(loteData);
     const nuevoLote = await this.loteRepository.save(lote);
@@ -48,9 +49,10 @@ export class LotesService {
 
   async obtenerDisponibles(): Promise<Lote[]> {
     return await this.loteRepository.find({
-      where: {
-        estado: 'En preparación' // Solo lotes disponibles, no en cultivación
-      },
+      where: [
+        { estado: 'En preparación' }, // Lotes listos para usar
+        { estado: 'Parcialmente ocupado' } // Lotes con algunos sublotes disponibles
+      ],
       relations: ['sublotes'],
       order: { nombre: 'ASC' }
     });
@@ -105,16 +107,27 @@ export class LotesService {
 
     const estadisticas = {
       total,
-      enCultivo: 0,
       enPreparacion: 0,
-      alertas: 0,
+      parcialmenteOcupado: 0,
+      enCultivo: 0,
+      enMantenimiento: 0,
     };
 
     conteoPorEstado.forEach((item) => {
-      if (item.estado === 'Activo') {
-        estadisticas.enCultivo = parseInt(item.cantidad, 10);
-      } else if (item.estado === 'En preparación') {
-        estadisticas.enPreparacion = parseInt(item.cantidad, 10);
+      const cantidad = parseInt(item.cantidad, 10);
+      switch (item.estado) {
+        case 'En preparación':
+          estadisticas.enPreparacion = cantidad;
+          break;
+        case 'Parcialmente ocupado':
+          estadisticas.parcialmenteOcupado = cantidad;
+          break;
+        case 'En cultivación':
+          estadisticas.enCultivo = cantidad;
+          break;
+        case 'En mantenimiento':
+          estadisticas.enMantenimiento = cantidad;
+          break;
       }
     });
 

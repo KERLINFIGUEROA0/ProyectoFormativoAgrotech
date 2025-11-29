@@ -38,9 +38,10 @@ interface Movimiento {
 
 interface LotesStats {
   total: number;
-  enCultivo: number;
   enPreparacion: number;
-  alertas: number;
+  parcialmenteOcupado: number;
+  enCultivo: number;
+  enMantenimiento: number;
 }
 
 interface StatsData {
@@ -60,9 +61,10 @@ export default function HomePage() {
     sensoresActivos: 0,
     lotesStats: {
       total: 0,
-      enCultivo: 0,
       enPreparacion: 0,
-      alertas: 0
+      parcialmenteOcupado: 0,
+      enCultivo: 0,
+      enMantenimiento: 0
     }
   });
   const [sensorsData, setSensorsData] = useState<LatestSensorData[]>([]);
@@ -131,18 +133,20 @@ export default function HomePage() {
       // Process lotes stats
       let lotesStats: LotesStats = {
         total: 0,
-        enCultivo: 0,
         enPreparacion: 0,
-        alertas: 0
+        parcialmenteOcupado: 0,
+        enCultivo: 0,
+        enMantenimiento: 0
       };
 
       if (lotesStatsRes.status === 'fulfilled') {
         const stats = lotesStatsRes.value.data || {};
         lotesStats = {
           total: stats.total || 0,
-          enCultivo: stats.enCultivo || 0,
           enPreparacion: stats.enPreparacion || 0,
-          alertas: stats.alertas || 0
+          parcialmenteOcupado: stats.parcialmenteOcupado || 0,
+          enCultivo: stats.enCultivo || 0,
+          enMantenimiento: stats.enMantenimiento || 0
         };
       }
 
@@ -428,7 +432,32 @@ export default function HomePage() {
           </div>
         </CardHeader>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="relative w-24 h-24 mx-auto mb-3">
+                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2"
+                    strokeDasharray={`${(statsData.lotesStats.parcialmenteOcupado / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.parcialmenteOcupado}</span>
+                </div>
+              </div>
+              <h4 className="font-semibold text-gray-800">Parcialmente Ocupado</h4>
+              <p className="text-sm text-gray-600">Algunos cultivos</p>
+            </div>
+
             <div className="text-center">
               <div className="relative w-24 h-24 mx-auto mb-3">
                 <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
@@ -451,7 +480,7 @@ export default function HomePage() {
                 </div>
               </div>
               <h4 className="font-semibold text-gray-800">En Cultivo</h4>
-              <p className="text-sm text-gray-600">Activos</p>
+              <p className="text-sm text-gray-600">Completamente activos</p>
             </div>
 
             <div className="text-center">
@@ -491,16 +520,16 @@ export default function HomePage() {
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#ef4444"
+                    stroke="#dc2626"
                     strokeWidth="2"
-                    strokeDasharray={`${(statsData.lotesStats.alertas / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
+                    strokeDasharray={`${(statsData.lotesStats.enMantenimiento / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.alertas}</span>
+                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.enMantenimiento}</span>
                 </div>
               </div>
-              <h4 className="font-semibold text-gray-800">Alertas</h4>
+              <h4 className="font-semibold text-gray-800">En Mantenimiento</h4>
               <p className="text-sm text-gray-600">Requieren atención</p>
             </div>
           </div>

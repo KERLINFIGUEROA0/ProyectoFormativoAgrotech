@@ -23,49 +23,21 @@ export class CultivosService {
   ) {}
 
   async crear(dto: CreateCultivoDto): Promise<Cultivo> {
+    const queryRunner = this.cultivoRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       console.log('DTO recibido:', dto);
-      console.log('Tipos de datos:', {
-        tipoCultivoId: typeof dto.tipoCultivoId,
-        loteId: typeof dto.loteId,
-        subloteId: typeof dto.subloteId,
-        cantidad: typeof dto.cantidad
-      });
 
-      // 1. Validar Tipo de Cultivo
+      // 1. Validaciones
       const tipoCultivo = await this.tipoCultivoRepository.findOne({ where: { id: dto.tipoCultivoId } });
       if (!tipoCultivo) throw new NotFoundException(`El tipo de cultivo con ID ${dto.tipoCultivoId} no existe`);
 
-      // 2. Validar Lote (Obligatorio)
       const lote = await this.loteRepository.findOne({ where: { id: dto.loteId } });
       if (!lote) throw new NotFoundException(`El lote con ID ${dto.loteId} no existe`);
 
-      // 3. Validar Sublote si se proporciona
-      if (dto.subloteId && dto.subloteId > 0) {
-        const sublote = await this.subloteRepository.findOne({
-          where: { id: dto.subloteId },
-          relations: ['lote']
-        });
-        if (!sublote) throw new NotFoundException(`El sublote con ID ${dto.subloteId} no existe`);
-        if (sublote.lote.id !== lote.id) throw new BadRequestException(`El sublote no pertenece al lote seleccionado`);
-      }
-
-      // Crear el cultivo con los datos básicos
-      const cultivoData: any = {
-        nombre: dto.nombre,
-        cantidad: dto.cantidad,
-        tipoCultivoId: dto.tipoCultivoId,
-        loteId: dto.loteId,
-        Fecha_Plantado: dto.Fecha_Plantado,
-        descripcion: dto.descripcion,
-        Estado: dto.Estado || 'Activo'
-      };
-
-      // Agregar campos opcionales
-      if (dto.img) cultivoData.img = dto.img;
-      if (dto.subloteId && dto.subloteId > 0) cultivoData.subloteId = dto.subloteId;
-
-      // Crear el cultivo con la relación al lote
+      // 2. Crear el cultivo (solo un registro)
       const cultivo = new Cultivo();
       cultivo.nombre = dto.nombre;
       cultivo.cantidad = dto.cantidad;
@@ -76,24 +48,58 @@ export class CultivosService {
       cultivo.Estado = dto.Estado || 'Activo';
       if (dto.img) cultivo.img = dto.img;
 
-      const cultivoGuardado = await this.cultivoRepository.save(cultivo);
+      // Guardar el cultivo para obtener su ID
+      const cultivoGuardado = await queryRunner.manager.save(Cultivo, cultivo);
 
-      // 4. Actualizar estados después de guardar el cultivo
+      // 3. Lógica de asignación a sublotes
       if (dto.subloteId && dto.subloteId > 0) {
-        // Actualizar sublote
-        await this.subloteRepository.update(dto.subloteId, {
-          estado: 'En cultivación',
-          cultivo: cultivoGuardado
+        // ASIGNACIÓN ESPECÍFICA: Solo a un sublote
+        const sublote = await this.subloteRepository.findOne({
+          where: { id: dto.subloteId },
+          relations: ['lote']
         });
+
+        if (!sublote) throw new NotFoundException('Sublote no encontrado');
+        if (sublote.lote.id !== lote.id) throw new BadRequestException('El sublote no pertenece al lote indicado');
+
+        // Asignar cultivo al sublote específico
+        sublote.cultivo = cultivoGuardado;
+        sublote.estado = 'En cultivación';
+        await queryRunner.manager.save(Sublote, sublote);
+
+        // Estado del lote: Parcialmente ocupado
+        lote.estado = 'Parcialmente ocupado';
+        await queryRunner.manager.save(Lote, lote);
+
       } else {
-        // Actualizar lote
-        await this.loteRepository.update(dto.loteId, { estado: 'En cultivación' });
+        // ASIGNACIÓN MASIVA: A todos los sublotes del lote
+        const todosSublotes = await this.subloteRepository.find({
+          where: { lote: { id: lote.id } }
+        });
+
+        if (todosSublotes.length > 0) {
+          // Asignar el mismo cultivo a todos los sublotes
+          for (const sub of todosSublotes) {
+            sub.cultivo = cultivoGuardado;
+            sub.estado = 'En cultivación';
+            await queryRunner.manager.save(Sublote, sub);
+          }
+        }
+
+        // Estado del lote: En cultivación (totalmente ocupado)
+        lote.estado = 'En cultivación';
+        await queryRunner.manager.save(Lote, lote);
       }
 
+      await queryRunner.commitTransaction();
       return cultivoGuardado;
-    } catch (error) {
-      console.error('Error creando cultivo:', error);
-      throw error;
+
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      console.error('Error creando cultivo:', err);
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
   }
 
