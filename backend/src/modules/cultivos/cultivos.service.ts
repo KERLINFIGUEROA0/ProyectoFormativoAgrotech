@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
@@ -6,6 +6,8 @@ import { Cultivo } from './entities/cultivo.entity';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
 import { UpdateCultivoDto } from './dto/update-cultivo.dto';
 import { TipoCultivo } from '../tipo_cultivo/entities/tipo_cultivo.entity';
+import { Lote } from '../lotes/entities/lote.entity';
+import { Sublote } from '../sublotes/entities/sublote.entity';
 
 @Injectable()
 export class CultivosService {
@@ -14,22 +16,93 @@ export class CultivosService {
     private readonly cultivoRepository: Repository<Cultivo>,
     @InjectRepository(TipoCultivo)
     private readonly tipoCultivoRepository: Repository<TipoCultivo>,
+    @InjectRepository(Lote)
+    private readonly loteRepository: Repository<Lote>,
+    @InjectRepository(Sublote)
+    private readonly subloteRepository: Repository<Sublote>,
   ) {}
 
   async crear(dto: CreateCultivoDto): Promise<Cultivo> {
-    const tipoCultivo = await this.tipoCultivoRepository.findOne({ where: { id: dto.tipoCultivoId } });
-    if (!tipoCultivo) throw new NotFoundException(`El tipo de cultivo con ID ${dto.tipoCultivoId} no existe`);
-    
-    const cultivo = this.cultivoRepository.create({ ...dto, tipoCultivo });
-    return await this.cultivoRepository.save(cultivo);
+    try {
+      console.log('DTO recibido:', dto);
+      console.log('Tipos de datos:', {
+        tipoCultivoId: typeof dto.tipoCultivoId,
+        loteId: typeof dto.loteId,
+        subloteId: typeof dto.subloteId,
+        cantidad: typeof dto.cantidad
+      });
+
+      // 1. Validar Tipo de Cultivo
+      const tipoCultivo = await this.tipoCultivoRepository.findOne({ where: { id: dto.tipoCultivoId } });
+      if (!tipoCultivo) throw new NotFoundException(`El tipo de cultivo con ID ${dto.tipoCultivoId} no existe`);
+
+      // 2. Validar Lote (Obligatorio)
+      const lote = await this.loteRepository.findOne({ where: { id: dto.loteId } });
+      if (!lote) throw new NotFoundException(`El lote con ID ${dto.loteId} no existe`);
+
+      // 3. Validar Sublote si se proporciona
+      if (dto.subloteId && dto.subloteId > 0) {
+        const sublote = await this.subloteRepository.findOne({
+          where: { id: dto.subloteId },
+          relations: ['lote']
+        });
+        if (!sublote) throw new NotFoundException(`El sublote con ID ${dto.subloteId} no existe`);
+        if (sublote.lote.id !== lote.id) throw new BadRequestException(`El sublote no pertenece al lote seleccionado`);
+      }
+
+      // Crear el cultivo con los datos básicos
+      const cultivoData: any = {
+        nombre: dto.nombre,
+        cantidad: dto.cantidad,
+        tipoCultivoId: dto.tipoCultivoId,
+        loteId: dto.loteId,
+        Fecha_Plantado: dto.Fecha_Plantado,
+        descripcion: dto.descripcion,
+        Estado: dto.Estado || 'Activo'
+      };
+
+      // Agregar campos opcionales
+      if (dto.img) cultivoData.img = dto.img;
+      if (dto.subloteId && dto.subloteId > 0) cultivoData.subloteId = dto.subloteId;
+
+      // Crear el cultivo con la relación al lote
+      const cultivo = new Cultivo();
+      cultivo.nombre = dto.nombre;
+      cultivo.cantidad = dto.cantidad;
+      cultivo.tipoCultivo = tipoCultivo;
+      cultivo.lote = lote;
+      cultivo.Fecha_Plantado = dto.Fecha_Plantado ? new Date(dto.Fecha_Plantado) : new Date();
+      cultivo.descripcion = dto.descripcion || '';
+      cultivo.Estado = dto.Estado || 'Activo';
+      if (dto.img) cultivo.img = dto.img;
+
+      const cultivoGuardado = await this.cultivoRepository.save(cultivo);
+
+      // 4. Actualizar estados después de guardar el cultivo
+      if (dto.subloteId && dto.subloteId > 0) {
+        // Actualizar sublote
+        await this.subloteRepository.update(dto.subloteId, {
+          estado: 'En cultivación',
+          cultivo: cultivoGuardado
+        });
+      } else {
+        // Actualizar lote
+        await this.loteRepository.update(dto.loteId, { estado: 'En cultivación' });
+      }
+
+      return cultivoGuardado;
+    } catch (error) {
+      console.error('Error creando cultivo:', error);
+      throw error;
+    }
   }
 
   async listar(): Promise<Cultivo[]> {
-    return await this.cultivoRepository.find({ relations: ['tipoCultivo'] });
+    return await this.cultivoRepository.find({ relations: ['tipoCultivo', 'lote'] });
   }
 
   async buscarPorId(id: number): Promise<Cultivo> {
-    const cultivo = await this.cultivoRepository.findOne({ where: { id }, relations: ['tipoCultivo'] });
+    const cultivo = await this.cultivoRepository.findOne({ where: { id }, relations: ['tipoCultivo', 'lote'] });
     if (!cultivo) throw new NotFoundException(`El cultivo con ID ${id} no existe`);
     return cultivo;
   }

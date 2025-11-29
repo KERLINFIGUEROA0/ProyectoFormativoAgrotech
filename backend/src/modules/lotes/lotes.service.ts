@@ -46,6 +46,16 @@ export class LotesService {
     });
   }
 
+  async obtenerDisponibles(): Promise<Lote[]> {
+    return await this.loteRepository.find({
+      where: {
+        estado: 'En preparación' // Solo lotes disponibles, no en cultivación
+      },
+      relations: ['sublotes'],
+      order: { nombre: 'ASC' }
+    });
+  }
+
   async buscarPorId(id: number): Promise<Lote> {
     const lote = await this.loteRepository.findOne({
       where: { id },

@@ -15,10 +15,10 @@ import {
 } from "@heroui/react";
 import { toast } from "sonner";
 import { UploadCloud, Settings, Edit, Trash2} from 'lucide-react';
-import { obtenerLotes } from '../api/lotesApi';
-import { obtenerSublotesPorLote } from '../api/sublotesApi';
+import { obtenerLotesDisponibles } from '../api/lotesApi';
+import { obtenerSublotesDisponiblesPorLote } from '../api/sublotesApi';
 import { actualizarTipoCultivo, eliminarTipoCultivo } from '../api/cultivosApi';
-import type { Lote } from '../interfaces/cultivos';
+import type { Lote, Sublote } from '../interfaces/cultivos';
 
 interface CultivoFormProps {
   initialData?: any;
@@ -34,6 +34,12 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
   const [showNewTipoInput, setShowNewTipoInput] = useState(false);
   const [newTipoCultivoName, setNewTipoCultivoName] = useState("");
   
+  // Estados para lotes y sublotes
+  const [lotes, setLotes] = useState<Lote[]>([]);
+  const [sublotes, setSublotes] = useState<Sublote[]>([]);
+  const [isLoadingSublotes, setIsLoadingSublotes] = useState(false);
+
+  // Estados de modales para tipos de cultivo
   const [showTipoModal, setShowTipoModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -46,29 +52,32 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
     setShowNewTipoInput(false);
     setNewTipoCultivoName("");
     setImageFile(null);
+    // Si viene en modo edición y tiene lote, cargar los sublotes de ese lote
+    if (initialData.loteId) {
+      fetchSublotes(initialData.loteId);
+    }
   }, [initialData]);
 
+  // Cargar Lotes Disponibles al iniciar
   useEffect(() => {
-    const checkDependencies = async () => {
+    const loadLotes = async () => {
       try {
-        const lotesResponse = await obtenerLotes();
-        const lotes: Lote[] = lotesResponse.data || [];
-        const activeLotes = lotes.filter(l => l.estado === 'Activo');
-
-        if (activeLotes.length > 0) {
-          // Check sublotes for the first active lote (no state updates needed here)
-          await obtenerSublotesPorLote(activeLotes[0].id);
-        }
+        const response = await obtenerLotesDisponibles();
+        setLotes(response.data || []);
       } catch (error) {
-        console.error('Error checking dependencies:', error);
+        console.error("Error cargando lotes disponibles", error);
+        toast.error("Error al cargar listado de lotes disponibles");
       }
     };
-    checkDependencies();
+    loadLotes();
   }, []);
+
+  // Este useEffect ya no es necesario ya que ahora cargamos lotes disponibles directamente
+  // y los sublotes se cargan solo cuando se selecciona un lote específico
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     if (name === 'tipoCultivoId' && value === 'otro') {
       setShowNewTipoInput(true);
     } else {
@@ -78,14 +87,26 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
       setFormData((prev: any) => ({ ...prev, [name]: value }));
     }
   };
+
+  // Manejador específico para cambio de Lote
+  const handleLoteChange = (keys: any) => {
+    const loteId = Array.from(keys)[0] as string;
+    if (loteId) {
+      setFormData((prev: any) => ({ ...prev, loteId: loteId, subloteId: '' })); // Reset sublote
+      fetchSublotes(Number(loteId));
+    }
+  };
   
   // --- ✅ CORRECCIÓN AQUÍ ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log('Archivo seleccionado:', file);
       toast.info(`Archivo "${file.name}" seleccionado.`);
       // Guarda el objeto File completo en el estado para subirlo después
-      setImageFile(file); 
+      setImageFile(file);
+      // También actualiza el formData para mostrar preview si es necesario
+      setFormData((prev: any) => ({ ...prev, img: URL.createObjectURL(file) }));
     }
   };
 
@@ -106,6 +127,40 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
 
     setDeleteTipo(tipo);
     setShowDeleteModal(true);
+  };
+
+  // Función para cargar sublotes disponibles cuando cambia el lote
+  const fetchSublotes = async (loteId: number) => {
+    setIsLoadingSublotes(true);
+    setSublotes([]); // Limpiar anteriores
+    try {
+      const response = await obtenerSublotesDisponiblesPorLote(loteId);
+
+      // Manejar diferentes estructuras de respuesta posibles
+      let sublotesData: Sublote[] = [];
+      if (response?.data) {
+        if (Array.isArray(response.data)) {
+          sublotesData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          sublotesData = response.data.data;
+        } else if (typeof response.data === 'object' && response.data !== null) {
+          // Si es un objeto, intentar extraer data
+          sublotesData = response.data.data || response.data || [];
+        }
+      }
+
+      // Asegurar que siempre sea un array
+      if (!Array.isArray(sublotesData)) {
+        sublotesData = [];
+      }
+
+      setSublotes(sublotesData);
+    } catch (error) {
+      console.error("Error cargando sublotes:", error);
+      setSublotes([]); // En caso de error, asegurar array vacío
+    } finally {
+      setIsLoadingSublotes(false);
+    }
   };
 
   const closeAllModals = () => {
@@ -147,11 +202,12 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
   };
 
   const handleSubmit = () => {
-    const { nombre, cantidad, Fecha_Plantado } = formData;
+    const { nombre, cantidad, Fecha_Plantado, loteId } = formData;
     const tipoCultivoId = formData.tipoCultivoId;
 
-    if (!nombre || !cantidad || (!tipoCultivoId && !showNewTipoInput) || !Fecha_Plantado) {
-      toast.error("Todos los campos principales son requeridos.");
+    // Validación: Lote es obligatorio
+    if (!nombre || !cantidad || (!tipoCultivoId && !showNewTipoInput) || !Fecha_Plantado || !loteId) {
+      toast.error("Nombre, Cantidad, Tipo, Fecha y Lote son obligatorios.");
       return;
     }
     if (showNewTipoInput && !newTipoCultivoName.trim()) {
@@ -159,15 +215,28 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
       return;
     }
 
-    const payload = {
+    const payload: any = {
       nombre: formData.nombre,
       cantidad: parseInt(cantidad, 10),
-      tipoCultivoId: showNewTipoInput ? null : parseInt(tipoCultivoId, 10),
+      tipoCultivoId: showNewTipoInput ? null : (tipoCultivoId ? parseInt(tipoCultivoId, 10) : null),
+      loteId: parseInt(loteId, 10), // Enviar Lote como número
       Fecha_Plantado: formData.Fecha_Plantado,
       descripcion: formData.descripcion,
-      Estado: formData.Estado,
-      img: formData.img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlhYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBpbWFnZW48L3RleHQ+PC9zdmc+'
+      Estado: formData.Estado
     };
+
+    // Solo agregar subloteId si existe
+    if (formData.subloteId) {
+      payload.subloteId = parseInt(formData.subloteId, 10);
+    }
+
+    // Solo agregar img si existe
+    if (formData.img) {
+      payload.img = formData.img;
+    }
+
+    console.log('Payload a enviar:', payload);
+    console.log('Image file:', imageFile);
 
     onSave({
       ...payload,
@@ -187,6 +256,43 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
         placeholder="Ej: Tomates Cherry"
         fullWidth
       />
+
+      {/* --- SELECCIÓN DE LOTE Y SUBLOTE --- */}
+      <div className="flex gap-4">
+        <Select
+          label="Lote (Ubicación Principal)"
+          placeholder="Seleccionar lote"
+          selectedKeys={formData.loteId ? [formData.loteId.toString()] : []}
+          onSelectionChange={handleLoteChange}
+          fullWidth
+          isRequired
+        >
+          {lotes.map((lote) => (
+            <SelectItem key={lote.id.toString()} textValue={lote.nombre}>
+              {lote.nombre} - {lote.estado}
+            </SelectItem>
+          ))}
+        </Select>
+
+        <Select
+          label="Sublote (Opcional)"
+          placeholder={isLoadingSublotes ? "Cargando..." : "Seleccionar sublote"}
+          selectedKeys={formData.subloteId ? [formData.subloteId.toString()] : []}
+          onSelectionChange={(keys) => {
+            const value = Array.from(keys)[0] as string;
+            handleChange({ target: { name: 'subloteId', value } } as any);
+          }}
+          fullWidth
+          isDisabled={!formData.loteId || !Array.isArray(sublotes) || sublotes.length === 0}
+        >
+          {Array.isArray(sublotes) ? sublotes.map((sub) => (
+            <SelectItem key={sub.id.toString()} textValue={sub.nombre}>
+              {sub.nombre} - {sub.estado}
+            </SelectItem>
+          )) : []}
+        </Select>
+      </div>
+      {/* ----------------------------------- */}
 
       <div className="flex items-center gap-2">
         <Select
@@ -275,7 +381,10 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
 
       <div>
         <label className="text-sm font-medium text-gray-700">Imagen del Cultivo</label>
-        <div className="flex flex-col items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none mt-1">
+        <div
+          className="flex flex-col items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-md cursor-pointer hover:border-gray-400 focus:outline-none mt-1"
+          onClick={() => document.getElementById('cultivo-image-input')?.click()}
+        >
           <div className="flex flex-col items-center gap-2">
             <UploadCloud className="w-6 h-6 text-gray-600" />
             <div className="text-center">
@@ -285,6 +394,7 @@ export default function CultivoForm({ initialData = {}, tiposCultivo, cultivos =
             </div>
           </div>
           <input
+            id="cultivo-image-input"
             type="file"
             className="hidden"
             onChange={handleFileChange}

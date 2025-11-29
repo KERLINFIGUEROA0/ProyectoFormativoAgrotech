@@ -3,6 +3,9 @@ import { api } from '../../../lib/axios';
 export const obtenerSublotesPorLote = (loteId: number) =>
   api.get(`/sublotes/lotes/${loteId}/sublotes`);
 
+export const obtenerSublotesDisponiblesPorLote = (loteId: number) =>
+  api.get(`/sublotes/lotes/${loteId}/disponibles`);
+
 export const obtenerCultivos = () =>
   api.get('/cultivos/listar');
 

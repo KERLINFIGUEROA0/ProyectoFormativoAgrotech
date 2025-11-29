@@ -49,6 +49,16 @@ export class SublotesController {
     };
   }
 
+  @Get('lotes/:loteId/disponibles')
+  async listarDisponiblesPorLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const lista = await this.sublotesService.listarDisponiblesPorLote(loteId);
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
   @Get(':id')
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const sublote = await this.sublotesService.buscarPorId(id);

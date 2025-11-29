@@ -58,6 +58,19 @@ export class LotesController {
     };
   }
 
+  @Get('disponibles')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_disponibles')
+  @CacheTTL(30000) // Cache más corto para datos dinámicos
+  async obtenerDisponibles() {
+    const lista = await this.lotesService.obtenerDisponibles();
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
   @Get(':id')
   @UseInterceptors(CacheInterceptor)
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {

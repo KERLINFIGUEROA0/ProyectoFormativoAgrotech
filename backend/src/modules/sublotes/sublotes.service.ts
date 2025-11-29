@@ -146,6 +146,17 @@ async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreado
     });
   }
 
+  async listarDisponiblesPorLote(loteId: number): Promise<Sublote[]> {
+    return await this.subloteRepository.find({
+      where: {
+        lote: { id: loteId },
+        estado: 'Disponible' // Solo sublotes disponibles, no en cultivación
+      },
+      relations: ['lote', 'cultivo'],
+      order: { nombre: 'ASC' }
+    });
+  }
+
   async actualizarEstado(id: number, dto: UpdateSubloteEstadoDto): Promise<Sublote> {
     const sublote = await this.buscarPorId(id);
     sublote.estado = dto.estado;

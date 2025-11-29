@@ -7,6 +7,11 @@ export const obtenerLotes = async () => {
   return response.data;
 };
 
+export const obtenerLotesDisponibles = async () => {
+  const response = await api.get("/lotes/disponibles");
+  return response.data;
+};
+
 export const crearLote = async (loteData: LoteData) => {
   const response = await api.post("/lotes/crear", loteData);
   return response.data;

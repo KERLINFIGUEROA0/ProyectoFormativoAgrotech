@@ -145,6 +145,7 @@ export default function GestionCultivosPage(): ReactElement {
 
     try {
       let finalCultivoData = { ...cultivoData };
+      let cultivoId: number;
 
       if (newTipoCultivoName) {
         toast.info("Creando nuevo tipo...", { id: toastId });
@@ -153,18 +154,35 @@ export default function GestionCultivosPage(): ReactElement {
       }
 
       if (editingCultivo) {
-        const res = await actualizarCultivo(editingCultivo.id, finalCultivoData);
-        if (imageFile) await subirImagenCultivo(res.data.id, imageFile);
+        // Caso Editar
+        await actualizarCultivo(editingCultivo.id, finalCultivoData);
+        cultivoId = editingCultivo.id;
+
+        if (imageFile) {
+          await subirImagenCultivo(cultivoId, imageFile);
+        }
         toast.success("Cultivo actualizado.", { id: toastId });
       } else {
+        // Caso Crear
         const res = await crearCultivo(finalCultivoData);
-        if (imageFile) await subirImagenCultivo(res.data.id, imageFile);
+
+        // ⚠️ CORRECCIÓN CRÍTICA: Acceder correctamente al ID
+        cultivoId = res.data?.id;
+
+        if (!cultivoId) {
+          throw new Error("No se pudo obtener el ID del cultivo creado");
+        }
+
+        if (imageFile) {
+          await subirImagenCultivo(cultivoId, imageFile);
+        }
         toast.success("Cultivo creado.", { id: toastId });
       }
-      
+
       await fetchData();
       closeModal();
     } catch (error: any) {
+      console.error("Error en handleSave:", error);
       toast.error(error.response?.data?.message || "Error al guardar.", { id: toastId });
     }
   };
