@@ -41,14 +41,14 @@ export class LotesService {
 
   async listar(): Promise<Lote[]> {
     return await this.loteRepository.find({
-      relations: ['surcos', 'surcos.cultivo'],
+      relations: ['sublotes', 'sublotes.cultivo'],
     });
   }
 
   async buscarPorId(id: number): Promise<Lote> {
     const lote = await this.loteRepository.findOne({
       where: { id },
-      relations: ['surcos'],
+      relations: ['sublotes'],
     });
     if (!lote) {
       throw new NotFoundException(`El lote con ID ${id} no existe`);

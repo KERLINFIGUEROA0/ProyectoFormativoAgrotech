@@ -14,7 +14,7 @@ import UsuarioPage from "../features/user/pages/Usuario";
 import GestionRolesPage from "../features/user/pages/GestionRoles";
 import GestionUsuariosPage from "../features/user/pages/GestionUsuario";
 import GestionLotes from "../features/cultivos/pages/GestionLotes";
-import GestionSurcos from "../features/cultivos/pages/GestionSurcos";
+import GestionProduccion from "../features/cultivos/pages/GestionProduccion";
 import DashboardFinanciero from "../features/finanzas/pages/DashboardFinanciero";
 import GestionTransaccionesPage from "../features/finanzas/pages/GestionTransacciones";
 import GestionCultivosPage from "../features/cultivos/pages/GestionCultivos";
@@ -61,7 +61,7 @@ export default function AppRouter() {
           <Route path="/gestion-roles" element={<GestionRolesPage />} />
           <Route path="/gestion-usuarios" element={<GestionUsuariosPage />} />
           <Route path="/gestion-lotes" element={<GestionLotes />} />
-          <Route path="/gestion-surcos" element={<GestionSurcos />} />
+          <Route path="/gestion-Sublotes" element={<GestionProduccion />} />
           <Route path="/gestion-brokers" element={<GestionBrokersPage />} />
           <Route path="/gestion-sensores" element={<GestionSensoresPage />} />
           <Route path="/reportes-sensores" element={<ReportesSensoresPage />} />

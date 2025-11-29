@@ -58,7 +58,7 @@ export class SensoresController {
    */
   @Get('por-surco/:surcoId')
   async findBySurco(@Param('surcoId', ParseIntPipe) surcoId: number) {
-    const sensores = await this.sensoresService.findBySurco(surcoId);
+    const sensores = await this.sensoresService.findBySublote(surcoId);
     return { success: true, data: sensores };
   }
 

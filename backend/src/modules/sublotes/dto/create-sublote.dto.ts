@@ -1,15 +1,19 @@
-// src/modules/surcos/dto/create-surco.dto.ts
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsBoolean, ValidateIf } from 'class-validator';
+// src/modules/sublotes/dto/create-sublote.dto.ts
+import { IsString, IsNotEmpty, IsNumber, IsOptional, IsBoolean, ValidateIf, IsObject } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class CreateSurcoDto {
+export class CreateSubloteDto {
   @IsString()
   @IsNotEmpty()
   nombre: string;
 
-  @IsString()
+
   @IsOptional()
-  descripcion?: string;
+  @IsObject()
+  coordenadas?: {
+    type: 'point' | 'polygon';
+    coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
+  };
 
   @IsNumber()
   @IsNotEmpty()

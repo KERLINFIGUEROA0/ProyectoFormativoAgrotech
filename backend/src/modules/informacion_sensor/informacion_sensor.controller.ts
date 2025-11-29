@@ -60,7 +60,7 @@ export class InformacionSensorController {
     */
    @Get('report')
    async generateReport(
-     @Query('scope') scope: 'surco' | 'cultivo',
+     @Query('scope') scope: 'sublote' | 'cultivo',
      @Query('scopeId', ParseIntPipe) scopeId: number,
      @Query('timeFilter') timeFilter: 'day' | 'date' | 'month',
      @Query('date') date?: string,

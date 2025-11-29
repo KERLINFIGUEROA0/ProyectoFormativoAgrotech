@@ -25,7 +25,6 @@ import {
   eliminarBrokerLote
 } from '../api/mqttConfigApi';
 // Asegúrate de importar 'actualizarLote'
-import { listarSurcos } from '../../cultivos/api/surcosApi';
 import { obtenerLotes, actualizarLote } from '../../cultivos/api/lotesApi';
 
 // --- COMPONENTES ---
@@ -34,7 +33,7 @@ import BrokerFormModal from '../components/BrokerFormModal';
   
 // --- INTERFACES ---
 import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
-import type { Surco, Lote } from '../../cultivos/interfaces/cultivos';
+import type { Sublote, Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 // --- TIPOS GLOBALES ---
@@ -622,7 +621,7 @@ export default function GestionSensoresPage(): ReactElement {
   
   // Estados de Filtros
   const [modoVista, setModoVista] = useState<'GENERAL' | 'LOTE'>('GENERAL');
-  const [surcos, setSurcos] = useState<Surco[]>([]);
+  const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [filtroId, setFiltroId] = useState<number | 'TODOS'>('TODOS');
@@ -649,16 +648,18 @@ export default function GestionSensoresPage(): ReactElement {
   // 1. CARGA DE ESTRUCTURA
   const loadStructure = async () => {
     try {
-      const [sensoresRes, brokersRes, surcosRes, lotesRes] = await Promise.all([
+      const [sensoresRes, brokersRes, lotesRes] = await Promise.all([
         listarSensores(),
         listarBrokers(),
-        listarSurcos(),
         obtenerLotes()
       ]);
       setSensores(sensoresRes.data || []);
       setBrokers(brokersRes || []);
-      setSurcos(surcosRes.data || []);
-      setLotes(lotesRes.data || []);
+      const lotesData = lotesRes.data || [];
+      setLotes(lotesData);
+      // Extraer todos los sublotes de todos los lotes
+      const allSublotes = lotesData.flatMap((lote: Lote) => (lote.sublotes || []).filter((s: any) => s.lote && s.lote.id));
+      setSublotes(allSublotes);
 
       // Si no hay brokers, abrir automáticamente el modal para crear uno
       if (!brokersRes || brokersRes.length === 0) {
@@ -1022,7 +1023,7 @@ export default function GestionSensoresPage(): ReactElement {
     }
 
     return res;
-  }, [sensores, latestData, modoVista, filtroId, surcoSeleccionado, surcos]);
+  }, [sensores, latestData, modoVista, filtroId, surcoSeleccionado, sublotes]);
 
   // Cálculo de sensores para la página actual
   const sensoresPaginaActual = useMemo(() => {
@@ -1112,7 +1113,7 @@ export default function GestionSensoresPage(): ReactElement {
                     className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 min-w-32 shadow-sm transition-all duration-200 hover:shadow-md"
                   >
                     <option value="TODOS">Todos los Surcos</option>
-                    {surcos.filter(s => s.lote.id === filtroId).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    {sublotes.filter(s => s.lote.id === filtroId).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                   </select>
                 )}
               </div>
@@ -1199,7 +1200,7 @@ export default function GestionSensoresPage(): ReactElement {
 
               {modoVista === 'LOTE' && surcoSeleccionado !== 'TODOS' && (
                 <span className="px-2 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-700">
-                  Surco: {surcos.find(s=>s.id===surcoSeleccionado)?.nombre}
+                  Sublote: {sublotes.find(s=>s.id===surcoSeleccionado)?.nombre}
                 </span>
               )}
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Server, X, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Broker, Surco, Lote } from '../interfaces/iot';
-import { listarLotes, listarSurcos, listarSurcosPorLote, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
+import type { Broker, Lote } from '../interfaces/iot';
+import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
 interface BrokerFormModalProps {
   isOpen: boolean;
@@ -16,8 +16,7 @@ const defaultTopics = ['luz', 'temperatura', 'humedad', 'humedad_suelo'];
 
 export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers }: BrokerFormModalProps) {
   const [lotes, setLotes] = useState<Lote[]>([]);
-  const [surcos, setSurcos] = useState<Surco[]>([]);
-  const [surcosFiltrados, setSurcosFiltrados] = useState<Surco[]>([]);
+  // Removido: funcionalidad de surcos/sublotes específicos por simplicidad
   const [topicosAdicionales, setTopicosAdicionales] = useState<string[]>(['']);
   const [defaultTopicsEnabled, setDefaultTopicsEnabled] = useState<Record<string, boolean>>({
     luz: true,
@@ -33,7 +32,6 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     host: '',
     puerto: '',
     loteId: '',
-    surcoId: '',
     prefijoTopicos: '',
     usuario: '',
     password: '',
@@ -43,12 +41,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     if (isOpen) {
       const cargarDatos = async () => {
         try {
-          const [lotesData, surcosData] = await Promise.all([
-            listarLotes(),
-            listarSurcos()
-          ]);
+          const lotesData = await listarLotes();
           setLotes(lotesData);
-          setSurcos(surcosData);
         } catch (error) {
           console.error('Error cargando datos:', error);
         }
@@ -82,7 +76,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           host: broker.host,
           puerto: broker.puerto.toString(),
           loteId: loteId,
-          surcoId: '',
+          // Removido: surcoId
           prefijoTopicos: broker.prefijoTopicos || '',
           usuario: broker.usuario || '',
           password: broker.password || '',
@@ -110,7 +104,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           host: '',
           puerto: '',
           loteId: '',
-          surcoId: '',
+          // Removido: surcoId
           prefijoTopicos: '',
           usuario: '',
           password: '',
@@ -120,26 +114,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     }
   }, [isOpen, broker]);
 
-  // Cargar surcos cuando cambia loteId
-  useEffect(() => {
-    if (formData.loteId) {
-      const cargarSurcosPorLote = async () => {
-        try {
-          const surcosData = await listarSurcosPorLote(parseInt(formData.loteId));
-          setSurcosFiltrados(surcosData);
-        } catch (error) {
-          console.error('Error cargando surcos por lote:', error);
-          setSurcosFiltrados([]);
-        }
-      };
-      cargarSurcosPorLote();
-      // Limpiar surcoId cuando cambia loteId
-      setFormData(prev => ({ ...prev, surcoId: '' }));
-    } else {
-      setSurcosFiltrados([]);
-      setFormData(prev => ({ ...prev, surcoId: '' }));
-    }
-  }, [formData.loteId]);
+  // Removida: funcionalidad de cargar surcos por lote
 
   // Normalizar el prefijo para que no empiece con '/' y no termine con '/', y sin múltiples '/'
   const normalizedPrefix = (formData.prefijoTopicos || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\/+/g, '/');
@@ -240,7 +215,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           host: '',
           puerto: '',
           loteId: '',
-          surcoId: '',
+          // Removido: surcoId
           prefijoTopicos: '',
           usuario: '',
           password: '',
@@ -350,8 +325,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                   </div>
                 </div>
 
-                {/* Tercera fila: Lote, Surco, Prefijo y Botón */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Tercera fila: Lote, Prefijo y Botón */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Lote *
@@ -370,26 +345,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Surco
-                    </label>
-                    <select
-                      value={formData.surcoId}
-                      onChange={(e) => setFormData({ ...formData, surcoId: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      disabled={!formData.loteId}
-                    >
-                      <option value="">
-                        {formData.loteId ? 'Seleccionar surco (opcional)' : 'Primero selecciona un lote'}
-                      </option>
-                      {surcosFiltrados.map((surco) => (
-                        <option key={surco.id} value={surco.id}>
-                          {surco.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Removido: campo de selección de surco */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Prefijo de Tópicos

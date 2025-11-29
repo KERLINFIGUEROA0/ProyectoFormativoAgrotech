@@ -6,7 +6,7 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { Surco } from '../../surcos/entities/surco.entity';
+import { Sublote } from '../../sublotes/entities/sublote.entity';
 import { Lote } from '../../lotes/entities/lote.entity';
 import { InformacionSensor } from '../../informacion_sensor/entities/informacion_sensor.entity';
 
@@ -49,13 +49,13 @@ export class Sensor {
   @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
   ultimo_mqtt_mensaje: Date | null;
 
-  @ManyToOne(() => Lote, (lote) => lote.surcos, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Lote, (lote) => lote.sublotes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'loteId' })
   lote: Lote;
 
-  @ManyToOne(() => Surco, (surco) => surco.sensores, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'surcoId' })
-  surco: Surco | null;
+  @ManyToOne(() => Sublote, (sublote) => sublote.sensores, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'subloteId' })
+  sublote: Sublote | null;
 
   @OneToMany(() => InformacionSensor, (info) => info.sensor)
   informaciones: InformacionSensor[];

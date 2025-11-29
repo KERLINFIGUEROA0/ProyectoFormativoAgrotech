@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
-import { Surco } from '../surcos/entities/surco.entity';
+import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
 import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
@@ -19,8 +19,8 @@ export class SensoresService {
   constructor(
     @InjectRepository(Sensor)
     private readonly sensorRepo: Repository<Sensor>,
-    @InjectRepository(Surco)
-    private readonly surcoRepo: Repository<Surco>,
+    @InjectRepository(Sublote)
+    private readonly subloteRepo: Repository<Sublote>,
     @InjectRepository(Broker)
     private readonly brokerRepo: Repository<Broker>,
     // INYECTA EL NUEVO REPOSITORIO
@@ -41,7 +41,7 @@ export class SensoresService {
   async findOne(id: number): Promise<Sensor> {
     const sensor = await this.sensorRepo.findOne({
       where: { id },
-      relations: ['lote', 'surco', 'surco.lote'],
+      relations: ['lote', 'sublote', 'sublote.lote'],
     });
     if (!sensor) {
       throw new NotFoundException(`Sensor con ID ${id} no encontrado.`);
@@ -96,7 +96,7 @@ export class SensoresService {
 
 
   async create(createSensoreDto: CreateSensoreDto): Promise<Sensor> {
-    const { loteId: dtoLoteId, surcoId: dtoSurcoId, topic, broker: dtoBroker } = createSensoreDto;
+    const { loteId: dtoLoteId, subloteId: dtoSubloteId, topic, broker: dtoBroker } = createSensoreDto;
 
     // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
     // Cada sensor guardará los datos en su propio lote
@@ -104,10 +104,10 @@ export class SensoresService {
     const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: dtoLoteId } });
     if (!lote) throw new NotFoundException(`El lote con ID ${dtoLoteId} no fue encontrado.`);
 
-    let surco: Surco | null = null;
-    if (dtoSurcoId) {
-      surco = await this.surcoRepo.findOne({ where: { id: dtoSurcoId } });
-      if (!surco) throw new NotFoundException(`El surco con ID ${dtoSurcoId} no fue encontrado.`);
+    let sublote: Sublote | null = null;
+    if (dtoSubloteId) {
+      sublote = await this.subloteRepo.findOne({ where: { id: dtoSubloteId } });
+      if (!sublote) throw new NotFoundException(`El sublote con ID ${dtoSubloteId} no fue encontrado.`);
     }
 
     // Si se proporciona información del broker, crear o actualizar el broker
@@ -141,8 +141,8 @@ export class SensoresService {
     }
 
     // Crear el sensor
-    const { broker, loteId, surcoId, ...sensorData } = createSensoreDto; // Excluir broker, loteId, surcoId del DTO
-    const nuevoSensor = this.sensorRepo.create({ ...sensorData, lote, surco });
+    const { broker, loteId, subloteId, ...sensorData } = createSensoreDto; // Excluir broker, loteId, subloteId del DTO
+    const nuevoSensor = this.sensorRepo.create({ ...sensorData, lote, sublote });
     const sensorGuardado = await this.sensorRepo.save(nuevoSensor);
 
     // Insertar un dato inicial en informacion_sensor
@@ -165,7 +165,7 @@ export class SensoresService {
       // Recargar el sensor con las relaciones para el servicio MQTT
       const sensorCompleto = await this.sensorRepo.findOne({
         where: { id: sensorGuardado.id },
-        relations: ['surco', 'surco.broker'],
+        relations: ['sublote', 'sublote.lote'],
       });
       
       if (sensorCompleto) {
@@ -179,15 +179,15 @@ export class SensoresService {
   }
 
   async findAll(): Promise<Sensor[]> {
-  // Agrega 'surco.cultivo' a la lista de relaciones
+  // Agrega 'sublote.cultivo' a la lista de relaciones
   return this.sensorRepo.find({
-    relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+    relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
   });
-}
+ }
 
   async update(id: number, updateSensoreDto: UpdateSensoreDto): Promise<Sensor> {
     const sensor = await this.findOne(id);
-    const { loteId, surcoId, topic } = updateSensoreDto;
+    const { loteId, subloteId, topic } = updateSensoreDto;
 
     // Ya no validamos tópico único - múltiples sensores pueden usar el mismo tópico
 
@@ -197,12 +197,12 @@ export class SensoresService {
       sensor.lote = lote;
     }
 
-    if (surcoId) {
-      const surco = await this.surcoRepo.findOne({
-        where: { id: surcoId }
+    if (subloteId) {
+      const sublote = await this.subloteRepo.findOne({
+        where: { id: subloteId }
       });
-      if (!surco) throw new NotFoundException(`El surco con ID ${surcoId} no fue encontrado.`);
-      sensor.surco = surco;
+      if (!sublote) throw new NotFoundException(`El sublote con ID ${subloteId} no fue encontrado.`);
+      sensor.sublote = sublote;
     }
 
     Object.assign(sensor, updateSensoreDto);
@@ -241,33 +241,33 @@ export class SensoresService {
         lote: { id: loteId },
         estado: 'Activo'
       },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+      relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
     });
   }
 
   /**
-   * Obtiene sensores activos por surco
-   */
-  async findBySurco(surcoId: number): Promise<Sensor[]> {
+    * Obtiene sensores activos por sublote
+    */
+  async findBySublote(subloteId: number): Promise<Sensor[]> {
     return this.sensorRepo.find({
       where: {
-        surco: { id: surcoId },
+        sublote: { id: subloteId },
         estado: 'Activo'
       },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+      relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
     });
   }
 
   /**
-   * Obtiene sensores activos por cultivo
-   */
+    * Obtiene sensores activos por cultivo
+    */
   async findByCultivo(cultivoId: number): Promise<Sensor[]> {
     return this.sensorRepo.find({
       where: {
-        surco: { cultivo: { id: cultivoId } },
+        sublote: { cultivo: { id: cultivoId } },
         estado: 'Activo'
       },
-      relations: ['lote', 'surco', 'surco.lote', 'surco.cultivo']
+      relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
     });
   }
 

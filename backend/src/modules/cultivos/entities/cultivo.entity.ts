@@ -2,7 +2,7 @@ import {Entity,PrimaryGeneratedColumn,Column,ManyToOne,OneToMany,ManyToMany,Join
 import { TipoCultivo } from '../../tipo_cultivo/entities/tipo_cultivo.entity';
 import { Actividad } from '../../actividades/entities/actividade.entity';
 import { Produccion } from '../../producciones/entities/produccione.entity';
-import { Surco } from '../../surcos/entities/surco.entity';
+import { Sublote } from '../../sublotes/entities/sublote.entity';
 import { CultivoEpa } from '../../cultivos_epa/entities/cultivos_epa.entity';
 import { Gasto } from '../../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
 
@@ -42,8 +42,8 @@ export class Cultivo {
   @OneToMany(() => Produccion, (produccion) => produccion.cultivo)
   producciones: Produccion[];
 
-  @OneToMany(() => Surco, (surco) => surco.cultivo)
-  surcos: Surco[];
+  @OneToMany(() => Sublote, (sublote) => sublote.cultivo)
+  sublotes: Sublote[];
 
   @OneToMany(() => CultivoEpa, (ce) => ce.cultivo)
   cultivosEpa: CultivoEpa[];

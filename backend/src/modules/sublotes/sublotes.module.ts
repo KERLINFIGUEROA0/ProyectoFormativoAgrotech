@@ -3,9 +3,9 @@ import {
   forwardRef   // <--- IMPORTANTE
 } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Surco } from './entities/surco.entity';
-import { SurcosService } from './surcos.service';
-import { SurcosController } from './surcos.controller';
+import { Sublote } from './entities/sublote.entity';
+import { SublotesService } from './sublotes.service';
+import { SublotesController } from './sublotes.controller';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
@@ -13,11 +13,11 @@ import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
 import { MqttConfigModule } from '../mqtt-config/mqtt-config.module'; // Importar
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Surco, Lote, Cultivo, Broker, BrokerLote]),
+    TypeOrmModule.forFeature([Sublote, Lote, Cultivo, Broker, BrokerLote]),
     forwardRef(() => MqttConfigModule), // ✅ Agregamos esto
   ],
-  controllers: [SurcosController],
-  providers: [SurcosService],
-  exports: [SurcosService],
+  controllers: [SublotesController],
+  providers: [SublotesService],
+  exports: [SublotesService],
 })
-export class SurcosModule { } 
+export class SublotesModule { }

@@ -4,7 +4,6 @@ import type {
   CreateBrokerDto,
   CreateSubscripcionDto,
   Subscripcion,
-  Surco,
   Lote,
   BrokerLote,
   CreateBrokerLoteDto,
@@ -61,16 +60,6 @@ export const listarLotes = async (): Promise<Lote[]> => {
   return response.data.data;
 };
 
-// --- API para Surcos ---
-export const listarSurcos = async (): Promise<Surco[]> => {
-  const response = await api.get("/surcos/listar");
-  return response.data.data;
-};
-
-export const listarSurcosPorLote = async (loteId: number): Promise<Surco[]> => {
-  const response = await api.get(`/surcos/lotes/${loteId}/surcos`);
-  return response.data.data;
-};
 
 // --- API para BrokerLote (Configuraciones por Lote) ---
 

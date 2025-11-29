@@ -189,7 +189,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
           lote: { id: In(loteIds) },
           estado: 'Activo',
         },
-        relations: ['lote', 'surco'],
+        relations: ['lote', 'sublote'],
       });
 
       for (const sensor of sensores) {
