@@ -52,8 +52,17 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState<
     MaterialSeleccionado[]
   >([]);
-  const [materialActual, setMaterialActual] = useState<string>(''); 
+  const [materialActual, setMaterialActual] = useState<string>('');
   const [cantidadMaterial, setCantidadMaterial] = useState<number | string>(1);
+
+  // Función para calcular el stock disponible
+  const calcularStockDisponible = (material: Material): number => {
+    if (material.tipoConsumo === 'consumible' && material.cantidadPorUnidad) {
+      const openPackageAdjustment = material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined ? 1 : 0;
+      return (material.cantidad - openPackageAdjustment) * material.cantidadPorUnidad + (material.cantidadRestanteEnUnidadActual || 0);
+    }
+    return material.cantidad;
+  };
 
   // Obtener usuario autenticado (sin cambios)
   useEffect(() => {
@@ -154,10 +163,12 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     const material = materialesDisponibles.find((m) => m.id === id);
     if (!material) return;
 
-    // Verificar stock (tu lógica es correcta)
-    if (cantidad > material.cantidad) {
+    // Verificar stock
+    const stockDisponible = calcularStockDisponible(material);
+    if (cantidad > stockDisponible) {
+      const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
       toast.error(
-        `Stock insuficiente. Disponible: ${material.cantidad} ${material.tipoEmpaque}`,
+        `Stock insuficiente. Disponible: ${stockDisponible} ${unidad}`,
       );
       return;
     }
@@ -165,8 +176,10 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     const existente = materialesSeleccionados.find(m => m.materialId === id);
     if (existente) {
         const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
-        if (nuevaCantidadTotal > material.cantidad) {
-            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${material.cantidad}`);
+        const stockDisponible = calcularStockDisponible(material);
+        if (nuevaCantidadTotal > stockDisponible) {
+            const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
+            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${stockDisponible} ${unidad}`);
             return;
         }
         
@@ -185,7 +198,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             materialId: material.id,
             nombre: material.nombre,
             cantidadUsada: cantidad,
-            stockDisponible: material.cantidad,
+            stockDisponible: calcularStockDisponible(material),
           },
         ]);
     }
@@ -446,11 +459,15 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                     className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
                   >
                     <option value="">Seleccionar...</option>
-                    {materialesDisponibles.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (Disp: {m.cantidad} {m.tipoEmpaque})
-                      </option>
-                    ))}
+                    {materialesDisponibles.map((m) => {
+                      const stockDisp = calcularStockDisponible(m);
+                      const unidad = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre} (Disp: {stockDisp} {unidad})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="w-1/3">

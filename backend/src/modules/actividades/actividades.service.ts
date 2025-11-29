@@ -174,6 +174,61 @@ export class ActividadesService {
     return { success: true, debeRegistrarEgreso: true };
   }
 
+  // --- FUNCIÓN HELPER PARA REVERTIR DESCUENTO DE MATERIALES ---
+  private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
+    if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+      // Para no consumibles, manejar por usos
+      if (!material.usosTotales) {
+        // Si no hay usos totales, no revertir
+        return;
+      }
+      material.usosActuales -= cantidadDevuelta;
+      while (material.usosActuales < 0 && material.cantidad > 0) {
+        material.usosActuales += material.usosTotales;
+        material.cantidad += 1;
+      }
+      return;
+    }
+
+    // Para consumibles
+    if (!material.cantidadPorUnidad) {
+      // Si no hay cantidad por unidad, agregar directamente
+      material.cantidad += cantidadDevuelta;
+      return;
+    }
+
+    // Lógica para consumibles con unidades
+    let unidadesADevolver = 0;
+
+    if (material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined) {
+      // Hay una unidad parcialmente abierta
+      const espacioDisponible = material.cantidadPorUnidad - material.cantidadRestanteEnUnidadActual;
+      if (cantidadDevuelta <= espacioDisponible) {
+        // Cabe en la unidad actual
+        material.cantidadRestanteEnUnidadActual += cantidadDevuelta;
+        return;
+      } else {
+        // Llena la unidad actual y devuelve unidades completas
+        const restante = cantidadDevuelta - espacioDisponible;
+        unidadesADevolver = Math.floor(restante / material.cantidadPorUnidad);
+        const resto = restante % material.cantidadPorUnidad;
+        material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad - resto;
+        material.cantidad += unidadesADevolver + 1; // +1 por la unidad que se llenó
+        return;
+      }
+    } else {
+      // No hay unidad abierta, devolver unidades completas
+      unidadesADevolver = Math.floor(cantidadDevuelta / material.cantidadPorUnidad);
+      const resto = cantidadDevuelta % material.cantidadPorUnidad;
+      if (resto > 0) {
+        material.cantidadRestanteEnUnidadActual = resto;
+        material.cantidad += unidadesADevolver + 1;
+      } else {
+        material.cantidad += unidadesADevolver;
+      }
+    }
+  }
+
   // --- MÉTODO 'create' ACTUALIZADO ---
   async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
     const { materiales, cultivo: cultivoId, horas, tarifaHora, ...dtoActividad } = dto;
@@ -222,6 +277,16 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
+
+          // Registrar movimiento de salida
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadUsada,
+            material.id,
+            `Salida por creación de actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: saved,
             material: material,
@@ -229,12 +294,23 @@ export class ActividadesService {
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 2. REGISTRO DE GASTO DE MATERIAL (solo para consumibles) ---
-          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+          // --- 2. REGISTRO DE GASTO DE MATERIAL ---
+          if (resultado.debeRegistrarEgreso) {
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
+              if (material.cantidadPorUnidad) {
+                costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
+              } else {
+                costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+              }
+            } else {
+              // Para no consumibles, costo por unidad usada
+              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Material consumible: ${material.nombre} (Act: ${saved.titulo})`,
+                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Act: ${saved.titulo})`,
                 monto: costoTotal,
                 fecha: saved.fecha,
                 tipo: TipoMovimiento.EGRESO,
@@ -373,8 +449,8 @@ export class ActividadesService {
         for (const am of actividad.actividadMaterial) {
           const material = await materialRepo.findOneBy({ id: am.material.id });
           if (material) {
-            // Para revertir, simplemente agregar de vuelta la cantidad usada
-            material.cantidad += am.cantidadUsada;
+            // Revertir usando la lógica inversa de descontar
+            this.revertirDescontarMaterial(material, am.cantidadUsada);
             await queryRunner.manager.save(material);
           }
           await queryRunner.manager.remove(am);
@@ -418,6 +494,16 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
+
+          // Registrar movimiento de salida
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadUsada,
+            material.id,
+            `Salida por actualización de actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
           const nuevaUnion = actMaterialRepo.create({
             actividad: saved,
             material: material,
@@ -425,12 +511,23 @@ export class ActividadesService {
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 3. REGISTRO DE GASTO DE MATERIAL (solo para consumibles) ---
-          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+          // --- 3. REGISTRO DE GASTO DE MATERIAL ---
+          if (resultado.debeRegistrarEgreso) {
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
+              if (material.cantidadPorUnidad) {
+                costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
+              } else {
+                costoTotal = (Number(material.precio) || 0) * cantidadUsada;
+              }
+            } else {
+              // Para no consumibles, costo por unidad usada
+              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Material consumible: ${material.nombre} (Act: ${saved.titulo})`,
+                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Act: ${saved.titulo})`,
                 monto: costoTotal,
                 fecha: saved.fecha,
                 tipo: TipoMovimiento.EGRESO,
@@ -557,13 +654,7 @@ export class ActividadesService {
           }
 
           // Aumentar el stock del material devuelto
-          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-            // Para consumibles, devolver a la cantidad disponible
-            material.cantidad += devolucion.cantidadDevuelta;
-          } else {
-            // Para no consumibles, devolver incrementando la cantidad
-            material.cantidad += devolucion.cantidadDevuelta;
-          }
+          this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
 
           await queryRunner.manager.save(material);
 
@@ -799,12 +890,23 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
-          // Registrar gasto solo para materiales consumibles
-          if (resultado.debeRegistrarEgreso && material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-            const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
+          // Registrar gasto
+          if (resultado.debeRegistrarEgreso) {
+            let costoTotal = 0;
+            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
+              if (material.cantidadPorUnidad) {
+                costoTotal = (Number(material.precio) || 0) * (cantidadTotalUsada / material.cantidadPorUnidad);
+              } else {
+                costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
+              }
+            } else {
+              // Para no consumibles, costo por unidad usada
+              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
+            }
             if (costoTotal > 0) {
               const nuevoGasto = gastoRepo.create({
-                descripcion: `Material consumible: ${material.nombre} (Asignación: ${titulo})`,
+                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Asignación: ${titulo})`,
                 monto: costoTotal,
                 fecha: fechaActividad,
                 tipo: TipoMovimiento.EGRESO,

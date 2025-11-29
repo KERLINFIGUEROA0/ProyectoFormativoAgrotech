@@ -18,10 +18,6 @@ export class MaterialesService {
 
   async create(createMaterialeDto: CreateMaterialeDto): Promise<Material> {
     const material = this.materialRepository.create(createMaterialeDto);
-    // Inicializar cantidadRestanteEnUnidadActual para consumibles
-    if (material.tipoConsumo === TipoConsumo.CONSUMIBLE && material.cantidadPorUnidad) {
-      material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad;
-    }
     const savedMaterial = await this.materialRepository.save(material);
 
     // Registrar movimiento de entrada si hay cantidad inicial

@@ -52,17 +52,18 @@ const GestionMovimientosPage: React.FC = () => {
     return matchesSearch && matchesTipo && matchesMaterial;
   });
 
-  const tiposMovimiento = [...new Set(movimientos.map(m => m.tipo))];
+  // Tipos de movimiento fijos para mostrar siempre ambas opciones
+  const tiposMovimiento = ['ingreso', 'egreso'];
   const materialesUnicos = [...new Set(movimientos.map(m => m.material).filter(m => m !== undefined && m !== null))];
 
   const getTipoIcon = (tipo: string) => {
-    return tipo === 'EGRESO' ?
+    return tipo === 'egreso' ?
       <TrendingDown className="w-4 h-4 text-red-500" /> :
       <TrendingUp className="w-4 h-4 text-green-500" />;
   };
 
   const getTipoLabel = (tipo: string) => {
-    return tipo === 'EGRESO' ? 'Salida' : 'Entrada';
+    return tipo === 'egreso' ? 'Salida' : 'Entrada';
   };
 
   const formatFecha = (fecha: string) => {
@@ -107,10 +108,10 @@ const GestionMovimientosPage: React.FC = () => {
             <span className="text-sm font-medium text-gray-600">Productos con Entrada</span>
           </div>
           <p className="text-2xl font-bold text-green-600">
-            {[...new Set(movimientos.filter(m => m.tipo === 'INGRESO').map(m => m.material?.id).filter(id => id))].length}
+            {[...new Set(movimientos.filter(m => m.tipo === 'ingreso').map(m => m.material?.id).filter(id => id))].length}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {movimientos.filter(m => m.tipo === 'INGRESO').length} movimientos de entrada
+            {movimientos.filter(m => m.tipo === 'ingreso').length} movimientos de entrada
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
@@ -119,10 +120,10 @@ const GestionMovimientosPage: React.FC = () => {
             <span className="text-sm font-medium text-gray-600">Productos con Salida</span>
           </div>
           <p className="text-2xl font-bold text-red-600">
-            {[...new Set(movimientos.filter(m => m.tipo === 'EGRESO').map(m => m.material?.id).filter(id => id))].length}
+            {[...new Set(movimientos.filter(m => m.tipo === 'egreso').map(m => m.material?.id).filter(id => id))].length}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {movimientos.filter(m => m.tipo === 'EGRESO').length} movimientos de salida
+            {movimientos.filter(m => m.tipo === 'egreso').length} movimientos de salida
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
@@ -227,7 +228,7 @@ const GestionMovimientosPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         {getTipoIcon(movimiento.tipo)}
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          movimiento.tipo === 'EGRESO'
+                          movimiento.tipo === 'egreso'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
