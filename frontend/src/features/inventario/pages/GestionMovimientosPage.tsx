@@ -6,29 +6,58 @@ import {
   TrendingDown,
   Calendar,
   User,
-  FileText,
   Search,
   Filter,
   RefreshCw,
 } from 'lucide-react';
-import { listarMovimientos, listarMovimientosPorMaterial } from '../api/inventarioApi';
+import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } from '../api/inventarioApi';
 import type { MovimientoData } from '../interfaces/inventario';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
+  const [materiales, setMateriales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTipo, setSelectedTipo] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
 
   useEffect(() => {
-    cargarMovimientos();
+    cargarDatos();
   }, []);
+
+  useEffect(() => {
+    cargarMovimientos();
+  }, [selectedMaterial]);
+
+  const cargarDatos = async () => {
+    try {
+      setLoading(true);
+      const [movimientosResponse, materialesResponse] = await Promise.all([
+        listarMovimientos(),
+        listarMateriales()
+      ]);
+      if (movimientosResponse.success) {
+        setMovimientos(movimientosResponse.data);
+      }
+      if (materialesResponse.success) {
+        setMateriales(materialesResponse.data);
+      }
+    } catch (error) {
+      toast.error('Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cargarMovimientos = async () => {
     try {
       setLoading(true);
-      const response = await listarMovimientos();
+      let response;
+      if (selectedMaterial) {
+        response = await listarMovimientosPorMaterial(parseInt(selectedMaterial));
+      } else {
+        response = await listarMovimientos();
+      }
       if (response.success) {
         setMovimientos(response.data);
       }
@@ -46,15 +75,12 @@ const GestionMovimientosPage: React.FC = () => {
       movimiento.usuario?.nombre?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesTipo = selectedTipo === '' || movimiento.tipo === selectedTipo;
-    const matchesMaterial = selectedMaterial === '' ||
-      movimiento.material?.id.toString() === selectedMaterial;
 
-    return matchesSearch && matchesTipo && matchesMaterial;
+    return matchesSearch && matchesTipo;
   });
 
   // Tipos de movimiento fijos para mostrar siempre ambas opciones
   const tiposMovimiento = ['ingreso', 'egreso'];
-  const materialesUnicos = [...new Set(movimientos.map(m => m.material).filter(m => m !== undefined && m !== null))];
 
   const getTipoIcon = (tipo: string) => {
     return tipo === 'egreso' ?
@@ -91,13 +117,6 @@ const GestionMovimientosPage: React.FC = () => {
           <Package className="w-6 h-6" />
           Movimientos de Inventario
         </h1>
-        <button
-          onClick={cargarMovimientos}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Actualizar
-        </button>
       </div>
 
       {/* Estadísticas */}
@@ -175,7 +194,7 @@ const GestionMovimientosPage: React.FC = () => {
               className="pl-10 w-full border border-gray-300 rounded-lg p-2 bg-white"
             >
               <option value="">Todos los materiales</option>
-              {materialesUnicos.map(material => (
+              {materiales.map(material => (
                 <option key={material.id} value={material.id}>
                   {material.nombre}
                 </option>

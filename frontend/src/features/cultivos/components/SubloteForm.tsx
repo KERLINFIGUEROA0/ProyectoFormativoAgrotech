@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactElement } from 'react';
-import { Input } from "@heroui/react";
+import { Input, Select, SelectItem, Button } from "@heroui/react";
 import { toast } from "sonner";
 import { MapPin } from 'lucide-react';
 import type { Lote, Cultivo, SubloteData, CoordenadasGeo } from '../interfaces/cultivos';
@@ -45,12 +45,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
     if (initialData) {
       const textoCoordenadas = initialData.coordenadasTexto || '';
 
-      const coordsArray: [number, number][] = textoCoordenadas.trim().split('\n').map(line => {
-        const parts = line.split(',').map(part => part.trim());
-        const lng = parseFloat(parts[0]);
-        const lat = parseFloat(parts[1]);
-        return [lat, lng] as [number, number];
-      }).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+      // Nota: `textoCoordenadas` se deja en el estado para uso posterior si es necesario.
 
       setFormData({
         nombre: initialData.nombre || '',
@@ -204,18 +199,19 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
         />
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
+          <Button
             onClick={onCancel}
-            className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+            variant="light"
+            color="default"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
-            className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+            color="primary"
           >
             Crear Punto
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -245,34 +241,38 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
           />
         </div>
       ) : (
-        <div>
-          <label className="text-sm font-medium text-gray-700">Lote Padre</label>
-          <select
-            name="loteId"
-            value={formData.loteId || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, loteId: Number(e.target.value) }))}
-            className="w-full border border-gray-300 rounded-md p-2 bg-white"
-          >
-            <option value="" disabled>Seleccionar lote padre</option>
-            {lotes.map(lote => (
-              <option key={lote.id} value={lote.id}>{lote.nombre}</option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Lote Padre"
+          placeholder="Seleccionar lote padre"
+          selectedKeys={formData.loteId ? new Set([formData.loteId.toString()]) : new Set()}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0];
+            setFormData(prev => ({ ...prev, loteId: selected ? Number(selected) : 0 }));
+          }}
+          fullWidth
+        >
+          {lotes.map(lote => (
+            <SelectItem key={lote.id.toString()}>
+              {lote.nombre}
+            </SelectItem>
+          ))}
+        </Select>
       )}
 
       <div>
         <label className="text-sm font-medium text-gray-700">Ubicación (Punto de Referencia)</label>
 
         <div className="flex items-center gap-4 mb-2">
-          <button
+          <Button
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+            color="primary"
+            variant="flat"
+            startContent={<MapPin size={20} />}
+            className="font-medium"
           >
-            <MapPin size={20} />
             {coordenadasPunto ? 'Cambiar Ubicación' : 'Seleccionar en el Mapa'}
-          </button>
+          </Button>
 
           {coordenadasPunto && (
             <span className="text-xs text-gray-500">
@@ -295,18 +295,19 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
 
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <button
+        <Button
           onClick={onCancel}
-          className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+          variant="light"
+          color="default"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSubmit}
-          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+          color="primary"
         >
           {isEditing ? 'Actualizar Sublote' : 'Registrar Sublote'}
-        </button>
+        </Button>
       </div>
 
       {/* Modal del Selector de Ubicación */}
@@ -330,13 +331,13 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
           )}
 
           <div className="mt-4 flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={() => setIsLocationModalOpen(false)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              color="primary"
             >
               Confirmar Ubicación
-            </button>
+            </Button>
           </div>
         </div>
       </FormModal>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useRef, type ReactElement } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,7 +55,7 @@ interface SubloteMapProps {
 // Componente para manejar clics en el mapa
 function MapClickHandler({ onPointClick }: { onPointClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click: (e) => {
+    click: (e: any) => {
       if (onPointClick) {
         onPointClick(e.latlng.lat, e.latlng.lng);
       }
@@ -187,15 +187,12 @@ export default function SubloteMap({
   return (
     <div className="w-full rounded-lg overflow-hidden border border-gray-200 relative" style={{ height }}>
       <MapContainer
-        center={mapCenter}
-        zoom={mapZoom}
-        style={{ height: '100%', width: '100%' }}
+        {...({ center: mapCenter as any, zoom: mapZoom, style: { height: '100%', width: '100%' } } as any)}
         ref={mapRef}
       >
         {/* Vista Satelital de Esri */}
         <TileLayer
-          attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          {...({ attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' } as any)}
         />
 
         <MapClickHandler onPointClick={onPointClick} />
@@ -248,9 +245,8 @@ export default function SubloteMap({
         )}
       </MapContainer>
 
-      {/* Leyenda flotante */}
       <div className="absolute top-2 right-2 bg-white p-3 rounded-lg shadow-md z-[1000]">
-        <div className="text-sm font-semibold mb-2">Leyenda</div>
+        <div className="text-sm font-semibold mb-2">Informacion General</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs">
             <div className="w-4 h-4 bg-yellow-400 rounded border-2 border-yellow-600"></div>
@@ -275,8 +271,7 @@ export default function SubloteMap({
         </div>
         <div className="mt-2 pt-2 border-t border-gray-200">
           <div className="text-xs text-gray-600">
-            <p>🖱️ <strong>Clic:</strong> Seleccionar ubicación</p>
-            <p>📍 <strong>Marcador rojo:</strong> Ubicación seleccionada</p>
+            <p>🖱️ <strong>Clic:</strong> Seleccionar punto y abrir modal para crear sublote</p>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, ArrowLeft, Trash2, MapPin, X } from 'lucide-react';
+import { Plus, Edit, ArrowLeft, Trash2, MapPin } from 'lucide-react';
 import L from 'leaflet';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote, obtenerCultivos, crearSublote, actualizarSublote, eliminarSublote } from '../api/sublotesApi';
@@ -9,6 +9,7 @@ import SubloteForm from '../components/SubloteForm';
 import SubloteMap from '../components/SubloteMap';
 import type { Lote, Cultivo, Sublote, SubloteData } from '../interfaces/cultivos';
 import type { Broker } from '../../iot/interfaces/iot';
+import { Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, Select, SelectItem } from '@heroui/react';
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -68,6 +69,7 @@ export default function GestionProduccion(): ReactElement {
   const [editingSublote, setEditingSublote] = useState<Sublote | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [subloteToDelete, setSubloteToDelete] = useState<Sublote | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -126,15 +128,6 @@ export default function GestionProduccion(): ReactElement {
     setEditingSublote(null);
   };
 
-  const handleNewSublote = () => {
-    // Crear sublote temporal sin ubicación específica
-    const tempSublote: Partial<Sublote> = {
-      nombre: `Sublote ${sublotes.length + 1}`,
-      lote: loteSeleccionado!
-    };
-    setEditingSublote(tempSublote as Sublote);
-    setIsFormOpen(true);
-  };
 
   const handleMapClick = (lat: number, lng: number) => {
     if (!loteSeleccionado) return;
@@ -233,6 +226,11 @@ export default function GestionProduccion(): ReactElement {
     }
   };
 
+  // Filtrar sublotes por estado
+  const sublotesFiltrados = filtroEstado === 'todos'
+    ? sublotes
+    : sublotes.filter(sublote => sublote.estado === filtroEstado);
+
   // (Removed unused handler for estado changes on sublotes)
 
   return (
@@ -245,18 +243,35 @@ export default function GestionProduccion(): ReactElement {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {lotes.map((lote) => (
-              <div key={lote.id} className="card p-4 border rounded shadow hover:shadow-lg">
-                <h3 className="text-xl font-bold">{lote.nombre}</h3>
-                <p>Área Total: {lote.area} m²</p>
-                <p>Sublotes definidos: {lote.sublotes?.length || 0}</p>
-
-                <button
-                  onClick={() => handleLoteSeleccionado(lote)}
-                  className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
-                >
-                  Gestionar Sublotes
-                </button>
-              </div>
+              <Card
+                key={lote.id}
+                className="hover:shadow-lg transition-all duration-200 border-2 border-gray-200 hover:border-primary-400 hover:ring-2 hover:ring-primary-200"
+                shadow="sm"
+              >
+                <CardHeader className="pb-2">
+                  <h3 className="text-xl font-bold text-gray-800">{lote.nombre}</h3>
+                </CardHeader>
+                <CardBody className="pt-0">
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-sm text-gray-600">Área Total:</span>
+                      <span className="font-semibold text-gray-800">{lote.area} m²</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-sm text-gray-600">Sublotes:</span>
+                      <span className="font-semibold text-gray-800">{lote.sublotes?.length || 0}</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleLoteSeleccionado(lote)}
+                    color="primary"
+                    variant="solid"
+                    className="w-full"
+                  >
+                    Gestionar Sublotes
+                  </Button>
+                </CardBody>
+              </Card>
             ))}
           </div>
         </>
@@ -264,36 +279,48 @@ export default function GestionProduccion(): ReactElement {
         // Vista de Mapa del Lote Seleccionado
         <>
           <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleVolverLotes}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <ArrowLeft size={20} /> Volver a Lotes
-              </button>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-6 w-6 text-green-600" />
-                <h1 className="text-3xl font-bold text-gray-800">{loteSeleccionado.nombre}</h1>
-              </div>
-            </div>
-            <button
-              onClick={handleNewSublote}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            <Button
+              onClick={handleVolverLotes}
+              variant="ghost"
+              color="default"
+              startContent={<ArrowLeft size={20} />}
+              className="font-medium hover:bg-gray-100"
             >
-              <Plus size={16} />
-              Nuevo Sublote
-            </button>
+              Volver a Lotes
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Panel Izquierdo - Lista de Sublotes */}
-            <div className="lg:col-span-1 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-lg font-semibold text-gray-900">Sublotes ({sublotes.length})</h3>
-                <p className="text-sm text-gray-600 mt-1">Área total: {loteSeleccionado.area} m²</p>
+            {/* CAMBIO: Ahora ocupa 2/5 del ancho (40%) para dar más espacio a las tarjetas */}
+            <div className="lg:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+
+              {/* Header fijo (no hace scroll) */}
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Sublotes de {loteSeleccionado.nombre} ({sublotesFiltrados.length})</h3>
+                    <p className="text-sm text-gray-600 mt-1">Área total: {loteSeleccionado.area} m²</p>
+                  </div>
+                  <Select
+                    placeholder="Filtrar por estado"
+                    className="w-48"
+                    size="sm"
+                    selectedKeys={[filtroEstado]}
+                    onSelectionChange={(keys) => setFiltroEstado(Array.from(keys)[0] as string)}
+                  >
+                    <SelectItem key="todos">Todos los estados</SelectItem>
+                    <SelectItem key="Disponible">Disponible</SelectItem>
+                    <SelectItem key="En siembra">En siembra</SelectItem>
+                    <SelectItem key="En cosecha">En cosecha</SelectItem>
+                    <SelectItem key="Mantenimiento">Mantenimiento</SelectItem>
+                  </Select>
+                </div>
               </div>
 
-              <div className="max-h-96 overflow-y-auto p-4">
+              {/* Lista Scrollable */}
+              {/* CAMBIO CLAVE: 'overflow-y-auto' habilita el scroll solo dentro de este espacio restante */}
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {loadingSublotes ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
@@ -307,52 +334,89 @@ export default function GestionProduccion(): ReactElement {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {sublotes.map((sublote) => (
-                      <div
+                    {sublotesFiltrados.map((sublote) => (
+                      <Card
                         key={sublote.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                        className={`cursor-pointer transition-all duration-300 hover:scale-[1.02] border-2 ${
                           editingSublote?.id === sublote.id
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                            ? 'border-primary bg-primary-50/50 shadow-lg ring-2 ring-primary-200'
+                            : 'border-gray-200 hover:border-primary-300 hover:shadow-xl bg-white'
                         }`}
+                        shadow="sm"
                         onClick={() => setEditingSublote(sublote)}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h5 className="font-medium text-gray-900 truncate">{sublote.nombre}</h5>
-                            <p className="text-sm text-gray-500 truncate">Cultivo: {sublote.cultivo?.nombre || 'Sin asignar'}</p>
-                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full mt-1 ${
-                              sublote.estado === 'Disponible'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {sublote.estado}
-                            </span>
+                        <CardBody className="p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full ${
+                                  sublote.estado === 'Disponible' ? 'bg-green-500' :
+                                  sublote.estado === 'En siembra' ? 'bg-blue-500' :
+                                  sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
+                                  'bg-gray-500'
+                                }`}></div>
+                                <h5 className="font-bold text-gray-900 truncate text-base">{sublote.nombre}</h5>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span className="font-medium">Cultivo:</span>
+                                <span className="truncate">{sublote.cultivo?.nombre || 'Sin asignar'}</span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full ${
+                                  sublote.estado === 'Disponible'
+                                    ? 'bg-green-100 text-green-800 border border-green-200'
+                                    : sublote.estado === 'En siembra'
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    : sublote.estado === 'En cosecha'
+                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                    : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                }`}>
+                                  <div className={`w-2 h-2 rounded-full mr-2 ${
+                                    sublote.estado === 'Disponible' ? 'bg-green-500' :
+                                    sublote.estado === 'En siembra' ? 'bg-blue-500' :
+                                    sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
+                                    'bg-gray-500'
+                                  }`}></div>
+                                  {sublote.estado}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditSublote(sublote);
+                                }}
+                                isIconOnly
+                                variant="flat"
+                                color="primary"
+                                size="sm"
+                                className="w-8 h-8"
+                                title="Editar sublote"
+                              >
+                                <Edit size={16} />
+                              </Button>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSublote(sublote);
+                                }}
+                                isIconOnly
+                                variant="flat"
+                                color="danger"
+                                size="sm"
+                                className="w-8 h-8"
+                                title="Eliminar sublote"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 ml-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditSublote(sublote);
-                              }}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                              title="Editar sublote"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteSublote(sublote);
-                              }}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                              title="Eliminar sublote"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                        </CardBody>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -360,14 +424,18 @@ export default function GestionProduccion(): ReactElement {
             </div>
 
             {/* Panel Central - Mapa */}
+            {/* CAMBIO: Ahora ocupa 3/5 del ancho (60%) para hacer el mapa más pequeño */}
             <div className="lg:col-span-3 bg-white rounded-lg shadow border border-gray-200 overflow-hidden relative z-0">
               <div className="relative">
                 {/* Header del mapa */}
                 <div className="absolute top-0 left-0 right-0 z-[5] bg-white/90 backdrop-blur-sm border-b border-gray-200 p-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-gray-900">Mapa Interactivo</span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-green-600" />
+                        <h2 className="text-lg font-bold text-gray-800">{loteSeleccionado.nombre}</h2>
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">Mapa Interactivo</span>
                     </div>
                     <div className="text-xs text-gray-600">
                       Clic para crear sublote • Selecciona para gestionar
@@ -377,7 +445,7 @@ export default function GestionProduccion(): ReactElement {
 
                 <SubloteMap
                   lote={loteSeleccionado}
-                  sublotes={sublotes}
+                  sublotes={sublotesFiltrados}
                   onPointClick={handleMapClick}
                   height="600px"
                   center={getMapCenter(loteSeleccionado)}
@@ -389,65 +457,57 @@ export default function GestionProduccion(): ReactElement {
 
           {/* Panel Derecho - Formulario (cuando está abierto) */}
           {isFormOpen && (
-            <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l border-gray-200 z-40 overflow-hidden flex flex-col">
-              {/* Header del formulario */}
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {editingSublote?.id ? (
-                      <Edit className="h-5 w-5 text-blue-600" />
-                    ) : (
-                      <Plus className="h-5 w-5 text-green-600" />
-                    )}
-                    <h4 className="text-lg font-semibold text-gray-900">
-                      {editingSublote?.id ? 'Editar Sublote' : 'Nuevo Sublote'}
-                    </h4>
+            <Modal isOpen={isFormOpen} onOpenChange={() => setIsFormOpen(false)} size="2xl" scrollBehavior="inside">
+              <ModalContent>
+                <ModalHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      {editingSublote?.id ? (
+                        <Edit className="h-6 w-6 text-blue-600" />
+                      ) : (
+                        <Plus className="h-6 w-6 text-green-600" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {editingSublote?.id ? 'Editar Sublote' : 'Nuevo Sublote'}
+                      </h3>
+                      {editingSublote && !editingSublote.id && (
+                        <p className="text-sm text-gray-600">
+                          Creando sublote desde el mapa - completa los detalles
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
+                </ModalHeader>
+                <ModalBody>
+                  <SubloteForm
+                    initialData={{
+                      id: editingSublote?.id,
+                      nombre: editingSublote?.nombre || '',
+                      loteId: loteSeleccionado.id,
+                      cultivoId: editingSublote?.cultivo?.id,
+                      coordenadasTexto: editingSublote?.coordenadas ?
+                        (editingSublote.coordenadas.type === 'polygon' ?
+                          (editingSublote.coordenadas.coordinates as any[]).map((c: any) => `${c.lng}, ${c.lat}`).join('\n') :
+                          `${(editingSublote.coordenadas.coordinates as any).lng}, ${(editingSublote.coordenadas.coordinates as any).lat}`
+                        ) : '',
+                      brokerId: null,
+                    }}
+                    lotes={[loteSeleccionado]}
+                    cultivos={cultivos}
+                    brokers={brokers}
+                    lotePadre={loteSeleccionado}
+                    isQuickCreate={!editingSublote?.id}
+                    onSave={handleSaveSublote}
+                    onCancel={() => {
                       setIsFormOpen(false);
                       setEditingSublote(null);
                     }}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <X size={16} className="text-gray-500" />
-                  </button>
-                </div>
-                {editingSublote && !editingSublote.id && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Creando sublote desde el mapa - completa los detalles
-                  </p>
-                )}
-              </div>
-
-              {/* Contenedor con scroll para el formulario */}
-              <div className="flex-1 overflow-y-auto">
-                <SubloteForm
-                  initialData={{
-                    id: editingSublote?.id,
-                    nombre: editingSublote?.nombre || '',
-                    loteId: loteSeleccionado.id,
-                    cultivoId: editingSublote?.cultivo?.id,
-                    coordenadasTexto: editingSublote?.coordenadas ?
-                      (editingSublote.coordenadas.type === 'polygon' ?
-                        (editingSublote.coordenadas.coordinates as any[]).map((c: any) => `${c.lng}, ${c.lat}`).join('\n') :
-                        `${(editingSublote.coordenadas.coordinates as any).lng}, ${(editingSublote.coordenadas.coordinates as any).lat}`
-                      ) : '',
-                    brokerId: null,
-                  }}
-                  lotes={[loteSeleccionado]}
-                  cultivos={cultivos}
-                  brokers={brokers}
-                  lotePadre={loteSeleccionado}
-                  isQuickCreate={!editingSublote?.id}
-                  onSave={handleSaveSublote}
-                  onCancel={() => {
-                    setIsFormOpen(false);
-                    setEditingSublote(null);
-                  }}
-                />
-              </div>
-            </div>
+                  />
+                </ModalBody>
+              </ModalContent>
+            </Modal>
           )}
         </>
       )}
@@ -455,40 +515,44 @@ export default function GestionProduccion(): ReactElement {
 
       {/* Modal de Confirmación de Eliminación */}
       {isDeleteModalOpen && subloteToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Trash2 className="h-6 w-6 text-red-600" />
+        <Modal isOpen={isDeleteModalOpen} onOpenChange={() => setIsDeleteModalOpen(false)} size="md">
+          <ModalContent>
+            <ModalHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <Trash2 className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Eliminar Sublote</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Eliminar Sublote</h3>
-            </div>
-
-            <p className="text-gray-600 mb-6">
-              ¿Estás seguro de que quieres eliminar el sublote <strong>"{subloteToDelete.nombre}"</strong>?
-              Esta acción no se puede deshacer.
-            </p>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setSubloteToDelete(null);
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDeleteSublote}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
+            </ModalHeader>
+            <ModalBody>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que quieres eliminar el sublote <strong>"{subloteToDelete.nombre}"</strong>?
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setSubloteToDelete(null);
+                  }}
+                  variant="light"
+                  color="default"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={confirmDeleteSublote}
+                  color="danger"
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       )}
+
     </div>
   );
 }
