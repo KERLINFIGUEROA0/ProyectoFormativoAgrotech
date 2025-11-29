@@ -1,8 +1,8 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { 
-  Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle, 
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid 
+import {
+  Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,7 @@ import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import CultivoForm from '../components/CultivoForm';
 import LotesMap from '../components/LotesMap';
+import ModalUbicacionCultivo from '../components/ModalUbicacionCultivo';
 import type { Cultivo, TipoCultivo, Lote, Sublote } from '../interfaces/cultivos';
 
 // --- Componente StatCard Más Compacto (Menos altura) ---
@@ -80,6 +81,10 @@ export default function GestionCultivosPage(): ReactElement {
   const [fechaCosecha, setFechaCosecha] = useState(new Date().toISOString().split('T')[0]);
   const [cantidadCosecha, setCantidadCosecha] = useState('');
   const [esCosechaFinal, setEsCosechaFinal] = useState(false);
+
+  // Estados para modal de ubicación
+  const [showUbicacionModal, setShowUbicacionModal] = useState(false);
+  const [selectedCultivoUbicacion, setSelectedCultivoUbicacion] = useState<any>(null);
 
   const navigate = useNavigate();
 
@@ -224,6 +229,12 @@ export default function GestionCultivosPage(): ReactElement {
       console.error('Error al registrar cosecha:', error);
       toast.error(error.response?.data?.message || "Error al registrar la cosecha.");
     }
+  };
+
+  // Handler para abrir el modal de ubicación
+  const handleVerUbicacion = (cultivo: any) => {
+    setSelectedCultivoUbicacion(cultivo);
+    setShowUbicacionModal(true);
   };
 
   const handleSelectLote = async (lote: Lote | null) => {
@@ -524,6 +535,21 @@ export default function GestionCultivosPage(): ReactElement {
                             </Tooltip>
                           )}
 
+                          {/* Botón Ubicación (Morado con icono blanco) */}
+                          <Tooltip content="Ver ubicación exacta">
+                            <Button
+                              isIconOnly
+                              className="bg-purple-600 text-white hover:bg-purple-700 min-w-9 w-9 h-9"
+                              size="sm"
+                              variant="solid"
+                              radius="md"
+                              onPress={() => handleVerUbicacion(cultivo)}
+                              aria-label="Ver ubicación"
+                            >
+                              <MapPin size={16} />
+                            </Button>
+                          </Tooltip>
+
                           {/* Botón Editar (Azul con icono blanco) */}
                           <Tooltip content="Editar cultivo">
                             <Button
@@ -758,6 +784,15 @@ export default function GestionCultivosPage(): ReactElement {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Modal de Ubicación de Cultivo */}
+      {selectedCultivoUbicacion && (
+        <ModalUbicacionCultivo
+          isOpen={showUbicacionModal}
+          onClose={() => setShowUbicacionModal(false)}
+          cultivo={selectedCultivoUbicacion}
+        />
+      )}
     </div>
   );
 }

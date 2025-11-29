@@ -5,7 +5,7 @@ import {
   forwardRef   // <--- IMPORTANTE
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Sublote } from './entities/sublote.entity';
 import { CreateSubloteDto } from './dto/create-sublote.dto';
 import { UpdateSubloteDto } from './dto/update-sublote.dto';
@@ -195,7 +195,7 @@ async sincronizarSensores(id: number): Promise<{ message: string, sensoresCreado
     return await this.subloteRepository.find({
       where: {
         lote: { id: loteId },
-        estado: 'Disponible' // Solo sublotes disponibles, no en cultivación
+        cultivo: IsNull() // Solo sublotes sin cultivo asignado
       },
       relations: ['lote', 'cultivo'],
       order: { nombre: 'ASC' }

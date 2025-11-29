@@ -29,7 +29,6 @@ export class CultivosService {
     await queryRunner.startTransaction();
 
     try {
-      console.log('DTO recibido:', dto);
 
       // 1. Validaciones
       const tipoCultivo = await this.tipoCultivoRepository.findOne({ where: { id: dto.tipoCultivoId } });
@@ -73,23 +72,44 @@ export class CultivosService {
         await queryRunner.manager.save(Lote, lote);
 
       } else {
-        // ASIGNACIÓN MASIVA: A todos los sublotes del lote
-        const todosSublotes = await this.subloteRepository.find({
-          where: { lote: { id: lote.id } }
+        // ASIGNACIÓN MASIVA: Solo a los sublotes disponibles del lote
+        const sublotesDisponibles = await this.subloteRepository.find({
+          where: {
+            lote: { id: lote.id },
+            cultivo: IsNull() // Solo sublotes sin cultivo asignado
+          }
         });
 
-        if (todosSublotes.length > 0) {
-          // Asignar el mismo cultivo a todos los sublotes
-          for (const sub of todosSublotes) {
+        if (sublotesDisponibles.length > 0) {
+          // Asignar el mismo cultivo solo a los sublotes disponibles
+          for (const sub of sublotesDisponibles) {
             sub.cultivo = cultivoGuardado;
             sub.estado = 'En cultivación';
             await queryRunner.manager.save(Sublote, sub);
           }
-        }
 
-        // Estado del lote: En cultivación (totalmente ocupado)
-        lote.estado = 'En cultivación';
-        await queryRunner.manager.save(Lote, lote);
+          // Estado del lote: Determinar basado en ocupación
+          const totalSublotes = await this.subloteRepository.count({
+            where: { lote: { id: lote.id } }
+          });
+
+          const sublotesOcupados = await this.subloteRepository.count({
+            where: {
+              lote: { id: lote.id },
+              cultivo: Not(IsNull())
+            }
+          });
+
+          if (sublotesOcupados === totalSublotes) {
+            lote.estado = 'En cultivación'; // Todos ocupados
+          } else {
+            lote.estado = 'Parcialmente ocupado'; // Algunos ocupados
+          }
+          await queryRunner.manager.save(Lote, lote);
+        } else {
+          // No hay sublotes disponibles
+          throw new BadRequestException('No hay sublotes disponibles en este lote para asignar el cultivo');
+        }
       }
 
       await queryRunner.commitTransaction();
@@ -105,11 +125,11 @@ export class CultivosService {
   }
 
   async listar(): Promise<Cultivo[]> {
-    return await this.cultivoRepository.find({ relations: ['tipoCultivo', 'lote'] });
+    return await this.cultivoRepository.find({ relations: ['tipoCultivo', 'lote', 'sublotes'] });
   }
 
   async buscarPorId(id: number): Promise<Cultivo> {
-    const cultivo = await this.cultivoRepository.findOne({ where: { id }, relations: ['tipoCultivo', 'lote'] });
+    const cultivo = await this.cultivoRepository.findOne({ where: { id }, relations: ['tipoCultivo', 'lote', 'sublotes'] });
     if (!cultivo) throw new NotFoundException(`El cultivo con ID ${id} no existe`);
     return cultivo;
   }

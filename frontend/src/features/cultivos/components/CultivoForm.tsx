@@ -374,6 +374,12 @@ export default function CultivoForm({
       return;
     }
 
+    // Validación: Si no hay sublotes disponibles y no se seleccionó ninguno específico
+    if (!tieneSublotes && !formData.subloteId) {
+      toast.error("No hay sublotes disponibles en este lote. Debes seleccionar un sublote específico disponible para asignar el cultivo.");
+      return;
+    }
+
     const payload: any = {
       nombre: formData.nombre,
       cantidad: parseInt(cantidad, 10),
@@ -450,8 +456,8 @@ export default function CultivoForm({
               : isLoadingSublotes
               ? "Cargando..."
               : tieneSublotes
-              ? "Dejar vacío para TODO el lote"
-              : "Sin subdivisiones (Aplica a todo)"
+              ? "Dejar vacío para asignar a disponibles"
+              : "No hay sublotes disponibles"
           }
           selectedKeys={
             formData.subloteId ? [formData.subloteId.toString()] : []
@@ -461,11 +467,7 @@ export default function CultivoForm({
             handleChange({ target: { name: "subloteId", value } } as any);
           }}
           fullWidth
-          isDisabled={
-            !formData.loteId ||
-            isLoadingSublotes ||
-            (!tieneSublotes && !isLoadingSublotes)
-          }
+          isDisabled={!formData.loteId || isLoadingSublotes}
           onClear={() =>
             handleChange({ target: { name: "subloteId", value: null } } as any)
           }
@@ -486,8 +488,18 @@ export default function CultivoForm({
           <p className="text-sm text-blue-700">
             ℹ️ <b>Modo General:</b> Al no seleccionar un sublote específico,
             este cultivo se asignará a
-            <b> todos los {sublotes.length} sublotes</b> del lote seleccionado.
-            El estado del lote pasará a "En cultivación".
+            <b> todos los sublotes disponibles</b> del lote seleccionado.
+            Los sublotes que ya tienen cultivos asignados no serán afectados.
+          </p>
+        </div>
+      )}
+
+      {formData.loteId && !tieneSublotes && !formData.subloteId && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">
+            ⚠️ <b>No hay sublotes disponibles:</b> Todos los sublotes de este lote
+            ya tienen cultivos asignados. No puedes crear un nuevo cultivo sin seleccionar
+            un sublote específico que esté disponible.
           </p>
         </div>
       )}
