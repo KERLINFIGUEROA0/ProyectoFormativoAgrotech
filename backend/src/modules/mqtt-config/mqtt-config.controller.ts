@@ -14,6 +14,7 @@ import {
 import { MqttConfigService } from './mqtt-config.service';
 import { CreateBrokerDto } from './dto/create-broker.dto';
 import { CreateSubscripcionDto } from './dto/create-subscripcion.dto';
+import { CreateBrokerLoteDto } from './dto/create-broker-lote.dto';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
@@ -83,5 +84,42 @@ export class MqttConfigController {
   async deleteSubscripcion(@Param('id', ParseIntPipe) id: number) {
     await this.configService.deleteSubscripcion(id);
     return { success: true, message: 'Tópico eliminado.' };
+  }
+
+  // --- Endpoints para BrokerLote (Configuraciones por Lote) ---
+
+  @Post('broker-lotes')
+  @Permission('Iot.Crear')
+  async createBrokerLote(@Body() dto: CreateBrokerLoteDto) {
+    const data = await this.configService.createBrokerLote(dto);
+    return { success: true, message: 'Configuración Broker-Lote creada y sensores generados.', data };
+  }
+
+  @Get('broker-lotes/lote/:loteId')
+  @Permission('Iot.Ver')
+  async findBrokerLotesByLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const data = await this.configService.findBrokerLotesByLote(loteId);
+    return { success: true, data };
+  }
+
+  @Get('broker-lotes/broker/:brokerId')
+  @Permission('Iot.Ver')
+  async findBrokerLotesByBroker(@Param('brokerId', ParseIntPipe) brokerId: number) {
+    const data = await this.configService.findBrokerLotesByBroker(brokerId);
+    return { success: true, data };
+  }
+
+  @Put('broker-lotes/:id')
+  @Permission('Iot.Editar')
+  async updateBrokerLote(@Param('id', ParseIntPipe) id: number, @Body('topicos') topicos: string[]) {
+    const data = await this.configService.updateBrokerLote(id, topicos);
+    return { success: true, message: 'Configuración Broker-Lote actualizada.', data };
+  }
+
+  @Delete('broker-lotes/:id')
+  @Permission('Iot.Eliminar')
+  async deleteBrokerLote(@Param('id', ParseIntPipe) id: number) {
+    await this.configService.deleteBrokerLote(id);
+    return { success: true, message: 'Configuración Broker-Lote eliminada.' };
   }
 }

@@ -60,6 +60,17 @@ export const getSensorDataLog = async (): Promise<SensorDataLog[]> => {
   return response.data.data;
 };
 
+export const sincronizarSensoresLote = async (loteId: number) => {
+  const response = await api.post(`/sensores/sincronizar-lote/${loteId}`);
+  return response.data;
+};
+
+
+export const eliminarSensorDeLote = async (sensorId: number) => {
+  const response = await api.delete(`/sensores/eliminar-de-lote/${sensorId}`);
+  return response.data;
+};
+
 export const generateSensorReport = async (params: {
   scope: 'surco' | 'cultivo';
   scopeId: number;

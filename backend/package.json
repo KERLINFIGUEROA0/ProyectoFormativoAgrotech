@@ -87,6 +87,7 @@
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/platform-socket.io": "^11.1.6",
     "@nestjs/websockets": "^11.1.6",
+    "@turf/turf": "^7.3.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cache-manager": "^7.2.2",
@@ -98,12 +99,15 @@
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "form-data": "^4.0.4",
+    "leaflet": "^1.9.4",
     "mqtt": "^5.14.1",
     "nodemailer-express-handlebars": "^7.0.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
     "puppeteer": "^24.23.0",
+    "react-leaflet": "^5.0.0",
+    "turf": "^3.0.14",
     "xlsx": "^0.18.5"
   }
 }

@@ -1,9 +1,9 @@
 import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 
-export class UpdateSurcoEstadoDto {
+export class UpdateSubloteEstadoDto {
   @IsString()
   @IsNotEmpty()
-  @IsIn(['Disponible', 'En siembra', 'En cosecha', 'Mantenimiento'], {
+  @IsIn(['Disponible', 'En producción', 'Descanso'], {
     message: 'El estado proporcionado no es válido.',
   })
   estado: string;

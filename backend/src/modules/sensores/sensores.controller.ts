@@ -58,7 +58,7 @@ export class SensoresController {
    */
   @Get('por-surco/:surcoId')
   async findBySurco(@Param('surcoId', ParseIntPipe) surcoId: number) {
-    const sensores = await this.sensoresService.findBySurco(surcoId);
+    const sensores = await this.sensoresService.findBySublote(surcoId);
     return { success: true, data: sensores };
   }
 
@@ -69,5 +69,27 @@ export class SensoresController {
   async findByCultivo(@Param('cultivoId', ParseIntPipe) cultivoId: number) {
     const sensores = await this.sensoresService.findByCultivo(cultivoId);
     return { success: true, data: sensores };
+  }
+
+
+  /**
+   * Elimina un sensor específico de un lote
+   */
+  @Delete('eliminar-de-lote/:sensorId')
+  async eliminarSensorDeLote(@Param('sensorId', ParseIntPipe) sensorId: number) {
+    await this.sensoresService.eliminarSensorDeLote(sensorId);
+    return {
+      success: true,
+      message: `Sensor eliminado del lote correctamente.`
+    };
+  }
+
+  /**
+   * Sincroniza sensores para un lote basado en los tópicos de su broker
+   */
+  @Post('sincronizar-lote/:loteId')
+  async sincronizarSensoresLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const result = await this.sensoresService.sincronizarSensoresLote(loteId);
+    return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
   }
 }

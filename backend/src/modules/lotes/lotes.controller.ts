@@ -32,12 +32,38 @@ export class LotesController {
     };
   }
 
-  @Get('listar')
+  @Get()
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos')
   @CacheTTL(60000)
+  async findAll() {
+    const lista = await this.lotesService.listar();
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
+  @Get('listar')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_todos_alt')
+  @CacheTTL(60000)
   async listar() {
     const lista = await this.lotesService.listar();
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
+  @Get('disponibles')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_disponibles')
+  @CacheTTL(30000) // Cache más corto para datos dinámicos
+  async obtenerDisponibles() {
+    const lista = await this.lotesService.obtenerDisponibles();
     return {
       success: true,
       total: lista.length,

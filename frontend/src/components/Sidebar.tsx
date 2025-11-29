@@ -67,7 +67,7 @@ const baseMenuItems: MenuItemType[] = [
     children: [
       { id: "gestion-cultivos", label: "Gestion de cultivos", icon: Sprout },
       { id: "gestion-lotes", label: "Gestion de lotes", icon: Sprout },
-      { id: "gestion-surcos", label: "Gestion de Surcos", icon: Sprout },
+      { id: "gestion-Sublotes", label: "Gestión de Sub-lotes", icon: Sprout },
     ],
   },
   {

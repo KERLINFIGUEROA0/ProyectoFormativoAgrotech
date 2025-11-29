@@ -17,11 +17,7 @@ export class InformacionSensorService {
     private readonly sensorRepo: Repository<Sensor>,
   ) {}
 
-  /**
-   * Crea un registro a partir de un mensaje MQTT.
-   * Busca TODOS los sensores con ese tópico y guarda los datos en cada uno que esté activo.
-   * Esto permite que múltiples sensores compartan el mismo tópico pero guarden datos en diferentes surcos/lotes.
-   */
+
   async createFromMqtt(topic: string, payload: string): Promise<void> {
     const valor = parseFloat(payload);
     if (isNaN(valor)) {
@@ -29,10 +25,10 @@ export class InformacionSensorService {
       return;
     }
 
-    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el surco, lote y su broker
+    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el lote, sublote y brokers del lote
     const sensores = await this.sensorRepo.find({
       where: { topic: topic, estado: 'Activo' }, // Solo sensores activos
-      relations: ['surco', 'surco.lote', 'surco.broker'],
+      relations: ['lote', 'sublote', 'lote.brokerLotes', 'lote.brokerLotes.broker'],
     });
 
     if (sensores.length === 0) {
@@ -43,15 +39,16 @@ export class InformacionSensorService {
     // Guardar el dato en cada sensor que cumpla las condiciones
     let guardados = 0;
     for (const sensor of sensores) {
-      // Verificar que el surco tenga un broker configurado
-      if (!sensor.surco.broker) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] no tiene broker configurado. Mensaje descartado para este sensor.`);
+      // Verificar que el lote tenga brokers configurados
+      const brokersDelLote = sensor.lote.brokerLotes?.map(bl => bl.broker) || [];
+      if (!brokersDelLote || brokersDelLote.length === 0) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en lote [${sensor.lote.nombre}] no tiene brokers configurados. Mensaje descartado para este sensor.`);
         continue;
       }
 
-      // Verificar que el surco esté activo para recibir datos MQTT
-      if (!sensor.surco.activo_mqtt) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en surco [${sensor.surco.id}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
+      // Verificar que el sublote esté activo para recibir datos MQTT (si tiene sublote asignado)
+      if (sensor.sublote && !sensor.sublote.activo_mqtt) {
+        this.logger.warn(`Sensor ID [${sensor.id}] en sublote [${sensor.sublote.nombre}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
         continue;
       }
 
@@ -68,7 +65,8 @@ export class InformacionSensorService {
         await this.sensorRepo.save(sensor);
 
         guardados++;
-        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Surco: ${sensor.surco.nombre}, Lote: ${sensor.surco.lote?.nombre || 'N/A'}, Broker: ${sensor.surco.broker.nombre}) desde topic [${topic}].`);
+        const brokerNames = brokersDelLote.map(b => b.nombre).join(', ');
+        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Sublote: ${sensor.sublote?.nombre || 'N/A'}, Lote: ${sensor.lote.nombre}, Brokers: ${brokerNames}) desde topic [${topic}].`);
       } catch (error) {
         this.logger.error(`Error guardando dato para Sensor ID [${sensor.id}]: ${error.message}`);
       }
@@ -102,10 +100,10 @@ export class InformacionSensorService {
     return this.infoRepo.createQueryBuilder('info')
       // 1. Unimos la tabla de sensores
       .innerJoinAndSelect('info.sensor', 'sensor')
-      // 2. Unimos la tabla de surcos (donde está el sensor)
-      .innerJoinAndSelect('sensor.surco', 'surco')
+      // 2. Unimos la tabla de sublotes (donde está el sensor)
+      .innerJoinAndSelect('sensor.sublote', 'sublote')
       // 3. Unimos la tabla de cultivos (para filtrar)
-      .innerJoinAndSelect('surco.cultivo', 'cultivo')
+      .innerJoinAndSelect('sublote.cultivo', 'cultivo')
       // 4. Filtramos por el ID del cultivo que recibimos
       .where('cultivo.id = :cultivoId', { cultivoId })
       // 5. Ordenamos por fecha (más reciente primero)
@@ -133,7 +131,7 @@ export class InformacionSensorService {
     // Usamos TypeORM QueryBuilder para obtener todos los sensores activos
     const sensores = await this.sensorRepo.find({
       where: { estado: 'Activo' },
-      relations: ['surco', 'surco.broker'],
+      relations: ['lote', 'sublote'],
     });
 
     this.logger.log(`✅ Encontrados ${sensores.length} sensores activos`);
@@ -214,7 +212,7 @@ export class InformacionSensorService {
    * Generate advanced report with statistics and chart data
    */
   
-  async generateReport(scope: 'surco' | 'cultivo', scopeId: number, timeFilter: 'day' | 'date' | 'month', date?: string, sensorId?: number) {
+  async generateReport(scope: 'sublote' | 'cultivo', scopeId: number, timeFilter: 'day' | 'date' | 'month', date?: string, sensorId?: number) {
     this.logger.log(`🔍 Generating report: scope=${scope}, scopeId=${scopeId}, timeFilter=${timeFilter}, date=${date}`);
 
     let startDate: Date;
@@ -242,16 +240,16 @@ export class InformacionSensorService {
     // Build query based on scope
     let queryBuilder = this.infoRepo.createQueryBuilder('info')
       .innerJoinAndSelect('info.sensor', 'sensor')
-      .innerJoinAndSelect('sensor.surco', 'surco')
+      .innerJoinAndSelect('sensor.sublote', 'sublote')
       .where('info.fechaRegistro >= :startDate', { startDate })
       .andWhere('info.fechaRegistro < :endDate', { endDate })
       .orderBy('info.fechaRegistro', 'ASC');
 
-    if (scope === 'surco') {
-      queryBuilder = queryBuilder.andWhere('surco.id = :surcoId', { surcoId: scopeId });
+    if (scope === 'sublote') {
+      queryBuilder = queryBuilder.andWhere('sublote.id = :subloteId', { subloteId: scopeId });
     } else if (scope === 'cultivo') {
       queryBuilder = queryBuilder
-        .innerJoin('surco.cultivo', 'cultivo')
+        .innerJoin('sublote.cultivo', 'cultivo')
         .andWhere('cultivo.id = :cultivoId', { cultivoId: scopeId });
     }
 

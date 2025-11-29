@@ -16,7 +16,7 @@ import { Lote } from './src/modules/lotes/entities/lote.entity';
 import { Material } from './src/modules/materiales/entities/materiale.entity';
 import { Produccion } from './src/modules/producciones/entities/produccione.entity';
 import { Sensor } from './src/modules/sensores/entities/sensore.entity';
-import { Surco } from './src/modules/surcos/entities/surco.entity';
+import { Sublote } from './src/modules/sublotes/entities/sublote.entity';
 import { TipoCultivo } from './src/modules/tipo_cultivo/entities/tipo_cultivo.entity';
 import { TipoSensor } from './src/modules/tipo_sensor/entities/tipo_sensor.entity';
 import { TipoUsuario } from './src/modules/tipo_usuario/entities/tipo_usuario.entity';
@@ -31,6 +31,7 @@ import { UsuarioPermiso } from './src/modules/usuarios_permisos/entities/usuario
 import { Modulo } from './src/modules/modulos/entities/modulo.entity';
 import { Ficha } from './src/modules/fichas/entities/ficha.entity';
 import { Broker } from './src/modules/mqtt-config/entities/broker.entity';
+import { BrokerLote } from './src/modules/mqtt-config/entities/broker-lote.entity';
 import { Subscripcion } from './src/modules/mqtt-config/entities/subscripcion.entity';
 import { Movimiento } from './src/movimientos/entities/movimiento.entity';
 
@@ -56,7 +57,7 @@ export const AppDataSource = new DataSource({
     Material,
     Produccion,
     Sensor,
-    Surco,
+    Sublote,
     TipoCultivo,
     TipoSensor,
     TipoUsuario,
@@ -71,6 +72,7 @@ export const AppDataSource = new DataSource({
     Modulo,
     Ficha,
     Broker,
+    BrokerLote,
     Subscripcion,
     Movimiento,
   ],

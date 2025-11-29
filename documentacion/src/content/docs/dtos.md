@@ -62,7 +62,7 @@ Administra lotes de terreno.
 | Campo | Tipo | Validaciones | Mensaje de Error |
 |-------|------|--------------|-----------------|
 | nombre | string | @IsString, @IsNotEmpty | El nombre del lote es requerido. |
-| area | number | @IsNumber, @IsNotEmpty, @Max(3000) | El área es requerida. El área del lote no puede superar los 3000 m². |
+| area | number | @IsNumber, @IsNotEmpty, @Max(10000) | El área es requerida. El área del lote no puede superar los 10000 m². |
 | estado | string | @IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación']) | - |
 | coordenadas | CoordenadasDto | @IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional | - |
 

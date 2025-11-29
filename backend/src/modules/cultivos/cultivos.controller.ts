@@ -37,6 +37,30 @@ export class CultivosController {
     return { success: true, message: `El cultivo se actualizó`, data: actualizado };
   }
 
+  @Put('finalizar/:id')
+  async finalizar(@Param('id', ParseIntPipe) id: number, @Body() body: { fechaFin: string }) {
+    if (!body.fechaFin) throw new BadRequestException("La fecha de finalización es obligatoria");
+
+    const cultivo = await this.cultivosService.finalizarCultivo(id, body.fechaFin);
+    return { success: true, message: 'Cultivo finalizado y terrenos liberados', data: cultivo };
+  }
+
+  @Post('registrar-cosecha/:id')
+  async registrarCosecha(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { fecha: string; cantidad: number; esFinal: boolean }
+  ) {
+    if (!body.fecha) throw new BadRequestException("La fecha es obligatoria");
+    if (body.cantidad < 0) throw new BadRequestException("La cantidad no puede ser negativa");
+
+    const cultivo = await this.cultivosService.registrarCosecha(id, body.fecha, body.cantidad, body.esFinal);
+    return {
+      success: true,
+      message: body.esFinal ? 'Cosecha final registrada y terrenos liberados' : 'Cosecha parcial registrada',
+      data: cultivo
+    };
+  }
+
   @Delete('eliminar/:id')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     await this.cultivosService.eliminar(id);

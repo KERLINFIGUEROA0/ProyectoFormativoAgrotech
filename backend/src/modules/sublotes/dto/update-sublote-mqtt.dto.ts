@@ -1,6 +1,6 @@
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 
-export class UpdateSurcoMqttDto {
+export class UpdateSubloteMqttDto {
   @IsBoolean()
   @IsNotEmpty()
   activo_mqtt: boolean;

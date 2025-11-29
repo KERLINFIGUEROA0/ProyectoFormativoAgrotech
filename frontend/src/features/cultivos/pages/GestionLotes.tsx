@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
-import { obtenerLotes, crearLote, actualizarLote, actualizarEstadoLote, obtenerEstadisticasLotes } from '../api/lotesApi';
+import { obtenerLotes, crearLote, actualizarLote, obtenerEstadisticasLotes } from '../api/lotesApi';
 import FormModal from '../../../components/FormModal';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
@@ -16,6 +16,8 @@ const StatCard = ({ icon, title, value, color }: StatCardProps): ReactElement =>
     red: 'danger',
     green: 'success',
     yellow: 'warning',
+    success: 'success',
+    danger: 'danger',
   } as const;
   return (
     <Card className="p-2">
@@ -35,8 +37,14 @@ export default function GestionLotesPage(): ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLote, setEditingLote] = useState<Lote | null>(null);
   const [selectedLote, setSelectedLote] = useState<Lote | null>(null);
-  const [stats, setStats] = useState({ enCultivo: 0, total: 0, enPreparacion: 0 });
-  const [filterStatus, setFilterStatus] = useState<'all' | 'Activo' | 'Inactivo' | 'En preparación'>('all');
+  const [stats, setStats] = useState({
+    total: 0,
+    enPreparacion: 0,
+    parcialmenteOcupado: 0,
+    enCultivo: 0,
+    enMantenimiento: 0
+  });
+  const [filterStatus, setFilterStatus] = useState<'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const location = useLocation(); 
@@ -81,16 +89,6 @@ const handleSave = async (data: LoteData) => {
     }
   };
   
-  const handleEstadoChange = async (loteId: number, nuevoEstado: string) => {
-    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
-    try {
-      await actualizarEstadoLote(loteId, nuevoEstado);
-      toast.success("Estado actualizado.", { id: toastId });
-      await fetchData();
-    } catch {
-      toast.error("No se pudo actualizar el estado.", { id: toastId });
-    }
-  };
 
   const openModal = (lote: Lote | null = null) => {
     setEditingLote(lote);
@@ -132,10 +130,12 @@ const handleViewLocation = (lote: Lote) => {
       </div>
       <div className="flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-600 mb-3">Información General de los Lotes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={<FaLeaf size={20}/>} title="En Cultivo" value={stats.enCultivo} color="blue" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard icon={<FaThList size={20}/>} title="Total Lotes" value={stats.total} color="green" />
           <StatCard icon={<FaTools size={20}/>} title="En Preparación" value={stats.enPreparacion} color="yellow" />
+          <StatCard icon={<FaLeaf size={20}/>} title="Parcialmente Ocupado" value={stats.parcialmenteOcupado} color="blue" />
+          <StatCard icon={<FaLeaf size={20}/>} title="En Cultivo" value={stats.enCultivo} color="green" />
+          <StatCard icon={<FaTools size={20}/>} title="En Mantenimiento" value={stats.enMantenimiento} color="red" />
         </div>
       </div>
       
@@ -146,14 +146,15 @@ const handleViewLocation = (lote: Lote) => {
               <h2 className="text-lg font-semibold text-gray-600">Lista de Lotes</h2>
               <Select
                 selectedKeys={[filterStatus]}
-                onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'Activo' | 'Inactivo' | 'En preparación')}
+                onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento')}
                 className="w-48"
                 placeholder="Filtrar por estado"
               >
                 <SelectItem key="all">Todos</SelectItem>
-                <SelectItem key="Activo">Activos</SelectItem>
-                <SelectItem key="Inactivo">Inactivos</SelectItem>
                 <SelectItem key="En preparación">En Preparación</SelectItem>
+                <SelectItem key="Parcialmente ocupado">Parcialmente Ocupado</SelectItem>
+                <SelectItem key="En cultivación">En Cultivación</SelectItem>
+                <SelectItem key="En mantenimiento">En Mantenimiento</SelectItem>
               </Select>
             </CardHeader>
 
@@ -174,9 +175,11 @@ const handleViewLocation = (lote: Lote) => {
                       <TableCell>
                         <Chip
                           color={
-                            lote.estado === 'Activo' ? 'success' :
-                            lote.estado === 'Inactivo' ? 'default' :
-                            'warning'
+                            lote.estado === 'En preparación' ? 'warning' :
+                            lote.estado === 'Parcialmente ocupado' ? 'primary' :
+                            lote.estado === 'En cultivación' ? 'success' :
+                            lote.estado === 'En mantenimiento' ? 'danger' :
+                            'default'
                           }
                           variant="flat"
                         >
@@ -195,27 +198,15 @@ const handleViewLocation = (lote: Lote) => {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => openModal(lote)}
-                            color="primary"
-                            variant="light"
-                            size="sm"
-                            isIconOnly
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Select
-                            selectedKeys={[lote.estado]}
-                            onSelectionChange={(keys) => handleEstadoChange(lote.id, Array.from(keys)[0] as string)}
-                            size="sm"
-                            className="w-32"
-                          >
-                            <SelectItem key="Activo">Activo</SelectItem>
-                            <SelectItem key="Inactivo">Inactivo</SelectItem>
-                            <SelectItem key="En preparación">En preparación</SelectItem>
-                          </Select>
-                        </div>
+                        <Button
+                          onClick={() => openModal(lote)}
+                          color="primary"
+                          variant="light"
+                          size="sm"
+                          isIconOnly
+                        >
+                          <FaEdit />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -22,10 +22,10 @@ export interface CoordenadasGeo {
 export interface Lote {
    id: number;
    nombre: string;
-   area: number;
+   area?: number;
    estado: string;
    coordenadas?: CoordenadasGeo;
-   surcos?: Surco[];
+   sublotes?: Sublote[];
  }
 
 /**
@@ -37,15 +37,18 @@ export interface Cultivo {
 }
 
 /**
- * Define la estructura de un Surco.
+ * Define la estructura de un Sublote.
  */
-export interface Surco {
+export interface Sublote {
   id: number;
   nombre: string;
-  descripcion: string;
   cultivo: Cultivo | null;
   estado: string;
   lote: Lote;
+  coordenadas?: {
+    type: 'point' | 'polygon';
+    coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
+  };
   activo_mqtt?: boolean;
 }
 
@@ -60,15 +63,18 @@ export interface LoteData {
  }
 
 /**
- * Define los datos para crear o actualizar un Surco.
+ * Define los datos para crear o actualizar un Sublote.
  */
-export interface SurcoData {
-  nombre: string;
-  descripcion?: string;
-  cultivoId?: number | null;
-  loteId?: number; // Es opcional porque no se necesita al actualizar.
-  brokerId?: number | null;
-  activo_mqtt?: boolean;
+export interface SubloteData {
+   nombre: string;
+   coordenadas?: {
+     type: 'point' | 'polygon';
+     coordinates: { lat: number; lng: number } | Array<{ lat: number; lng: number }>;
+   };
+   cultivoId?: number | null;
+   loteId?: number; // Es opcional porque no se necesita al actualizar.
+   brokerId?: number | null;
+   activo_mqtt?: boolean;
 }
 
 /**
@@ -78,7 +84,7 @@ export interface StatCardProps {
   icon: ReactElement;
   title: string;
   value: number | string;
-  color: 'blue' | 'red' | 'green' | 'yellow';
+  color: 'blue' | 'red' | 'green' | 'yellow' | 'success' | 'danger';
 }
 
 export interface Produccion {

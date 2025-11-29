@@ -282,7 +282,7 @@ title: "Módulo Lotes"
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | El nombre del lote es requerido. |
-| `area` | `number` | `@IsNumber, @IsNotEmpty, @Max(3000)` | El área es requerida. El área del lote no puede superar los 3000 m². |
+| `area` | `number` | `@IsNumber, @IsNotEmpty, @Max(10000)` | El área es requerida. El área del lote no puede superar los 10000 m². |
 | `estado` | `string` | `@IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | - |
 | `coordenadas` | `CoordenadasDto` | `@IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional` | - |
 
@@ -299,4 +299,4 @@ Similar a CreateLoteDto.
 - **Cache**: Los endpoints de estadísticas y listado usan cache Redis (TTL: 5-60 min)
 - **Coordenadas Geoespaciales**: Soporte para puntos y polígonos usando JSONB en PostgreSQL
 - **Reutilización**: Los lotes no se eliminan, solo cambian de estado para preservar trazabilidad
-- **Validación**: Área máxima de 3000 m² por lote
+- **Validación**: Área máxima de 10000 m² por lote

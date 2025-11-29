@@ -606,7 +606,7 @@ const GestionActividadesPage: React.FC = () => {
             onChange={(e) =>
               setFiltroEstado(e.target.value as EstadoActividad | 'Todos')
             }
-            className="border border-gray-300 rounded-lg p-2 bg-white shadow-sm text-sm"
+            className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm bg-white"
           >
             <option value="Todos">Todos los estados</option>
             <option value="pendiente">Pendiente</option>

@@ -40,6 +40,7 @@ export class AuthService {
       identificacion: usuario.identificacion,
       rolId: usuario.tipoUsuario?.id,
       rolNombre: usuario.tipoUsuario?.nombre,
+      nombre: usuario.nombre, // Agregar el nombre al payload del JWT
       permisos,
       modulos,
     };
