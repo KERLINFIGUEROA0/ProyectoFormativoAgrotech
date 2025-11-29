@@ -1,9 +1,9 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { X, Plus, MapPin, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Lote, Sublote, SubloteData, Coordenada, Cultivo } from '../interfaces/cultivos';
+import type { Lote, Sublote, SubloteData, Cultivo } from '../interfaces/cultivos';
 import type { Broker } from '../../iot/interfaces/iot';
-import { obtenerSublotesPorLote, crearSublote, actualizarSublote, actualizarEstadoSublote, obtenerCultivos, eliminarSublote } from '../api/sublotesApi';
+import { obtenerSublotesPorLote, crearSublote, actualizarSublote, obtenerCultivos, eliminarSublote } from '../api/sublotesApi';
 import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import SubloteForm from './SubloteForm';
 import SubloteMap from './SubloteMap';
@@ -22,7 +22,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSublote, setEditingSublote] = useState<Sublote | null>(null);
   const [isQuickCreate, setIsQuickCreate] = useState(false);
-  const [mapPoints, setMapPoints] = useState<Array<{ lat: number; lng: number; sublote?: Sublote }>>([]);
+  
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -55,24 +55,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
       const sublotesData = response.data?.data || [];
       setSublotes(sublotesData);
 
-      // Convertir coordenadas de sublotes a puntos en el mapa
-      const points = sublotesData.map((sublote: Sublote) => {
-        let lat = 0, lng = 0;
-        if (sublote.coordenadas) {
-          if (sublote.coordenadas.type === 'point') {
-            const coords = sublote.coordenadas.coordinates as Coordenada;
-            lat = coords.lat;
-            lng = coords.lng;
-          } else if (sublote.coordenadas.type === 'polygon' && Array.isArray(sublote.coordenadas.coordinates)) {
-            const coords = sublote.coordenadas.coordinates[0] as Coordenada;
-            lat = coords.lat;
-            lng = coords.lng;
-          }
-        }
-        return { lat, lng, sublote };
-      }).filter((point: any) => point.lat !== 0 && point.lng !== 0);
-
-      setMapPoints(points);
+      // Nota: Mantenemos `sublotes` en estado; los puntos en mapa se generan dentro del componente de mapa cuando se requiera.
     } catch (error) {
       console.error('Error cargando sublotes:', error);
       toast.error('Error al cargar los sublotes');
@@ -81,33 +64,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
     }
   };
 
-  const handleMapClick = (lat: number, lng: number) => {
-    // Verificar si el punto está dentro del lote
-    if (isPointInLote(lat, lng, lote)) {
-      setSelectedSublote(null);
-      setEditingSublote(null);
-      setIsFormOpen(true);
-
-      // Crear un sublote temporal con el punto seleccionado
-      const tempSublote: Partial<Sublote> = {
-        nombre: '',
-        coordenadas: {
-          type: 'point',
-          coordinates: { lat, lng }
-        },
-        lote: lote
-      };
-      setEditingSublote(tempSublote as Sublote);
-    } else {
-      toast.error('El punto seleccionado está fuera del área del lote');
-    }
-  };
-
-  const isPointInLote = (lat: number, lng: number, lote: Lote): boolean => {
-    // Implementar lógica para verificar si un punto está dentro del polígono del lote
-    // Por simplicidad, por ahora retornamos true
-    return true;
-  };
+  // El manejo de clics en el mapa se hace inline al pasar `onPointClick` al componente `SubloteMap`.
 
   const handleSaveSublote = async (data: SubloteData) => {
     try {
