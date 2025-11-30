@@ -246,7 +246,7 @@ export default function SubloteMap({
       </MapContainer>
 
       <div className="absolute top-2 right-2 bg-white p-3 rounded-lg shadow-md z-[1000]">
-        <div className="text-sm font-semibold mb-2">Informacion General</div>
+        <div className="text-sm font-semibold mb-2">Información General</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs">
             <div className="w-4 h-4 bg-yellow-400 rounded border-2 border-yellow-600"></div>
@@ -257,15 +257,11 @@ export default function SubloteMap({
             <span>Disponible</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-            <span>En siembra</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-            <span>En cosecha</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
             <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
+            <span>En Cultivación</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
             <span>Mantenimiento</span>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin, RefreshCw
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,7 +14,7 @@ import {
 } from '@heroui/react';
 
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha, actualizarEstadosLotes } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
@@ -69,6 +69,7 @@ export default function GestionCultivosPage(): ReactElement {
   const [editingCultivo, setEditingCultivo] = useState<Cultivo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('todos');
+  const [subloteEstadoFilter, setSubloteEstadoFilter] = useState<string>('todos');
 
   // Estados para finalizar cultivo
   const [showFinalizarModal, setShowFinalizarModal] = useState(false);
@@ -138,8 +139,17 @@ export default function GestionCultivosPage(): ReactElement {
       filtered = filtered.filter(cultivo => cultivo.Estado === estadoFilter);
     }
 
+    // Filtrar por estado de sublotes
+    if (subloteEstadoFilter !== 'todos') {
+      filtered = filtered.filter(cultivo => {
+        // Buscar si el cultivo tiene sublotes con el estado filtrado
+        const sublotesDelCultivo = allSublotes.filter(s => s.cultivo?.id === cultivo.id);
+        return sublotesDelCultivo.some(s => s.estado === subloteEstadoFilter);
+      });
+    }
+
     setFilteredCultivos(filtered);
-  }, [cultivos, searchTerm, estadoFilter]);
+  }, [cultivos, searchTerm, estadoFilter, subloteEstadoFilter, allSublotes]);
 
   // Estadísticas
   const stats = {
@@ -147,6 +157,20 @@ export default function GestionCultivosPage(): ReactElement {
     activos: cultivos.filter(c => c.Estado === 'Activo').length,
     tipos: new Set(cultivos.map(c => c.tipoCultivo?.id)).size,
     totalPlantas: cultivos.reduce((sum, c) => sum + (c.cantidad || 0), 0)
+  };
+
+  // Función para mapear estados
+  const getEstadoDisplay = (estado: string) => {
+    switch (estado) {
+      case 'Activo':
+        return 'En crecimiento';
+      case 'En Cosecha':
+        return 'En cosecha';
+      case 'Finalizado':
+        return 'Finalizado';
+      default:
+        return estado;
+    }
   };
 
   // Obtener sublotes con cultivos
@@ -279,7 +303,6 @@ export default function GestionCultivosPage(): ReactElement {
         // Caso Crear
         const res = await crearCultivo(finalCultivoData);
 
-        // ⚠️ CORRECCIÓN CRÍTICA: Acceder correctamente al ID
         cultivoId = res.data?.id;
 
         if (!cultivoId) {
@@ -311,39 +334,21 @@ export default function GestionCultivosPage(): ReactElement {
             <p className="text-gray-500 mt-1">Administra tu producción agrícola de forma eficiente.</p>
           </div>
           <div className="flex gap-3">
-            <Button
-              onPress={async () => {
-                try {
-                  const result = await actualizarEstadosLotes();
-                  toast.success(`Estados actualizados: ${result.data.lotesActualizados} lotes corregidos`);
-                  await fetchData(); // Recargar datos
-                } catch (error: any) {
-                  toast.error(error.response?.data?.message || "Error al actualizar estados");
-                }
-              }}
-              color="secondary"
-              variant="flat"
-              className="font-semibold"
-              size="lg"
-              startContent={<RefreshCw size={20} strokeWidth={2.5} />}
-            >
-              Actualizar Estados
-            </Button>
-            <Button
-              onPress={() => openModal()}
-              color="primary"
-              className="font-semibold shadow-md shadow-blue-500/30"
-              size="lg"
-              startContent={<Plus size={20} strokeWidth={2.5} />}
-            >
-              Nuevo Cultivo
-            </Button>
-          </div>
+             <Button
+               onPress={() => openModal()}
+               color="primary"
+               className="font-semibold shadow-md shadow-blue-500/30"
+               size="lg"
+               startContent={<Plus size={20} strokeWidth={2.5} />}
+             >
+               Nuevo Cultivo
+             </Button>
+           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <CompactStat icon={<Sprout size={24} />} title="Total Cultivos" value={stats.total} color="success" />
-          <CompactStat icon={<CheckCircle size={24} />} title="Activos" value={stats.activos} color="primary" />
+          <CompactStat icon={<CheckCircle size={24} />} title="En crecimiento" value={stats.activos} color="primary" />
           <CompactStat icon={<Leaf size={24} />} title="Variedades" value={stats.tipos} color="warning" />
           <CompactStat icon={<Clock size={24} />} title="Total Plantas" value={new Intl.NumberFormat('es-CO').format(stats.totalPlantas)} color="danger" />
         </div>
@@ -409,7 +414,7 @@ export default function GestionCultivosPage(): ReactElement {
                 aria-label="Buscar cultivos"
               />
               <Select
-                placeholder="Estado"
+                placeholder="Estado Cultivo"
                 startContent={<Filter size={16} className="text-gray-400" />}
                 selectedKeys={[estadoFilter]}
                 onSelectionChange={(keys) => setEstadoFilter(Array.from(keys)[0] as string)}
@@ -424,6 +429,23 @@ export default function GestionCultivosPage(): ReactElement {
                 <SelectItem key="Activo">En Crecimiento</SelectItem>
                 <SelectItem key="En Cosecha">En Cosecha</SelectItem>
                 <SelectItem key="Finalizado">Finalizados</SelectItem>
+              </Select>
+              <Select
+                placeholder="Estado Sublotes"
+                startContent={<MapPin size={16} className="text-gray-400" />}
+                selectedKeys={[subloteEstadoFilter]}
+                onSelectionChange={(keys) => setSubloteEstadoFilter(Array.from(keys)[0] as string)}
+                size="sm"
+                variant="bordered"
+                className="w-full sm:w-40"
+                classNames={{
+                  trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
+                }}
+              >
+                <SelectItem key="todos">Todos</SelectItem>
+                <SelectItem key="Disponible">Disponible</SelectItem>
+                <SelectItem key="En cultivación">En cultivación</SelectItem>
+                <SelectItem key="En mantenimiento">En mantenimiento</SelectItem>
               </Select>
             </div>
           )}
@@ -473,7 +495,7 @@ export default function GestionCultivosPage(): ReactElement {
                               size="sm"
                               classNames={{ content: "font-semibold text-white text-[10px]" }}
                             >
-                              {cultivo.Estado}
+                              {getEstadoDisplay(cultivo.Estado)}
                             </Chip>
                           </div>
 
@@ -601,30 +623,16 @@ export default function GestionCultivosPage(): ReactElement {
                   selectedSubloteCultivo={selectedSubloteCultivo}
                   onSelectSubloteCultivo={setSelectedSubloteCultivo}
                   customInfo={(lote) => (
-                    <div className="p-3 min-w-[220px]">
+                    <div className="p-3 min-w-[180px]">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-bold text-gray-800">{lote.nombre}</h4>
                         <Chip size="sm" color={lote.estado === 'Activo' ? 'success' : 'default'} variant="flat" className="h-5 text-[10px]">
                           {lote.estado}
                         </Chip>
                       </div>
-                      <div className="text-xs text-gray-500 mb-3 flex items-center gap-1">
-                        <MapIcon size={12}/> {lote.area} m²
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
+                        <MapIcon size={12}/> Área: {lote.area} m²
                       </div>
-                      <Divider className="my-2"/>
-                      <p className="text-xs font-bold text-gray-700 mb-1">Sublotes ({sublotes.length}):</p>
-                      {sublotes.length > 0 ? (
-                        <div className="space-y-1 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                          {sublotes.map(s => (
-                            <div key={s.id} className="text-xs flex justify-between items-center bg-gray-50 p-1 rounded">
-                              <span className="text-gray-600">{s.nombre}</span>
-                              <span className="font-semibold text-blue-600">{s.cultivo?.nombre || '-'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs italic text-gray-400">Sin sublotes definidos</span>
-                      )}
                     </div>
                   )}
                 />
