@@ -676,6 +676,10 @@ const GestionActividadesPage: React.FC = () => {
         actividad={actividadVerRespuestas!}
         isOpen={!!actividadVerRespuestas}
         onClose={handleCloseVerRespuestasModal}
+        onSuccess={() => {
+          cargarDatos(); // Recargar actividades cuando se califique una respuesta
+          setRespuestasKey(prev => prev + 1); // Forzar recarga del modal de respuestas
+        }}
       />
 
       {/* Modal de Eliminar Actividad */}

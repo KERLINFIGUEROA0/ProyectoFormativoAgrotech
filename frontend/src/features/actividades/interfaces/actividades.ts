@@ -1,7 +1,7 @@
 // src/features/actividades/interfaces/actividades.ts
 
 // El tipo de estado ampliado
-export type EstadoActividad = 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado';
+export type EstadoActividad = 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado' | 'finalizado';
 
 
 export interface MaterialUsado {

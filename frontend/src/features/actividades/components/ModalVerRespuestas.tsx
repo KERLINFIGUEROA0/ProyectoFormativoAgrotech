@@ -18,15 +18,17 @@ const getOriginalFilename = (fullFilename: string): string => {
 };
 
 interface ModalVerRespuestasProps {
-  actividad: Actividad;
-  isOpen: boolean;
-  onClose: () => void;
+   actividad: Actividad;
+   isOpen: boolean;
+   onClose: () => void;
+   onSuccess?: () => void;
 }
 
 const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
-  actividad,
-  isOpen,
-  onClose,
+   actividad,
+   isOpen,
+   onClose,
+   onSuccess,
 }) => {
   const [respuestas, setRespuestas] = useState<RespuestaActividad[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,6 +108,8 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       await calificarRespuesta(respuestaId, { estado: 'aprobado' });
       // Recargar respuestas
       cargarRespuestas();
+      // Notificar al componente padre para recargar actividades
+      onSuccess?.();
     } catch (error) {
       console.error('Error al aprobar respuesta:', error);
       alert('Error al aprobar respuesta');
@@ -123,6 +127,8 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
         await calificarRespuesta(respuestaSeleccionada, { estado: 'rechazado', comentarioInstructor: comentario });
         // Recargar respuestas
         cargarRespuestas();
+        // Notificar al componente padre para recargar actividades
+        onSuccess?.();
       } catch (error) {
         console.error('Error al rechazar respuesta:', error);
         alert('Error al rechazar respuesta');

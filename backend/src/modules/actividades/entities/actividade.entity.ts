@@ -58,10 +58,10 @@ usuario: Usuario | null;
 
   @Column({
     type: 'enum',
-    enum: ['pendiente', 'en proceso', 'enviado', 'aprobado', 'rechazado', 'completado'],
+    enum: ['pendiente', 'en proceso', 'enviado', 'aprobado', 'rechazado', 'completado', 'finalizado'],
     default: 'pendiente',
   })
-  estado: 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado';
+  estado: 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado' | 'finalizado';
 
   @Column({ name: 'respuesta_texto', type: 'text', nullable: true })
   respuestaTexto?: string;
