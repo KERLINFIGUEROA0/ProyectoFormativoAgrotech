@@ -107,18 +107,29 @@ export class SensoresController {
       console.log('Datos obtenidos, generando PDF...');
 
       if (dto.formato === 'pdf') {
-        const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
-        console.log('PDF generado exitosamente, enviando respuesta...');
+        console.log('Intentando generar PDF...');
+        try {
+          const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
+          console.log('PDF generado exitosamente, tamaño:', buffer.length);
 
-        res.set({
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.pdf`,
-          'Content-Length': buffer.length,
-        });
-        res.end(buffer);
+          res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.pdf`,
+            'Content-Length': buffer.length,
+          });
+          res.end(buffer);
+        } catch (pdfError) {
+          console.error('Error generando PDF:', pdfError);
+          // Si falla el PDF, devolver JSON para debugging
+          res.json({
+            error: 'Error generando PDF',
+            datos: datos,
+            pdfError: pdfError.message
+          });
+        }
       } else {
-        // Lógica para Excel (futuro)
-        res.status(400).json({ message: 'Formato Excel no implementado aún' });
+        // Devolver JSON para testing
+        res.json(datos);
       }
     } catch (error) {
       console.error('Error en descargarReporte:', error);

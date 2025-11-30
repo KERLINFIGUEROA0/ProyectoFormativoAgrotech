@@ -51,21 +51,29 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
 
       console.log("Enviando datos:", payload);
 
-      // Llamada a la API que retorna un BLOB
-      const blob = await descargarReporteApi(payload);
+      // Llamada a la API
+      const result = await descargarReporteApi(payload);
 
-      // Crear enlace invisible para descargar
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `trazabilidad_${payload.loteId}.${payload.formato}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      onClose();
-    } catch (error) {
+      if (payload.formato === 'json') {
+        // Mostrar datos JSON
+        console.log('Datos del reporte:', result);
+        alert('Datos obtenidos correctamente. Revisa la consola para ver los datos JSON.');
+        onClose();
+      } else {
+        // Descargar archivo
+        const url = window.URL.createObjectURL(new Blob([result]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `trazabilidad_${payload.loteId}.${payload.formato}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        onClose();
+      }
+    } catch (error: any) {
       console.error("Error generando reporte", error);
-      alert("Error al generar el reporte");
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Error desconocido";
+      alert("Error al generar el reporte: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -79,6 +87,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700">Formato</label>
           <select {...register('formato')} className="mt-1 block w-full border rounded-md p-2">
+            <option value="json">JSON (Para Testing)</option>
             <option value="pdf">PDF (Reporte Completo)</option>
             <option value="excel">Excel (Datos Crudos)</option>
           </select>

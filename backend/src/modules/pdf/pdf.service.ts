@@ -114,7 +114,50 @@ export class PdfService {
     return pdfPath;
   }
 
+  /**
+   * Genera una URL de imagen para el gráfico usando QuickChart.io
+   */
+  private generateChartUrl(label: string, labels: string[], data: number[], color: string): string {
+    // Simplificamos los datos para que la URL no sea gigante (tomamos máximo 50 puntos distribuidos)
+    let finalLabels = labels;
+    let finalData = data;
+
+    if (labels.length > 50) {
+      const step = Math.ceil(labels.length / 50);
+      finalLabels = labels.filter((_, i) => i % step === 0);
+      finalData = data.filter((_, i) => i % step === 0);
+    }
+
+    const chartConfig = {
+      type: 'line',
+      data: {
+        labels: finalLabels,
+        datasets: [{
+          label: label,
+          data: finalData,
+          borderColor: color,
+          backgroundColor: 'rgba(0,0,0,0)', // Sin relleno
+          fill: false,
+          tension: 0.4
+        }]
+      },
+      options: {
+        title: { display: true, text: `Comportamiento: ${label}` },
+        legend: { display: false },
+        scales: {
+            xAxes: [{ ticks: { autoSkip: true, maxTicksLimit: 10 } }]
+        }
+      }
+    };
+
+    const encodedConfig = encodeURIComponent(JSON.stringify(chartConfig));
+    return `https://quickchart.io/chart?c=${encodedConfig}&w=500&h=300`;
+  }
+
   async generarReporteTrazabilidad(data: any): Promise<Buffer> {
+    // Colores para las gráficas dinámicas
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6'];
+    let colorIndex = 0;
     const htmlTemplate = `
     <!DOCTYPE html>
     <html lang="es">
@@ -137,39 +180,34 @@ export class PdfService {
         <div class="container">
             <div class="header">
                 <h1>Informe de Trazabilidad Integral - AgroTech</h1>
-                <p>Lote: ${data.loteNombre || 'N/A'} | Rango: ${data.fechaInicio} - ${data.fechaFin}</p>
+                <p>Lote: ${data.loteNombre} | Rango: ${data.fechaInicio} - ${data.fechaFin}</p>
             </div>
 
             <div class="section">
                 <h2>Resumen Ejecutivo</h2>
                 <table>
+                    <tr><th>Total Cultivos</th><td>${data.resumen.totalCultivos}</td></tr>
                     <tr><th>Días Sembrado</th><td>${data.resumen.diasSembrado}</td></tr>
+                    <tr><th>Producción Total</th><td>${data.resumen.totalProduccionKg} Kg</td></tr>
                     <tr><th>Total Inversión</th><td>$${data.resumen.totalInversion.toLocaleString('es-CO')}</td></tr>
-                    <tr><th>Costos Laborales</th><td>$${data.resumen.costosLaborales.toLocaleString('es-CO')}</td></tr>
-                    <tr><th>Total Costos</th><td>$${(data.resumen.totalInversion + data.resumen.costosLaborales).toLocaleString('es-CO')}</td></tr>
                     <tr><th>Total Ventas</th><td>$${data.resumen.totalVentas.toLocaleString('es-CO')}</td></tr>
                     <tr><th>Ganancia Neta</th><td class="total">$${data.resumen.gananciaNeta.toLocaleString('es-CO')}</td></tr>
                 </table>
             </div>
 
             <div class="section">
-                <h2>Actividades Realizadas</h2>
+                <h2>Cultivos en el Lote</h2>
                 <table>
                     <thead>
-                        <tr><th>Título</th><th>Descripción</th><th>Fecha</th><th>Responsable</th><th>Tipo</th><th>Horas</th><th>Costo Total</th><th>Estado</th><th>Calificación</th></tr>
+                        <tr><th>Nombre</th><th>Tipo</th><th>Fecha Siembra</th><th>Producción Total</th></tr>
                     </thead>
                     <tbody>
-                        ${data.actividades.map(a => `
+                        ${data.cultivos.map(c => `
                             <tr>
-                                <td>${a.titulo || 'Sin título'}</td>
-                                <td>${a.descripcion || 'Sin descripción'}</td>
-                                <td>${a.fecha ? new Date(a.fecha).toLocaleDateString('es-ES') : 'Sin fecha'}</td>
-                                <td>${a.responsable ? `${a.responsable.nombre} ${a.responsable.apellidos}` : 'Sin asignar'}</td>
-                                <td>${a.responsable?.tipoUsuario || 'N/A'}</td>
-                                <td>${a.horas || 'N/A'}</td>
-                                <td>${a.costoTotal > 0 ? `$${a.costoTotal.toLocaleString('es-CO')}` : 'Gratis'}</td>
-                                <td>${a.estado}</td>
-                                <td>${a.calificacion || 'Pendiente'}</td>
+                                <td>${c.nombre}</td>
+                                <td>${c.tipo}</td>
+                                <td>${new Date(c.fechaSiembra).toLocaleDateString('es-ES')}</td>
+                                <td>${c.produccionTotal} Kg</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -177,44 +215,31 @@ export class PdfService {
             </div>
 
             <div class="section">
-                <h2>Insumos y Materiales Aplicados</h2>
-                <table>
-                    <thead>
-                        <tr><th>Material</th><th>Cantidad</th><th>Fecha</th><th>Actividad</th></tr>
-                    </thead>
-                    <tbody>
-                        ${data.materiales.map(m => `<tr><td>${m.nombre}</td><td>${m.cantidad}</td><td>${m.fecha ? new Date(m.fecha).toLocaleDateString('es-ES') : 'Sin fecha'}</td><td>${m.actividad || 'N/A'}</td></tr>`).join('')}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="section">
                 <h2>Análisis de Sensores</h2>
+                ${Object.keys(data.datosSensores).length === 0 ? '<p>No hay datos de sensores disponibles para este rango.</p>' : ''}
+
                 ${Object.entries(data.datosSensores).map(([sensor, datos]: [string, any]) => `
                     <h3>Sensor: ${sensor}</h3>
-                    <h4>Top 10 Valores Máximos</h4>
                     <table>
-                        <thead><tr><th>Fecha</th><th>Valor</th></tr></thead>
-                        <tbody>${datos.picosAltos.map(p => `<tr><td>${p.fechaRegistro}</td><td>${p.valor}</td></tr>`).join('')}</tbody>
+                        <tr><th>Unidad</th><td>${datos.unidad}</td></tr>
+                        <tr><th>Mínimo</th><td>${datos.estadisticas.minimo}</td></tr>
+                        <tr><th>Máximo</th><td>${datos.estadisticas.maximo}</td></tr>
+                        <tr><th>Promedio</th><td>${datos.estadisticas.promedio}</td></tr>
+                        <tr><th>Total Registros</th><td>${datos.totalRegistros}</td></tr>
                     </table>
-                    <h4>Top 10 Valores Mínimos</h4>
+
+                    <h4>Top 5 Valores Más Altos</h4>
                     <table>
                         <thead><tr><th>Fecha</th><th>Valor</th></tr></thead>
-                        <tbody>${datos.picosBajos.map(p => `<tr><td>${p.fechaRegistro}</td><td>${p.valor}</td></tr>`).join('')}</tbody>
+                        <tbody>${datos.picosAltos.slice(0,5).map(p => `<tr><td>${new Date(p.fechaRegistro).toLocaleString()}</td><td>${p.valor}</td></tr>`).join('')}</tbody>
+                    </table>
+
+                    <h4>Top 5 Valores Más Bajos</h4>
+                    <table>
+                        <thead><tr><th>Fecha</th><th>Valor</th></tr></thead>
+                        <tbody>${datos.picosBajos.slice(0,5).map(p => `<tr><td>${new Date(p.fechaRegistro).toLocaleString()}</td><td>${p.valor}</td></tr>`).join('')}</tbody>
                     </table>
                 `).join('')}
-            </div>
-
-            <div class="section">
-                <h2>Registro de Alertas</h2>
-                <table>
-                    <thead><tr><th>Sensor</th><th>Fecha</th><th>Valor</th><th>Tipo</th></tr></thead>
-                    <tbody>
-                        ${Object.entries(data.datosSensores).flatMap(([sensor, datos]: [string, any]) =>
-                            datos.alertas.map(a => `<tr><td>${sensor}</td><td>${a.fechaRegistro}</td><td>${a.valor}</td><td>Alerta</td></tr>`)
-                        ).join('')}
-                    </tbody>
-                </table>
             </div>
         </div>
     </body>
@@ -223,7 +248,9 @@ export class PdfService {
 
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
+
+    // Aumentamos el timeout porque cargar las imágenes de QuickChart requiere internet y unos segundos
+    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0', timeout: 60000 });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
