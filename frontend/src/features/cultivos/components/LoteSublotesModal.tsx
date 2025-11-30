@@ -8,20 +8,6 @@ import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import SubloteForm from './SubloteForm';
 import SubloteMap from './SubloteMap';
 
-// Función para validar si un punto está dentro de un polígono (Ray Casting Algorithm)
-const isPointInPolygon = (lat: number, lng: number, polygonCoords: { lat: number; lng: number }[]) => {
-  let inside = false;
-  for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
-    const xi = polygonCoords[i].lat, yi = polygonCoords[i].lng;
-    const xj = polygonCoords[j].lat, yj = polygonCoords[j].lng;
-
-    const intersect = ((yi > lng) !== (yj > lng)) &&
-      (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-};
-
 interface LoteSublotesModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -290,9 +276,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
                   <span className="text-sm font-medium text-gray-900">Mapa Interactivo</span>
                 </div>
                 <div className="text-xs text-gray-600">
-                  {editingSublote ? 'Clic para cambiar ubicación del sublote' : 'Clic para crear sublote'}
-                  <br />
-                  Solo puntos dentro del lote (área amarilla)
+                  Clic para crear sublote
                 </div>
               </div>
             </div>
@@ -300,56 +284,19 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
             <SubloteMap
               lote={lote}
               sublotes={sublotes}
-              editingSublote={editingSublote}
               onPointClick={(lat, lng) => {
-                // Validar que el punto esté dentro del lote padre
-                let lotePolygonCoords: { lat: number; lng: number }[] = [];
-
-                if (lote.coordenadas?.type === 'polygon' && Array.isArray(lote.coordenadas.coordinates)) {
-                  lotePolygonCoords = lote.coordenadas.coordinates;
-                } else if (lote.coordenadas?.type === 'point') {
-                  // Si el lote es un punto, crear un área pequeña alrededor
-                  const center = lote.coordenadas.coordinates as { lat: number; lng: number };
-                  const size = 0.001; // Aproximadamente 100m
-                  lotePolygonCoords = [
-                    { lat: center.lat - size, lng: center.lng - size },
-                    { lat: center.lat - size, lng: center.lng + size },
-                    { lat: center.lat + size, lng: center.lng + size },
-                    { lat: center.lat + size, lng: center.lng - size },
-                  ];
-                }
-
-                // Si hay coordenadas del lote, validar que el punto esté dentro
-                if (lotePolygonCoords.length > 0 && !isPointInPolygon(lat, lng, lotePolygonCoords)) {
-                  toast.error('⚠️ El punto seleccionado está fuera de los límites del lote. Selecciona un punto dentro del lote.');
-                  return;
-                }
-
-                if (editingSublote && editingSublote.id) {
-                  // Modo edición: actualizar coordenadas del sublote existente
-                  const updatedSublote = {
-                    ...editingSublote,
-                    coordenadas: {
-                      type: 'point' as const,
-                      coordinates: { lat, lng }
-                    }
-                  };
-                  setEditingSublote(updatedSublote);
-                  toast.success('Ubicación actualizada. Completa los demás campos.');
-                } else {
-                  // Modo creación: crear sublote con las coordenadas del punto clicado
-                  const tempSublote: Partial<Sublote> = {
-                    nombre: `Punto ${sublotes.length + 1}`,
-                    coordenadas: {
-                      type: 'point',
-                      coordinates: { lat, lng }
-                    },
-                    lote: lote
-                  };
-                  setEditingSublote(tempSublote as Sublote);
-                  setIsQuickCreate(true); // Flag para modo creación rápida
-                  setIsFormOpen(true);
-                }
+                // Crear sublote con las coordenadas del punto clicado
+                const tempSublote: Partial<Sublote> = {
+                  nombre: `Punto ${sublotes.length + 1}`,
+                  coordenadas: {
+                    type: 'point',
+                    coordinates: { lat, lng }
+                  },
+                  lote: lote
+                };
+                setEditingSublote(tempSublote as Sublote);
+                setIsQuickCreate(true); // Flag para modo creación rápida
+                setIsFormOpen(true);
               }}
               height="100%"
             />

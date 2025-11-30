@@ -1218,6 +1218,29 @@ export default function GestionSensoresPage(): ReactElement {
             </div>
         </div>
 
+        {/* Leyenda de Colores de Estado - Una sola línea */}
+        <div className="flex items-center gap-4 p-2 bg-white rounded-lg shadow-sm border border-gray-100 mb-4 mx-2">
+          <span className="text-xs font-medium text-gray-500">Estados:</span>
+
+          {/* Alto - Rojo */}
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span className="text-xs text-gray-600 font-medium">Alto</span>
+          </div>
+
+          {/* Bajo - Azul */}
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-xs text-gray-600 font-medium">Bajo</span>
+          </div>
+
+          {/* Óptimo - Gris */}
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+            <span className="text-xs text-gray-600 font-medium">Óptimo</span>
+          </div>
+        </div>
+
         {/* PAGINACIÓN HORIZONTAL DE SENSORES - 4 POR PÁGINA */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-inner overflow-hidden">
           {sensoresFiltrados.length > 0 ? (

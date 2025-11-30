@@ -81,6 +81,13 @@ export interface Broker {
   subscripciones: Subscripcion[];
 }
 
+// Clase auxiliar para configuración personalizada de tópicos
+export interface TopicoConfig {
+  topic: string;
+  min?: number;
+  max?: number;
+}
+
 export interface CreateBrokerDto {
   nombre: string;
   protocolo: string;
@@ -90,7 +97,7 @@ export interface CreateBrokerDto {
   password?: string;
   loteId: number;
   prefijoTopicos?: string;
-  topicosAdicionales?: string[];
+  topicosAdicionales?: (string | TopicoConfig)[];
 }
 
 export interface CreateSubscripcionDto {
