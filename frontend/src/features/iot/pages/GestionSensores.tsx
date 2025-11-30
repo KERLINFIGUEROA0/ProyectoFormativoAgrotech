@@ -30,6 +30,7 @@ import { obtenerLotes, actualizarLote } from '../../cultivos/api/lotesApi';
 // --- COMPONENTES ---
 import Modal from '../../../components/Modal';
 import BrokerFormModal from '../components/BrokerFormModal';
+import ModalDescargarTrazabilidad from '../components/ModalDescargarTrazabilidad';
   
 // --- INTERFACES ---
 import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
@@ -645,6 +646,9 @@ export default function GestionSensoresPage(): ReactElement {
   const [isDeleteSensorModalOpen, setIsDeleteSensorModalOpen] = useState(false);
   const [sensorToDelete, setSensorToDelete] = useState<Sensor | null>(null);
 
+  // Estado para modal de descarga de trazabilidad
+  const [isTrazabilidadModalOpen, setIsTrazabilidadModalOpen] = useState(false);
+
   // 1. CARGA DE ESTRUCTURA
   const loadStructure = async () => {
     try {
@@ -1171,9 +1175,7 @@ export default function GestionSensoresPage(): ReactElement {
                    />
 
                    <Button
-                     onClick={() => {
-                       toast.info("Función de descarga próximamente disponible");
-                     }}
+                     onClick={() => setIsTrazabilidadModalOpen(true)}
                      variant="light"
                      color="success"
                      size="sm"
@@ -1535,6 +1537,10 @@ export default function GestionSensoresPage(): ReactElement {
         onConfirm={confirmRemoveSensorFromLote}
         sensor={sensorToDelete}
         loteNombre={sensorToDelete?.lote?.nombre || 'Sin lote asignado'}
+      />
+      <ModalDescargarTrazabilidad
+        isOpen={isTrazabilidadModalOpen}
+        onClose={() => setIsTrazabilidadModalOpen(false)}
       />
     </div>
   );

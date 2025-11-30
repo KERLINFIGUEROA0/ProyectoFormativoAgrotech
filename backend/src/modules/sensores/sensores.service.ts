@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
+import { GenerarReporteTrazabilidadDto } from './dto/generar-reporte.dto';
 import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Broker } from '../mqtt-config/entities/broker.entity';
@@ -11,6 +12,14 @@ import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
 import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
 import { MqttClientService } from '../mqtt-config/mqtt-client.service';
 import { MqttConfigService } from '../mqtt-config/mqtt-config.service';
+import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { InformacionSensor } from '../informacion_sensor/entities/informacion_sensor.entity';
+import { Produccion } from '../producciones/entities/produccione.entity';
+import { Venta } from '../../common/enums/ventas/entities/venta.entity';
+import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Actividad } from '../actividades/entities/actividade.entity';
+import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
+import { Material } from '../materiales/entities/materiale.entity';
 
 @Injectable()
 export class SensoresService {
@@ -26,6 +35,22 @@ export class SensoresService {
     // INYECTA EL NUEVO REPOSITORIO
     @InjectRepository(BrokerLote)
     private readonly brokerLoteRepo: Repository<BrokerLote>,
+    @InjectRepository(Cultivo)
+    private readonly cultivoRepo: Repository<Cultivo>,
+    @InjectRepository(InformacionSensor)
+    private readonly infoSensorRepo: Repository<InformacionSensor>,
+    @InjectRepository(Produccion)
+    private readonly produccionRepo: Repository<Produccion>,
+    @InjectRepository(Venta)
+    private readonly ventaRepo: Repository<Venta>,
+    @InjectRepository(Gasto)
+    private readonly gastoRepo: Repository<Gasto>,
+    @InjectRepository(Actividad)
+    private readonly actividadRepo: Repository<Actividad>,
+    @InjectRepository(ActividadMaterial)
+    private readonly actividadMaterialRepo: Repository<ActividadMaterial>,
+    @InjectRepository(Material)
+    private readonly materialRepo: Repository<Material>,
 
     @Inject(forwardRef(() => InformacionSensorService))
     private readonly infoSensorService: InformacionSensorService,
@@ -350,5 +375,194 @@ export class SensoresService {
       message: `Sincronización completada. Se crearon ${totalSensoresCreados} sensores nuevos en el lote ${loteId}.`,
       sensoresCreados: totalSensoresCreados
     };
+  }
+
+  async getFullTraceabilityData(dto: GenerarReporteTrazabilidadDto) {
+    const { loteId, fechaInicio, fechaFin } = dto;
+    console.log('Iniciando recolección de datos de trazabilidad:', dto);
+
+    // Verificar que el lote existe
+    const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: loteId } });
+    if (!lote) {
+      throw new NotFoundException(`Lote con ID ${loteId} no encontrado`);
+    }
+    console.log(`Lote encontrado: ${lote.nombre}`);
+
+    // 1. Obtener Cultivo(s) en ese rango de fechas y Lote
+    const cultivos = await this.cultivoRepo.find({
+      where: { lote: { id: loteId } },
+      relations: [
+        'producciones',
+        'gastos',
+        'actividades',
+        'actividades.responsable',
+        'actividades.responsable.tipoUsuario',
+        'actividades.actividadMaterial',
+        'actividades.actividadMaterial.material'
+      ]
+    });
+    console.log(`Encontrados ${cultivos.length} cultivos para el lote ${loteId}`);
+
+    // Estructura para acumular datos
+    const reporte: any = {
+      loteNombre: lote.nombre,
+      fechaInicio,
+      fechaFin,
+      resumen: {
+        diasSembrado: 0,
+        totalInversion: 0,
+        costosLaborales: 0,
+        totalVentas: 0,
+        gananciaNeta: 0,
+      },
+      actividades: [],
+      materiales: [],
+      alertas: [],
+      datosSensores: {}
+    };
+
+    // 2. Calcular Finanzas e Inventario recorriendo cultivos
+    try {
+      for (const cultivo of cultivos) {
+        console.log(`Procesando cultivo ${cultivo.nombre}`);
+
+        // Calcular días
+        const inicio = new Date(cultivo.Fecha_Plantado);
+        const fin = cultivo.Fecha_Fin ? new Date(cultivo.Fecha_Fin) : new Date();
+        const diffTime = Math.abs(fin.getTime() - inicio.getTime());
+        reporte.resumen.diasSembrado += Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // Sumar gastos
+        if (cultivo.gastos && cultivo.gastos.length > 0) {
+          reporte.resumen.totalInversion += cultivo.gastos.reduce((a, b) => a + Number(b.monto), 0);
+        }
+
+        // Sumar ventas a través de producciones
+        if (cultivo.producciones && cultivo.producciones.length > 0) {
+          for (const produccion of cultivo.producciones) {
+            try {
+              const ventas = await this.ventaRepo.find({ where: { produccion: { id: produccion.id } } });
+              reporte.resumen.totalVentas += ventas.reduce((a, b) => a + Number(b.valorTotalVenta), 0);
+            } catch (error) {
+              console.warn(`Error obteniendo ventas para producción ${produccion.id}:`, error.message);
+            }
+          }
+        }
+
+        // Obtener actividades realizadas
+        if (cultivo.actividades && cultivo.actividades.length > 0) {
+          for (const actividad of cultivo.actividades) {
+            // Calcular costo de la actividad
+            let costoTotal = 0;
+            let tipoUsuario = 'Sin asignar';
+
+            if (actividad.responsable && actividad.responsable.tipoUsuario) {
+              tipoUsuario = actividad.responsable.tipoUsuario.nombre;
+
+              // Solo calcular costo para pasantes (no para aprendices)
+              if (tipoUsuario.toLowerCase().includes('pasante') && actividad.horas && actividad.tarifaHora) {
+                costoTotal = Number(actividad.horas) * Number(actividad.tarifaHora);
+              }
+            }
+
+            reporte.actividades.push({
+              titulo: actividad.titulo,
+              descripcion: actividad.descripcion,
+              fecha: actividad.fecha,
+              estado: actividad.estado,
+              responsable: actividad.responsable ? {
+                nombre: actividad.responsable.nombre,
+                apellidos: actividad.responsable.apellidos,
+                identificacion: actividad.responsable.identificacion,
+                tipoUsuario: tipoUsuario
+              } : null,
+              horas: actividad.horas,
+              tarifaHora: actividad.tarifaHora,
+              costoTotal: costoTotal,
+              calificacion: actividad.calificacion,
+              comentarioInstructor: actividad.comentarioInstructor,
+              respuestaTexto: actividad.respuestaTexto
+            });
+
+            // Acumular costos laborales
+            reporte.resumen.costosLaborales += costoTotal;
+
+            // Obtener materiales usados en esta actividad
+            if (actividad.actividadMaterial && actividad.actividadMaterial.length > 0) {
+              for (const am of actividad.actividadMaterial) {
+                if (am.material) {
+                  reporte.materiales.push({
+                    nombre: am.material.nombre,
+                    cantidad: am.cantidadUsada,
+                    fecha: actividad.fecha,
+                    actividad: actividad.titulo
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+      console.log(`Procesadas ${reporte.actividades.length} actividades para el lote ${loteId}`);
+      console.log(`Costos laborales acumulados: $${reporte.resumen.costosLaborales}`);
+    } catch (error) {
+      console.error('Error procesando cultivos:', error);
+      throw error;
+    }
+
+    reporte.resumen.gananciaNeta = reporte.resumen.totalVentas - (reporte.resumen.totalInversion + reporte.resumen.costosLaborales);
+
+    // 3. Lógica Pesada de Sensores
+    try {
+      const sensoresDelLote = await this.sensorRepo.find({
+        where: { lote: { id: loteId } },
+        relations: ['lote']
+      });
+      console.log(`Encontrados ${sensoresDelLote.length} sensores para el lote ${loteId}`);
+
+      for (const sensor of sensoresDelLote) {
+        console.log(`Procesando sensor ${sensor.nombre} (ID: ${sensor.id})`);
+
+        try {
+          // Top 10 Picos Altos
+          const picosAltos = await this.infoSensorRepo
+            .createQueryBuilder('info')
+            .where('info.sensorId = :sid', { sid: sensor.id })
+            .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin })
+            .orderBy('info.valor', 'DESC')
+            .limit(10)
+            .getMany();
+
+          // Top 10 Picos Bajos
+          const picosBajos = await this.infoSensorRepo
+            .createQueryBuilder('info')
+            .where('info.sensorId = :sid', { sid: sensor.id })
+            .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin })
+            .orderBy('info.valor', 'ASC')
+            .limit(10)
+            .getMany();
+
+          // Alertas
+          const alertas = await this.infoSensorRepo
+            .createQueryBuilder('info')
+            .where('info.sensorId = :sid', { sid: sensor.id })
+            .andWhere('(info.valor > :max OR info.valor < :min)', { max: sensor.valor_maximo_alerta, min: sensor.valor_minimo_alerta })
+            .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin })
+            .getMany();
+
+          reporte.datosSensores[sensor.nombre] = { picosAltos, picosBajos, alertas };
+          console.log(`Datos obtenidos para sensor ${sensor.nombre}: ${picosAltos.length} altos, ${picosBajos.length} bajos, ${alertas.length} alertas`);
+        } catch (error) {
+          console.warn(`Error procesando sensor ${sensor.nombre}:`, error.message);
+          reporte.datosSensores[sensor.nombre] = { picosAltos: [], picosBajos: [], alertas: [] };
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo sensores:', error);
+      // Continuar sin datos de sensores
+    }
+
+    console.log('Datos de trazabilidad recolectados exitosamente');
+    return reporte;
   }
 }

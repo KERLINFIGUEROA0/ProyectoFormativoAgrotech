@@ -114,3 +114,16 @@ export const generateSensorReport = async (params: {
     throw error;
   }
 };
+
+export const descargarReporteApi = async (data: {
+  formato: 'pdf' | 'excel';
+  loteId: number;
+  subloteId?: number;
+  fechaInicio: string;
+  fechaFin: string;
+}) => {
+  const response = await api.post('/sensores/reporte-trazabilidad', data, {
+    responseType: 'blob', // Para descargar archivos
+  });
+  return response.data; // Retorna el blob
+};
