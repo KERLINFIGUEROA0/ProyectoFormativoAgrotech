@@ -16,15 +16,19 @@ import {
 import { Input, Select, SelectItem, Button, Textarea, Checkbox } from '@heroui/react';
 // --- MODIFICAR IMPORT ---
 import {
-  asignarActividad,
-  obtenerMaterialesDisponibles, // <-- AÑADIR
+   asignarActividad,
+   obtenerMaterialesDisponibles, // <-- AÑADIR
+   obtenerLotesParaActividades,
+   obtenerSublotesParaActividades,
 } from '../api/actividadesapi';
 import type {
-  AsignarActividadPayload,
-  UsuarioSimple,
-  CultivoSimple,
-  // --- AÑADIR IMPORT ---
-  MaterialUsado,
+   AsignarActividadPayload,
+   UsuarioSimple,
+   CultivoSimple,
+   LoteSimple,
+   SubloteSimple,
+   // --- AÑADIR IMPORT ---
+   MaterialUsado,
 } from '../interfaces/actividades';
 // --- AÑADIR IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
@@ -43,19 +47,22 @@ interface MaterialSeleccionado extends MaterialUsado {
 }
 
 interface AsignacionFormState {
-  titulo: string;
-  descripcion: string;
-  fecha: string;
-  cultivo: string;
-  aprendices: number[];
-  searchTerm: string;
-  selectedFicha: string;
-  // --- AÑADIR CAMPOS ---
-  materiales: MaterialSeleccionado[];
-  materialActual: string; // ID
-  cantidadMaterial: number | string;
-  archivosIniciales: FileList | null;
-  // --- FIN CAMPOS ---
+   titulo: string;
+   descripcion: string;
+   fecha: string;
+   cultivo: string;
+   lote: string;
+   sublote: string;
+   aprendices: number[];
+   responsable: string;
+   searchTerm: string;
+   selectedFicha: string;
+   // --- AÑADIR CAMPOS ---
+   materiales: MaterialSeleccionado[];
+   materialActual: string; // ID
+   cantidadMaterial: number | string;
+   archivosIniciales: FileList | null;
+   // --- FIN CAMPOS ---
 }
 
 const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
@@ -69,7 +76,10 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     descripcion: '',
     fecha: new Date().toISOString().substring(0, 10),
     cultivo: '',
+    lote: '',
+    sublote: '',
     aprendices: [],
+    responsable: '',
     searchTerm: '',
     selectedFicha: '',
     // --- AÑADIR ESTADO ---
@@ -82,6 +92,8 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // --- AÑADIR ESTADO ---
   const [materialesDisponibles, setMaterialesDisponibles] = useState<Material[]>([]);
+  const [lotesDisponibles, setLotesDisponibles] = useState<LoteSimple[]>([]);
+  const [sublotesDisponibles, setSublotesDisponibles] = useState<SubloteSimple[]>([]);
   // --- FIN ESTADO ---
 
   // Función para calcular el stock disponible
@@ -134,6 +146,38 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   }, []);
   // --- FIN USEEFFECT ---
 
+  // --- AÑADIR USEEFFECT PARA CARGAR LOTES ---
+  useEffect(() => {
+    const cargarLotes = async () => {
+      try {
+        const lotes = await obtenerLotesParaActividades();
+        setLotesDisponibles(lotes);
+      } catch (error) {
+        toast.error('No se pudieron cargar los lotes.');
+      }
+    };
+    cargarLotes();
+  }, []);
+  // --- FIN USEEFFECT ---
+
+  // --- AÑADIR USEEFFECT PARA CARGAR SUBLOTES ---
+  useEffect(() => {
+    const cargarSublotes = async () => {
+      if (formData.lote) {
+        try {
+          const sublotes = await obtenerSublotesParaActividades(parseInt(formData.lote));
+          setSublotesDisponibles(sublotes);
+        } catch (error) {
+          toast.error('No se pudieron cargar los sublotes.');
+        }
+      } else {
+        setSublotesDisponibles([]);
+      }
+    };
+    cargarSublotes();
+  }, [formData.lote]);
+  // --- FIN USEEFFECT ---
+
   // Obtener material seleccionado para mostrar unidad
   const materialSeleccionado = materialesDisponibles.find(m => m.id === parseInt(formData.materialActual));
 
@@ -177,9 +221,13 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       if (isChecked) {
         return { ...prev, aprendices: [...prev.aprendices, identificacion] };
       } else {
+        const newAprendices = prev.aprendices.filter((id) => id !== identificacion);
+        // Reset responsable if they were removed from the list
+        const newResponsable = newAprendices.includes(Number(prev.responsable)) ? prev.responsable : '';
         return {
           ...prev,
-          aprendices: prev.aprendices.filter((id) => id !== identificacion),
+          aprendices: newAprendices,
+          responsable: newResponsable,
         };
       }
     });
@@ -249,10 +297,11 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       !formData.titulo ||
       !formData.fecha ||
       !formData.cultivo ||
-      formData.aprendices.length === 0
+      formData.aprendices.length === 0 ||
+      (formData.aprendices.length > 1 && !formData.responsable)
     ) {
       toast.error(
-        'Por favor, complete Título, Fecha, Cultivo y asigne al menos un Aprendiz.',
+        'Por favor, complete Título, Fecha, Cultivo y asigne al menos un Aprendiz. Si hay múltiples aprendices, seleccione un responsable.',
       );
       return;
     }
@@ -262,13 +311,16 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
         materialId: m.materialId,
         cantidadUsada: m.cantidadUsada
     }));
-    
+
     const payload: AsignarActividadPayload = {
       titulo: formData.titulo,
       descripcion: formData.descripcion,
       fecha: formData.fecha,
       cultivo: Number(formData.cultivo),
+      lote: formData.lote ? Number(formData.lote) : undefined,
+      sublote: formData.sublote ? Number(formData.sublote) : undefined,
       aprendices: formData.aprendices,
+      responsable: formData.responsable ? Number(formData.responsable) : undefined,
       materiales: materialesPayload, // <-- AÑADIDO
     };
     // --- FIN MODIFICACIÓN ---
@@ -329,6 +381,43 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
               {cultivos.map(c => (
                 <SelectItem key={c.id.toString()}>
                   {c.nombre}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Select
+              name="lote"
+              selectedKeys={formData.lote ? [formData.lote] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, lote: selected as string, sublote: '' })); // Reset sublote when lote changes
+              }}
+              label="Lote (Opcional)"
+              placeholder="Seleccionar lote"
+            >
+              {lotesDisponibles.map(l => (
+                <SelectItem key={l.id.toString()}>
+                  {l.nombre}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Select
+              name="sublote"
+              selectedKeys={formData.sublote ? [formData.sublote] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, sublote: selected as string }));
+              }}
+              label="Sublote (Opcional)"
+              placeholder="Seleccionar sublote"
+              isDisabled={!formData.lote}
+            >
+              {sublotesDisponibles.map(s => (
+                <SelectItem key={s.id.toString()}>
+                  {s.nombre}
                 </SelectItem>
               ))}
             </Select>
@@ -468,10 +557,37 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             )}
           </div>
 
+          {formData.aprendices.length > 1 && (
+            <div>
+              <Select
+                name="responsable"
+                selectedKeys={formData.responsable ? [formData.responsable] : []}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  setFormData(prev => ({ ...prev, responsable: selected }));
+                }}
+                label="Persona Responsable (Obligatorio cuando hay múltiples aprendices)"
+                placeholder="Seleccionar responsable"
+                isRequired={formData.aprendices.length > 1}
+              >
+                {usuarios
+                  .filter(u => formData.aprendices.includes(Number(u.identificacion)))
+                  .map(u => (
+                    <SelectItem key={u.identificacion.toString()}>
+                      {u.nombre} {u.apellidos}
+                    </SelectItem>
+                  ))}
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Esta persona podrá devolver materiales no utilizados al finalizar la actividad.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-start gap-4 pt-4">
               <Button
                 type="submit"
-                disabled={isSubmitting || formData.aprendices.length === 0}
+                disabled={isSubmitting || formData.aprendices.length === 0 || (formData.aprendices.length > 1 && !formData.responsable)}
                 color="success"
                 startContent={isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
               >

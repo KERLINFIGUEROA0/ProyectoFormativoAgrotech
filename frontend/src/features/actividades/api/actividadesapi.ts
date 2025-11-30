@@ -56,9 +56,24 @@ export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]>
 };
 
 export const obtenerCultivosParaActividades = async () => {
-  // ... (sin cambios)
-  const response = await api.get('/cultivos/listar');
-  return response.data.data;
+   // ... (sin cambios)
+   const response = await api.get('/cultivos/listar');
+   return response.data.data;
+};
+
+export const obtenerLotesParaActividades = async () => {
+   const response = await api.get('/lotes/listar');
+   return response.data.data;
+};
+
+export const obtenerSublotesParaActividades = async (loteId?: number) => {
+   if (loteId) {
+     const response = await api.get(`/sublotes/lotes/${loteId}/sublotes`);
+     return response.data.data;
+   } else {
+     const response = await api.get('/sublotes/listar');
+     return response.data.data;
+   }
 };
 
 export const asignarActividad = async (
@@ -71,6 +86,12 @@ export const asignarActividad = async (
   if (asignacionData.cultivo !== undefined) {
     formData.append('cultivo', asignacionData.cultivo.toString());
   }
+  if (asignacionData.lote !== undefined) {
+    formData.append('lote', asignacionData.lote.toString());
+  }
+  if (asignacionData.sublote !== undefined) {
+    formData.append('sublote', asignacionData.sublote.toString());
+  }
   if (asignacionData.titulo) {
     formData.append('titulo', asignacionData.titulo);
   }
@@ -82,6 +103,9 @@ export const asignarActividad = async (
   }
   if (asignacionData.aprendices && asignacionData.aprendices.length > 0) {
     formData.append('aprendices', JSON.stringify(asignacionData.aprendices));
+  }
+  if (asignacionData.responsable !== undefined) {
+    formData.append('responsable', asignacionData.responsable.toString());
   }
   if (asignacionData.materiales && asignacionData.materiales.length > 0) {
     formData.append('materiales', JSON.stringify(asignacionData.materiales));
@@ -152,4 +176,14 @@ export const descargarArchivoActividad = async (filename: string, nombreOriginal
     responseType: 'blob', // Para descargar archivos
   });
   return response;
+};
+
+/**
+ * Devuelve materiales al finalizar la actividad (solo para el responsable).
+ */
+export const devolverMaterialesFinal = async (id: number, materialesDevueltos: { materialId: number; cantidadDevuelta: number }[]) => {
+  const response = await api.post(`/actividades/${id}/devolver-materiales-final`, {
+    materialesDevueltos,
+  });
+  return response.data;
 };

@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany,JoinColumn} from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
+import { Lote } from '../../lotes/entities/lote.entity';
+import { Sublote } from '../../sublotes/entities/sublote.entity';
 import { ActividadMaterial } from '../../actividades_materiales/entities/actividades_materiale.entity';
 import { RespuestaActividad } from './respuesta_actividad.entity';
 import { ActividadUsuario } from './actividad_usuario.entity';
@@ -32,6 +34,18 @@ usuario: Usuario | null;
 
  @ManyToOne(() => Cultivo, (cultivo) => cultivo.actividades, { onDelete: 'CASCADE' })
   cultivo: Cultivo;
+
+  @ManyToOne(() => Lote, (lote) => lote.id, { nullable: true })
+  @JoinColumn({ name: 'Id_Lote' })
+  lote?: Lote;
+
+  @ManyToOne(() => Sublote, (sublote) => sublote.id, { nullable: true })
+  @JoinColumn({ name: 'Id_Sublote' })
+  sublote?: Sublote;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'Id_Responsable' })
+  responsable?: Usuario;
 
   @OneToMany(() => ActividadMaterial, (am) => am.actividad)
   actividadMaterial: ActividadMaterial[];

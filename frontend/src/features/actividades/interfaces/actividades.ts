@@ -24,8 +24,20 @@ export interface UsuarioSimple {
 
 // Interfaz para un cultivo simple
 export interface CultivoSimple {
-  id: number;
-  nombre: string;
+   id: number;
+   nombre: string;
+}
+
+// Interfaz para un lote simple
+export interface LoteSimple {
+   id: number;
+   nombre: string;
+}
+
+// Interfaz para un sublote simple
+export interface SubloteSimple {
+   id: number;
+   nombre: string;
 }
 
 // 1. Interfaz principal de Actividad (lo que devuelve la API)
@@ -43,6 +55,9 @@ export interface Actividad {
   // Relaciones que vienen del backend
   usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
+  lote?: LoteSimple;
+  sublote?: SubloteSimple;
+  responsable?: UsuarioSimple;
   actividadMaterial?: {
     cantidadUsada: number;
     material: {
@@ -101,12 +116,15 @@ export interface RespuestaActividad {
 }
 // Refleja AsignarActividadDto del backend
 export interface AsignarActividadPayload {
-  cultivo: number;        // ID del cultivo
-  titulo: string;         // Título de la actividad
-  descripcion: string;    // Descripción de la actividad
-  fecha: string;          // Fecha de la actividad (YYYY-MM-DD)
-  // Array de IDENTIFICACIONES de los aprendices seleccionados
-  aprendices: number[];
-  materiales?: MaterialUsado[];
-  archivoInicial?: string; // JSON string de filenames para el archivo inicial
+   cultivo: number;        // ID del cultivo
+   lote?: number;          // ID del lote (opcional)
+   sublote?: number;       // ID del sublote (opcional)
+   titulo: string;         // Título de la actividad
+   descripcion: string;    // Descripción de la actividad
+   fecha: string;          // Fecha de la actividad (YYYY-MM-DD)
+   // Array de IDENTIFICACIONES de los aprendices seleccionados
+   aprendices: number[];
+   responsable?: number;   // ID del usuario responsable (opcional)
+   materiales?: MaterialUsado[];
+   archivoInicial?: string; // JSON string de filenames para el archivo inicial
 }
