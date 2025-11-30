@@ -13,6 +13,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
+import { Input, Select, SelectItem, Button, Textarea, Checkbox } from '@heroui/react';
 // --- MODIFICAR IMPORT ---
 import {
   asignarActividad,
@@ -301,27 +302,57 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             <ClipboardList className="w-5 h-5 text-green-600" /> Nueva Asignación
           </h2>
 
-          {/* ... (Inputs de Título, Cultivo, Descripción, Fecha sin cambios) ... */}
+          {/* Input de Título */}
           <div>
-            <label htmlFor="titulo" className="block text-sm font-medium text-gray-700">Nombre de la Actividad</label>
-            <input type="text" name="titulo" id="titulo" placeholder="Ej: Riego por goteo - Lote A" value={formData.titulo} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Input
+              type="text"
+              name="titulo"
+              placeholder="Ej: Riego por goteo - Lote A"
+              value={formData.titulo}
+              onChange={handleChange}
+              label="Nombre de la Actividad"
+              isRequired
+            />
           </div>
           <div>
-            <label htmlFor="cultivo" className="block text-sm font-medium text-gray-700">Cultivo</label>
-            <select name="cultivo" id="cultivo" value={formData.cultivo} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white">
-                <option value="">Seleccionar cultivo</option>
-                {cultivos.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-            </select>
+            <Select
+              name="cultivo"
+              selectedKeys={formData.cultivo ? [formData.cultivo] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, cultivo: selected as string }));
+              }}
+              label="Cultivo"
+              placeholder="Seleccionar cultivo"
+              isRequired
+            >
+              {cultivos.map(c => (
+                <SelectItem key={c.id.toString()}>
+                  {c.nombre}
+                </SelectItem>
+              ))}
+            </Select>
           </div>
           <div>
-            <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700">Descripción de la Actividad</label>
-            <textarea name="descripcion" id="descripcion" placeholder="Describe la tarea a realizar..." value={formData.descripcion} onChange={handleChange} required rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Textarea
+              name="descripcion"
+              placeholder="Describe la tarea a realizar..."
+              value={formData.descripcion}
+              onChange={handleChange}
+              label="Descripción de la Actividad"
+              isRequired
+              minRows={3}
+            />
           </div>
           <div>
-            <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">Fecha de Realización</label>
-            <input type="date" name="fecha" id="fecha" value={formData.fecha} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Input
+              type="date"
+              name="fecha"
+              value={formData.fecha}
+              onChange={handleChange}
+              label="Fecha de Realización"
+              isRequired
+            />
           </div>
 
           {/* --- AÑADIR CAMPO PARA ARCHIVOS INICIALES --- */}
@@ -352,41 +383,45 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             <div className="p-4 border rounded-lg bg-white space-y-3">
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Package size={14}/> Material</label>
-                  <select
-                    value={formData.materialActual}
-                    onChange={(e) => setFormData(prev => ({ ...prev, materialActual: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
+                  <Select
+                    selectedKeys={formData.materialActual ? [formData.materialActual] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0];
+                      setFormData(prev => ({ ...prev, materialActual: selected as string }));
+                    }}
+                    placeholder="Seleccionar..."
+                    label="Material"
+                    startContent={<Package size={14} />}
                   >
-                    <option value="">Seleccionar...</option>
                     {materialesDisponibles.map((m) => {
                       const stockTotal = calcularStockDisponible(m);
                       const unidadTexto = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
                       return (
-                        <option key={m.id} value={m.id}>
+                        <SelectItem key={m.id.toString()}>
                           {m.nombre} (Disp: {stockTotal} {unidadTexto})
-                        </option>
+                        </SelectItem>
                       );
                     })}
-                  </select>
+                  </Select>
                 </div>
                 <div className="w-1/3">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad ({materialSeleccionado?.medidasDeContenido || 'unidades'})</label>
-                  <input
+                  <Input
                     type="number"
-                    value={Number(formData.cantidadMaterial) || ''}
+                    value={formData.cantidadMaterial.toString()}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                    label={`Cantidad (${materialSeleccionado?.medidasDeContenido || 'unidades'})`}
+                    startContent={<Hash size={14} />}
                   />
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={handleAddMaterial}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  color="success"
+                  isIconOnly
                 >
                   <Plus size={20} />
-                </button>
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -401,13 +436,16 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                         Cantidad total: {m.cantidadUsada}
                       </p>
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRemoveMaterial(m.materialId)}
-                      className="p-1 text-red-500 hover:bg-red-100 rounded-full"
+                      color="danger"
+                      variant="light"
+                      isIconOnly
+                      size="sm"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -431,31 +469,21 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
           </div>
 
           <div className="flex justify-start gap-4 pt-4">
-            {/* ... (Botones de Submit y Cancelar sin cambios) ... */}
-              <button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting || formData.aprendices.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-md transition duration-150 disabled:bg-gray-400"
+                color="success"
+                startContent={isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Asignando...
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="w-5 h-5" />
-                    Asignar Actividad
-                  </>
-                )}
-              </button>
-              <button 
-                  type="button" 
-                  onClick={onCancel} 
-                  className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 shadow-md transition duration-150"
+                {isSubmitting ? "Asignando..." : "Asignar Actividad"}
+              </Button>
+              <Button
+                type="button"
+                onClick={onCancel}
+                color="danger"
               >
-                  Cancelar
-              </button>
+                Cancelar
+              </Button>
           </div>
         </div>
 
@@ -468,49 +496,52 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
           </h2>
           
           <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre o identificación..."
-                value={formData.searchTerm}
-                onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm"
-              />
-            </div>
+            <Input
+              type="text"
+              placeholder="Buscar por nombre o identificación..."
+              value={formData.searchTerm}
+              onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
+              startContent={<Search className="w-4 h-4" />}
+            />
 
-            <div className="relative">
-              <Filter className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-              <select
-                value={formData.selectedFicha}
-                onChange={(e) => setFormData(prev => ({ ...prev, selectedFicha: e.target.value }))}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm bg-white"
-              >
-                <option value="">Todas las fichas</option>
-                {fichasUnicas.map(ficha => (
-                  <option key={ficha.id_ficha} value={ficha.id_ficha}>
-                    {ficha.nombre} ({ficha.id_ficha})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              selectedKeys={formData.selectedFicha ? [formData.selectedFicha] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, selectedFicha: selected as string }));
+              }}
+              placeholder="Todas las fichas"
+              startContent={<Filter className="w-4 h-4" />}
+            >
+              {fichasUnicas.map(ficha => (
+                <SelectItem key={ficha.id_ficha}>
+                  {ficha.nombre} ({ficha.id_ficha})
+                </SelectItem>
+              ))}
+            </Select>
 
             {formData.selectedFicha && (
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => seleccionarTodosDeFicha(formData.selectedFicha)}
-                  className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
+                  color="success"
+                  variant="light"
+                  size="sm"
+                  className="flex-1"
                 >
                   Seleccionar Todo
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => deseleccionarTodosDeFicha(formData.selectedFicha)}
-                  className="flex-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition-colors"
+                  color="danger"
+                  variant="light"
+                  size="sm"
+                  className="flex-1"
                 >
                   Deseleccionar Todo
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -543,11 +574,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     
                     <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-blue-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={formData.aprendices.includes(Number(u.identificacion))}
-                          onChange={(e) => handleAprendicesChange(Number(u.identificacion), e.target.checked)}
-                          className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        <Checkbox
+                          isSelected={formData.aprendices.includes(Number(u.identificacion))}
+                          onValueChange={(isSelected) => handleAprendicesChange(Number(u.identificacion), isSelected)}
                         />
                         <div>
                           <p className="font-medium text-gray-800">{u.nombre} {u.apellidos}</p>

@@ -8,8 +8,8 @@ import {
 import { listarActividades, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
 import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
 
-import Modal from '../../../components/Modal';
 import AsignacionActividadForm from '../components/AsignacionActividadForm';
+import { Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
 
 // --- Componente de Tarjeta de Acceso Rápido (sin cambios) ---
 interface QuickAccessCardProps {
@@ -217,15 +217,21 @@ const ActividadesPrincipal: React.FC = () => {
 
       <Modal
         isOpen={isAsignacionModalOpen}
-        onClose={() => setIsAsignacionModalOpen(false)}
-        title="Asignación de Actividades"
+        onOpenChange={() => setIsAsignacionModalOpen(false)}
+        size="5xl"
+        scrollBehavior="inside"
       >
-        <AsignacionActividadForm
-          usuarios={usuarios}
-          cultivos={cultivos}
-          onCancel={() => setIsAsignacionModalOpen(false)}
-          onSuccess={cargarActividades}
-        />
+        <ModalContent>
+          <ModalHeader>Asignación de Actividades</ModalHeader>
+          <ModalBody>
+            <AsignacionActividadForm
+              usuarios={usuarios}
+              cultivos={cultivos}
+              onCancel={() => setIsAsignacionModalOpen(false)}
+              onSuccess={cargarActividades}
+            />
+          </ModalBody>
+        </ModalContent>
       </Modal>
     </div>
   );
