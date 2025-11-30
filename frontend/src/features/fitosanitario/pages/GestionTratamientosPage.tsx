@@ -3,10 +3,10 @@ import { toast } from 'sonner';
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { listarTratamientos, crearTratamiento, actualizarTratamiento, eliminarTratamiento } from '../api/fitosanitarioApi';
 import type { Tratamiento } from '../interfaces/fitosanitario';
-import Modal from '../../../components/Modal';
 import TratamientoForm from '../components/TratamientoForm';
 import { listarCultivos } from '../../cultivos/api/cultivosApi';
 import { useLocation } from 'react-router-dom';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
 
 export default function GestionTratamientosPage() {
   const location = useLocation();
@@ -151,9 +151,9 @@ const handleSave = async (data: Partial<Tratamiento>) => {
     <div className="p-6 bg-gray-50 min-h-full space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Tratamientos</h1>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
-          <Plus /> Planificar Tratamiento
-        </button>
+        <Button onClick={() => handleOpenModal()} color="success" startContent={<Plus />}>
+          Planificar Tratamiento
+        </Button>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-md">
@@ -189,8 +189,12 @@ const handleSave = async (data: Partial<Tratamiento>) => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center flex justify-center items-center gap-4">
-                    <button onClick={() => handleOpenModal(t)} className="text-blue-600 hover:text-blue-800"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(t.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
+                    <Button onClick={() => handleOpenModal(t)} color="primary" variant="light" isIconOnly>
+                      <Edit2 size={16} />
+                    </Button>
+                    <Button onClick={() => handleDelete(t.id)} color="danger" variant="light" isIconOnly>
+                      <Trash2 size={16} />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -199,13 +203,20 @@ const handleSave = async (data: Partial<Tratamiento>) => {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingTratamiento?.id ? "Editar Tratamiento" : "Planificar Tratamiento"}>
-         <TratamientoForm
-            initialData={editingTratamiento || {}}
-            onSave={handleSave}
-            onCancel={handleCloseModal}
-            cultivos={cultivos}
-          />
+      <Modal isOpen={isModalOpen} onOpenChange={handleCloseModal} size="4xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            {editingTratamiento?.id ? "Editar Tratamiento" : "Planificar Tratamiento"}
+          </ModalHeader>
+          <ModalBody>
+            <TratamientoForm
+              initialData={editingTratamiento || {}}
+              onSave={handleSave}
+              onCancel={handleCloseModal}
+              cultivos={cultivos}
+            />
+          </ModalBody>
+        </ModalContent>
       </Modal>
     </div>
   );

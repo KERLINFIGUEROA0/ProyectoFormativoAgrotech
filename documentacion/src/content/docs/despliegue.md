@@ -8,14 +8,14 @@ title: "Despliegue"
 
 El proyecto **AgroTech** es una aplicación web completa que consta de tres componentes principales:
 
-- **📊 Frontend**: Interfaz de usuario desarrollada con React + Vite
-- **🔧 Backend**: API REST desarrollada con NestJS + TypeORM
-- **🗄️ Base de Datos**: PostgreSQL con Redis para cache
+- **Frontend**: Interfaz de usuario desarrollada con React + Vite
+- **Backend**: API REST desarrollada con NestJS + TypeORM
+- **Base de Datos**: PostgreSQL con Redis para cache
 
 ## Requisitos del Sistema
 
 ### Requisitos Mínimos:
-- **Node.js** 18+ y npm
+- **Node.js** v22.20.0 y npm
 - **Docker** y Docker Compose
 - **Git** para control de versiones
 - **4GB RAM** mínimo
@@ -28,7 +28,7 @@ El proyecto **AgroTech** es una aplicación web completa que consta de tres comp
 - **6379**: Redis
 - **4321**: Documentación (Starlight)
 
-## 🚀 Despliegue Completo del Sistema
+##  Despliegue Completo del Sistema
 
 ### Paso 1: Clonar el Repositorio
 ```bash
@@ -66,9 +66,6 @@ cd backend
 
 # Levantar servicios de base de datos
 docker-compose up -d
-
-# Verificar que los contenedores estén corriendo
-docker ps
 
 # Ejecutar seed para crear usuario administrador
 npm run seed
@@ -109,7 +106,7 @@ npm run dev
 ### Paso 4: Ejecutar Documentación (Opcional)
 ```bash
 # Navegar al directorio de documentación
-cd docu
+cd documentacion
 
 # Instalar dependencias
 npm install
@@ -120,35 +117,6 @@ npm run dev
 
 **Verificación**: `http://localhost:4321` debería mostrar la documentación completa.
 
-## 🐳 Despliegue con Docker (Producción)
-
-### Construir Imágenes
-```bash
-# Backend
-cd backend
-docker build -t agrotech-backend:latest .
-
-# Frontend
-cd frontend
-docker build -t agrotech-frontend:latest .
-```
-
-### Ejecutar con Docker Compose (Completo)
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-services:
-  # Base de Datos
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: prod_user
-      POSTGRES_PASSWORD: prod_password
-      POSTGRES_DB: agrotech_prod
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   # Cache
   redis:
@@ -197,7 +165,7 @@ volumes:
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-## 📊 Diagrama de Despliegue Completo
+##  Diagrama de Despliegue Completo
 
 ```mermaid
 graph TB
@@ -271,14 +239,13 @@ graph TB
 - **Persistencia**: Configurado para desarrollo/producción
 - **TTL**: Time-to-live para expiración automática
 
-## 🔧 Comandos Útiles de Desarrollo
+##  Comandos Útiles de Desarrollo
 
 ### Backend
 ```bash
 cd backend
 npm run start:dev          # Desarrollo con hot reload
 npm run build             # Build de producción
-npm run test              # Ejecutar tests
 npm run seed              # Poblar base de datos
 ```
 
@@ -297,12 +264,7 @@ npm run lint              # Verificar código
 docker-compose up -d       # Levantar DB y Redis
 docker-compose down        # Detener servicios
 
-# Producción
-docker-compose -f docker-compose.prod.yml up -d
-docker-compose -f docker-compose.prod.yml down
-```
-
-## 🚨 Solución de Problemas
+##  Solución de Problemas
 
 ### Puerto ya en uso
 ```bash
@@ -337,7 +299,7 @@ npm install
 cat .env
 ```
 
-## 📈 Monitoreo y Logs
+##  Monitoreo y Logs
 
 ### Ver logs en tiempo real
 ```bash
@@ -356,7 +318,7 @@ docker-compose logs -f
 - **Frontend**: Verificar carga inicial en navegador
 - **Database**: Verificar conexión en logs del backend
 
-## 🔒 Configuración de Seguridad
+##  Configuración de Seguridad
 
 ### Variables Sensibles
 - `JWT_SECRET`: Cambiar en producción
@@ -368,7 +330,7 @@ docker-compose logs -f
 - Usar variables de entorno seguras
 - Implementar rate limiting
 
-## 📝 Checklist de Despliegue
+##  Checklist de Despliegue
 
 - [ ] Repositorio clonado
 - [ ] Variables de entorno configuradas
@@ -380,7 +342,7 @@ docker-compose logs -f
 - [ ] Funcionalidades principales probadas
 - [ ] Usuario administrador creado
 
-## 🎯 Próximos Pasos
+##  Próximos Pasos
 
 1. **Configurar dominio y SSL**
 2. **Implementar CI/CD pipeline**

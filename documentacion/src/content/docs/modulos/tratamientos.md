@@ -214,8 +214,8 @@ title: "Módulo Tratamientos"
 
 ## DTOs y Validaciones
 
-### 📝 CreateTratamientoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateTratamientoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `descripcion` | `string` | `@IsOptional, @IsString` | - |
 | `fechaInicio` | `Date` | `@Type(() => Date), @IsDate` | - |
@@ -224,8 +224,8 @@ title: "Módulo Tratamientos"
 | `estado` | `string` | `@IsOptional, @IsString, @IsIn(['Planificado', 'En Curso', 'Finalizado'])` | - |
 | `cultivoId` | `number` | `@IsOptional, @IsNumber` | - |
 
-### 📝 UpdateTratamientoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateTratamientoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `descripcion` | `string` | `@IsString, @IsOptional` | - |
 | `fechaInicio` | `Date` | `@Type(() => Date), @IsDate, @IsOptional` | - |

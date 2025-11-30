@@ -20,8 +20,8 @@ import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
 import ModalResponderActividad from '../components/ModalResponderActividad';
 import ModalVerRespuestas from '../components/ModalVerRespuestas';
-import Modal from '../../../components/Modal';
 import { useAuth } from '../../../context/AuthContext';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem } from '@heroui/react';
 import type {
   Actividad,
   UpdateActividadPayload,
@@ -109,162 +109,152 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   // --- FIN DE CORRECCIÓN ---
 
   return (
-    <Modal isOpen={!!actividad} onClose={onClose} title="">
-      <div className="space-y-6">
-        {/* (Cabecera del Modal sin cambios) */}
-        <div
-          className={`p-4 rounded-t-lg flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'
-            }`}
-        >
+    <Modal isOpen={!!actividad} onOpenChange={onClose} size="5xl" scrollBehavior="inside">
+      <ModalContent>
+        <ModalHeader className={`flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'}`}>
           <h2 className="text-xl">{actividad.titulo}</h2>
-          <span
-            className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800`}
-          >
+          <span className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800`}>
             {estadoTexto}
           </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-          {/* Columna Izquierda: Detalles */}
-          <div className="space-y-4">
-            {/* (Info Básica sin cambios) */}
-            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
-              <h3 className="font-bold text-gray-700">Información Básica</h3>
-              <p className="text-sm flex items-center gap-2">
-                <ClipboardList size={14} className="text-blue-500" />
-                <strong>Actividad:</strong> {actividad.titulo}
-              </p>
-              <p className="text-sm flex items-center gap-2">
-                <User size={14} className="text-blue-500" />
-                <strong>Cultivo/Lote:</strong>{' '}
-                {actividad.cultivo?.nombre || 'No especificado'}
-              </p>
-              <p className="text-sm flex items-center gap-2">
-                <Calendar size={14} className="text-blue-500" />
-                <strong>Fecha Programada:</strong> {fechaProgramada}
-              </p>
-            </div>
-
-            {/* (Aprendices Asignados sin cambios) */}
-            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
-              <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                <Users size={16} /> Aprendices Asignados
-              </h3>
-              {aprendicesAsignados.length > 0 ? (
-                <ul className="list-disc list-inside pl-2 space-y-1">
-                  {aprendicesAsignados.map((user) => (
-                    <li key={user.identificacion} className="text-sm text-gray-700">
-                      {user.nombre} {user.apellidos} {user.ficha?.id_ficha ? `(Ficha: ${user.ficha.id_ficha})` : ''}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-sm">No asignado</p>
-              )}
-            </div>
-
-            {/* (Materiales Utilizados sin cambios) */}
-            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
-              <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                <Package size={16} /> Materiales Utilizados
-              </h3>
-              {actividad.actividadMaterial &&
-                actividad.actividadMaterial.length > 0 ? (
-                <ul className="list-disc list-inside pl-2 space-y-1">
-                  {actividad.actividadMaterial.map((item, index) => (
-                    <li key={index} className="text-sm text-gray-700">
-                      {item.material.nombre}:{' '}
-                      <span className="font-medium">
-                        {item.cantidadUsada}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-sm">
-                  No se registraron materiales.
+        </ModalHeader>
+        <ModalBody>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Columna Izquierda: Detalles */}
+            <div className="space-y-4">
+              {/* (Info Básica sin cambios) */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                <h3 className="font-bold text-gray-700">Información Básica</h3>
+                <p className="text-sm flex items-center gap-2">
+                  <ClipboardList size={14} className="text-blue-500" />
+                  <strong>Actividad:</strong> {actividad.titulo}
                 </p>
-              )}
-            </div>
-
-            {/* --- INICIO DE CORRECCIÓN: Mostrar Costo y Estado de Pago --- */}
-            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
-              <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                <DollarSign size={16} /> Costo Mano de Obra
-              </h3>
-              {costoManoDeObra > 0 ? (
-                <div className="text-sm text-gray-700 space-y-1 pl-2">
-                  <p>
-                    <strong>Horas:</strong> {actividad.horas}
-                  </p>
-                  <p>
-                    <strong>Tarifa:</strong> ${new Intl.NumberFormat('es-CO').format(actividad.tarifaHora || 0)} / hora
-                  </p>
-                  <p className="font-medium text-gray-800">
-                    <strong>Total:</strong> ${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}
-                  </p>
-                  <p className={`font-medium ${colorEstadoPago}`}>
-                    <strong>Estado de Pago:</strong> {estadoPago}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">
-                  No se registraron costos de mano de obra.
+                <p className="text-sm flex items-center gap-2">
+                  <User size={14} className="text-blue-500" />
+                  <strong>Cultivo/Lote:</strong>{' '}
+                  {actividad.cultivo?.nombre || 'No especificado'}
                 </p>
-              )}
+                <p className="text-sm flex items-center gap-2">
+                  <Calendar size={14} className="text-blue-500" />
+                  <strong>Fecha Programada:</strong> {fechaProgramada}
+                </p>
+              </div>
+
+              {/* (Aprendices Asignados sin cambios) */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                  <Users size={16} /> Aprendices Asignados
+                </h3>
+                {aprendicesAsignados.length > 0 ? (
+                  <ul className="list-disc list-inside pl-2 space-y-1">
+                    {aprendicesAsignados.map((user) => (
+                      <li key={user.identificacion} className="text-sm text-gray-700">
+                        {user.nombre} {user.apellidos} {user.ficha?.id_ficha ? `(Ficha: ${user.ficha.id_ficha})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 text-sm">No asignado</p>
+                )}
+              </div>
+
+              {/* (Materiales Utilizados sin cambios) */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                  <Package size={16} /> Materiales Utilizados
+                </h3>
+                {actividad.actividadMaterial &&
+                  actividad.actividadMaterial.length > 0 ? (
+                  <ul className="list-disc list-inside pl-2 space-y-1">
+                    {actividad.actividadMaterial.map((item, index) => (
+                      <li key={index} className="text-sm text-gray-700">
+                        {item.material.nombre}:{' '}
+                        <span className="font-medium">
+                          {item.cantidadUsada}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 text-sm">
+                    No se registraron materiales.
+                  </p>
+                )}
+              </div>
+
+              {/* --- INICIO DE CORRECCIÓN: Mostrar Costo y Estado de Pago --- */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                  <DollarSign size={16} /> Costo Mano de Obra
+                </h3>
+                {costoManoDeObra > 0 ? (
+                  <div className="text-sm text-gray-700 space-y-1 pl-2">
+                    <p>
+                      <strong>Horas:</strong> {actividad.horas}
+                    </p>
+                    <p>
+                      <strong>Tarifa:</strong> ${new Intl.NumberFormat('es-CO').format(actividad.tarifaHora || 0)} / hora
+                    </p>
+                    <p className="font-medium text-gray-800">
+                      <strong>Total:</strong> ${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}
+                    </p>
+                    <p className={`font-medium ${colorEstadoPago}`}>
+                      <strong>Estado de Pago:</strong> {estadoPago}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">
+                    No se registraron costos de mano de obra.
+                  </p>
+                )}
+              </div>
+              {/* --- FIN DE CORRECCIÓN --- */}
+
             </div>
-            {/* --- FIN DE CORRECCIÓN --- */}
 
-          </div>
-
-          {/* Columna Derecha: Descripción e Imágenes */}
-          <div className="space-y-4">
-            {/* (Descripción sin cambios) */}
-            <div className="p-3">
-              <h3 className="font-bold text-gray-700 mb-2">
-                Descripción Completa
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {actividad.descripcion || 'No hay descripción detallada.'}
-              </p>
-            </div>
-
-            {/* (Sección de Imágenes sin cambios) */}
-            {imagenes.length > 0 && (
+            {/* Columna Derecha: Descripción e Imágenes */}
+            <div className="space-y-4">
+              {/* (Descripción sin cambios) */}
               <div className="p-3">
                 <h3 className="font-bold text-gray-700 mb-2">
-                  Imágenes de la Actividad
+                  Descripción Completa
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {imagenes.map((img: string, index: number) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
-                        alt={`Imagen ${index + 1} de ${actividad.titulo}`}
-                        className="w-full h-32 object-cover rounded-lg border"
-                        onError={(e) => {
-                          e.currentTarget.src =
-                            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <p className="text-gray-600 text-sm">
+                  {actividad.descripcion || 'No hay descripción detallada.'}
+                </p>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* (Botón de Editar sin cambios) */}
-        <div className="flex justify-end p-4 border-t">
-          <button
-            onClick={() => onEdit(actividad)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <Edit size={16} /> Editar
-          </button>
-        </div>
-      </div>
+              {/* (Sección de Imágenes sin cambios) */}
+              {imagenes.length > 0 && (
+                <div className="p-3">
+                  <h3 className="font-bold text-gray-700 mb-2">
+                    Imágenes de la Actividad
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {imagenes.map((img: string, index: number) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
+                          alt={`Imagen ${index + 1} de ${actividad.titulo}`}
+                          className="w-full h-32 object-cover rounded-lg border"
+                          onError={(e) => {
+                            e.currentTarget.src =
+                              'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={() => onEdit(actividad)} color="primary" startContent={<Edit size={16} />}>
+            Editar
+          </Button>
+        </ModalFooter>
+      </ModalContent>
     </Modal>
   );
 };
@@ -557,19 +547,21 @@ const GestionActividadesPage: React.FC = () => {
           Gestión de Actividades
         </h1>
         <div className="flex gap-2">
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow"
+          <Button
+            color="warning"
+            startContent={<Bell size={16} />}
             onClick={mostrarNotificacionesPendientes}
             title="Mostrar notificaciones de actividades pendientes"
           >
-            <Bell size={16} /> Notificaciones
-          </button>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow"
+            Notificaciones
+          </Button>
+          <Button
+            color="danger"
+            startContent={<FileText size={16} />}
             onClick={exportarPDF}
           >
-            <FileText size={16} /> Exportar PDF
-          </button>
+            Exportar PDF
+          </Button>
         </div>
       </div>
 
@@ -601,18 +593,17 @@ const GestionActividadesPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-600">
             Lista de Actividades
           </h2>
-          <select
-            value={filtroEstado}
-            onChange={(e) =>
-              setFiltroEstado(e.target.value as EstadoActividad | 'Todos')
-            }
-            className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm bg-white"
+          <Select
+            placeholder="Todos los estados"
+            selectedKeys={[filtroEstado]}
+            onSelectionChange={(keys) => setFiltroEstado(Array.from(keys)[0] as EstadoActividad | 'Todos')}
+            className="w-full"
           >
-            <option value="Todos">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="en proceso">En Proceso</option>
-            <option value="completado">Completado</option>
-          </select>
+            <SelectItem key="Todos">Todos los estados</SelectItem>
+            <SelectItem key="pendiente">Pendiente</SelectItem>
+            <SelectItem key="en proceso">En Proceso</SelectItem>
+            <SelectItem key="completado">Completado</SelectItem>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -639,18 +630,21 @@ const GestionActividadesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* (Modal de Edición sin cambios) */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
-        title={actividadAEditar?.id ? '' : 'Nueva Actividad'}
-      >
-        <FormularioActividad
-          actividadInicial={actividadAEditar || {}}
-          cultivos={cultivos}
-          onSubmit={handleSave}
-          onCancel={handleCloseEditModal}
-        />
+      {/* Modal de Edición */}
+      <Modal isOpen={isEditModalOpen} onOpenChange={handleCloseEditModal} size="4xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            {actividadAEditar?.id ? 'Editar Actividad' : 'Nueva Actividad'}
+          </ModalHeader>
+          <ModalBody>
+            <FormularioActividad
+              actividadInicial={actividadAEditar || {}}
+              cultivos={cultivos}
+              onSubmit={handleSave}
+              onCancel={handleCloseEditModal}
+            />
+          </ModalBody>
+        </ModalContent>
       </Modal>
 
       {/* (Modal de Detalles sin cambios) */}
@@ -685,39 +679,33 @@ const GestionActividadesPage: React.FC = () => {
       />
 
       {/* Modal de Eliminar Actividad */}
-      {showDeleteModal && actividadToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <Trash2 className="text-red-600" size={20} />
-              </div>
-              <h4 className="text-lg font-semibold">¿Eliminar actividad?</h4>
-              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
-                <div className="font-medium">{actividadToDelete.titulo}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {actividadToDelete.cultivo?.nombre || 'Sin cultivo asignado'}
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">Esta acción no se puede deshacer.</p>
-              <div className="flex gap-3 mt-4 w-full">
-                <button
-                  onClick={handleDeleteCancel}
-                  className="flex-1 px-4 py-2 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                >
-                  Eliminar
-                </button>
+      <Modal isOpen={showDeleteModal} onOpenChange={handleDeleteCancel} size="md">
+        <ModalContent>
+          <ModalHeader className="flex flex-col items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+              <Trash2 className="text-red-600" size={20} />
+            </div>
+            <h4 className="text-lg font-semibold">¿Eliminar actividad?</h4>
+          </ModalHeader>
+          <ModalBody className="text-center">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
+              <div className="font-medium">{actividadToDelete?.titulo}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {actividadToDelete?.cultivo?.nombre || 'Sin cultivo asignado'}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+            <p className="text-xs text-gray-500 mt-4">Esta acción no se puede deshacer.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={handleDeleteCancel} variant="light">
+              Cancelar
+            </Button>
+            <Button onClick={handleDeleteConfirm} color="danger">
+              Eliminar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

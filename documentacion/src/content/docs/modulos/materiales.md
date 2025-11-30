@@ -334,8 +334,8 @@ file: [Archivo de imagen]
 
 ## DTOs y Validaciones
 
-### 📝 CreateMaterialeDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateMaterialeDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty, @MaxLength(50)` | El nombre del producto es obligatorio. |
 | `cantidad` | `number` | `@IsNumber, @IsNotEmpty, @Min(0)` | La cantidad es obligatoria. |

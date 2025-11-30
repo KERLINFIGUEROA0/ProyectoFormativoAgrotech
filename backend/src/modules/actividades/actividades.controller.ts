@@ -1,19 +1,20 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  Patch,
-  Delete,
-  UseGuards,
-  Req,
-  UseInterceptors,
-  UploadedFiles,
-  BadRequestException, // <-- 1. Importa BadRequestException
-  Res,
-} from '@nestjs/common';
+   Controller,
+   Get,
+   Post,
+   Body,
+   Param,
+   Query,
+   Patch,
+   Delete,
+   UseGuards,
+   Req,
+   UseInterceptors,
+   UploadedFiles,
+   BadRequestException, // <-- 1. Importa BadRequestException
+   Res,
+   ParseIntPipe,
+ } from '@nestjs/common';
 import { Response } from 'express';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { multerConfigActividades } from '../../config/multer/multer.config';
@@ -23,6 +24,7 @@ import { CreateActividadDto, MaterialUsadoDto } from './dto/create-actividade.dt
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
+import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
 import { CreateRespuestaDto, CalificarRespuestaDto, MaterialDevueltoDto } from './dto/create-respuesta.dto';
 import { CalificarActividadDto } from './dto/calificar-actividad.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -318,6 +320,18 @@ export class ActividadesController {
     res.send(buffer);
   }
 
+  // ✅ Devolver materiales finales (solo responsable cuando actividad completada)
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/devolver-materiales-final')
+  async devolverMaterialesFinal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DevolverMaterialesFinalDto,
+    @Req() req,
+  ) {
+    const userIdentificacion = req.user.identificacion;
+    return this.actividadesService.devolverMaterialesFinal(id, dto, userIdentificacion);
+  }
+
   // ✅ Asignar actividad a aprendices
   @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   @Post('asignar')
@@ -329,6 +343,8 @@ export class ActividadesController {
     const dto = new AsignarActividadDto();
 
     dto.cultivo = parseInt(body.cultivo, 10);
+    if (body.lote) dto.lote = parseInt(body.lote, 10);
+    if (body.sublote) dto.sublote = parseInt(body.sublote, 10);
     dto.titulo = body.titulo;
     dto.descripcion = body.descripcion;
     dto.fecha = body.fecha;
@@ -343,6 +359,8 @@ export class ActividadesController {
     } else {
       dto.aprendices = [];
     }
+
+    if (body.responsable) dto.responsable = parseInt(body.responsable, 10);
 
     // Convertir materiales de JSON string a array de objetos
     if (body.materiales) {

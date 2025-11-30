@@ -316,8 +316,8 @@ title: "Módulo Surcos"
 
 ## DTOs y Validaciones
 
-### 📝 CreateSurcoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateSurcoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | - |
 | `descripcion` | `string` | `@IsString, @IsOptional` | - |
@@ -326,8 +326,8 @@ title: "Módulo Surcos"
 | `brokerId` | `number` | `@IsOptional, @ValidateIf, @IsNumber` | `brokerId debe ser un número válido` |
 | `activo_mqtt` | `boolean` | `@IsBoolean, @IsOptional, @Transform` | - |
 
-### 📝 UpdateSurcoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateSurcoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsOptional, @IsString` | - |
 | `descripcion` | `string` | `@IsOptional, @IsString` | - |
@@ -335,13 +335,13 @@ title: "Módulo Surcos"
 | `brokerId` | `number` | `@IsOptional, @IsNumber` | - |
 | `activo_mqtt` | `boolean` | `@IsOptional, @IsBoolean` | - |
 
-### 📝 UpdateSurcoEstadoDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateSurcoEstadoDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Disponible', 'En siembra', 'En cosecha', 'Mantenimiento'])` | El estado proporcionado no es válido. |
 
-### 📝 UpdateSurcoMqttDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateSurcoMqttDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `activo_mqtt` | `boolean` | `@IsBoolean, @IsNotEmpty` | - |
 

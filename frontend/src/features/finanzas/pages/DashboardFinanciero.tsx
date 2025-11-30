@@ -5,6 +5,7 @@ import { Search, Bell, ArrowUp, ArrowDown } from 'lucide-react';
 import { obtenerTransacciones, obtenerFlujoMensual } from '../api/transaccionesApi';
 import FlujoMensualChart from '../components/FlujoMensualChart';
 import type { Transaccion } from '../interfaces/finanzas';
+import { Input, Button } from "@heroui/react";
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
@@ -49,13 +50,15 @@ export default function DashboardFinanciero(): ReactElement {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Finanzas</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-2 focus:ring-green-500 outline-none" />
-          </div>
-          <button className="p-2 rounded-lg border hover:bg-gray-100">
-            <Bell size={20} className="text-gray-600" />
-          </button>
+          <Input
+            type="text"
+            placeholder="Buscar..."
+            startContent={<Search size={20} />}
+            className="flex-grow"
+          />
+          <Button isIconOnly variant="light">
+            <Bell size={20} />
+          </Button>
         </div>
       </header>
 
@@ -76,7 +79,7 @@ export default function DashboardFinanciero(): ReactElement {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-700">Transacciones Recientes</h3>
-              <button onClick={() => navigate('/egresos')} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Ver Todas</button>
+              <Button onClick={() => navigate('/egresos')} color="success">Ver Todas</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

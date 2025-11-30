@@ -6,9 +6,9 @@ import { Filter, Plus, Bell, Edit, ChevronLeft, ChevronRight, ArrowUpDown, Arrow
 
 
 import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial } from '../api/inventarioApi';
-import Modal from '../../../components/Modal';
 import MaterialForm from '../components/MaterialForm';
 import { type Material, type MaterialData } from '../interfaces/inventario';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem } from '@heroui/react';
 
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -222,12 +222,12 @@ export default function GestionInventarioPage() {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800">Gestión De Inventario</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button className="p-2 rounded-lg border hover:bg-gray-100">
-            <Bell size={20} className="text-gray-600" />
-          </button>
-          <button onClick={() => openModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700">
-            <Plus size={16} /> Añadir Producto
-          </button>
+          <Button isIconOnly variant="light">
+            <Bell size={20} />
+          </Button>
+          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />}>
+            Añadir Producto
+          </Button>
         </div>
       </header>
 
@@ -243,64 +243,65 @@ export default function GestionInventarioPage() {
               </p>
             </div>
           </div>
-          <button 
-            onClick={() => setFiltroEstadoStock('Crítico')}
-            className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow-sm"
+          <Button
+            onClick={() => setFiltroEstadoStock(filtroEstadoStock === 'Crítico' ? 'Todos' : 'Crítico')}
+            color="danger"
+            className="flex-shrink-0"
           >
-            Ver Críticos
-          </button>
+            {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Críticos'}
+          </Button>
         </div>
       )}
       {/* --- FIN DE BANNER DE ALERTA --- */}
 
 
       <div className="flex items-center gap-4 mb-6 flex-shrink-0">
-        <input
+        <Input
           type="text"
           placeholder="Buscar productos..."
-          className="border rounded-lg p-2 w-full max-w-xs text-sm"
+          className="w-full max-w-xs"
           value={filtroBusqueda}
           onChange={(e) => setFiltroBusqueda(e.target.value)}
         />
         <div className="relative">
-          <button
+          <Button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+            color="primary"
+            startContent={<Filter size={18} />}
           >
-            <Filter size={18} />
             Filtros
-          </button>
+          </Button>
 
           {showFilters && (
             <div className="absolute left-0 mt-2 w-72 bg-white border rounded-lg shadow-lg p-4 z-20">
               <div className="flex flex-col gap-3">
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroTipoCategoria} onChange={(e) => setFiltroTipoCategoria(e.target.value)}>
-                  <option value="Todas">Todas las categorías</option>
-                  {tiposCategoriaUnicos.map(cat => cat && <option key={cat} value={cat}>{cat}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroTipoCategoria]} onSelectionChange={(keys) => setFiltroTipoCategoria(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todas">Todas las categorías</SelectItem>
+                  {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)}>
-                  <option value="Todas">Todas las ubicaciones</option>
-                  {ubicacionesUnicas.map(ubi => ubi && <option key={ubi} value={ubi}>{ubi}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroUbicacion]} onSelectionChange={(keys) => setFiltroUbicacion(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todas">Todas las ubicaciones</SelectItem>
+                  {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)}>
-                  <option value="Todos">Todos los proveedores</option>
-                  {proveedoresUnicos.map(prov => prov && <option key={prov} value={prov}>{prov}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroProveedor]} onSelectionChange={(keys) => setFiltroProveedor(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Todos los proveedores</SelectItem>
+                  {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroEstadoStock} onChange={(e) => setFiltroEstadoStock(e.target.value)}>
-                  <option value="Todos">Todos los estados de stock</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Stock Bajo">Stock Bajo</option>
-                  <option value="Crítico">Crítico</option>
-                </select>
+                <Select className="w-full" selectedKeys={[filtroEstadoStock]} onSelectionChange={(keys) => setFiltroEstadoStock(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Todos los estados de stock</SelectItem>
+                  <SelectItem key="Normal">Normal</SelectItem>
+                  <SelectItem key="Stock Bajo">Stock Bajo</SelectItem>
+                  <SelectItem key="Crítico">Crítico</SelectItem>
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroEstadoMaterial} onChange={(e) => setFiltroEstadoMaterial(e.target.value)}>
-                  <option value="Todos">Activos e Inactivos</option>
-                  <option value="Activo">Solo Activos</option>
-                  <option value="Inactivo">Solo Inactivos</option>
-                </select>
+                <Select className="w-full" selectedKeys={[filtroEstadoMaterial]} onSelectionChange={(keys) => setFiltroEstadoMaterial(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Activos e Inactivos</SelectItem>
+                  <SelectItem key="Activo">Solo Activos</SelectItem>
+                  <SelectItem key="Inactivo">Solo Inactivos</SelectItem>
+                </Select>
 
               </div>
             </div>
@@ -388,19 +389,22 @@ export default function GestionInventarioPage() {
                   <td className="px-6 py-4">
                     {/* --- ✅ 4. MODIFICACIÓN EN ACCIONES --- */}
                     <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => openModal(mat)} className="p-1.5 text-gray-500 hover:text-blue-600" title="Editar">
+                      <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
                         <Edit size={16} />
-                      </button>
-                      
+                      </Button>
+
                       {/* Esta es la nueva opción que pediste */}
                       {mat.estado && mat.cantidad <= 10 && (
-                        <button 
-                          onClick={() => navigate(`/stock/${mat.id}`)} 
-                          className="p-1.5 text-red-600 hover:bg-red-100 rounded-full animate-pulse"
+                        <Button
+                          onClick={() => navigate(`/stock/${mat.id}`)}
+                          color="danger"
+                          variant="light"
+                          isIconOnly
+                          className="animate-pulse"
                           title="Stock Crítico - Ver Detalles"
                         >
                           <AlertTriangle size={16} />
-                        </button>
+                        </Button>
                       )}
                     </div>
                     {/* --- FIN DE LA MODIFICACIÓN --- */}
@@ -418,29 +422,38 @@ export default function GestionInventarioPage() {
         </span>
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 border rounded-md text-sm bg-white hover:bg-gray-100 disabled:opacity-50"
+              variant="bordered"
+              isIconOnly
             >
               <ChevronLeft size={16} />
-            </button>
+            </Button>
             <span className="text-sm text-gray-600">
               Página {currentPage} de {totalPages}
             </span>
-            <button
+            <Button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 border rounded-md text-sm bg-white hover:bg-gray-100 disabled:opacity-50"
+              variant="bordered"
+              isIconOnly
             >
               <ChevronRight size={16} />
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingMaterial ? 'Editar Material' : 'Registrar Nuevo Material'}>
-        <MaterialForm initialData={formInitialData} onSave={handleSave} onCancel={closeModal} />
+      <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="4xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            {editingMaterial ? 'Editar Material' : 'Registrar Nuevo Material'}
+          </ModalHeader>
+          <ModalBody>
+            <MaterialForm initialData={formInitialData} onSave={handleSave} onCancel={closeModal} />
+          </ModalBody>
+        </ModalContent>
       </Modal>
     </div>
   );

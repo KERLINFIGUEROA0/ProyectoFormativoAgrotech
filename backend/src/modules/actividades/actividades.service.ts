@@ -12,11 +12,14 @@ import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
+import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
 import { SubmitRespuestaDto } from './dto/submit-respuesta.dto';
 import { CalificarActividadDto } from './dto/calificar-actividad.dto';
 import { CreateRespuestaDto, CalificarRespuestaDto } from './dto/create-respuesta.dto';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { Lote } from '../lotes/entities/lote.entity';
+import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
 import { RespuestaActividad } from './entities/respuesta_actividad.entity';
@@ -32,23 +35,27 @@ import * as ExcelJS from 'exceljs';
 @Injectable()
 export class ActividadesService {
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Material)
-    private readonly materialRepository: Repository<Material>,
-    @InjectRepository(ActividadMaterial)
-    private readonly actMaterialRepository: Repository<ActividadMaterial>,
-    @InjectRepository(Actividad)
-    private readonly actividadRepository: Repository<Actividad>,
-    @InjectRepository(Usuario)
-    private readonly usuarioRepository: Repository<Usuario>,
-    @InjectRepository(Cultivo)
-    private readonly cultivoRepository: Repository<Cultivo>,
-    @InjectRepository(RespuestaActividad)
-    private readonly respuestaRepository: Repository<RespuestaActividad>,
-    @InjectRepository(ActividadUsuario)
-    private readonly actividadUsuarioRepository: Repository<ActividadUsuario>,
-    private readonly movimientosService: MovimientosService,
-  ) { }
+     private readonly dataSource: DataSource,
+     @InjectRepository(Material)
+     private readonly materialRepository: Repository<Material>,
+     @InjectRepository(ActividadMaterial)
+     private readonly actMaterialRepository: Repository<ActividadMaterial>,
+     @InjectRepository(Actividad)
+     private readonly actividadRepository: Repository<Actividad>,
+     @InjectRepository(Usuario)
+     private readonly usuarioRepository: Repository<Usuario>,
+     @InjectRepository(Cultivo)
+     private readonly cultivoRepository: Repository<Cultivo>,
+     @InjectRepository(Lote)
+     private readonly loteRepository: Repository<Lote>,
+     @InjectRepository(Sublote)
+     private readonly subloteRepository: Repository<Sublote>,
+     @InjectRepository(RespuestaActividad)
+     private readonly respuestaRepository: Repository<RespuestaActividad>,
+     @InjectRepository(ActividadUsuario)
+     private readonly actividadUsuarioRepository: Repository<ActividadUsuario>,
+     private readonly movimientosService: MovimientosService,
+   ) { }
 
   // --- FUNCIÓN HELPER PARA ELIMINAR ARCHIVOS FÍSICOS ---
   private eliminarArchivosFisicos(archivosJson: string) {
@@ -364,6 +371,9 @@ export class ActividadesService {
     if (userRole && (userRole.toLowerCase() === 'instructor' || userRole.toLowerCase() === 'admin')) {
       const query = this.actividadRepository.createQueryBuilder('actividad')
         .leftJoinAndSelect('actividad.cultivo', 'cultivo')
+        .leftJoinAndSelect('actividad.lote', 'lote')
+        .leftJoinAndSelect('actividad.sublote', 'sublote')
+        .leftJoinAndSelect('actividad.responsable', 'responsable')
         .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
         .leftJoinAndSelect('actividadMaterial.material', 'material')
         .leftJoinAndSelect('actividad.respuestas', 'respuestas')
@@ -376,6 +386,9 @@ export class ActividadesService {
       // Para aprendices y pasantes: filtrar solo las actividades asignadas al usuario
       const query = this.actividadRepository.createQueryBuilder('actividad')
         .leftJoinAndSelect('actividad.cultivo', 'cultivo')
+        .leftJoinAndSelect('actividad.lote', 'lote')
+        .leftJoinAndSelect('actividad.sublote', 'sublote')
+        .leftJoinAndSelect('actividad.responsable', 'responsable')
         .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
         .leftJoinAndSelect('actividadMaterial.material', 'material')
         .leftJoinAndSelect('actividad.respuestas', 'respuestas')
@@ -825,11 +838,86 @@ export class ActividadesService {
     return Buffer.from(buffer);
   }
 
+  async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
+    const actividad = await this.findOne(id);
+    if (!actividad) {
+      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
+    }
+
+    // Verificar que el usuario sea el responsable
+    if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
+      throw new BadRequestException('Solo el responsable designado puede devolver materiales al finalizar la actividad.');
+    }
+
+    // Verificar que la actividad esté completada
+    if (actividad.estado !== 'completado') {
+      throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté completada.');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const devolucion of dto.materialesDevueltos) {
+        const material = await queryRunner.manager.findOne(Material, {
+          where: { id: devolucion.materialId }
+        });
+
+        if (!material) {
+          throw new NotFoundException(`Material con ID ${devolucion.materialId} no encontrado.`);
+        }
+
+        // Devolver al stock
+        this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
+
+        await queryRunner.manager.save(material);
+
+        // Registrar movimiento de ingreso por devolución final
+        await this.movimientosService.registrarMovimiento(
+          TipoMovimiento.INGRESO,
+          devolucion.cantidadDevuelta,
+          material.id,
+          `Devolución final por actividad completada: ${actividad.titulo}`,
+          `devolucion-final-actividad-${actividad.id}-responsable-${userIdentificacion}`
+        );
+      }
+
+      await queryRunner.commitTransaction();
+      return { message: 'Materiales devueltos exitosamente.' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async asignarActividad(dto: AsignarActividadDto) {
-    const { cultivo: cultivoId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial } = dto;
-    const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
-    if (!cultivo) throw new NotFoundException(`El cultivo con ID ${cultivoId} no fue encontrado.`);
-    if (aprendices.length === 0) throw new BadRequestException('Debe seleccionar al menos un aprendiz.');
+     const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
+     const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
+     if (!cultivo) throw new NotFoundException(`El cultivo con ID ${cultivoId} no fue encontrado.`);
+
+     let lote: Lote | undefined;
+     if (loteId) {
+       lote = await this.loteRepository.findOneBy({ id: loteId }) || undefined;
+       if (!lote) throw new NotFoundException(`El lote con ID ${loteId} no fue encontrado.`);
+     }
+
+     let sublote: Sublote | undefined;
+     if (subloteId) {
+       sublote = await this.subloteRepository.findOneBy({ id: subloteId }) || undefined;
+       if (!sublote) throw new NotFoundException(`El sublote con ID ${subloteId} no fue encontrado.`);
+     }
+
+     let responsable: Usuario | undefined;
+     if (responsableId) {
+       responsable = await this.usuarioRepository.findOneBy({ identificacion: responsableId }) || undefined;
+       if (!responsable) throw new NotFoundException(`El usuario responsable con ID ${responsableId} no fue encontrado.`);
+       if (!aprendices.includes(responsableId)) throw new BadRequestException('El responsable debe estar incluido en la lista de aprendices.');
+     }
+
+     if (aprendices.length === 0) throw new BadRequestException('Debe seleccionar al menos un aprendiz.');
     const usuariosEncontrados = await this.usuarioRepository.find({ where: { identificacion: In(aprendices) } });
     if (usuariosEncontrados.length !== aprendices.length) {
       const idsEncontrados = usuariosEncontrados.map((u) => u.identificacion);
@@ -857,6 +945,9 @@ export class ActividadesService {
         descripcion,
         fecha: fechaActividad,
         cultivo,
+        lote,
+        sublote,
+        responsable,
         estado: 'pendiente',
         asignados: JSON.stringify(nombresAsignados),
         archivoInicial,

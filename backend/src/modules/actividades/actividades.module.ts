@@ -8,6 +8,8 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { Lote } from '../lotes/entities/lote.entity';
+import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
 import { MaterialesModule } from '../materiales/materiales.module';
@@ -23,6 +25,8 @@ import { MovimientosModule } from '../../movimientos/movimientos.module';
       Actividad,
       Usuario,
       Cultivo,
+      Lote,
+      Sublote,
       Material,
       ActividadMaterial,
       Gasto, // <-- 2. AÑADIR GASTO AQUÍ

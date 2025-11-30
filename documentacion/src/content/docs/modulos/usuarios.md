@@ -438,8 +438,8 @@ title: "Módulo Usuarios"
 
 ## DTOs y Validaciones
 
-### 📝 CreateUsuarioDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CreateUsuarioDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `Tipo_Identificacion` | `string` | `@IsString, @IsNotEmpty, @IsIn(['CC', 'TI'])` | El tipo de identificación debe ser "CC" o "TI". |
 | `identificacion` | `number` | `@IsNumber, @IsNotEmpty` | La identificación es obligatoria. |
@@ -451,8 +451,8 @@ title: "Módulo Usuarios"
 | `tipoUsuario` | `number` | `@IsNumber, @IsNotEmpty` | El rol es obligatorio. |
 | `id_ficha` | `string` | `@IsString, @IsOptional, @Length(6,8), @Matches(/^\d+$/)` | El id_ficha debe tener entre 6 y 8 caracteres y contener solo números. |
 
-### 📝 UpdateUsuarioDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  UpdateUsuarioDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `Tipo_Identificacion` | `string` | `@IsOptional, @IsString, @IsIn(['CC', 'TI'])` | El tipo de identificación debe ser "CC" o "TI". |
 | `identificacion` | `number` | `@IsOptional, @IsNumber` | - |
@@ -464,13 +464,13 @@ title: "Módulo Usuarios"
 | `tipoUsuario` | `number` | `@IsOptional, @IsNumber` | El ID del rol debe ser un número. |
 | `id_ficha` | `string` | `@IsOptional, @IsString, @Length(6,8), @Matches(/^\d+$/)` | El id_ficha debe tener entre 6 y 8 caracteres y contener solo números. |
 
-### 📝 CambiarPasswordDto
-| Campo | Tipo | 🔒 Validaciones | ⚠️ Mensaje de Error |
+###  CambiarPasswordDto
+| Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `actual` | `string` | `@IsString` | - |
 | `nueva` | `string` | `@IsString, @MinLength(8)` | La nueva contraseña debe tener al menos 8 caracteres. |
 
-### 📝 UpdatePerfilDto
+###  UpdatePerfilDto
 Similar a UpdateUsuarioDto pero con campos específicos del perfil.
 
 ## Funcionalidades Adicionales

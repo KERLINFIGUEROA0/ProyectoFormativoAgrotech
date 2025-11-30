@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } from '../api/inventarioApi';
 import type { MovimientoData } from '../interfaces/inventario';
+import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
@@ -121,183 +122,156 @@ const GestionMovimientosPage: React.FC = () => {
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            <span className="text-sm font-medium text-gray-600">Productos con Entrada</span>
-          </div>
-          <p className="text-2xl font-bold text-green-600">
-            {[...new Set(movimientos.filter(m => m.tipo === 'ingreso').map(m => m.material?.id).filter(id => id))].length}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {movimientos.filter(m => m.tipo === 'ingreso').length} movimientos de entrada
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-            <span className="text-sm font-medium text-gray-600">Productos con Salida</span>
-          </div>
-          <p className="text-2xl font-bold text-red-600">
-            {[...new Set(movimientos.filter(m => m.tipo === 'egreso').map(m => m.material?.id).filter(id => id))].length}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {movimientos.filter(m => m.tipo === 'egreso').length} movimientos de salida
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-500" />
-            <span className="text-sm font-medium text-gray-600">Total de Movimientos</span>
-          </div>
-          <p className="text-2xl font-bold text-blue-600">
-            {movimientos.length}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Todos los movimientos registrados
-          </p>
-        </div>
+        <Card>
+          <CardBody>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              <span className="text-sm font-medium text-gray-600">Productos con Entrada</span>
+            </div>
+            <p className="text-2xl font-bold text-green-600">
+              {[...new Set(movimientos.filter(m => m.tipo === 'ingreso').map(m => m.material?.id).filter(id => id))].length}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {movimientos.filter(m => m.tipo === 'ingreso').length} movimientos de entrada
+            </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <div className="flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-red-500" />
+              <span className="text-sm font-medium text-gray-600">Productos con Salida</span>
+            </div>
+            <p className="text-2xl font-bold text-red-600">
+              {[...new Set(movimientos.filter(m => m.tipo === 'egreso').map(m => m.material?.id).filter(id => id))].length}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {movimientos.filter(m => m.tipo === 'egreso').length} movimientos de salida
+            </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-500" />
+              <span className="text-sm font-medium text-gray-600">Total de Movimientos</span>
+            </div>
+            <p className="text-2xl font-bold text-blue-600">
+              {movimientos.length}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Todos los movimientos registrados
+            </p>
+          </CardBody>
+        </Card>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white p-4 rounded-lg shadow space-y-4">
-        <h2 className="text-lg font-semibold text-gray-800">Filtros</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-            <input
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-gray-800">Filtros</h2>
+        </CardHeader>
+        <CardBody>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
               type="text"
               placeholder="Buscar por descripción, material o usuario..."
+              startContent={<Search className="w-4 h-4" />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full border border-gray-300 rounded-lg p-2"
             />
-          </div>
-          <div className="relative">
-            <Filter className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-            <select
-              value={selectedTipo}
-              onChange={(e) => setSelectedTipo(e.target.value)}
-              className="pl-10 w-full border border-gray-300 rounded-lg p-2 bg-white"
+            <Select
+              placeholder="Todos los tipos"
+              startContent={<Filter className="w-4 h-4" />}
+              selectedKeys={[selectedTipo]}
+              onSelectionChange={(keys) => setSelectedTipo(Array.from(keys)[0] as string)}
             >
-              <option value="">Todos los tipos</option>
+              <SelectItem key="">Todos los tipos</SelectItem>
               {tiposMovimiento.map(tipo => (
-                <option key={tipo} value={tipo}>{getTipoLabel(tipo)}</option>
+                <SelectItem key={tipo}>{getTipoLabel(tipo)}</SelectItem>
               ))}
-            </select>
-          </div>
-          <div className="relative">
-            <Package className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-            <select
-              value={selectedMaterial}
-              onChange={(e) => setSelectedMaterial(e.target.value)}
-              className="pl-10 w-full border border-gray-300 rounded-lg p-2 bg-white"
+            </Select>
+            <Select
+              placeholder="Todos los materiales"
+              startContent={<Package className="w-4 h-4" />}
+              selectedKeys={[selectedMaterial]}
+              onSelectionChange={(keys) => setSelectedMaterial(Array.from(keys)[0] as string)}
             >
-              <option value="">Todos los materiales</option>
+              <SelectItem key="">Todos los materiales</SelectItem>
               {materiales.map(material => (
-                <option key={material.id} value={material.id}>
+                <SelectItem key={material.id.toString()}>
                   {material.nombre}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
 
       {/* Tabla de Movimientos */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Material
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cantidad
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Descripción
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Usuario
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Referencia
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {movimientosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    No se encontraron movimientos
-                  </td>
-                </tr>
-              ) : (
-                movimientosFiltrados.map((movimiento) => (
-                  <tr key={movimiento.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getTipoIcon(movimiento.tipo)}
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          movimiento.tipo === 'egreso'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {getTipoLabel(movimiento.tipo)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {movimiento.material?.nombre || 'N/A'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {movimiento.cantidad}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {movimiento.descripcion || 'Sin descripción'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">
-                          {movimiento.usuario ?
-                            `${movimiento.usuario.nombre} ${movimiento.usuario.apellidos}` :
-                            'Sistema'
-                          }
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">
-                          {formatFecha(movimiento.fecha)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {movimiento.referencia || 'N/A'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card>
+        <CardBody>
+          <Table aria-label="Tabla de movimientos">
+            <TableHeader>
+              <TableColumn>Tipo</TableColumn>
+              <TableColumn>Material</TableColumn>
+              <TableColumn>Cantidad</TableColumn>
+              <TableColumn>Descripción</TableColumn>
+              <TableColumn>Usuario</TableColumn>
+              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Referencia</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent={"No se encontraron movimientos"}>
+              {movimientosFiltrados.map((movimiento) => (
+                <TableRow key={movimiento.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getTipoIcon(movimiento.tipo)}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        movimiento.tipo === 'egreso'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {getTipoLabel(movimiento.tipo)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {movimiento.material?.nombre || 'N/A'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{movimiento.cantidad}</TableCell>
+                  <TableCell>{movimiento.descripcion || 'Sin descripción'}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-900">
+                        {movimiento.usuario ?
+                          `${movimiento.usuario.nombre} ${movimiento.usuario.apellidos}` :
+                          'Sistema'
+                        }
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-900">
+                        {formatFecha(movimiento.fecha)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{movimiento.referencia || 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
     </div>
   );
 };
