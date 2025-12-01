@@ -24,13 +24,13 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-gray-50"> 
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         handleLogout={handleLogout}
       />
-      <main className="flex-1 p-3 md:p-6 overflow-y-auto overflow-x-hidden ml-0 md:ml-0">
+      <main className="flex-1 p-6 overflow-y-auto">
         {/* Pasamos handleLogout en el contexto para que la página de perfil pueda usarlo */}
         <Outlet context={{ handleLogout }} />
       </main>

@@ -24,20 +24,20 @@ interface QuickAccessCardProps {
 const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, icon, colorClass, action, link }) => (
   <div
     onClick={action ? action : (link ? () => window.location.href = link : undefined)} 
-    className={`bg-white p-4 md:p-6 rounded-xl shadow-md border-t-4 ${colorClass} flex flex-col justify-between h-40 md:h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
+    className={`bg-white p-6 rounded-xl shadow-md border-t-4 ${colorClass} flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
   >
     <div className="flex justify-between items-start">
-      <div className={`p-2 md:p-3 rounded-full ${colorClass.replace('border-t-4', '').replace('border-', 'bg-')} bg-opacity-10`}>
+      <div className={`p-3 rounded-full ${colorClass.replace('border-t-4', '').replace('border-', 'bg-')} bg-opacity-10`}>
         {icon}
       </div>
-      <ArrowRight className="text-gray-400 w-4 h-4 md:w-5 md:h-5" />
+      <ArrowRight className="text-gray-400 w-5 h-5" />
     </div>
-    <div className="mt-3 md:mt-4">
-      <h3 className="text-base md:text-lg font-semibold text-gray-800">{title}</h3>
-      <p className="text-xs md:text-sm text-gray-500 mt-1">{description}</p>
+    <div className="mt-4">
+      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      <p className="text-sm text-gray-500 mt-1">{description}</p>
       {link && (
-        <a href={link} className="flex items-center text-xs md:text-sm font-medium text-green-600 hover:text-green-700 mt-2">
-          Acceder <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1" />
+        <a href={link} className="flex items-center text-sm font-medium text-green-600 hover:text-green-700 mt-2">
+          Acceder <ArrowRight className="w-4 h-4 ml-1" />
         </a>
       )}
     </div>
@@ -80,25 +80,25 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
     const diff = new Date().getTime() - new Date(date).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours === 0) return 'Hace un momento';
-    if (hours < 24) return `Hace ${hours}h`;
+    if (hours < 24) return `Hace ${hours} horas`;
     return new Date(date).toLocaleDateString();
   };
   
   const timeInfo =
     actividad.estado === 'completado' || actividad.estado === 'en proceso'
       ? getTimeElapsed(actividad.fecha)
-      : 'Mañana';
+      : 'Programado para mañana';
 
   return (
-    <div className="flex justify-between items-start py-2 md:py-3 border-b last:border-b-0">
-      <div className="flex items-start space-x-2 md:space-x-3 flex-1 min-w-0">
+    <div className="flex justify-between items-start py-3 border-b last:border-b-0">
+      <div className="flex items-center space-x-3">
         {icon}
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-gray-800 text-sm md:text-base truncate">{actividad.titulo}</p>
-          <p className={`text-xs md:text-sm ${statusColor} truncate`}>{statusText}</p>
+        <div>
+          <p className="font-medium text-gray-800">{actividad.titulo}</p>
+          <p className={`text-sm ${statusColor}`}>{statusText}</p>
         </div>
       </div>
-      <p className="text-xs md:text-sm text-gray-500 whitespace-nowrap ml-2 flex-shrink-0">{timeInfo}</p>
+      <p className="text-sm text-gray-500 whitespace-nowrap">{timeInfo}</p>
     </div>
   );
 };
@@ -149,53 +149,53 @@ const ActividadesPrincipal: React.FC = () => {
   }, [cargarActividades, cargarDatosSecundarios]);
 
   return (
-    <div className="p-3 md:p-6 bg-gray-50 min-h-screen space-y-4 md:space-y-8">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 md:p-6 bg-green-600 text-white rounded-lg shadow-lg">
-        <div className="w-full md:w-auto">
-          <h1 className="text-xl md:text-2xl font-bold mb-1">¡Bienvenido!</h1>
-          <p className="text-sm md:text-lg">Administra eficientemente todas las actividades agrícolas</p>
+    <div className="p-6 bg-gray-50 min-h-screen space-y-8">
+      <div className="flex items-center justify-between p-6 bg-green-600 text-white rounded-lg shadow-lg">
+        <div>
+          <h1 className="text-2xl font-bold">¡Bienvenido!</h1>
+          <p className="text-lg">Administra eficientemente todas las actividades agrícolas</p>
         </div>
         {/* Este ícono debe estar en tu carpeta public/ para que funcione */}
-        <img src="/tractor-icon.svg" alt="Tractor" className="w-12 h-12 md:w-18 md:h-18 text-white mt-3 md:mt-0 self-center md:self-auto" />
+        <img src="/tractor-icon.svg" alt="Tractor" className="w-18 h-18 text-white" />
       </div>
 
-      <div className="space-y-3 md:space-y-4">
-        <h2 className="text-lg md:text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6">
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <QuickAccessCard
             title="Asignación de Actividades"
             description="Asigna tareas específicas a los aprendices"
-            icon={<ClipboardList className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />}
+            icon={<ClipboardList className="w-6 h-6 text-blue-600" />}
             colorClass="border-blue-500"
             action={() => setIsAsignacionModalOpen(true)}
           />
           <QuickAccessCard
             title="Gestión de Actividades"
             description="Consulta y administra todas las actividades"
-            icon={<Users className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />}
+            icon={<Users className="w-6 h-6 text-orange-600" />}
             colorClass="border-orange-500"
             link="/cronograma"
           />
         </div>
       </div>
 
-      <div className="space-y-3 md:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <h2 className="text-lg md:text-xl font-semibold text-gray-800">Actividades Recientes</h2>
-          <a href="/cronograma" className="text-green-600 font-medium hover:text-green-700 text-sm md:text-base self-start sm:self-auto">
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Actividades Recientes</h2>
+          <a href="/cronograma" className="text-green-600 font-medium hover:text-green-700">
             Ver todas
           </a>
         </div>
 
-        <div className="bg-white p-4 md:p-6 rounded-xl shadow-md">
+        <div className="bg-white p-6 rounded-xl shadow-md">
           {cargando && (
             <div className="flex justify-center items-center py-8">
-              <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin text-green-600" />
-              <p className="ml-2 text-gray-500 text-sm md:text-base">Cargando...</p>
+              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+              <p className="ml-2 text-gray-500">Cargando...</p>
             </div>
           )}
           {!cargando && actividadesRecientes.length === 0 && (
-            <p className="text-center text-gray-500 py-8 text-sm md:text-base">No hay actividades recientes para mostrar.</p>
+            <p className="text-center text-gray-500 py-8">No hay actividades recientes para mostrar.</p>
           )}
           {!cargando && actividadesRecientes.map((act) => (
             <RecentActivityItem key={act.id} actividad={act} />

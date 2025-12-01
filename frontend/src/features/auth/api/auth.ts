@@ -1,31 +1,24 @@
 // api/auth.ts
 
-import { api, getCurrentApiUrl, checkBackendConnection } from "../../../lib/axios";
+import axios  from "axios";
 import type { Permiso, UpdatePerfilDto, LoginResponse, User } from "../interfaces/InterAuth";
 
-// Usar la misma instancia de api configurada en lib/axios.ts
-// para mantener la consistencia en interceptors y manejo de errores
+const API_URL = import.meta.env.VITE_BACKEND_URL;
 
-const API_URL = getCurrentApiUrl();
+const api = axios.create({
+  baseURL: API_URL,
+});
 
-// Función para verificar conectividad del backend
-export const checkBackendHealth = async (): Promise<boolean> => {
-  try {
-    const response = await api.get('/health', { timeout: 5000 });
-    return response.status === 200;
-  } catch (error) {
-    console.warn("⚠️ Backend no disponible para health check:", error);
-    return false;
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
-
-// Función para obtener la URL actual del backend
-export const getBackendUrl = (): string => {
-  return API_URL;
-};
+  return config;
+});
 
 export const login = async (identifier: string, password: string): Promise<LoginResponse> => {
-  const res = await api.post(`/auth/login`, {
+  const res = await axios.post(`${API_URL}/auth/login`, {
     identificacion: identifier,
     password,
   });
@@ -38,7 +31,7 @@ export const login = async (identifier: string, password: string): Promise<Login
 };
 
 export const solicitarRecuperacion = async (identificacion: string) => {
-  const res = await api.post(`/recuperacion/solicitar`, {
+  const res = await axios.post(`${API_URL}/recuperacion/solicitar`, {
     identificacion,
   });
   return res.data;
@@ -46,13 +39,13 @@ export const solicitarRecuperacion = async (identificacion: string) => {
 
 // Verificar token
 export const verificarToken = async (token: string) => {
-  const res = await api.get(`/recuperacion/verificar/${token}`);
+  const res = await axios.get(`${API_URL}/recuperacion/verificar/${token}`);
   return res.data;
 };
 
 // Restablecer contraseña
 export const restablecerPassword = async (token: string, nueva: string) => {
-  const res = await api.post(`/recuperacion/restablecer`, {
+  const res = await axios.post(`${API_URL}/recuperacion/restablecer`, {
     token,
     nueva,
   });

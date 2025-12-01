@@ -2,35 +2,6 @@
 @plugin "./hero";
 @source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
 
-/* Estilos base para móvil */
-* {
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-}
-
-html, body {
-  overflow-x: hidden;
-  width: 100%;
-  height: 100%;
-  position: fixed;
-  overscroll-behavior: none;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Optimización para inputs en móvil */
-input, textarea, select {
-  font-size: 16px !important; /* Evita zoom en iOS */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -38,101 +9,7 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* Quitar flechas en Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
-}
-
-/* Botones táctiles más grandes */
-button, a {
-  min-height: 44px;
-  min-width: 44px;
-  touch-action: manipulation;
-}
-
-/* Scroll suave */
-* {
-  scroll-behavior: smooth;
-}
-
-/* Tablas responsivas */
-table {
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  white-space: nowrap;
-}
-
-@media (max-width: 768px) {
-  table {
-    font-size: 14px;
-  }
-  
-  th, td {
-    padding: 8px 4px !important;
-  }
-}
-
-/* Cards y contenedores móviles */
-@media (max-width: 768px) {
-  .container {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-  }
-  
-  /* Ajustar modales para móvil */
-  [role="dialog"] {
-    max-width: 95vw !important;
-    margin: 8px !important;
-  }
-  
-  /* Formularios más compactos */
-  form > div {
-    margin-bottom: 12px !important;
-  }
-  
-  /* Grids responsivos */
-  .grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* Mejoras para mapas en móvil */
-.leaflet-container {
-  height: 300px !important;
-  min-height: 300px !important;
-}
-
-@media (max-width: 768px) {
-  .leaflet-container {
-    height: 250px !important;
-    min-height: 250px !important;
-  }
-}
-
-/* Sidebar móvil */
-@media (max-width: 768px) {
-  aside {
-    position: fixed !important;
-    z-index: 1000 !important;
-    height: 100vh !important;
-  }
-}
-
-/* Ocultar scrollbar pero mantener funcionalidad */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
 }

@@ -186,51 +186,48 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-green-200/30 to-blue-200/30 rounded-full translate-y-12 -translate-x-12"></div>
 
       {/* Header con mensaje de bienvenida */}
-      <div className="bg-[#4CAF50] rounded-2xl p-4 md:p-6 mb-6 md:mb-8 relative z-10 overflow-hidden">
-        <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-white/10 rounded-full -translate-y-10 -translate-x-10 md:-translate-y-16 md:translate-x-16"></div>
-        <div className="absolute bottom-0 left-0 w-16 h-16 md:w-24 md:h-24 bg-white/10 rounded-full translate-y-8 -translate-x-8 md:translate-y-12 md:-translate-x-12"></div>
-        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="w-full sm:w-auto">
-            <h2 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2">Mi Perfil</h2>
-            <p className="text-green-100 text-xs md:text-base leading-tight">¡Hola {form.nombres || 'Usuario'}! Gestiona tu información personal y configuración de seguridad</p>
+      <div className="bg-[#4CAF50] rounded-2xl p-6 mb-8 relative z-10 overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
+        <div className="relative z-10 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Mi Perfil</h2>
+            <p className="text-green-100 text-sm md:text-base">¡Hola {form.nombres || 'Usuario'}! Gestiona tu información personal y configuración de seguridad</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 text-xs md:text-sm font-medium backdrop-blur-sm w-full sm:w-auto"
+            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium backdrop-blur-sm"
             title="Cerrar Sesión"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span className="hidden xs:inline">Cerrar Sesión</span>
-            <span className="xs:hidden">Salir</span>
+            <span className="hidden sm:inline">Cerrar Sesión</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 relative z-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
         {/* Left: información personal */}
-        <div className="lg:col-span-2 order-2 lg:order-1">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 p-4 md:p-6 lg:p-8 shadow-xl hover:shadow-2xl transition-all duration-300 max-h-[600px] lg:max-h-[500px] overflow-y-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-              <h3 className="text-lg md:text-xl font-semibold text-gray-800">Información Personal</h3>
+        <div className="md:col-span-2">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 p-6 md:p-8 shadow-xl hover:shadow-2xl transition-all duration-300 max-h-[500px] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-800">Información Personal</h3>
 
               {!isEditing && (
                 <button
                   onClick={handleEdit}
-                  className="inline-flex items-center justify-center gap-2 bg-[#4CAF50] hover:bg-[#45a049] text-white text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto"
+                  className="inline-flex items-center gap-2 bg-[#4CAF50] hover:bg-[#45a049] text-white text-sm px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   title="Editar perfil"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
-                  <span className="hidden xs:inline">Editar Perfil</span>
-                  <span className="xs:hidden">Editar</span>
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-700">
                   Tipo de Identificación
@@ -344,51 +341,51 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
         </div>
 
         {/* Right: perfil y seguridad */}
-        <div className="lg:col-span-1 flex flex-col gap-4 md:gap-6 order-1 lg:order-2">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 p-3 md:p-6 flex items-center justify-center min-h-[250px] md:min-h-[300px]">
+        <div className="md:col-span-1 flex flex-col gap-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 p-4 md:p-6 flex items-center justify-center min-h-[300px]">
             <div className="w-full flex flex-col items-center">
-              <div className="relative h-20 w-20 md:h-32 md:w-32 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mb-3 md:mb-4 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group">
-                <img src={avatarSrc} alt="avatar" className="h-20 w-20 md:h-32 md:w-32 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300" />
-                <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }} className="absolute -bottom-0.5 -right-0.5 md:-bottom-1 md:-right-1 bg-[#4CAF50] hover:bg-[#45a049] border-2 border-white rounded-full p-1 md:p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-4 md:w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mb-4 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                <img src={avatarSrc} alt="avatar" className="h-24 w-24 md:h-32 md:w-32 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300" />
+                <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }} className="absolute -bottom-1 -right-1 bg-[#4CAF50] hover:bg-[#45a049] border-2 border-white rounded-full p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M4 5a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-3.2l-.7-1.4A1 1 0 0010.5 3h-1a1 1 0 00-.9.6L7.2 5H4z" />
                   </svg>
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </div>
-              <p className="text-xs md:text-sm text-gray-600 mb-1 truncate w-full text-center">{form.email}</p>
-              <h4 className="text-base md:text-xl font-bold text-gray-800 mb-2 text-center leading-tight">
+              <p className="text-xs md:text-sm text-gray-600 mb-1">{form.email}</p>
+              <h4 className="text-lg md:text-xl font-bold text-gray-800 mb-2 text-center">
                 {`${form.nombres || ''} ${form.apellidos || ''}`.trim()}
               </h4>
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-full px-2 py-1 md:px-3 md:py-1.5 border border-green-200/50">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-full px-3 py-1.5 border border-green-200/50">
                 <span className="text-xs md:text-sm font-semibold text-green-700 capitalize">{userRole}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 p-3 md:p-4 max-h-[160px] md:max-h-[180px] overflow-y-auto">
-            <h5 className="text-sm md:text-lg font-semibold mb-2 md:mb-3 text-gray-800">Seguridad</h5>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 p-4 max-h-[180px] overflow-y-auto">
+            <h5 className="text-base md:text-lg font-semibold mb-3 text-gray-800">Seguridad</h5>
             <Button
               onClick={onOpenModal}
-              className="w-full flex items-center justify-between py-2 md:py-3 px-3 md:px-4 rounded-xl bg-[#4CAF50]/10 border border-[#4CAF50]/30 hover:bg-[#4CAF50]/20 transition-all duration-300 group"
+              className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-[#4CAF50]/10 border border-[#4CAF50]/30 hover:bg-[#4CAF50]/20 transition-all duration-300 group"
               variant="light"
             >
-              <div className="flex items-center gap-2 md:gap-3">
-                <div className="p-1 md:p-1.5 bg-[#4CAF50]/20 rounded-lg group-hover:bg-[#4CAF50]/30 transition-colors duration-300">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-[#4CAF50]/20 rounded-lg group-hover:bg-[#4CAF50]/30 transition-colors duration-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 md:h-4 md:w-4 text-[#4CAF50]"
+                    className="h-4 w-4 text-[#4CAF50]"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
                     <path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v4a2 2 0 002 2h10a2 2 0 002-2v-4a2 2 0 00-2-2h-1V6a4 4 0 00-4-4z" />
                   </svg>
                 </div>
-                <span className="font-medium text-gray-700 text-xs md:text-sm">Cambiar Contraseña</span>
+                <span className="font-medium text-gray-700 text-sm">Cambiar Contraseña</span>
               </div>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 md:h-4 md:w-4 text-[#4CAF50] group-hover:text-[#45a049] transition-colors duration-300"
+                className="h-4 w-4 text-[#4CAF50] group-hover:text-[#45a049] transition-colors duration-300"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >

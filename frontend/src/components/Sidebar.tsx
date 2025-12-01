@@ -18,8 +18,6 @@ import {
   // CirclePause,
   WorkflowIcon, // Icono para el submenú de Cronograma
 } from "lucide-react";
-import { useIsMobile } from "../hooks/useIsMobile";
-import { SwipeDetector } from "./SwipeDetector";
 
 import logoAgroFull from "../assets/logo.png";
 import logoAgroMini from "../assets/logo1.png";
@@ -126,44 +124,18 @@ export default function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
 
   const toggleMenu = (id: string) => {
     setOpenMenu(openMenu === id ? null : id);
   };
 
-  const handleNavigation = (path: string, sectionId: string) => {
-    setActiveSection(sectionId);
-    navigate(path);
-    if (isMobile) {
-      setMobileMenuOpen(false);
-    }
-  };
-
   return (
-    <>
-      {/* Detector de swipe para abrir menú */}
-      <SwipeDetector
-        onSwipeRight={() => setMobileMenuOpen(true)}
-        enabled={isMobile && !mobileMenuOpen}
-      />
-
-      {/* Overlay para cerrar menú en móvil */}
-      {isMobile && mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`bg-white shadow-xl transition-all duration-300 flex flex-col
-        ${collapsed && !isMobile ? "w-20" : "w-64"}
-        ${isMobile ? `fixed inset-y-0 left-0 z-50 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` : 'relative'}
-        h-screen md:h-[95vh] ml-0 md:ml-4 my-0 md:my-auto rounded-none md:rounded-3xl border-r md:border border-green-100`}
-      >
+    <aside
+      className={`bg-white shadow-xl transition-all duration-300 flex flex-col
+      ${collapsed ? "w-20" : "w-64"}
+      h-[95vh] ml-4 my-auto rounded-3xl border border-green-100`}
+    >
       {/* Header */}
       <div
         className="flex items-center justify-between p-4 cursor-pointer"
@@ -198,13 +170,16 @@ export default function Sidebar({
               <button
                 onClick={() => {
                   if (item.id === "perfil") {
-                    handleNavigation("/usuario", item.id);
+                    setActiveSection(item.id);
+                    navigate("/usuario");
                   } else if (item.id === "iot") {
-                    handleNavigation("/gestion-sensores", "gestion-sensores");
+                    setActiveSection("gestion-sensores");
+                    navigate("/gestion-sensores");
                   } else if (item.children) {
                     toggleMenu(item.id);
                   } else {
-                    handleNavigation(`/${item.id}`, item.id);
+                    setActiveSection(item.id);
+                    navigate(`/${item.id}`);
                   }
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-base
@@ -252,7 +227,10 @@ export default function Sidebar({
                     return (
                       <button
                         key={child.id}
-                        onClick={() => handleNavigation(`/${child.id}`, child.id)}
+                        onClick={() => {
+                          setActiveSection(child.id);
+                          navigate(`/${child.id}`);
+                        }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-100 text-left
                         ${
                           isChildActive
@@ -288,7 +266,10 @@ export default function Sidebar({
           // Vista Colapsada
           <div className="flex flex-col items-center gap-2">
             <button
-              onClick={() => handleNavigation("/usuario", "perfil")}
+              onClick={() => {
+                setActiveSection("perfil");
+                navigate("/usuario");
+              }}
               className="flex items-center justify-center w-12 h-12 rounded-lg text-gray-600 hover:bg-green-50 hover:text-green-800 transition-all duration-200"
             >
               <User className="w-6 h-6" />
@@ -305,7 +286,10 @@ export default function Sidebar({
           <>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleNavigation("/usuario", "perfil")}
+                onClick={() => {
+                  setActiveSection("perfil");
+                  navigate("/usuario");
+                }}
                 className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-green-50 hover:text-green-800 transition-all duration-200"
               >
                 <User className="w-6 h-6 flex-shrink-0" />
@@ -326,6 +310,5 @@ export default function Sidebar({
         )}
       </div>
     </aside>
-    </>
   );
 }

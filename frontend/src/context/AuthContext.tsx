@@ -19,27 +19,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-import { Capacitor } from "@capacitor/core";
-import { checkBackendHealth } from "../features/auth/api/auth";
-
-// Detectar la URL correcta del backend según la plataforma
-const getBackendUrl = () => {
-  const isNative = Capacitor.isNativePlatform();
-  
-  if (isNative) {
-    // Para desarrollo móvil, usar variable específica para móvil
-    return import.meta.env.VITE_MOBILE_BACKEND_URL || 
-           (Capacitor.getPlatform() === 'android' ? 
-             import.meta.env.VITE_EMULATOR_BACKEND_URL : 
-             import.meta.env.VITE_IOS_BACKEND_URL) ||
-           "http://192.168.1.100:3000"; // Fallback con IP local
-  }
-  
-  // Para desarrollo web
-  return import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-};
-
-const BACKEND_URL = getBackendUrl();
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
@@ -54,24 +34,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserData(null);
       return;
     }
-    
-    // Modo demo: si el token es demo, crear datos ficticios
-    if (token.startsWith('demo-token-')) {
-      const demoUser: UsuarioData = {
-        tipo: "CC",
-        identificacion: 123456789,
-        nombres: "Usuario",
-        apellidos: "Demo",
-        email: "demo@agrotech.com",
-        telefono: "3001234567",
-        fotoUrl: "",
-      };
-      setUserData(demoUser);
-      setUserPermissions(['*']); // Todos los permisos
-      localStorage.setItem('permissions', JSON.stringify(['*']));
-      return;
-    }
-    
     try {
       console.log("🔍 Debug: Fetching user profile...");
       const userProfile = await obtenerPerfil();
@@ -99,14 +61,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Error fetching user data or permissions:", error);
-      // No eliminar el token si es demo
-      if (!token.startsWith('demo-token-')) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("permissions");
-        setToken(null);
-        setUserPermissions(null);
-        setUserData(null);
-      }
+      localStorage.removeItem("token");
+      localStorage.removeItem("permissions");
+      setToken(null);
+      setUserPermissions(null);
+      setUserData(null);
     }
   }, [token]);
 

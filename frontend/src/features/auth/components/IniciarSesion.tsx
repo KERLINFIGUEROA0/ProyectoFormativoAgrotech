@@ -22,21 +22,51 @@ export default function FormularioLogin(): ReactElement {
   const toggleVisibilidad = (): void => setEsVisible((v) => !v);
 
   const manejarLogin = async (): Promise<void> => {
-    // Modo demo: acceso directo sin validación
+    // Validar campos vacíos
+    if (!formulario.identificacion.trim() || !formulario.password.trim()) {
+      toast.error("Debe llenar todos los campos");
+      return;
+    }
+
     setCargando(true);
-    
+    const minLoadingTime = 2000;
+    const startTime = Date.now();
+
     try {
-      // Simular un pequeño delay para mostrar el loading
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const res = await loginApi(
+        formulario.identificacion,
+        formulario.password
+      );
       
-      // Crear un token demo
-      const demoToken = "demo-token-" + Date.now();
-      login(demoToken);
-      
-      toast.success("Acceso demo - Explorando módulos");
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < minLoadingTime) {
+        await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
+      }
+
+      login(res.access_token);
+      toast.success("Inicio de sesión exitoso");
       navigate("/home", { replace: true });
-    } catch (error) {
-      toast.error("Error al acceder");
+
+    } catch (error: unknown) {
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < minLoadingTime) {
+        await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
+      }
+      
+      let mensajeBackend = "Error desconocido";
+      if (typeof error === "object" && error !== null && "response" in error) {
+        const response = (error as any).response; 
+
+        if (response?.data?.message) {
+          mensajeBackend = response.data.message;
+        }
+      }
+
+      if (mensajeBackend.includes("inactivo")) {
+        toast.error(mensajeBackend);
+      } else {
+        toast.error("Credenciales incorrectas");
+      }
     } finally {
       setCargando(false);
     }
