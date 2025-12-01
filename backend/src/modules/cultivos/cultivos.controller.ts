@@ -1,17 +1,21 @@
 import {
   Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe,
-  UseInterceptors, UploadedFile, BadRequestException, Res
+  UseInterceptors, UploadedFile, BadRequestException, Res, Query
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { Response } from 'express';
 import { CultivosService } from './cultivos.service';
+import { PdfService } from './pdf.service';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
 import { UpdateCultivoDto } from './dto/update-cultivo.dto';
 
 @Controller('cultivos')
 export class CultivosController {
-  constructor(private readonly cultivosService: CultivosService) {}
+  constructor(
+    private readonly cultivosService: CultivosService,
+    private readonly pdfService: PdfService
+  ) {}
 
   @Post('crear')
   async crear(@Body() data: CreateCultivoDto) {
@@ -147,5 +151,31 @@ export class CultivosController {
       success: true,
       data: diagnostico
     };
+  }
+
+  @Get(':id/pdf-trazabilidad')
+  async generarPdfTrazabilidad(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string
+  ) {
+    const fechaInicioDate = fechaInicio ? new Date(fechaInicio) : undefined;
+    const fechaFinDate = fechaFin ? new Date(fechaFin) : undefined;
+
+    const pdfBuffer = await this.pdfService.generatePdf(id, fechaInicioDate, fechaFinDate);
+
+    // Añadir fecha al nombre del archivo
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=cultivo-${id}-trazabilidad-${dateStr}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.send(pdfBuffer);
   }
 }
