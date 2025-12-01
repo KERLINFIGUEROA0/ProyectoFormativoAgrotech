@@ -140,6 +140,10 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             apellidos: resultadoCalificacion.usuario.apellidos,
           }]);
           console.log('✅ Función onOpenPago llamada exitosamente');
+
+          // Cerrar el modal de respuestas para evitar conflictos visuales
+          onClose();
+          return; // Salir de la función para evitar ejecutar el resto del código
         } else {
           console.warn('⚠️ onOpenPago no está definido en las props');
         }
@@ -149,7 +153,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
         console.log('Tipo de esPasante:', typeof resultadoCalificacion.esPasante);
       }
 
-      // Verificar el caso general (todas respuestas aprobadas)
+      // Verificar el caso general (todas respuestas aprobadas) - Solo si NO se abrió pago individual
       // Usar las respuestas actualizadas después de recargar
       const respuestasActualizadas = await obtenerRespuestasPorActividad(actividad.id);
       const todasAprobadas = respuestasActualizadas.every(r => r.estado === 'aprobado');
@@ -161,11 +165,11 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       console.log('Total respuestas:', totalRespuestas);
 
       // Si todas están aprobadas y hay pasantes que aún no se pagaron, mostrar modal general
-      if (todasAprobadas && totalRespuestas > 0) {
+      // Pero solo si no se abrió pago individual en esta misma aprobación
+      if (todasAprobadas && totalRespuestas > 0 && !resultadoCalificacion.esPasante) {
         const pasantesSinPagar = respuestasActualizadas
           .filter(r => {
             const esPasante = r.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
-            // Solo incluir pasantes que no se pagaron individualmente
             return esPasante && r.estado === 'aprobado';
           })
           .map(r => ({
@@ -179,6 +183,9 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
           console.log('Actividad completada, mostrando pasantes restantes:', pasantesSinPagar);
           if (onOpenPago) {
             onOpenPago(actividad, pasantesSinPagar);
+            // Cerrar el modal de respuestas para evitar conflictos visuales
+            onClose();
+            return; // Salir de la función
           }
         }
       }

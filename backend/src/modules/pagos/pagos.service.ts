@@ -32,17 +32,13 @@ export class PagosService {
       throw new BadRequestException('Solo se pueden registrar pagos para pasantes');
     }
 
-    // Verificar que la actividad existe y está completada
+    // Verificar que la actividad existe
     const actividad = await this.actividadRepository.findOne({
       where: { id: createPagoDto.idActividad },
     });
 
     if (!actividad) {
       throw new NotFoundException(`Actividad con ID ${createPagoDto.idActividad} no encontrada`);
-    }
-
-    if (actividad.estado !== 'completado') {
-      throw new BadRequestException('Solo se pueden registrar pagos para actividades completadas');
     }
 
     // Verificar que el usuario participó en la actividad
@@ -103,10 +99,6 @@ export class PagosService {
 
       if (!actividad) {
         throw new NotFoundException(`Actividad con ID ${createPagoDto.idActividad} no encontrada`);
-      }
-
-      if (actividad.estado !== 'completado') {
-        throw new BadRequestException('Solo se pueden registrar pagos para actividades completadas');
       }
 
       // Verificar participación en la actividad
