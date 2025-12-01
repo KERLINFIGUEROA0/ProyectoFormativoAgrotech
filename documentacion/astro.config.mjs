@@ -20,6 +20,7 @@ export default defineConfig({
 				},
 				{ label: 'Arquitectura Backend', slug: 'arquitectura' },
 				{ label: 'DTOs', slug: 'dtos' },
+				{ label: 'Manual de Usuario', slug: 'manual-de-usuario' },
 				
 			],
 		}),
