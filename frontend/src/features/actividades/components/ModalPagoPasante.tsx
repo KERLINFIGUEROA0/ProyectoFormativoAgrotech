@@ -3,6 +3,7 @@ import { X, DollarSign, Clock, Calculator } from 'lucide-react';
 import { Button, Input, Textarea } from '@heroui/react';
 import { toast } from 'sonner';
 import type { Actividad } from '../interfaces/actividades';
+import { registrarPagosPasantes } from '../api/actividadesapi';
 
 interface ModalPagoPasanteProps {
   actividad: Actividad;
@@ -30,10 +31,13 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
   onPagoSuccess,
   pasantes,
 }) => {
+  console.log('🎯 ModalPagoPasante renderizado:', { isOpen, pasantesCount: pasantes.length, actividad: actividad?.titulo });
+
   const [pagos, setPagos] = useState<PagoData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    console.log('🔄 useEffect ModalPagoPasante:', { isOpen, pasantesLength: pasantes.length, actividadId: actividad?.id });
     if (isOpen && pasantes.length > 0) {
       // Inicializar pagos para cada pasante
       const pagosIniciales = pasantes.map(pasante => ({
@@ -42,6 +46,7 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
         tarifaHora: actividad.tarifaHora || 0,
         descripcion: `Pago por actividad: ${actividad.titulo}`,
       }));
+      console.log('💰 Inicializando pagos:', pagosIniciales);
       setPagos(pagosIniciales);
     }
   }, [isOpen, pasantes, actividad]);
@@ -78,47 +83,29 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Registrar pagos para cada pasante
-      const promesasPagos = pagos.map(pago =>
-        fetch('/pagos', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            idUsuario: pago.idUsuario,
-            idActividad: actividad.id,
-            monto: calcularMonto(pago.horasTrabajadas, pago.tarifaHora),
-            horasTrabajadas: pago.horasTrabajadas,
-            tarifaHora: pago.tarifaHora,
-            descripcion: pago.descripcion,
-            fechaPago: new Date().toISOString().split('T')[0],
-          }),
-        })
-      );
+      // Preparar datos de pagos para enviar a la API
+      const pagosData = pagos.map(pago => ({
+        idUsuario: pago.idUsuario,
+        idActividad: actividad.id,
+        monto: calcularMonto(pago.horasTrabajadas, pago.tarifaHora),
+        horasTrabajadas: pago.horasTrabajadas,
+        tarifaHora: pago.tarifaHora,
+        descripcion: pago.descripcion,
+        fechaPago: new Date().toISOString().split('T')[0],
+      }));
 
-      const resultados = await Promise.all(promesasPagos);
+      console.log('💰 Enviando pagos:', pagosData);
 
-      // Verificar si todas las respuestas fueron exitosas
-      const errores = [];
-      for (let i = 0; i < resultados.length; i++) {
-        if (!resultados[i].ok) {
-          const error = await resultados[i].json();
-          errores.push(`Error en pago de ${pasantes[i].nombre}: ${error.message}`);
-        }
-      }
+      // Registrar pagos usando la API
+      await registrarPagosPasantes(pagosData);
 
-      if (errores.length > 0) {
-        toast.error(`Errores en pagos: ${errores.join(', ')}`);
-      } else {
-        toast.success('Pagos registrados exitosamente');
-        onPagoSuccess();
-        onClose();
-      }
-    } catch (error) {
+      toast.success('Pagos registrados exitosamente');
+      onPagoSuccess();
+      onClose();
+    } catch (error: any) {
       console.error('Error al registrar pagos:', error);
-      toast.error('Error al registrar los pagos');
+      const errorMessage = error.response?.data?.message || 'Error al registrar los pagos';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

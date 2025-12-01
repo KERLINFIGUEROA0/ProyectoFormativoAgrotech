@@ -765,6 +765,12 @@ export class ActividadesService {
       throw new NotFoundException(`Respuesta con ID ${respuestaId} no encontrada.`);
     }
 
+    console.log('👤 Usuario encontrado:', {
+      id: respuesta.usuario.identificacion,
+      nombre: respuesta.usuario.nombre,
+      tipoUsuario: respuesta.usuario.tipoUsuario?.nombre
+    });
+
     respuesta.estado = dto.estado;
     respuesta.comentarioInstructor = dto.comentarioInstructor;
 
@@ -780,8 +786,12 @@ export class ActividadesService {
 
     // Retornar información adicional sobre si el usuario es pasante
     const esPasante = respuesta.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+    console.log('🔍 Verificación de pasante:', {
+      tipoUsuarioNombre: respuesta.usuario.tipoUsuario?.nombre,
+      esPasante
+    });
 
-    return {
+    const resultado = {
       ...savedRespuesta,
       esPasante,
       usuario: {
@@ -789,6 +799,15 @@ export class ActividadesService {
         tipoUsuario: respuesta.usuario.tipoUsuario,
       },
     };
+
+    console.log('📤 Respuesta que se retorna al frontend:', {
+      id: resultado.id,
+      estado: resultado.estado,
+      esPasante: resultado.esPasante,
+      usuarioTipo: resultado.usuario.tipoUsuario?.nombre
+    });
+
+    return resultado;
   }
 
   async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {

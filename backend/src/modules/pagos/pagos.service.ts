@@ -79,6 +79,74 @@ export class PagosService {
     return this.pagoRepository.save(pago);
   }
 
+  async createMultiple(createPagoDtos: CreatePagoDto[]) {
+    const pagos: Pago[] = [];
+
+    for (const createPagoDto of createPagoDtos) {
+      // Usar la lógica de validación del método create para cada pago
+      const usuario = await this.usuarioRepository.findOne({
+        where: { identificacion: createPagoDto.idUsuario },
+        relations: ['tipoUsuario'],
+      });
+
+      if (!usuario) {
+        throw new NotFoundException(`Usuario con ID ${createPagoDto.idUsuario} no encontrado`);
+      }
+
+      if (usuario.tipoUsuario.nombre.toLowerCase() !== 'pasante') {
+        throw new BadRequestException('Solo se pueden registrar pagos para pasantes');
+      }
+
+      const actividad = await this.actividadRepository.findOne({
+        where: { id: createPagoDto.idActividad },
+      });
+
+      if (!actividad) {
+        throw new NotFoundException(`Actividad con ID ${createPagoDto.idActividad} no encontrada`);
+      }
+
+      if (actividad.estado !== 'completado') {
+        throw new BadRequestException('Solo se pueden registrar pagos para actividades completadas');
+      }
+
+      // Verificar participación en la actividad
+      if (actividad.asignados) {
+        try {
+          const asignados = JSON.parse(actividad.asignados);
+          const nombreCompleto = `${usuario.nombre} ${usuario.apellidos}`.trim();
+          if (!asignados.includes(nombreCompleto)) {
+            throw new BadRequestException(`El usuario ${nombreCompleto} no participó en la actividad ${actividad.titulo}`);
+          }
+        } catch (error) {
+          throw new BadRequestException('Error al verificar participación en la actividad');
+        }
+      }
+
+      // Verificar pago duplicado
+      const pagoExistente = await this.pagoRepository.findOne({
+        where: {
+          idUsuario: createPagoDto.idUsuario,
+          idActividad: createPagoDto.idActividad,
+        },
+      });
+
+      if (pagoExistente) {
+        throw new BadRequestException(`Ya existe un pago registrado para el usuario ${usuario.nombre} ${usuario.apellidos} en la actividad ${actividad.titulo}`);
+      }
+
+      // Crear el pago
+      const pago = this.pagoRepository.create({
+        ...createPagoDto,
+        fechaPago: new Date(createPagoDto.fechaPago),
+      });
+
+      pagos.push(pago);
+    }
+
+    // Guardar todos los pagos
+    return this.pagoRepository.save(pagos);
+  }
+
   async findByUsuario(idUsuario: number) {
     // Verificar que el usuario existe y es pasante
     const usuario = await this.usuarioRepository.findOne({
