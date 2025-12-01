@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-// --- 1. Importa lo necesario ---
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
@@ -21,6 +20,11 @@ async function bootstrap() {
   // Esto hace que se pueda acceder a las imágenes desde el navegador.
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads', // Las URLs de las imágenes empezarán con /uploads
+  });
+
+  // Servir archivos desde el directorio temp-uploads para actividades
+  app.useStaticAssets(join(process.cwd(), 'temp-uploads'), {
+    prefix: '/temp-uploads', // Las URLs de los archivos temporales empezarán con /temp-uploads
   });
 
   app.useGlobalPipes(

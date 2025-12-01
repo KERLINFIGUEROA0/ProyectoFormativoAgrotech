@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactElement, type ChangeEvent } from 'react';
-import { Button } from "@heroui/react";
+import { Button, Select, SelectItem } from "@heroui/react";
 import type { TransaccionData } from '../interfaces/finanzas';
 import { toast } from 'sonner';
 import { BookText, Hash, DollarSign, Calendar, Archive } from 'lucide-react';
@@ -163,47 +163,49 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
             <Archive size={16} className="text-green-600" />
             Producción
           </label>
-          <select
+          <Select
             name="produccionId"
-            value={formData.produccionId || ''}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-              const prodId = Number(e.target.value);
+            selectedKeys={formData.produccionId ? [formData.produccionId.toString()] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              const prodId = Number(selected);
               const prod = productions.find(p => p.id === prodId);
               setSelectedProduction(prod || null);
               setFormData(prev => ({ ...prev, produccionId: prodId }));
             }}
-            className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
+            placeholder="Seleccione una producción"
           >
-            <option value="">Seleccione una producción</option>
             {productions.map(prod => (
-              <option key={prod.id} value={prod.id}>
+              <SelectItem key={prod.id.toString()}>
                 {`${prod.cultivo.nombre} - Disponible: ${prod.cantidad} kg`}
-              </option>
+              </SelectItem>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
             <Archive size={16} className="text-green-600" />
             Tipo de Transacción
           </label>
-          <select
+          <Select
             name="tipo"
-            value={formData.tipo || 'ingreso'}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData(prev => ({ ...prev, tipo: e.target.value }))}
-            className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
+            selectedKeys={[formData.tipo || 'ingreso']}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFormData(prev => ({ ...prev, tipo: selected as string }));
+            }}
           >
-            <option value="ingreso">Ingreso</option>
-            <option value="egreso">Egreso</option>
-          </select>
+            <SelectItem key="ingreso">Ingreso</SelectItem>
+            <SelectItem key="egreso">Egreso</SelectItem>
+          </Select>
         </div>
       </div>
 
       <div className="flex justify-center gap-4">
-        <Button onClick={onCancel} className="bg-red-100 text-red-700 border-2 border-red-200 hover:bg-red-200 w-40">
+        <Button onClick={onCancel} color="danger" variant="light" className="w-40">
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} className="bg-green-600 text-white hover:bg-green-700 w-40">
+        <Button onClick={handleSubmit} color="success" className="w-40">
           Guardar Transacción
         </Button>
       </div>

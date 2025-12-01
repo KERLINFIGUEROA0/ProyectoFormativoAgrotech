@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Subscripcion } from './subscripcion.entity';
-import { Surco } from '../../surcos/entities/surco.entity';
+import { BrokerLote } from './broker-lote.entity';
 
 @Entity('brokers')
 export class Broker {
@@ -25,25 +25,19 @@ export class Broker {
   @Column({ type: 'varchar', length: 255, nullable: true })
   password: string;
 
-  @Column({ type: 'int', nullable: true })
-  surcoId: number;
-
-  @ManyToOne(() => Surco, { nullable: true })
-  @JoinColumn({ name: 'surcoId' })
-  surco: Surco;
-
   @Column({ type: 'varchar', length: 255, nullable: true })
   prefijoTopicos: string;
-
-  @Column({ type: 'json', nullable: true })
-  topicosAdicionales: string[];
 
   @Column({ type: 'varchar', length: 10, default: 'Activo' })
   estado: 'Activo' | 'Inactivo';
 
+  // CAMBIA la relación @ManyToMany antigua por esta:
+  @OneToMany(() => BrokerLote, (brokerLote) => brokerLote.broker)
+  brokerLotes: BrokerLote[];
+
   @OneToMany(() => Subscripcion, (sub) => sub.broker, {
     cascade: true,
-    eager: true, // Carga automáticamente las subscripciones
+    eager: true,
   })
   subscripciones: Subscripcion[];
 }

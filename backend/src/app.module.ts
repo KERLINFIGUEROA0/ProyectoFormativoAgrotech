@@ -18,7 +18,7 @@ import { LotesModule } from './modules/lotes/lotes.module';
 import { MaterialesModule } from './modules/materiales/materiales.module';
 import { ProduccionesModule } from './modules/producciones/producciones.module';
 import { SensoresModule } from './modules/sensores/sensores.module';
-import { SurcosModule } from './modules/surcos/surcos.module';
+import { SublotesModule } from './modules/sublotes/sublotes.module';
 import { TipoCultivoModule } from './modules/tipo_cultivo/tipo_cultivo.module';
 import { TipoSensorModule } from './modules/tipo_sensor/tipo_sensor.module';
 import { TipoUsuarioModule } from './modules/tipo_usuario/tipo_usuario.module';
@@ -36,6 +36,8 @@ import { MulterModule } from '@nestjs/platform-express';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module';
 import { FichasModule } from './modules/fichas/fichas.module';
+import { MovimientosModule } from './movimientos/movimientos.module';
+import { PagosModule } from './modules/pagos/pagos.module';
 
 
 @Module({
@@ -67,7 +69,7 @@ import { FichasModule } from './modules/fichas/fichas.module';
     MaterialesModule,
     ProduccionesModule,
     SensoresModule,
-    SurcosModule,
+    SublotesModule,
     TipoCultivoModule,
     TipoSensorModule,
     TipoUsuarioModule,
@@ -85,6 +87,8 @@ import { FichasModule } from './modules/fichas/fichas.module';
     NotificationsModule,
     MqttConfigModule,
     FichasModule,
+    MovimientosModule,
+    PagosModule,
   ],
   providers: [],
   controllers: []

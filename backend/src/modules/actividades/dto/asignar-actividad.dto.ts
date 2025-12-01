@@ -3,31 +3,47 @@ import { MaterialUsadoDto } from './create-actividade.dto';
 import { Type } from 'class-transformer';
 
 export class AsignarActividadDto {
-  @IsNumber()
-  cultivo: number; // ID del cultivo
+   @IsNumber()
+   cultivo: number; // ID del cultivo
 
-  @IsString()
-  titulo: string; // Título o nombre de la actividad
+   @IsNumber()
+   @IsOptional()
+   lote?: number; // ID del lote (opcional)
 
-  @IsString()
-  descripcion: string; // Descripción de la actividad a realizar
+   @IsNumber()
+   @IsOptional()
+   sublote?: number; // ID del sublote (opcional)
 
-  @IsDateString()
-  fecha: string; // Fecha de la actividad
+   @IsString()
+   titulo: string; // Título o nombre de la actividad
 
-  @IsArray()
-    @IsOptional()
-    @ValidateNested({ each: true })
-    @Type(() => MaterialUsadoDto)
-    materiales?: MaterialUsadoDto[];
+   @IsString()
+   descripcion: string; // Descripción de la actividad a realizar
 
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsNumber({}, { each: true })
-  aprendices: number[]; // Array de identificaciones de aprendices
+   @IsDateString()
+   fecha: string; // Fecha de la actividad
 
-  @IsString()
-  @IsIn(['pendiente', 'en proceso', 'completado'])
-  @IsOptional()
-  estado?: 'pendiente' | 'en proceso' | 'completado';
+   @IsArray()
+     @IsOptional()
+     @ValidateNested({ each: true })
+     @Type(() => MaterialUsadoDto)
+     materiales?: MaterialUsadoDto[];
+
+   @IsArray()
+   @ArrayNotEmpty()
+   @IsNumber({}, { each: true })
+   aprendices: number[]; // Array de identificaciones de aprendices
+
+   @IsNumber()
+   @IsOptional()
+   responsable?: number; // ID del usuario responsable de devolver materiales
+
+   @IsString()
+   @IsIn(['pendiente', 'en proceso', 'completado', 'finalizado'])
+   @IsOptional()
+   estado?: 'pendiente' | 'en proceso' | 'completado' | 'finalizado';
+
+   @IsString()
+   @IsOptional()
+   archivoInicial?: string; // JSON string de filenames para el archivo inicial
 }

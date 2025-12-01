@@ -1,18 +1,22 @@
-// Interfaces para los datos que vienen del backend
+// src/features/iot/interfaces/iot.ts
+
+export interface Lote {
+  id: number;
+  nombre: string;
+  localizacion?: number;
+  area?: string;
+  estado: string;
+  coordenadas?: any;
+}
 
 export interface Surco {
   id: number;
   nombre: string;
-  lote: {
+  lote: Lote;
+  // Agregamos el cultivo opcional para el filtro
+  cultivo?: {
     id: number;
     nombre: string;
-  };
-  broker?: {
-    id: number;
-    nombre: string;
-    host: string;
-    puerto: number;
-    protocolo: string;
   } | null;
 }
 
@@ -24,7 +28,13 @@ export interface Sensor {
   valor_minimo_alerta: number;
   valor_maximo_alerta: number;
   topic: string | null;
-  surco: Surco;
+
+  // ✅ NUEVA PROPIEDAD
+  frecuencia_escaneo?: number;
+  latestData?: LatestSensorData;
+
+  lote: Lote;
+  surco?: Surco | null;
 }
 
 // Para los datos del dashboard
@@ -64,19 +74,76 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
-  surco?: Surco | null;
+  lotes: Lote[];
   prefijoTopicos?: string;
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';
-  subscripciones: Subscripcion[]; // El backend las incluye (eager: true)
+  subscripciones: Subscripcion[];
 }
 
-// Para el formulario de crear Broker
-export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones' | 'estado'>;
+export interface CreateBrokerDto {
+  nombre: string;
+  protocolo: string;
+  host: string;
+  puerto: number;
+  usuario?: string;
+  password?: string;
+  loteId: number;
+  prefijoTopicos?: string;
+  topicosAdicionales?: string[];
+}
 
-// Para el formulario de crear Subscripción
 export interface CreateSubscripcionDto {
   brokerId: number;
   topic: string;
   qos: number;
+}
+
+// --- Interfaces for Reports ---
+
+export interface SensorStatistics {
+  min: number;
+  max: number;
+  average: number;
+  standardDeviation: number;
+}
+
+export interface ChartDataPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface SensorReport {
+  sensorId: number;
+  sensorName: string;
+  statistics: SensorStatistics;
+  chartData: ChartDataPoint[];
+  alertas: string[];
+  fechasCriticas: string[];
+}
+
+export interface ReportData {
+  scope: 'surco' | 'cultivo';
+  scopeId: number;
+  timeFilter: 'day' | 'date' | 'month';
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  sensors: SensorReport[];
+}
+
+// --- Interfaces para BrokerLote (Configuraciones por Lote) ---
+
+export interface BrokerLote {
+  id: number;
+  broker: Broker;
+  lote: Lote;
+  topicos: string[];
+}
+
+export interface CreateBrokerLoteDto {
+  brokerId: number;
+  loteId: number;
+  topicos: string[];
 }

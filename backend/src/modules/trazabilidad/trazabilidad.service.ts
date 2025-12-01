@@ -3,6 +3,8 @@ import { CultivosService } from '../cultivos/cultivos.service';
 import { ActividadesService } from '../actividades/actividades.service';
 import { ProduccionesService } from '../producciones/producciones.service';
 import { VentasService } from '../ventas/ventas.service';
+import { MovimientosService } from '../../movimientos/movimientos.service';
+import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 
 @Injectable()
 export class TrazabilidadService {
@@ -11,15 +13,28 @@ export class TrazabilidadService {
     private readonly actividadesService: ActividadesService,
     private readonly produccionesService: ProduccionesService,
     private readonly ventasService: VentasService,
+    private readonly movimientosService: MovimientosService,
   ) {}
 
-  async obtenerTrazabilidadPorCultivo(cultivoId: number) {
+  // Método auxiliar para buscar devoluciones de materiales por actividad
+  private async buscarDevolucionesPorActividad(actividadId: number) {
+    // Buscar movimientos de ingreso con referencia que contenga la actividad
+    const movimientos = await this.movimientosService.obtenerHistorial();
+    return movimientos.filter(mov =>
+      mov.tipo === TipoMovimiento.INGRESO &&
+      mov.referencia &&
+      (mov.referencia.includes(`devolucion-final-actividad-${actividadId}`) ||
+       mov.referencia.includes(`devolucion-actividad-${actividadId}`))
+    );
+  }
+
+  async obtenerTrazabilidadPorCultivo(cultivoId: number, userIdentificacion?: number) {
     const cultivo = await this.cultivosService.buscarPorId(cultivoId);
     if (!cultivo) {
       throw new NotFoundException(`Cultivo con ID ${cultivoId} no encontrado.`);
     }
 
-    const actividades = (await this.actividadesService.findAll()).filter(
+    const actividades = (await this.actividadesService.findAll(userIdentificacion)).filter(
       (act) => act.cultivo?.id === cultivoId,
     );
 
@@ -46,23 +61,44 @@ export class TrazabilidadService {
     }
 
     // Eventos de Actividades
-    actividades.forEach((act) => {
+    for (const act of actividades) {
       if (act.fecha) { // Solo añadimos si tiene fecha
-        
+
         // 1. Añadir descripción base
         let descripcionCompleta = act.descripcion || 'Actividad registrada.';
 
-        // 2. Añadir el usuario asignado (si existe)
-        if (act.usuario) {
-          descripcionCompleta += `\nAsignado a: ${act.usuario.nombre} ${act.usuario.apellidos}.`;
+        // 2. Añadir las personas asignadas
+        if (act.asignados) {
+          try {
+            const asignados = JSON.parse(act.asignados);
+            if (Array.isArray(asignados) && asignados.length > 0) {
+              descripcionCompleta += `\nAsignados: ${asignados.join(', ')}.`;
+            }
+          } catch (error) {
+            // Si hay error al parsear, continuar sin asignados
+          }
         }
 
-        // 3. Añadir los materiales usados (si existen)
+        // 3. Añadir persona responsable si existe
+        if (act.responsable) {
+          descripcionCompleta += `\nResponsable: ${act.responsable.nombre} ${act.responsable.apellidos}.`;
+        }
+
+        // 4. Añadir los materiales usados (si existen)
         if (act.actividadMaterial && act.actividadMaterial.length > 0) {
           const materialesList = act.actividadMaterial
-            .map(am => `${am.material?.nombre || 'Material desconocido'} (x${am.cantidadUsada})`)
+            .map(am => `${am.material?.nombre || 'Material desconocido'} (${am.cantidadUsada})`)
             .join(', ');
-          descripcionCompleta += `\nMateriales: ${materialesList}.`;
+          descripcionCompleta += `\nMateriales utilizados: ${materialesList}.`;
+
+          // 5. Buscar devoluciones de materiales para esta actividad
+          const devoluciones = await this.buscarDevolucionesPorActividad(act.id);
+          if (devoluciones.length > 0) {
+            const devolucionesList = devoluciones
+              .map(dev => `${dev.material?.nombre || 'Material desconocido'} (${dev.cantidad} devueltos)`)
+              .join(', ');
+            descripcionCompleta += `\nMateriales devueltos: ${devolucionesList}.`;
+          }
         }
 
         timeline.push({
@@ -74,7 +110,7 @@ export class TrazabilidadService {
           icono: 'ClipboardList',
         });
       }
-    });
+    }
 
     // Eventos de Producción (Cosecha)
     producciones.forEach((prod) => {

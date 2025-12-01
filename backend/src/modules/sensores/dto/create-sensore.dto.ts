@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, IsOptional, ValidateNested, IsObject } from 'class-validator';
+import { IsString, IsInt , Min, IsNotEmpty, IsNumber, IsDateString, IsOptional, ValidateNested, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class BrokerDto {
@@ -34,7 +34,11 @@ export class CreateSensoreDto {
 
   @IsNumber()
   @IsNotEmpty()
-  surcoId: number;
+  loteId: number;
+
+  @IsNumber()
+  @IsOptional()
+  subloteId?: number;
 
   @IsDateString()
   @IsNotEmpty()
@@ -61,4 +65,9 @@ export class CreateSensoreDto {
   @Type(() => BrokerDto)
   @IsOptional()
   broker?: BrokerDto;
+
+  @IsInt()
+  @Min(5) // Mínimo 5 segundos por ejemplo
+  @IsOptional()
+  frecuencia_escaneo?: number;
 }

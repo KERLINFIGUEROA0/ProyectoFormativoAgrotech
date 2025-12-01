@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react';
-import { Input } from "@heroui/react";
-import { Plus, HelpCircle } from 'lucide-react';
+import { Input, Select, SelectItem, Button, Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/react";
+import { Plus } from 'lucide-react';
 import type { UsuarioForm, Rol } from '../interfaces/usuarios';
 import type { FichaOption } from '../../fichas/interfaces/fichas';
 import { getFichasOpcionesFromUsuarios, createFicha } from '../../fichas/api/fichas';
@@ -115,26 +115,30 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Información Personal */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 animate-in slide-in-from-left-2 duration-400 delay-100">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 md:p-4 rounded-lg border border-blue-100 animate-in slide-in-from-left-2 duration-400 delay-100">
           <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2 animate-in slide-in-from-top-1 duration-300 delay-50">
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-in scale-in duration-200 delay-25"></div>
             Información Personal
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Identificación
               </label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                onChange={(e) => handleFormChange('tipo', e.target.value)}
-                value={String(form.tipo ?? "CC")}
+              <Select
+                placeholder="Seleccione tipo"
+                className="w-full"
+                selectedKeys={new Set([String(form.tipo ?? "CC")])}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  handleFormChange('tipo', selected as string);
+                }}
               >
-                <option value="CC">Cédula de Ciudadanía</option>
-                <option value="TI">Tarjeta de Identidad</option>
-              </select>
+                <SelectItem key="CC">Cédula de Ciudadanía</SelectItem>
+                <SelectItem key="TI">Tarjeta de Identidad</SelectItem>
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,46 +225,57 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Rol del Usuario
               </label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                onChange={(e) => handleFormChange('rolId', Number(e.target.value))}
-                value={form.rolId ?? ""}
+              <Select
+                placeholder="Seleccione un rol"
+                className="w-full"
+                selectedKeys={form.rolId ? new Set([form.rolId.toString()]) : new Set()}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  handleFormChange('rolId', selected ? Number(selected) : 0);
+                }}
               >
-                <option value="" disabled>Seleccione un rol</option>
                 {roles.map((rol) => (
-                  <option key={rol.id} value={rol.id}>{rol.nombre}</option>
+                  <SelectItem key={rol.id.toString()}>
+                    {rol.nombre}
+                  </SelectItem>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {requiereFicha && (
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ficha de Formación
                 </label>
-                <div className="flex gap-3">
-                  <select
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                    onChange={(e) => handleFormChange('id_ficha', e.target.value)}
-                    value={form.id_ficha ?? ""}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select
+                    placeholder={loadingFichas ? "Cargando fichas..." : "Seleccione una ficha"}
+                    className="flex-1"
+                    size="sm"
+                    selectedKeys={form.id_ficha ? new Set([form.id_ficha]) : new Set()}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0];
+                      handleFormChange('id_ficha', selected as string);
+                    }}
                     disabled={loadingFichas}
                   >
-                    <option value="" disabled>
-                      {loadingFichas ? "Cargando fichas..." : "Seleccione una ficha"}
-                    </option>
                     {fichasOpciones.map((ficha) => (
-                      <option key={ficha.value} value={ficha.value}>{ficha.label}</option>
+                      <SelectItem key={ficha.value}>
+                        {ficha.label}
+                      </SelectItem>
                     ))}
-                  </select>
-                  <button
-                    type="button"
+                  </Select>
+                  <Button
                     onClick={() => setIsFichaModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors shadow-sm"
+                    color="secondary"
+                    startContent={<Plus size={16} />}
+                    size="sm"
                     title="Crear nueva ficha"
+                    className="w-full sm:w-auto"
                   >
-                    <Plus size={16} />
                     <span className="hidden sm:inline">Nueva Ficha</span>
-                  </button>
+                    <span className="sm:hidden">Nueva</span>
+                  </Button>
                 </div>
               </div>
             )}
@@ -279,37 +294,33 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-400 delay-600">
-          <button
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-200">
+          <Button
             onClick={onCancel}
-            className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors animate-in slide-in-from-left-3 duration-300 delay-700"
+            color="default"
+            variant="light"
+            size="sm"
+            className="w-full sm:w-auto"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={validateAndSave}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm animate-in slide-in-from-right-3 duration-300 delay-800"
+            color="primary"
+            size="sm"
+            className="w-full sm:w-auto"
           >
             {editingId != null ? 'Actualizar Usuario' : 'Registrar Usuario'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {isFichaModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Crear Nueva Ficha</h3>
-              <button
-                onClick={() => {
-                  setIsFichaModalOpen(false);
-                  setFichaFormData({});
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <HelpCircle size={20} className="text-gray-500" />
-              </button>
-            </div>
+      <Modal isOpen={isFichaModalOpen} onOpenChange={setIsFichaModalOpen}>
+        <ModalContent>
+          <ModalHeader>
+            <h3 className="text-lg font-semibold text-gray-900">Crear Nueva Ficha</h3>
+          </ModalHeader>
+          <ModalBody>
             <FichaFormComponent
               initialData={fichaFormData}
               onSave={handleCreateFicha}
@@ -319,9 +330,9 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
               }}
               editingId={null}
             />
-          </div>
-        </div>
-      )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 }

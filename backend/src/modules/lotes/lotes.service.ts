@@ -20,6 +20,7 @@ export class LotesService {
 
   private async clearCache(id?: number) {
     await this.cacheManager.del('lotes_todos');
+    await this.cacheManager.del('lotes_todos_alt');
     await this.cacheManager.del('lotes_estadisticas');
     if (id) {
       // The default cache key for the interceptor is the request URL
@@ -28,10 +29,11 @@ export class LotesService {
   }
 
   async crear(dto: CreateLoteDto): Promise<Lote> {
-    // Convertimos el área a string antes de crear
+    // Convertimos el área a string antes de crear y asignamos estado por defecto
     const loteData = {
       ...dto,
       area: String(dto.area),
+      estado: dto.estado || 'En preparación', // Estado por defecto
     };
     const lote = this.loteRepository.create(loteData);
     const nuevoLote = await this.loteRepository.save(lote);
@@ -41,14 +43,25 @@ export class LotesService {
 
   async listar(): Promise<Lote[]> {
     return await this.loteRepository.find({
-      relations: ['surcos'],
+      relations: ['sublotes', 'sublotes.cultivo'],
+    });
+  }
+
+  async obtenerDisponibles(): Promise<Lote[]> {
+    return await this.loteRepository.find({
+      where: [
+        { estado: 'En preparación' }, // Lotes listos para usar
+        { estado: 'Parcialmente ocupado' } // Lotes con algunos sublotes disponibles
+      ],
+      relations: ['sublotes'],
+      order: { nombre: 'ASC' }
     });
   }
 
   async buscarPorId(id: number): Promise<Lote> {
     const lote = await this.loteRepository.findOne({
       where: { id },
-      relations: ['surcos'],
+      relations: ['sublotes'],
     });
     if (!lote) {
       throw new NotFoundException(`El lote con ID ${id} no existe`);
@@ -68,11 +81,8 @@ export class LotesService {
     return loteActualizado;
   }
 
-  async eliminar(id: number): Promise<void> {
-    const lote = await this.buscarPorId(id);
-    await this.loteRepository.remove(lote);
-    await this.clearCache(id);
-  }
+  // ❌ ELIMINADO: Método eliminar - Los lotes se reutilizan, nunca se eliminan
+  // Esto preserva toda la trazabilidad histórica
 
   async actualizarEstado(id: number, dto: UpdateLoteEstadoDto): Promise<Lote> {
     const lote = await this.buscarPorId(id);
@@ -81,6 +91,9 @@ export class LotesService {
     await this.clearCache(id);
     return loteActualizado;
   }
+
+  // ✅ MANTENIDO: Solo cambio de estado - Los lotes se reutilizan cambiando coordenadas
+  // Esto permite "reiniciar" un lote para nuevo uso sin perder trazabilidad
 
   async obtenerEstadisticas() {
     const total = await this.loteRepository.count();
@@ -94,16 +107,27 @@ export class LotesService {
 
     const estadisticas = {
       total,
-      enCultivo: 0,
       enPreparacion: 0,
-      alertas: 0,
+      parcialmenteOcupado: 0,
+      enCultivo: 0,
+      enMantenimiento: 0,
     };
 
     conteoPorEstado.forEach((item) => {
-      if (item.estado === 'Activo') {
-        estadisticas.enCultivo = parseInt(item.cantidad, 10);
-      } else if (item.estado === 'En preparación') {
-        estadisticas.enPreparacion = parseInt(item.cantidad, 10);
+      const cantidad = parseInt(item.cantidad, 10);
+      switch (item.estado) {
+        case 'En preparación':
+          estadisticas.enPreparacion = cantidad;
+          break;
+        case 'Parcialmente ocupado':
+          estadisticas.parcialmenteOcupado = cantidad;
+          break;
+        case 'En cultivación':
+          estadisticas.enCultivo = cantidad;
+          break;
+        case 'En mantenimiento':
+          estadisticas.enMantenimiento = cantidad;
+          break;
       }
     });
 

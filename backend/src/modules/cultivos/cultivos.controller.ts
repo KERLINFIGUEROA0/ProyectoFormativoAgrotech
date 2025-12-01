@@ -37,6 +37,30 @@ export class CultivosController {
     return { success: true, message: `El cultivo se actualizó`, data: actualizado };
   }
 
+  @Put('finalizar/:id')
+  async finalizar(@Param('id', ParseIntPipe) id: number, @Body() body: { fechaFin: string }) {
+    if (!body.fechaFin) throw new BadRequestException("La fecha de finalización es obligatoria");
+
+    const cultivo = await this.cultivosService.finalizarCultivo(id, body.fechaFin);
+    return { success: true, message: 'Cultivo finalizado y terrenos liberados', data: cultivo };
+  }
+
+  @Post('registrar-cosecha/:id')
+  async registrarCosecha(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { fecha: string; cantidad: number; esFinal: boolean }
+  ) {
+    if (!body.fecha) throw new BadRequestException("La fecha es obligatoria");
+    if (body.cantidad < 0) throw new BadRequestException("La cantidad no puede ser negativa");
+
+    const cultivo = await this.cultivosService.registrarCosecha(id, body.fecha, body.cantidad, body.esFinal);
+    return {
+      success: true,
+      message: body.esFinal ? 'Cosecha final registrada y terrenos liberados' : 'Cosecha parcial registrada',
+      data: cultivo
+    };
+  }
+
   @Delete('eliminar/:id')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     await this.cultivosService.eliminar(id);
@@ -91,7 +115,7 @@ export class CultivosController {
   @Get('exportar-excel/general')
   async exportarExcelGeneral(@Res() res: Response) {
     const excelBuffer = await this.cultivosService.exportarExcelGeneral();
-    
+
     // Añadir fecha al nombre del archivo: YYYY-MM-DD_HHMM
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -102,7 +126,26 @@ export class CultivosController {
       'Content-Disposition': `attachment; filename=cultivos-reporte-general-${dateStr}.xlsx`,
       'Content-Length': excelBuffer.length,
     });
-    
+
     res.send(excelBuffer);
+  }
+
+  @Post('actualizar-estados-lotes')
+  async actualizarEstadosLotes() {
+    const resultado = await this.cultivosService.actualizarEstadosLotes();
+    return {
+      success: true,
+      message: resultado.message,
+      data: { lotesActualizados: resultado.lotesActualizados }
+    };
+  }
+
+  @Get('diagnosticar-estados-lotes')
+  async diagnosticarEstadosLotes() {
+    const diagnostico = await this.cultivosService.diagnosticarEstadosLotes();
+    return {
+      success: true,
+      data: diagnostico
+    };
   }
 }

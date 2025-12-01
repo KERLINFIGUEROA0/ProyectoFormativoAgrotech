@@ -16,6 +16,16 @@ export const actualizarCultivo = async (id: number, cultivoData: any) => {
   return response.data;
 };
 
+export const finalizarCultivo = async (id: number, fechaFin: string) => {
+  const response = await api.put(`/cultivos/finalizar/${id}`, { fechaFin });
+  return response.data;
+};
+
+export const registrarCosecha = async (id: number, fecha: string, cantidad: number, esFinal: boolean) => {
+  const response = await api.post(`/cultivos/registrar-cosecha/${id}`, { fecha, cantidad, esFinal });
+  return response.data;
+};
+
 export const eliminarCultivo = async (id: number) => {
   const response = await api.delete(`/cultivos/eliminar/${id}`);
   return response.data;
@@ -45,9 +55,30 @@ export const crearTipoCultivo = async (data: { nombre: string }) => {
     return response.data;
 };
 
+export const actualizarTipoCultivo = async (id: number, data: { nombre: string }) => {
+    const response = await api.put(`/tipo-cultivo/actualizar/${id}`, data);
+    return response.data;
+};
+
+export const eliminarTipoCultivo = async (id: number) => {
+    const response = await api.delete(`/tipo-cultivo/eliminar/${id}`);
+    return response.data;
+};
+
 
 // --- FUNCIÓN PARA TRAZABILIDAD ---
 export const obtenerTrazabilidad = async (cultivoId: number) => {
   const response = await api.get(`/trazabilidad/cultivo/${cultivoId}`);
+  return response.data;
+};
+
+// --- FUNCIONES PARA DIAGNÓSTICO Y ACTUALIZACIÓN DE ESTADOS ---
+export const diagnosticarEstadosLotes = async () => {
+  const response = await api.get('/cultivos/diagnosticar-estados-lotes');
+  return response.data;
+};
+
+export const actualizarEstadosLotes = async () => {
+  const response = await api.post('/cultivos/actualizar-estados-lotes');
   return response.data;
 };

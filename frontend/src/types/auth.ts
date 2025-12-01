@@ -14,6 +14,7 @@ export interface UsuarioData {
   email: string;
   telefono: string;
   fotoUrl?: string;
+  rolNombre?: string;
 }
 
 export interface UpdatePerfilDto {

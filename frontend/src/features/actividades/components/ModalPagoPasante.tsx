@@ -1,0 +1,237 @@
+import React, { useState, useEffect } from 'react';
+import { X, DollarSign, Clock, Calculator } from 'lucide-react';
+import { Button, Input, Textarea } from '@heroui/react';
+import { toast } from 'sonner';
+import type { Actividad } from '../interfaces/actividades';
+
+interface ModalPagoPasanteProps {
+  actividad: Actividad;
+  isOpen: boolean;
+  onClose: () => void;
+  onPagoSuccess: () => void;
+  pasantes: Array<{
+    identificacion: number;
+    nombre: string;
+    apellidos: string;
+  }>;
+}
+
+interface PagoData {
+  idUsuario: number;
+  horasTrabajadas: number;
+  tarifaHora: number;
+  descripcion: string;
+}
+
+const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
+  actividad,
+  isOpen,
+  onClose,
+  onPagoSuccess,
+  pasantes,
+}) => {
+  const [pagos, setPagos] = useState<PagoData[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && pasantes.length > 0) {
+      // Inicializar pagos para cada pasante
+      const pagosIniciales = pasantes.map(pasante => ({
+        idUsuario: pasante.identificacion,
+        horasTrabajadas: actividad.horas || 0,
+        tarifaHora: actividad.tarifaHora || 0,
+        descripcion: `Pago por actividad: ${actividad.titulo}`,
+      }));
+      setPagos(pagosIniciales);
+    }
+  }, [isOpen, pasantes, actividad]);
+
+  const handlePagoChange = (index: number, field: keyof PagoData, value: string | number) => {
+    const nuevosPagos = [...pagos];
+    nuevosPagos[index] = {
+      ...nuevosPagos[index],
+      [field]: value,
+    };
+    setPagos(nuevosPagos);
+  };
+
+  const calcularMonto = (horas: number, tarifa: number) => {
+    return horas * tarifa;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (pagos.length === 0) {
+      toast.error('No hay pasantes para pagar');
+      return;
+    }
+
+    // Validar que todos los campos requeridos estén completos
+    for (const pago of pagos) {
+      if (!pago.horasTrabajadas || !pago.tarifaHora) {
+        toast.error('Todos los campos de horas y tarifa son requeridos');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Registrar pagos para cada pasante
+      const promesasPagos = pagos.map(pago =>
+        fetch('/pagos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            idUsuario: pago.idUsuario,
+            idActividad: actividad.id,
+            monto: calcularMonto(pago.horasTrabajadas, pago.tarifaHora),
+            horasTrabajadas: pago.horasTrabajadas,
+            tarifaHora: pago.tarifaHora,
+            descripcion: pago.descripcion,
+            fechaPago: new Date().toISOString().split('T')[0],
+          }),
+        })
+      );
+
+      const resultados = await Promise.all(promesasPagos);
+
+      // Verificar si todas las respuestas fueron exitosas
+      const errores = [];
+      for (let i = 0; i < resultados.length; i++) {
+        if (!resultados[i].ok) {
+          const error = await resultados[i].json();
+          errores.push(`Error en pago de ${pasantes[i].nombre}: ${error.message}`);
+        }
+      }
+
+      if (errores.length > 0) {
+        toast.error(`Errores en pagos: ${errores.join(', ')}`);
+      } else {
+        toast.success('Pagos registrados exitosamente');
+        onPagoSuccess();
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error al registrar pagos:', error);
+      toast.error('Error al registrar los pagos');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-green-600" />
+            Registrar Pagos - {actividad.titulo}
+          </h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-800">
+            <strong>Actividad completada:</strong> Registra los pagos por horas trabajadas para los pasantes que participaron.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
+            {pasantes.map((pasante, index) => {
+              const pago = pagos[index];
+              if (!pago) return null;
+
+              return (
+                <div key={pasante.identificacion} className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    {pasante.nombre} {pasante.apellidos}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Input
+                        type="number"
+                        label="Horas Trabajadas"
+                        value={pago.horasTrabajadas.toString()}
+                        onChange={(e) => handlePagoChange(index, 'horasTrabajadas', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        step="0.5"
+                        startContent={<Clock className="w-4 h-4" />}
+                        isRequired
+                      />
+                    </div>
+
+                    <div>
+                      <Input
+                        type="number"
+                        label="Tarifa por Hora ($)"
+                        value={pago.tarifaHora.toString()}
+                        onChange={(e) => handlePagoChange(index, 'tarifaHora', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        step="0.01"
+                        startContent={<DollarSign className="w-4 h-4" />}
+                        isRequired
+                      />
+                    </div>
+
+                    <div>
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                        <div className="flex items-center gap-2">
+                          <Calculator className="w-4 h-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            Total: ${calcularMonto(pago.horasTrabajadas, pago.tarifaHora).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Textarea
+                      label="Descripción del Pago"
+                      value={pago.descripcion}
+                      onChange={(e) => handlePagoChange(index, 'descripcion', e.target.value)}
+                      placeholder="Descripción del trabajo realizado..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end gap-4 mt-6 pt-4 border-t">
+            <Button
+              type="button"
+              onClick={onClose}
+              color="danger"
+              variant="light"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              color="success"
+              startContent={isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <DollarSign className="w-4 h-4" />}
+            >
+              {isSubmitting ? 'Registrando Pagos...' : 'Registrar Pagos'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ModalPagoPasante;

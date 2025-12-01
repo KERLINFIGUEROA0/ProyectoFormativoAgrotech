@@ -3,8 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, Edit, Plus, Minus, Settings, AlertTriangle, Package, Archive } from 'lucide-react';
 // --- ✅ 1. Importamos la API y las interfaces ---
-import { obtenerMaterialPorId } from '../api/inventarioApi'; // Se quita listarMovimientosPorMaterial
-import type { Material } from '../interfaces/inventario'; // Se quita MovimientoInventario
+import { obtenerMaterialPorId, actualizarMaterial, subirImagenMaterial, listarMovimientosPorMaterial } from '../api/inventarioApi';
+import type { Material, MaterialData, MovimientoData } from '../interfaces/inventario';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
+import MaterialForm from '../components/MaterialForm';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -83,36 +85,76 @@ const StockBar = ({ label, valorActual, valorMinimo, valorObjetivo, unidad }: St
 export default function DetalleMaterialPage() {
   const { materialId } = useParams<{ materialId: string }>();
   const [material, setMaterial] = useState<Material | null>(null);
-  // const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]); // Se quita estado de movimientos
+  const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // --- ✅ 3. Cargar Material Y Movimientos ---
   useEffect(() => {
     if (!materialId) return;
     const id = parseInt(materialId);
     setLoading(true);
-    
-    // Se quita la llamada a listarMovimientosPorMaterial
-    obtenerMaterialPorId(id)
-    .then((resMaterial) => {
+
+    Promise.all([
+      obtenerMaterialPorId(id),
+      listarMovimientosPorMaterial(id)
+    ])
+    .then(([resMaterial, resMovimientos]) => {
       setMaterial(resMaterial.data);
-      // setMovimientos(resMovimientos.data || []); // Se quita
+      setMovimientos(resMovimientos.data || []);
     })
     .catch(() => toast.error("No se pudo cargar el detalle del material."))
     .finally(() => setLoading(false));
 
   }, [materialId]);
 
+  const handleSave = async (data: MaterialData) => {
+    const { imageFile, ...materialData } = data;
+    const toastId = toast.loading("Actualizando material...");
+
+    try {
+      const res = await actualizarMaterial(material!.id, materialData);
+      const updatedMaterial = res.data;
+
+      if (imageFile) {
+        await subirImagenMaterial(updatedMaterial.id, imageFile);
+        toast.info("Imagen subida correctamente.");
+      }
+
+      toast.success("Material actualizado con éxito.", { id: toastId });
+      setMaterial(updatedMaterial);
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      const errorMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || "No se pudo actualizar el material.";
+      toast.error(errorMessage, { id: toastId });
+    }
+  };
+
   if (loading) return <div className="text-center p-8">Cargando...</div>;
   if (!material) return <div className="text-center p-8">Material no encontrado.</div>;
 
   // --- ✅ 4. Lógica de Stock (Mejorada) ---
+  const esConsumible = material.tipoConsumo === 'consumible';
   const stockMinimoPaquetes = 10; // Valor de ejemplo para mínimo
   const stockObjetivoPaquetes = 50; // Valor de ejemplo para "lleno"
 
   const totalContenido = material.pesoPorUnidad ? material.cantidad * material.pesoPorUnidad : null;
   const stockMinimoContenido = material.pesoPorUnidad ? stockMinimoPaquetes * material.pesoPorUnidad : null;
   const stockObjetivoContenido = material.pesoPorUnidad ? stockObjetivoPaquetes * material.pesoPorUnidad : null;
+
+  // Para consumibles, calcular contenido disponible real
+  let contenidoDisponible = null;
+  if (esConsumible && material.cantidadPorUnidad) {
+    const restante = material.cantidadRestanteEnUnidadActual ?? material.cantidadPorUnidad;
+    contenidoDisponible = (material.cantidad - 1) * material.cantidadPorUnidad + restante;
+  }
+
+  const formInitialData = material ? {
+    ...material,
+    pesoPorUnidad: material.pesoPorUnidad === null ? undefined : material.pesoPorUnidad,
+  } : {};
 
   return (
     <div className="p-2 sm:p-6 bg-gray-50 min-h-full space-y-6">
@@ -130,9 +172,9 @@ export default function DetalleMaterialPage() {
             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800">{material.tipoMaterial}</span>
           </div>
         </div>
-        <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm hover:bg-green-700">
-          <Edit size={16} /> Editar Producto
-        </button>
+        <Button onClick={() => setIsEditModalOpen(true)} color="success" startContent={<Edit size={16} />}>
+          Editar Producto
+        </Button>
       </div>
 
       {/* Cuadrícula de Contenido Principal */}
@@ -172,6 +214,9 @@ export default function DetalleMaterialPage() {
               <InfoItem label="Costo por Paquete" value={`$${Number(material.precio).toLocaleString('es-CO')}`} />
               <InfoItem label="Fecha de Caducidad" value={material.fechaVencimiento ? new Date(material.fechaVencimiento).toLocaleDateString('es-ES') : null} />
               <InfoItem label="Contenido/Paquete" value={formatarContenido(material.pesoPorUnidad, material.medidasDeContenido)} />
+              {material.tipoConsumo === 'no_consumible' && material.usosTotales && (
+                <InfoItem label="Usos" value={`${material.usosActuales || 0} / ${material.usosTotales}`} />
+              )}
             </div>
           </div>
           
@@ -184,41 +229,65 @@ export default function DetalleMaterialPage() {
               valorObjetivo={stockObjetivoPaquetes}
               unidad={material.tipoEmpaque || 'Paquetes'}
             />
-            
-            {totalContenido !== null && stockMinimoContenido !== null && stockObjetivoContenido !== null && (
-              <StockBar
-                label="Stock por Contenido Total"
-                valorActual={Number(totalContenido.toFixed(1))}
-                valorMinimo={Number(stockMinimoContenido.toFixed(1))}
-                valorObjetivo={Number(stockObjetivoContenido.toFixed(1))}
-                unidad={material.medidasDeContenido || 'unidades'}
-              />
+
+            {esConsumible ? (
+              contenidoDisponible !== null && (
+                <StockBar
+                  label="Contenido Disponible"
+                  valorActual={contenidoDisponible}
+                  valorMinimo={stockMinimoPaquetes * (material.cantidadPorUnidad || 1)}
+                  valorObjetivo={stockObjetivoPaquetes * (material.cantidadPorUnidad || 1)}
+                  unidad={material.medidasDeContenido || 'unidades'}
+                />
+              )
+            ) : (
+              totalContenido !== null && stockMinimoContenido !== null && stockObjetivoContenido !== null && (
+                <StockBar
+                  label="Stock por Contenido Total"
+                  valorActual={Number(totalContenido.toFixed(1))}
+                  valorMinimo={Number(stockMinimoContenido.toFixed(1))}
+                  valorObjetivo={Number(stockObjetivoContenido.toFixed(1))}
+                  unidad={material.medidasDeContenido || 'unidades'}
+                />
+              )
             )}
           </div>
 
-          {/* --- ✅ Sección de Movimientos Deshabilitada --- */}
+          {/* --- ✅ Sección de Movimientos --- */}
           <div className="bg-white p-4 rounded-xl shadow-md">
             <h3 className="font-semibold text-gray-700 mb-2">Movimientos Recientes</h3>
             <div className="space-y-2 text-sm max-h-48 overflow-y-auto">
-              <p className="text-center text-gray-500 py-4">Módulo de movimientos en construcción.</p>
-              {/* {movimientos.length > 0 ? movimientos.map(mov => (
-                <div key={mov.id} className={`flex justify-between items-center p-2 rounded-md ${mov.tipo === 'entrada' ? 'bg-green-50' : 'bg-red-50'}`}>
+              {movimientos.length > 0 ? movimientos.slice(0, 10).map(mov => (
+                <div key={mov.id} className={`flex justify-between items-center p-2 rounded-md ${mov.tipo === 'ingreso' ? 'bg-green-50' : 'bg-red-50'}`}>
                   <p>
-                    {Qmov.tipo === 'entrada' ? 'Entrada' : 'Salida'}
+                    {mov.tipo === 'ingreso' ? 'Entrada' : 'Salida'}
                     <span className="text-xs text-gray-500 ml-2">({new Date(mov.fecha).toLocaleDateString('es-ES')})</span>
                   </p>
-                  <p className={`font-bold ${mov.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
-                    {mov.tipo === 'entrada' ? '+' : '-'}{mov.cantidad}
+                  <p className={`font-bold ${mov.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
+                    {mov.tipo === 'ingreso' ? '+' : '-'}{mov.cantidad}
                   </p>
                 </div>
               )) : (
                 <p className="text-center text-gray-500 py-4">No hay movimientos registrados.</p>
-              )} */}
+              )}
             </div>
           </div>
 
         </div>
       </div>
+
+      <Modal isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen} size="4xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>Editar Material</ModalHeader>
+          <ModalBody>
+            <MaterialForm
+              initialData={formInitialData}
+              onSave={handleSave}
+              onCancel={() => setIsEditModalOpen(false)}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

@@ -4,17 +4,34 @@ import { Repository } from 'typeorm';
 import { CreateMaterialeDto } from './dto/create-materiale.dto';
 import { UpdateMaterialeDto } from './dto/update-materiale.dto';
 import { Material } from './entities/materiale.entity';
+import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
+import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
+import { MovimientosService } from '../../movimientos/movimientos.service';
 
 @Injectable()
 export class MaterialesService {
   constructor(
     @InjectRepository(Material)
     private readonly materialRepository: Repository<Material>,
+    private readonly movimientosService: MovimientosService,
   ) {}
 
   async create(createMaterialeDto: CreateMaterialeDto): Promise<Material> {
     const material = this.materialRepository.create(createMaterialeDto);
-    return this.materialRepository.save(material);
+    const savedMaterial = await this.materialRepository.save(material);
+
+    // Registrar movimiento de entrada si hay cantidad inicial
+    if (savedMaterial.cantidad > 0) {
+      await this.movimientosService.registrarMovimiento(
+        TipoMovimiento.INGRESO,
+        savedMaterial.cantidad,
+        savedMaterial.id,
+        `Entrada inicial de ${savedMaterial.nombre}`,
+        `material-creado-${savedMaterial.id}`
+      );
+    }
+
+    return savedMaterial;
   }
   async desactivar(id: number): Promise<Material> {
     const material = await this.findOne(id);
@@ -40,8 +57,24 @@ export class MaterialesService {
 
   async update(id: number, updateMaterialeDto: UpdateMaterialeDto): Promise<Material> {
     const material = await this.findOne(id);
+    const cantidadAnterior = material.cantidad;
+
     this.materialRepository.merge(material, updateMaterialeDto);
-    return this.materialRepository.save(material);
+    const updatedMaterial = await this.materialRepository.save(material);
+
+    // Registrar movimiento si se aumentó la cantidad
+    if (updateMaterialeDto.cantidad && updateMaterialeDto.cantidad > cantidadAnterior) {
+      const cantidadAgregada = updateMaterialeDto.cantidad - cantidadAnterior;
+      await this.movimientosService.registrarMovimiento(
+        TipoMovimiento.INGRESO,
+        cantidadAgregada,
+        updatedMaterial.id,
+        `Reabastecimiento de ${updatedMaterial.nombre}`,
+        `material-reabastecido-${updatedMaterial.id}`
+      );
+    }
+
+    return updatedMaterial;
   }
 
   async remove(id: number): Promise<void> {

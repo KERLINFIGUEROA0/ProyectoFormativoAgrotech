@@ -315,8 +315,10 @@ export class UsuariosService {
         'tipoUsuario',
         'tipoUsuario.rolPermisos',
         'tipoUsuario.rolPermisos.permiso',
+        'tipoUsuario.rolPermisos.permiso.modulo',
         'usuarioPermisos',
         'usuarioPermisos.permiso',
+        'usuarioPermisos.permiso.modulo',
       ],
     });
 

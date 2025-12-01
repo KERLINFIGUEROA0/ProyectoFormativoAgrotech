@@ -1,0 +1,69 @@
+---
+title: Documentación Agrotech
+description: Documentación completa del sistema Agrotech para gestión agrícola.
+template: splash
+hero:
+  tagline: Sistema integral de gestión agrícola con IoT
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Explorar Módulos
+      link: /despliegue
+      icon: right-arrow
+    
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+##  Sistema AgroTech
+
+**AgroTech** es un sistema integral de gestión agrícola que digitaliza procesos tradicionales, permitiendo administración completa de fincas, cultivos, inventarios y operaciones comerciales con monitoreo IoT en tiempo real.
+
+### Tecnologías Principales
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+
+<div style="background: var(--sl-color-bg); border: 1px solid var(--sl-color-border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px var(--sl-color-shadow); transition: all 0.3s ease; position: relative; overflow: hidden;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px var(--sl-color-shadow)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px var(--sl-color-shadow)'">
+<div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #3b82f6, #1d4ed8);"></div>
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: var(--sl-color-accent); display: flex; align-items: center;">
+Backend (NestJS)
+</h3>
+<div style="font-size: 0.85rem; line-height: 1.6; color: var(--sl-color-text);">
+• <strong style="color: var(--sl-color-accent);">Node.js 22.20.0</strong> • <strong style="color: var(--sl-color-accent);">NestJS 11.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">TypeScript 5.7.x</strong> • <strong style="color: var(--sl-color-accent);">TypeORM 0.3.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">PostgreSQL 15</strong> • <strong style="color: var(--sl-color-accent);">Redis 7.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">JWT 11.x</strong> • <strong style="color: var(--sl-color-accent);">MQTT 5.14.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Socket.io 4.x</strong> • <strong style="color: var(--sl-color-accent);">ExcelJS 4.4.x</strong>
+</div>
+</div>
+
+<div style="background: var(--sl-color-bg); border: 1px solid var(--sl-color-border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px var(--sl-color-shadow); transition: all 0.3s ease; position: relative; overflow: hidden;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px var(--sl-color-shadow)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px var(--sl-color-shadow)'">
+<div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ef4444, #dc2626);"></div>
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: var(--sl-color-accent); display: flex; align-items: center;">
+Frontend (React)
+</h3>
+<div style="font-size: 0.85rem; line-height: 1.6; color: var(--sl-color-text);">
+• <strong style="color: var(--sl-color-accent);">React 19.1.x</strong> • <strong style="color: var(--sl-color-accent);">Vite 7.1.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">TypeScript 5.x</strong> • <strong style="color: var(--sl-color-accent);">React Router 7.8.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Axios 1.12.x</strong> • <strong style="color: var(--sl-color-accent);">Material-UI 7.3.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Leaflet 1.9.x</strong> • <strong style="color: var(--sl-color-accent);">Recharts 3.2.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Socket.io 4.8.x</strong> • <strong style="color: var(--sl-color-accent);">TailwindCSS 4.1.x</strong>
+</div>
+</div>
+
+
+<div style="background: var(--sl-color-bg); border: 1px solid var(--sl-color-border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px var(--sl-color-shadow); transition: all 0.3s ease; position: relative; overflow: hidden;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px var(--sl-color-shadow)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px var(--sl-color-shadow)'">
+<div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #8b5cf6, #7c3aed);"></div>
+<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: var(--sl-color-accent); display: flex; align-items: center;">
+IoT & Conectividad
+</h3>
+<div style="font-size: 0.85rem; line-height: 1.6; color: var(--sl-color-text);">
+• <strong style="color: var(--sl-color-accent);">MQTT 5.14.x</strong> • <strong style="color: var(--sl-color-accent);">Socket.io 4.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Google Maps API 2.20.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">Leaflet 1.9.x</strong> • <strong style="color: var(--sl-color-accent);">JWT Decode 4.x</strong><br/>
+• <strong style="color: var(--sl-color-accent);">JS Cookie 3.x</strong> • <strong style="color: var(--sl-color-accent);">WebSocket</strong>
+</div>
+</div>
+
+</div>
+

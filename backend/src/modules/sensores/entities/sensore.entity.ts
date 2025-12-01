@@ -4,8 +4,10 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
-import { Surco } from '../../surcos/entities/surco.entity';
+import { Sublote } from '../../sublotes/entities/sublote.entity';
+import { Lote } from '../../lotes/entities/lote.entity';
 import { InformacionSensor } from '../../informacion_sensor/entities/informacion_sensor.entity';
 
 @Entity('sensores')
@@ -38,11 +40,22 @@ export class Sensor {
   @Column({ name: 'Estado', length: 20, default: 'Activo' })
   estado: string;
 
+  @Column({ name: 'Frecuencia_Escaneo', type: 'int', default: 60 })
+  frecuencia_escaneo: number;
+
   @Column({ name: 'mqtt_topic', type: 'varchar', length: 255, nullable: true })
   topic: string | null;
 
-  @ManyToOne(() => Surco, (surco) => surco.sensores, { onDelete: 'CASCADE' })
-  surco: Surco;
+  @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
+  ultimo_mqtt_mensaje: Date | null;
+
+  @ManyToOne(() => Lote, (lote) => lote.sublotes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'loteId' })
+  lote: Lote;
+
+  @ManyToOne(() => Sublote, (sublote) => sublote.sensores, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'subloteId' })
+  sublote: Sublote | null;
 
   @OneToMany(() => InformacionSensor, (info) => info.sensor)
   informaciones: InformacionSensor[];

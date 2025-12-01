@@ -5,15 +5,16 @@ import { UpdateInformacionSensorDto } from './dto/update-informacion_sensor.dto'
 
 @Controller('informacion-sensor')
 export class InformacionSensorController {
-  constructor(private readonly informacionSensorService: InformacionSensorService) {}
+  constructor(private readonly informacionSensorService: InformacionSensorService) { }
 
   /**
    * ✅ NUEVO: Devuelve el último dato de CADA sensor.
+   * Solo muestra datos recientes (configurable via query param).
    * (Ideal para un dashboard)
    */
   @Get('latest')
-  async getLatestData() {
-    const data = await this.informacionSensorService.getLatestData();
+  async getLatestData(@Query('maxAgeMinutes', new ParseIntPipe({ optional: true })) maxAgeMinutes?: number) {
+    const data = await this.informacionSensorService.getLatestData(maxAgeMinutes || 2);
     return { success: true, data };
   }
 
@@ -54,18 +55,40 @@ export class InformacionSensorController {
     return this.informacionSensorService.findAll();
   }
 
+  /**
+    * Generate advanced report with statistics and chart data
+    */
+   @Get('report')
+   async generateReport(
+     @Query('scope') scope: 'sublote' | 'cultivo',
+     @Query('scopeId', ParseIntPipe) scopeId: number,
+     @Query('timeFilter') timeFilter: 'day' | 'date' | 'month',
+     @Query('date') date?: string,
+     @Query('sensorId', new ParseIntPipe({ optional: true })) sensorId?: number,
+   ) {
+     const report = await this.informacionSensorService.generateReport(scope, scopeId, timeFilter, date, sensorId);
+     return { success: true, data: report };
+   }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.informacionSensorService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.informacionSensorService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateInformacionSensorDto: UpdateInformacionSensorDto) {
     return this.informacionSensorService.update(+id, updateInformacionSensorDto);
   }
+  
+  @Get('cultivo/:id')
+  findByCultivo(@Param('id', ParseIntPipe) id: number) {
+    return this.informacionSensorService.findByCultivo(id);
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.informacionSensorService.remove(+id);
   }
+
+
 }

@@ -7,6 +7,11 @@ export const obtenerLotes = async () => {
   return response.data;
 };
 
+export const obtenerLotesDisponibles = async () => {
+  const response = await api.get("/lotes/disponibles");
+  return response.data;
+};
+
 export const crearLote = async (loteData: LoteData) => {
   const response = await api.post("/lotes/crear", loteData);
   return response.data;
@@ -17,10 +22,8 @@ export const actualizarLote = async (id: number, loteData: Partial<LoteData>) =>
   return response.data;
 };
 
-export const eliminarLote = async (id: number) => {
-  const response = await api.delete(`/lotes/eliminar/${id}`);
-  return response.data;
-};
+// ✅ ELIMINADAS: Funciones de eliminación y archivado
+// Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
 
 export const actualizarEstadoLote = async (id: number, estado: string) => {
   const response = await api.patch(`/lotes/${id}/estado`, { estado });

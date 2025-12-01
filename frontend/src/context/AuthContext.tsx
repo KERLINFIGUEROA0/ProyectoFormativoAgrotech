@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { ReactNode } from "react";
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { jwtDecode } from 'jwt-decode';
 import { obtenerPerfil } from "../features/auth/api/auth";
 import type { UsuarioData } from "../types/auth";
 
@@ -10,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isLoggingOut: boolean;
   userPermissions: string[] | null;
+  userModules: Record<string, string[]> | null;
   userData: UsuarioData | null;
   login: (token: string) => void;
   logout: () => void;
@@ -26,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userPermissions, setUserPermissions] = useState<string[] | null>(null);
+  const [userModules, setUserModules] = useState<Record<string, string[]> | null>(null);
   const [userData, setUserData] = useState<UsuarioData | null>(null);
 
   const fetchAndSetData = useCallback(async () => {
@@ -35,13 +38,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
-      console.log("🔍 Debug: Fetching user profile...");
       const userProfile = await obtenerPerfil();
-      console.log("🔍 Debug: User profile response:", userProfile);
 
       if (userProfile && userProfile.identificacion) {
-        console.log("✅ User profile has identificacion:", userProfile.identificacion);
-
         const usuario: UsuarioData = {
           tipo: userProfile.tipoIdentificacion || "CC",
           identificacion: userProfile.identificacion,
@@ -50,12 +49,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: userProfile.correo || "",
           telefono: userProfile.telefono || "",
           fotoUrl: userProfile.fotoUrl || "",
+          rolNombre: userProfile.rolNombre || "",
         };
-        console.log("✅ Setting userData:", usuario);
         setUserData(usuario);
 
         setUserPermissions(userProfile.permisos || []);
+        setUserModules(userProfile.modulos || {});
         localStorage.setItem('permissions', JSON.stringify(userProfile.permisos || []));
+        localStorage.setItem('modules', JSON.stringify(userProfile.modulos || {}));
       } else {
         console.warn("⚠️ User profile missing identificacion:", userProfile);
       }
@@ -73,8 +74,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
       setToken(savedToken);
+
+      // Decodificar el token para obtener el nombre del usuario
+      try {
+        const decoded: any = jwtDecode(savedToken);
+        if (decoded.nombre) {
+          setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
+            tipo: "CC",
+            identificacion: decoded.identificacion || "",
+            nombres: decoded.nombre,
+            apellidos: "",
+            email: decoded.username || "",
+            telefono: "",
+            fotoUrl: "",
+            rolNombre: decoded.rolNombre || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error decodificando token guardado:", error);
+      }
+
       const savedPerms = localStorage.getItem('permissions');
+      const savedModules = localStorage.getItem('modules');
       setUserPermissions(savedPerms ? JSON.parse(savedPerms) : []);
+      setUserModules(savedModules ? JSON.parse(savedModules) : {});
     }
     setLoading(false);
   }, []);
@@ -97,21 +120,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔌 Conectado al servidor de WebSockets.');
       });
 
-      socket.on('permissions_updated', (data: { permisos: string[], access_token: string }) => {
+      socket.on('permissions_updated', (data: { permisos: string[], modulos: Record<string, string[]>, access_token: string }) => {
         console.log('✨ Permisos y nuevo token recibidos:', data);
-        
-        if (data.access_token && data.permisos) {
+
+        if (data.access_token && data.permisos && data.modulos) {
           setUserPermissions(data.permisos);
+          setUserModules(data.modulos);
           localStorage.setItem('permissions', JSON.stringify(data.permisos));
-          
+          localStorage.setItem('modules', JSON.stringify(data.modulos));
+
           setToken(data.access_token);
           localStorage.setItem('token', data.access_token);
-          
-          toast.info('Tus permisos han sido actualizados. La sesión se refrescará.');
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
+          window.dispatchEvent(new CustomEvent('permissionsChanged', {
+            detail: { permisos: data.permisos, modulos: data.modulos }
+          }));
+
+          toast.info('Tus permisos han sido actualizados.');
         }
       });
 
@@ -131,14 +157,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
     setIsLoggingOut(false);
+
+    // Decodificar el token para obtener el nombre del usuario
+    try {
+      const decoded: any = jwtDecode(newToken);
+      if (decoded.nombre) {
+        // Actualizar userData con el nombre del token
+        setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
+          tipo: "CC",
+          identificacion: decoded.identificacion || "",
+          nombres: decoded.nombre,
+          apellidos: "",
+          email: decoded.username || "",
+          telefono: "",
+          fotoUrl: "",
+          rolNombre: decoded.rolNombre || "",
+        });
+      }
+    } catch (error) {
+      console.error("Error decodificando token:", error);
+    }
   };
 
   const logout = () => {
     setIsLoggingOut(true);
     localStorage.removeItem("token");
     localStorage.removeItem("permissions");
+    localStorage.removeItem("modules");
     setToken(null);
     setUserPermissions(null);
+    setUserModules(null);
     setUserData(null);
   };
 
@@ -156,6 +204,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       isLoggingOut,
       userPermissions,
+      userModules,
       userData,
       login,
       logout,

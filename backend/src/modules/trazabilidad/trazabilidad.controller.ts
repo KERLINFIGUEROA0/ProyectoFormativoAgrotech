@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, UseGuards, Req } from '@nestjs/common';
 import { TrazabilidadService } from './trazabilidad.service';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { PermissionGuard } from '../../authorization/permission.guard';
@@ -11,8 +11,9 @@ export class TrazabilidadController {
 
   @Get('cultivo/:id')
   @Permission('Cultivos.Ver') // Reutilizamos el permiso de ver cultivos
-  async obtenerTrazabilidad(@Param('id', ParseIntPipe) id: number) {
-    const data = await this.trazabilidadService.obtenerTrazabilidadPorCultivo(id);
+  async obtenerTrazabilidad(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const userIdentificacion = req.user?.identificacion;
+    const data = await this.trazabilidadService.obtenerTrazabilidadPorCultivo(id, userIdentificacion);
     return {
       success: true,
       data,

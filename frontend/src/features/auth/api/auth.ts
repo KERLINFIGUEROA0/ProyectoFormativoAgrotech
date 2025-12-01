@@ -58,7 +58,7 @@ export const cambiarPassword = async (actual: string, nueva: string) => {
   return res.data;
 };
 
-// Obtener perfil 
+// Obtener perfil
 export const obtenerPerfil = async (): Promise<User> => {
   const res = await api.get("/usuarios/perfil");
   return res.data.data;
