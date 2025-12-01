@@ -89,8 +89,8 @@ export default function HomePage() {
     // Initial fetch
     fetchSensorData();
 
-    // Poll every 5 seconds
-    const interval = setInterval(fetchSensorData, 5000);
+    // Poll every 2 seconds for better responsiveness
+    const interval = setInterval(fetchSensorData, 2000);
     return () => clearInterval(interval);
   }, []);
 

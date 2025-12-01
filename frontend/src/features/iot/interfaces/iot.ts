@@ -56,6 +56,7 @@ export interface LatestSensorData {
   valorMaximo: number;
   valor: number | null;
   fechaRegistro: string | null;
+  estado?: 'Activo' | 'Desconectado'; // Nuevo campo para estado del sensor
 }
 
 // --- Interfaces para la Configuración del Broker ---

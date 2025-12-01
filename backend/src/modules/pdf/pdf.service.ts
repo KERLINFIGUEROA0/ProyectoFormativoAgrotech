@@ -267,7 +267,7 @@ export class PdfService {
                 nivel = "alerta";
             } else {
                 mensaje = "✅ Estado actual: pH óptimo.";
-                accion = "Sin acciones.";
+                accion = "Sin acciones";
             }
         }
         else {

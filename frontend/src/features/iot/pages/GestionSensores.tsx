@@ -76,6 +76,7 @@ interface SensorCardProps {
 
 function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, onRemoveFromLote }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
+  const isDisconnected = latestData?.estado === 'Desconectado';
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
@@ -96,7 +97,14 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   let bellAnimation = "";
   let bellColor = "text-gray-500";
 
-  if (valor !== null) {
+  // Si está desconectado, mostrar 0 y estilo especial
+  if (isDisconnected) {
+    valorColor = "text-red-600";
+    alertMessage = "DESCONECTADO";
+    cardBorderColor = "border-red-500";
+    bellColor = "text-red-600";
+    bellAnimation = "animate-pulse";
+  } else if (valor !== null) {
     if (valor < Number(min)) {
       valorColor = "text-blue-600 animate-pulse";
       alertMessage = "BAJO";
@@ -113,10 +121,10 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   }
 
   // Si el sistema NO está grabando, quitamos colores de alerta para indicar "congelado"
-  if (!isSystemRecording && valor !== null) {
+  if (!isSystemRecording && valor !== null && !isDisconnected) {
     valorColor = "text-gray-500";
     bellAnimation = "";
-    alertMessage = null; 
+    alertMessage = null;
   }
 
   const isActive = sensor.estado === 'Activo';
@@ -135,8 +143,12 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
-            <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${isActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
-              {isActive ? '● ACTIVO' : '● INACTIVO'}
+            <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${
+              isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
+              isActive ? 'bg-green-100 text-green-700 border border-green-200' :
+              'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}>
+              {isDisconnected ? '● DESCONECTADO' : isActive ? '● ACTIVO' : '● INACTIVO'}
             </span>
           </div>
         </div>
@@ -750,13 +762,13 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
-  // POLLING CONSTANTE (Cada 5s para mejor respuesta)
+  // POLLING CONSTANTE (Cada 2s para mejor respuesta)
   useEffect(() => {
     // Consultamos siempre, porque aunque el lote esté pausado en Backend,
     // queremos ver el último dato que quedó guardado (congelado).
     fetchData(); // Carga inicial al montar o cambiar filtro
 
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, [filtroId, surcoSeleccionado, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
 
@@ -1225,6 +1237,12 @@ export default function GestionSensoresPage(): ReactElement {
         <div className="flex items-center gap-4 p-2 bg-white rounded-lg shadow-sm border border-gray-100 mb-4 mx-2">
           <span className="text-xs font-medium text-gray-500">Estados:</span>
 
+          {/* Desconectado - Rojo oscuro */}
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-red-600"></div>
+            <span className="text-xs text-gray-600 font-medium">Desconectado</span>
+          </div>
+
           {/* Alto - Rojo */}
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -1369,10 +1387,14 @@ export default function GestionSensoresPage(): ReactElement {
                 className="min-w-48 max-w-64"
                 size="sm"
                 placeholder="Seleccionar sensores"
-                items={(sensoresFiltrados || []).map(sensor => ({
-                  key: sensor.id.toString(),
-                  label: `${sensor.nombre} ${sensor.estado === 'Activo' ? '●' : '○'}`
-                }))}
+                items={(sensoresFiltrados || []).map(sensor => {
+                  const sensorData = latestData.find(d => d.id === sensor.id);
+                  const isDisconnected = sensorData?.estado === 'Desconectado';
+                  return {
+                    key: sensor.id.toString(),
+                    label: `${sensor.nombre} ${isDisconnected ? '❌' : sensor.estado === 'Activo' ? '●' : '○'}`
+                  };
+                })}
                 scrollShadowProps={{
                   isEnabled: false
                 }}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardBody, Badge } from '@heroui/react';
 import { Thermometer, Droplets, Wind, Sun, Activity, Wifi, WifiOff } from 'lucide-react';
-import type { LatestSensorData } from '../../features/iot/interfaces/iot';
+import type { LatestSensorData } from '../interfaces/iot';
 
 interface SensorCarouselProps {
   sensors: LatestSensorData[];

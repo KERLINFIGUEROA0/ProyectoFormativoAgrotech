@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, LessThan } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
@@ -68,8 +69,39 @@ export class SensoresService {
     private readonly mqttConfigService: MqttConfigService,
   ) {}
 
+  /**
+   * 🕒 WATCHDOG: Se ejecuta cada 5 segundos.
+   * Busca INDIVIDUALMENTE sensores que no hayan hablado en los últimos 10 segundos.
+   */
+  @Cron('*/5 * * * * *')
+  async detectarDesconexiones() {
+    // Definimos el límite: "Hace 10 segundos"
+    // Usamos 10s en lugar de 5s exactos para dar un margen a la red wifi y evitar parpadeos falsos.
+    const tiempoLimite = new Date(Date.now() - 10000);
 
-  
+    // 1. Buscar SOLO los sensores que están 'Activo' pero su fecha es vieja
+    const sensoresCaidos = await this.sensorRepo.find({
+      where: {
+        estado: 'Activo',
+        ultimo_mqtt_mensaje: LessThan(tiempoLimite), // ¿El último mensaje es más viejo que el límite?
+      }
+    });
+
+    // 2. Apagar INDIVIDUALMENTE cada sensor caído
+    if (sensoresCaidos.length > 0) {
+      for (const sensor of sensoresCaidos) {
+        // Solo si es un sensor MQTT (tiene tópico)
+        if (sensor.topic) {
+            sensor.estado = 'Desconectado';
+            await this.sensorRepo.save(sensor);
+            this.logger.warn(`❌ Sensor [${sensor.nombre}] ha sido marcado como DESCONECTADO (Inactividad).`);
+        }
+      }
+    }
+  }
+
+
+
 
   async findOne(id: number): Promise<Sensor> {
     const sensor = await this.sensorRepo.findOne({
