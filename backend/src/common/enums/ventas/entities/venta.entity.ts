@@ -10,7 +10,7 @@ export class Venta {
   descripcion: string;
 
   @Column({ name: 'Fecha', type: 'date' })
-  fecha: string;
+  fecha: Date;
 
   // --- CORRECCIÓN ---
   // Aseguramos que todas las propiedades usen camelCase (inicio con minúscula).

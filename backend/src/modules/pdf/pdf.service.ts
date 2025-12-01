@@ -37,7 +37,7 @@ export class PdfService {
     <body>
         <div class="container">
             <div class="header">
-                <h1>AgroTIC Yamboró</h1>
+                <h1>AgroTECH Yamboró</h1>
                 <p>Factura de Venta</p>
             </div>
             <div class="details">

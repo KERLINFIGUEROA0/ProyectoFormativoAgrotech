@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, In } from 'typeorm';
+import { Repository, IsNull, Not, In, Between } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { Cultivo } from './entities/cultivo.entity';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
@@ -9,6 +9,11 @@ import { TipoCultivo } from '../tipo_cultivo/entities/tipo_cultivo.entity';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Produccion } from '../producciones/entities/produccione.entity';
+import { Actividad } from '../actividades/entities/actividade.entity';
+import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
+import { Venta } from '../../common/enums/ventas/entities/venta.entity';
+import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Material } from '../materiales/entities/materiale.entity';
 
 @Injectable()
 export class CultivosService {
@@ -21,6 +26,18 @@ export class CultivosService {
     private readonly loteRepository: Repository<Lote>,
     @InjectRepository(Sublote)
     private readonly subloteRepository: Repository<Sublote>,
+    @InjectRepository(Actividad)
+    private readonly actividadRepository: Repository<Actividad>,
+    @InjectRepository(ActividadMaterial)
+    private readonly actividadMaterialRepository: Repository<ActividadMaterial>,
+    @InjectRepository(Produccion)
+    private readonly produccionRepository: Repository<Produccion>,
+    @InjectRepository(Venta)
+    private readonly ventaRepository: Repository<Venta>,
+    @InjectRepository(Gasto)
+    private readonly gastoRepository: Repository<Gasto>,
+    @InjectRepository(Material)
+    private readonly materialRepository: Repository<Material>,
   ) {}
 
   async crear(dto: CreateCultivoDto): Promise<Cultivo> {
@@ -238,7 +255,6 @@ export class CultivosService {
     // Si no hay cultivos activos (ni en sublotes ni directos), el lote está en preparación
     if (cultivosEnSublotes === 0 && cultivosDirectosEnLote === 0) {
       await this.loteRepository.update(loteId, { estado: 'En preparación' });
-      console.log(`Lote ${loteId} cambió a estado: En preparación (sin cultivos activos)`);
       return;
     }
 
@@ -260,12 +276,10 @@ export class CultivosService {
       }
 
       await this.loteRepository.update(loteId, { estado: nuevoEstado });
-      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${cultivosEnSublotes}/${totalSublotesActivos} sublotes con cultivos activos)`);
     } else {
       // No hay sublotes activos, pero hay cultivos directos
       const nuevoEstado = cultivosDirectosEnLote > 0 ? 'En cultivación' : 'En preparación';
       await this.loteRepository.update(loteId, { estado: nuevoEstado });
-      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (sin sublotes activos, ${cultivosDirectosEnLote} cultivos directos activos)`);
     }
   }
 
@@ -345,7 +359,6 @@ export class CultivosService {
       if (item.necesitaActualizacion) {
         await this.loteRepository.update(item.loteId, { estado: item.estadoCorrecto });
         actualizados++;
-        console.log(`Lote ${item.loteId} (${item.loteNombre}) actualizado: ${item.estadoActual} → ${item.estadoCorrecto}`);
       }
     }
 
@@ -584,6 +597,47 @@ export class CultivosService {
     // Generar el archivo Excel
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     return excelBuffer;
+  }
+
+  // --- MÉTODOS AUXILIARES PARA CONSULTAS EFICIENTES ---
+
+  async getActividadesWithMateriales(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Actividad[]> {
+    const query = this.actividadRepository.createQueryBuilder('a')
+      .leftJoin('a.cultivo', 'c')
+      .where('c.id = :cultivoId', { cultivoId })
+      .leftJoinAndSelect('a.actividadMaterial', 'am')
+      .leftJoinAndSelect('am.material', 'm');
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('a.fecha BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin });
+    }
+
+    const actividades = await query.orderBy('a.fecha', 'ASC').getMany();
+    return actividades;
+  }
+
+  async getProduccionesWithVentasYGastos(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Produccion[]> {
+    const query = this.produccionRepository.createQueryBuilder('p')
+      .leftJoinAndSelect('p.ventas', 'v')
+      .leftJoinAndSelect('p.gastos', 'g')
+      .where('p.cultivoId = :cultivoId', { cultivoId });
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('p.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio, fechaFin });
+    }
+
+    return await query.orderBy('p.fecha', 'ASC').getMany();
+  }
+
+  async getGastosDirectos(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Gasto[]> {
+    const query = this.gastoRepository.createQueryBuilder('g')
+      .where('g.cultivoId = :cultivoId', { cultivoId });
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('g.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio, fechaFin });
+    }
+
+    return await query.orderBy('g.fecha', 'ASC').getMany();
   }
 
 

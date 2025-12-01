@@ -82,3 +82,15 @@ export const actualizarEstadosLotes = async () => {
   const response = await api.post('/cultivos/actualizar-estados-lotes');
   return response.data;
 };
+
+// --- FUNCIÓN PARA GENERAR PDF DE TRAZABILIDAD ---
+export const generarPdfTrazabilidad = async (cultivoId: number, fechaInicio?: string, fechaFin?: string) => {
+  const params = new URLSearchParams();
+  if (fechaInicio) params.append('fechaInicio', fechaInicio);
+  if (fechaFin) params.append('fechaFin', fechaFin);
+
+  const response = await api.get(`/cultivos/${cultivoId}/pdf-trazabilidad?${params.toString()}`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
