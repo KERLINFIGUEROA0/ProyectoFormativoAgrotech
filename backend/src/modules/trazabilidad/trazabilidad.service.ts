@@ -16,6 +16,17 @@ export class TrazabilidadService {
     private readonly movimientosService: MovimientosService,
   ) {}
 
+  // Función auxiliar para formatear fechas con zona horaria America/Bogota
+  private formatDate(date: Date | string): string {
+    const d = new Date(date);
+    return new Intl.DateTimeFormat('es-ES', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(d);
+  }
+
   // Método auxiliar para buscar devoluciones de materiales por actividad
   private async buscarDevolucionesPorActividad(actividadId: number) {
     // Buscar movimientos de ingreso con referencia que contenga la actividad
@@ -139,9 +150,14 @@ export class TrazabilidadService {
       }
     });
 
-    // ✅ CORRECCIÓN: Hacemos el ordenamiento más seguro
+    // ✅ CORRECCIÓN: Ordenamiento cronológico correcto
     // Si alguna fecha fuera nula, se trata como la fecha más antigua para evitar errores.
     timeline.sort((a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime());
+
+    // ✅ CORRECCIÓN: Formatear fechas con zona horaria America/Bogota
+    timeline.forEach(item => {
+      item.fecha = this.formatDate(item.fecha);
+    });
 
     return {
       cultivo,

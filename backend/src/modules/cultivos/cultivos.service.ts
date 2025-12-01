@@ -60,7 +60,7 @@ export class CultivosService {
       cultivo.cantidad = dto.cantidad;
       cultivo.tipoCultivo = tipoCultivo;
       cultivo.lote = lote;
-      cultivo.Fecha_Plantado = dto.Fecha_Plantado ? new Date(dto.Fecha_Plantado) : new Date();
+      cultivo.Fecha_Plantado = new Date(dto.Fecha_Plantado + 'T00:00:00-05:00');
       cultivo.descripcion = dto.descripcion || '';
       cultivo.Estado = dto.Estado || 'Activo';
       if (dto.img) cultivo.img = dto.img;
@@ -404,7 +404,7 @@ export class CultivosService {
         'ID Cultivo': cultivo.id,
         'Nombre del Cultivo': cultivo.nombre,
         'Tipo de Cultivo': cultivo.tipoCultivo.nombre,
-        'Fecha de Plantado': new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO'),
+        'Fecha de Plantado': cultivo.Fecha_Plantado || '',
         'Estado': cultivo.Estado,
         'Cantidad Total Producida': cantidadTotalProducida,
         'Cantidad Total Vendida': cantidadTotalVendida,
@@ -601,7 +601,7 @@ export class CultivosService {
 
   // --- MÉTODOS AUXILIARES PARA CONSULTAS EFICIENTES ---
 
-  async getActividadesWithMateriales(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Actividad[]> {
+  async getActividadesWithMateriales(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Actividad[]> {
     const query = this.actividadRepository.createQueryBuilder('a')
       .leftJoin('a.cultivo', 'c')
       .where('c.id = :cultivoId', { cultivoId })
@@ -609,32 +609,32 @@ export class CultivosService {
       .leftJoinAndSelect('am.material', 'm');
 
     if (fechaInicio && fechaFin) {
-      query.andWhere('a.fecha BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin });
+      query.andWhere('a.fecha BETWEEN :inicio AND :fin', { inicio: new Date(fechaInicio), fin: new Date(fechaFin + 'T23:59:59.999') });
     }
 
     const actividades = await query.orderBy('a.fecha', 'ASC').getMany();
     return actividades;
   }
 
-  async getProduccionesWithVentasYGastos(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Produccion[]> {
+  async getProduccionesWithVentasYGastos(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Produccion[]> {
     const query = this.produccionRepository.createQueryBuilder('p')
       .leftJoinAndSelect('p.ventas', 'v')
       .leftJoinAndSelect('p.gastos', 'g')
       .where('p.cultivoId = :cultivoId', { cultivoId });
 
     if (fechaInicio && fechaFin) {
-      query.andWhere('p.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio, fechaFin });
+      query.andWhere('p.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio: new Date(fechaInicio), fechaFin: new Date(fechaFin + 'T23:59:59.999') });
     }
 
     return await query.orderBy('p.fecha', 'ASC').getMany();
   }
 
-  async getGastosDirectos(cultivoId: number, fechaInicio?: Date, fechaFin?: Date): Promise<Gasto[]> {
+  async getGastosDirectos(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Gasto[]> {
     const query = this.gastoRepository.createQueryBuilder('g')
       .where('g.cultivoId = :cultivoId', { cultivoId });
 
     if (fechaInicio && fechaFin) {
-      query.andWhere('g.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio, fechaFin });
+      query.andWhere('g.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio: new Date(fechaInicio), fechaFin: new Date(fechaFin + 'T23:59:59.999') });
     }
 
     return await query.orderBy('g.fecha', 'ASC').getMany();

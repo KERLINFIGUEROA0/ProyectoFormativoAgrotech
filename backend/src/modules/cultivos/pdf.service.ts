@@ -31,7 +31,7 @@ export class PdfService {
     const count = await this.actividadRepository.count();
   }
 
-  async getCultivoData(id: number, fechaInicio?: Date, fechaFin?: Date): Promise<any> {
+  async getCultivoData(id: number, fechaInicio?: string, fechaFin?: string): Promise<any> {
     const cultivo = await this.cultivoRepository.findOne({
       where: { id },
       relations: ['tipoCultivo', 'lote']
@@ -73,7 +73,7 @@ export class PdfService {
       fecha: (() => {
         let fecha = actividad.fecha;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO') : '';
+        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '';
       })(),
       titulo: actividad.titulo || '',
       estado: actividad.estado || '',
@@ -89,7 +89,7 @@ export class PdfService {
       fecha: (() => {
         let fecha = act.fecha;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO') : '';
+        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '';
       })(),
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada,
@@ -106,7 +106,7 @@ export class PdfService {
       const precioUnitario = cantidadVendida > 0 ? totalVentas / cantidadVendida : 0;
 
       return {
-        fecha: produccion.fecha ? produccion.fecha.toLocaleDateString('es-CO') : '',
+        fecha: produccion.fecha ? produccion.fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '',
         cantidadProducida,
         cantidadVendida,
         precioUnitario: precioUnitario.toFixed(2),
@@ -121,11 +121,7 @@ export class PdfService {
       cultivo: {
         nombre: cultivo.nombre,
         tipoCultivo: cultivo.tipoCultivo?.nombre || '',
-        fechaPlantado: (() => {
-          let fecha = cultivo.Fecha_Plantado;
-          if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-          return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO') : '';
-        })(),
+        fechaPlantado: cultivo.Fecha_Plantado ? new Date(cultivo.Fecha_Plantado).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }) : '',
         estado: cultivo.Estado || '',
         lote: cultivo.lote?.nombre || '',
         cantidad: cultivo.cantidad || 0,
@@ -199,17 +195,22 @@ export class PdfService {
     };
   }
 
-  async generatePdf(id: number, fechaInicio?: Date, fechaFin?: Date): Promise<Buffer> {
+  async generatePdf(id: number, fechaInicio?: string, fechaFin?: string): Promise<Buffer> {
     await this.countTotalActivities();
     const cultivo = await this.cultivoRepository.findOne({ where: { id } });
     if (!cultivo) {
       throw new NotFoundException(`Cultivo con ID ${id} no encontrado`);
     }
+    cultivo.Fecha_Plantado = new Date(cultivo.Fecha_Plantado);
     if (!cultivo.Fecha_Plantado) {
       throw new BadRequestException('La fecha de plantado del cultivo es requerida y no puede ser null');
     }
-    if (fechaInicio && new Date(fechaInicio).getTime() < new Date(cultivo.Fecha_Plantado).getTime()) {
-      throw new BadRequestException('La fecha de inicio no puede ser anterior a la fecha de plantado del cultivo');
+    if (fechaInicio) {
+      const fechaInicioFormatted = new Date(fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
+      const fechaPlantadoFormatted = cultivo.Fecha_Plantado.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
+      if (fechaInicioFormatted < fechaPlantadoFormatted) {
+        throw new BadRequestException('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
+      }
     }
     const data = await this.getCultivoData(id, fechaInicio, fechaFin);
     const analisis = this.calculateFinancials(data);
@@ -228,14 +229,14 @@ export class PdfService {
       'cultivo.cantidad': data.cultivo.cantidad.toString(),
       'cultivo.cantidadCosechada': data.cultivo.cantidadCosechada.toString(),
       'cultivo.descripcion': data.cultivo.descripcion,
-      'fechaGeneracion': new Date().toLocaleDateString('es-CO'),
+      'fechaGeneracion': new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }),
       'periodo': (() => {
         if (fechaInicio && fechaFin) {
-          return `Período del Reporte: desde ${fechaInicio.toLocaleDateString('es-CO')} hasta ${fechaFin.toLocaleDateString('es-CO')}`;
+          return `Período del Reporte: desde ${fechaInicio} hasta ${fechaFin}`;
         } else if (fechaInicio) {
-          return `Período del Reporte: desde ${fechaInicio.toLocaleDateString('es-CO')}`;
+          return `Período del Reporte: desde ${fechaInicio}`;
         } else if (fechaFin) {
-          return `Período del Reporte: hasta ${fechaFin.toLocaleDateString('es-CO')}`;
+          return `Período del Reporte: hasta ${fechaFin}`;
         } else {
           return '';
         }

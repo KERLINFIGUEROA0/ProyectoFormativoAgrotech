@@ -160,10 +160,7 @@ export class CultivosController {
     @Query('fechaInicio') fechaInicio?: string,
     @Query('fechaFin') fechaFin?: string
   ) {
-    const fechaInicioDate = fechaInicio ? new Date(fechaInicio) : undefined;
-    const fechaFinDate = fechaFin ? new Date(fechaFin) : undefined;
-
-    const pdfBuffer = await this.pdfService.generatePdf(id, fechaInicioDate, fechaFinDate);
+    const pdfBuffer = await this.pdfService.generatePdf(id, fechaInicio, fechaFin);
 
     // Añadir fecha al nombre del archivo
     const now = new Date();
