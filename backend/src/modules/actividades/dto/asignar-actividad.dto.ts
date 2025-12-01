@@ -39,9 +39,9 @@ export class AsignarActividadDto {
    responsable?: number; // ID del usuario responsable de devolver materiales
 
    @IsString()
-   @IsIn(['pendiente', 'en proceso', 'completado'])
+   @IsIn(['pendiente', 'en proceso', 'completado', 'finalizado'])
    @IsOptional()
-   estado?: 'pendiente' | 'en proceso' | 'completado';
+   estado?: 'pendiente' | 'en proceso' | 'completado' | 'finalizado';
 
    @IsString()
    @IsOptional()

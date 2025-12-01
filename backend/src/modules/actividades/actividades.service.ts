@@ -76,41 +76,69 @@ export class ActividadesService {
   }
 
   // --- FUNCIÓN HELPER PARA VERIFICAR ESTADO DE LA ACTIVIDAD ---
-  private async verificarEstadoActividad(actividad: Actividad) {
-    if (!actividad.asignados) return;
+    private async verificarEstadoActividad(actividad: Actividad) {
+      console.log('🔍 verificando estado actividad:', actividad.id, 'estado actual:', actividad.estado);
 
-    try {
-      const asignados = JSON.parse(actividad.asignados);
-      if (!Array.isArray(asignados) || asignados.length === 0) return;
-
-      // Obtener todas las respuestas de la actividad
-      const respuestas = await this.respuestaRepository.find({
-        where: { actividad: { id: actividad.id } },
-        relations: ['usuario'],
-      });
-
-      // Contar respuestas únicas por usuario
-      const usuariosQueRespondieron = new Set(respuestas.map(r => r.usuario.identificacion));
-
-      // Si no todos han respondido, mantener pendiente
-      if (usuariosQueRespondieron.size < asignados.length) {
-        actividad.estado = 'pendiente';
-      } else {
-        // Todos han respondido, verificar si todas están calificadas
-        const todasCalificadas = respuestas.every(r => r.estado !== 'pendiente');
-        if (todasCalificadas) {
-          const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
-          actividad.estado = todasAprobadas ? 'completado' : 'rechazado';
-        } else {
-          actividad.estado = 'enviado'; // Todos respondieron, esperando calificación
-        }
+      if (!actividad.asignados) {
+        console.log('❌ No hay asignados');
+        return;
       }
 
-      await this.actividadRepository.save(actividad);
-    } catch (error) {
-      console.error('Error al verificar estado de actividad:', error);
+      try {
+        const asignados = JSON.parse(actividad.asignados);
+        console.log('👥 Asignados:', asignados);
+
+        if (!Array.isArray(asignados) || asignados.length === 0) {
+          console.log('❌ Asignados vacío o no array');
+          return;
+        }
+
+        // Obtener todas las respuestas de la actividad
+        const respuestas = await this.respuestaRepository.find({
+          where: { actividad: { id: actividad.id } },
+          relations: ['usuario'],
+        });
+
+        console.log('📝 Respuestas encontradas:', respuestas.length);
+
+        // Contar respuestas únicas por usuario
+        const usuariosQueRespondieron = new Set(respuestas.map(r => r.usuario.identificacion));
+        console.log('👤 Usuarios que respondieron:', Array.from(usuariosQueRespondieron));
+
+        // Si hay al menos una respuesta, cambiar a 'en proceso'
+        if (usuariosQueRespondieron.size > 0) {
+          // Si no todos han respondido, estado 'en proceso'
+          if (usuariosQueRespondieron.size < asignados.length) {
+            actividad.estado = 'en proceso';
+            console.log('🔄 Estado: en proceso (no todos respondieron)');
+          } else {
+            // Todos han respondido, verificar si todas están calificadas
+            const todasCalificadas = respuestas.every(r => r.estado !== 'pendiente');
+            console.log('✅ Todas calificadas:', todasCalificadas);
+
+            if (todasCalificadas) {
+              const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
+              console.log('🎯 Todas aprobadas:', todasAprobadas);
+
+              actividad.estado = todasAprobadas ? 'completado' : 'en proceso'; // Si hay rechazos, mantener 'en proceso'
+              console.log('🏁 Estado final:', actividad.estado);
+            } else {
+              actividad.estado = 'en proceso'; // Todos respondieron, esperando calificación
+              console.log('⏳ Estado: en proceso (esperando calificación)');
+            }
+          }
+        } else {
+          // No hay respuestas, mantener pendiente
+          actividad.estado = 'pendiente';
+          console.log('📋 Estado: pendiente (sin respuestas)');
+        }
+
+        await this.actividadRepository.save(actividad);
+        console.log('💾 Actividad guardada con estado:', actividad.estado);
+      } catch (error) {
+        console.error('❌ Error al verificar estado de actividad:', error);
+      }
     }
-  }
 
   // --- FUNCIÓN HELPER PARA DESCONTAR MATERIALES ---
   private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean } {
@@ -425,9 +453,13 @@ export class ActividadesService {
         'usuario',
         'usuario.ficha',
         'cultivo',
+        'lote',
+        'sublote',
+        'responsable',
         'actividadMaterial',
         'actividadMaterial.material',
       ],
+      select: ['id', 'titulo', 'fecha', 'descripcion', 'img', 'archivoInicial', 'estado', 'horas', 'tarifaHora', 'asignados', 'respuestaTexto', 'respuestaArchivos', 'calificacion', 'comentarioInstructor'],
     });
   }
 
@@ -592,6 +624,7 @@ export class ActividadesService {
   }
 
   async enviarRespuesta(id: number, dto: CreateRespuestaDto, userIdentificacion: number) {
+    console.log('📨 enviarRespuesta called for actividad:', id, 'user:', userIdentificacion);
     const actividad = await this.findOne(id);
     if (!actividad) {
       throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
@@ -684,8 +717,13 @@ export class ActividadesService {
 
       await queryRunner.commitTransaction();
 
+      // Cargar la actividad completa con el campo asignados para verificar estado
+      const actividadCompleta = await this.findOne(id);
+
       // Verificar si todos los asignados han respondido
-      await this.verificarEstadoActividad(actividad);
+      if (actividadCompleta) {
+        await this.verificarEstadoActividad(actividadCompleta);
+      }
 
       return saved;
     } catch (error) {
@@ -699,6 +737,7 @@ export class ActividadesService {
   async obtenerRespuestasPorActividad(id: number, userIdentificacion?: number, userRole?: string) {
     const query = this.respuestaRepository.createQueryBuilder('respuesta')
       .leftJoinAndSelect('respuesta.usuario', 'usuario')
+      .leftJoinAndSelect('usuario.tipoUsuario', 'tipoUsuario')
       .leftJoinAndSelect('usuario.ficha', 'ficha')
       .where('respuesta.actividad = :actividadId', { actividadId: id })
       .orderBy('respuesta.fechaEnvio', 'DESC');
@@ -712,27 +751,63 @@ export class ActividadesService {
   }
 
   async calificarRespuesta(respuestaId: number, dto: CalificarRespuestaDto, userRole?: string) {
+    console.log('🎯 calificarRespuesta called for respuesta:', respuestaId, 'estado:', dto.estado);
+
     if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
       throw new BadRequestException('Solo instructores y administradores pueden calificar respuestas.');
     }
 
     const respuesta = await this.respuestaRepository.findOne({
       where: { id: respuestaId },
-      relations: ['actividad'],
+      relations: ['actividad', 'usuario', 'usuario.tipoUsuario'],
     });
     if (!respuesta) {
       throw new NotFoundException(`Respuesta con ID ${respuestaId} no encontrada.`);
     }
+
+    console.log('👤 Usuario encontrado:', {
+      id: respuesta.usuario.identificacion,
+      nombre: respuesta.usuario.nombre,
+      tipoUsuario: respuesta.usuario.tipoUsuario?.nombre
+    });
 
     respuesta.estado = dto.estado;
     respuesta.comentarioInstructor = dto.comentarioInstructor;
 
     const savedRespuesta = await this.respuestaRepository.save(respuesta);
 
-    // Actualizar estado de la actividad basado en todas las respuestas
-    await this.verificarEstadoActividad(respuesta.actividad);
+    // Cargar la actividad completa con el campo asignados para verificar estado
+    const actividadCompleta = await this.findOne(respuesta.actividad.id);
 
-    return savedRespuesta;
+    // Actualizar estado de la actividad basado en todas las respuestas
+    if (actividadCompleta) {
+      await this.verificarEstadoActividad(actividadCompleta);
+    }
+
+    // Retornar información adicional sobre si el usuario es pasante
+    const esPasante = respuesta.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+    console.log('🔍 Verificación de pasante:', {
+      tipoUsuarioNombre: respuesta.usuario.tipoUsuario?.nombre,
+      esPasante
+    });
+
+    const resultado = {
+      ...savedRespuesta,
+      esPasante,
+      usuario: {
+        ...savedRespuesta.usuario,
+        tipoUsuario: respuesta.usuario.tipoUsuario,
+      },
+    };
+
+    console.log('📤 Respuesta que se retorna al frontend:', {
+      id: resultado.id,
+      estado: resultado.estado,
+      esPasante: resultado.esPasante,
+      usuarioTipo: resultado.usuario.tipoUsuario?.nombre
+    });
+
+    return resultado;
   }
 
   async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {
@@ -747,8 +822,9 @@ export class ActividadesService {
 
     actividad.calificacion = dto.calificacion;
     actividad.comentarioInstructor = dto.comentarioInstructor;
-    actividad.estado = dto.calificacion === 'aprobado' ? 'aprobado' : 'rechazado';
 
+    // El estado se actualizará automáticamente por verificarEstadoActividad
+    // cuando se califiquen las respuestas individuales
     return this.actividadRepository.save(actividad);
   }
 
@@ -849,10 +925,10 @@ export class ActividadesService {
       throw new BadRequestException('Solo el responsable designado puede devolver materiales al finalizar la actividad.');
     }
 
-    // Verificar que la actividad esté completada
-    if (actividad.estado !== 'completado') {
-      throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté completada.');
-    }
+    // Verificar que la actividad esté finalizada
+     if (actividad.estado !== 'completado') {
+       throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
+     }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

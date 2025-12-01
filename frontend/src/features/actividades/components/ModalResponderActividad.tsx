@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, FileText, Package  } from 'lucide-react';
+import { Button, Textarea, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { enviarRespuesta, obtenerRespuestasPorActividad, descargarArchivoActividad } from '../api/actividadesapi';
 import { toast } from 'sonner';
@@ -131,34 +132,39 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
     }
   };
 
-  // Modal de éxito
+  // Modal de éxito con HeroUI
   const SuccessModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="text-center">
-          <div className="mb-4">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+    <Modal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} size="md">
+      <ModalContent>
+        <ModalHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-100">
               <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mt-2">¡Respuesta enviada exitosamente!</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Tu respuesta ha sido enviada correctamente. El instructor la revisará pronto.
-            </p>
+            <h3 className="text-lg font-semibold text-gray-900">¡Respuesta enviada exitosamente!</h3>
           </div>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-gray-600 mb-4">
+            Tu respuesta ha sido enviada correctamente. El instructor la revisará pronto.
+          </p>
 
           {uploadedFiles.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Archivos subidos:</h4>
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Archivos subidos:</h4>
               <div className="space-y-2">
                 {uploadedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <FileText size={16} className="text-gray-600" />
                       <span className="text-sm text-gray-700">{file.name}</span>
                     </div>
-                    <button
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="primary"
                       onClick={() => {
                         // Crear URL temporal para el archivo local
                         const url = URL.createObjectURL(file);
@@ -171,189 +177,181 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                         URL.revokeObjectURL(url);
                         toast.success('Archivo descargado para vista previa');
                       }}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
                     >
                       Ver
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          <div className="flex justify-center">
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                onClose();
-                setDescripcion('');
-                setArchivos(null);
-                setUploadedFiles([]);
-                setMaterialesDevueltos([]);
-              }}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              Aceptar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            color="success"
+            onClick={() => {
+              setShowSuccessModal(false);
+              onClose();
+              setDescripcion('');
+              setArchivos(null);
+              setUploadedFiles([]);
+              setMaterialesDevueltos([]);
+            }}
+          >
+            Aceptar
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 
   if (!isOpen) return null;
 
   return (
     <>
-      {showSuccessModal && <SuccessModal />}
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        {loading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-            <p>Cargando respuesta...</p>
-          </div>
-        )}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">
-            {existingRespuesta?.estado === 'rechazado'
-              ? 'Corregir y Reenviar Actividad'
-              : existingRespuesta?.estado === 'pendiente'
-              ? 'Estado de tu Respuesta'
-              : existingRespuesta?.estado === 'aprobado'
-              ? 'Actividad Finalizada'
-              : 'Responder Actividad'
-            }
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="mb-4">
-          <h3 className="font-semibold">{actividad.titulo}</h3>
-          <p className="text-sm text-gray-600">{actividad.descripcion}</p>
-
-          {/* Mostrar archivo inicial si existe */}
-          {actividad.archivoInicial && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText size={16} className="text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Archivo de referencia adjunto</span>
+      <SuccessModal />
+      <Modal isOpen={isOpen} onClose={onClose} size="lg" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            <h2 className="text-xl font-bold">
+              {existingRespuesta?.estado === 'rechazado'
+                ? 'Corregir y Reenviar Actividad'
+                : existingRespuesta?.estado === 'pendiente'
+                ? 'Estado de tu Respuesta'
+                : existingRespuesta?.estado === 'aprobado'
+                ? 'Actividad Finalizada'
+                : 'Responder Actividad'
+              }
+            </h2>
+          </ModalHeader>
+          <ModalBody>
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-gray-600">Cargando respuesta...</p>
               </div>
-              <p className="text-xs text-blue-600 mb-2">
-                El instructor ha proporcionado un archivo de referencia. Descárgalo para completar la actividad correctamente.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(() => {
-                  try {
-                    const archivos = JSON.parse(actividad.archivoInicial);
-                    if (Array.isArray(archivos)) {
-                      return archivos.map((filename: string, index: number) => {
-                        // Extraer nombre original del filename
-                        let nombreOriginal = filename;
-                        if (filename.includes('___')) {
-                          const parts = filename.split('___');
-                          nombreOriginal = parts.length >= 3 ? parts[2] : filename;
-                        } else if (filename.includes('-')) {
-                          const parts = filename.split('-');
-                          nombreOriginal = parts.length >= 3 ? parts.slice(2).join('-') : filename;
-                        }
-                        return (
-                          <button
-                            key={index}
-                            onClick={() => handleDescargarArchivoInicial(filename, nombreOriginal)}
-                            className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-colors"
-                          >
-                            <Download size={12} />
-                            {nombreOriginal.length > 20 ? `${nombreOriginal.substring(0, 20)}...` : nombreOriginal}
-                          </button>
-                        );
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error al parsear archivos iniciales:', error);
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-          )}
-          {existingRespuesta && (
-            <div className={`mt-2 p-3 rounded ${
-              existingRespuesta.estado === 'rechazado'
-                ? 'bg-red-50 border border-red-200'
-                : existingRespuesta.estado === 'aprobado'
-                ? 'bg-green-50 border border-green-200'
-                : 'bg-yellow-50 border border-yellow-200'
-            }`}>
-              <p className="text-sm font-medium">Estado de respuesta:
-                <span className={`ml-1 px-2 py-1 text-xs rounded ${
-                  existingRespuesta.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
-                  existingRespuesta.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {existingRespuesta.estado === 'aprobado' ? 'Aprobada - Finalizada' :
-                   existingRespuesta.estado === 'rechazado' ? 'Rechazada - Requiere Corrección' :
-                   'Enviada - Esperando Calificación'}
-                </span>
-              </p>
-              {existingRespuesta.estado === 'rechazado' && (
-                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded">
-                  <p className="text-sm font-medium text-red-800">
-                    ⚠️ Esta respuesta fue rechazada. Debe corregir y volver a enviar.
+            )}
+
+            <div className="mb-4">
+              <h3 className="font-semibold text-lg">{actividad.titulo}</h3>
+              <p className="text-sm text-gray-600">{actividad.descripcion}</p>
+
+              {/* Mostrar archivo inicial si existe */}
+              {actividad.archivoInicial && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText size={16} className="text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Archivo de referencia adjunto</span>
+                  </div>
+                  <p className="text-xs text-blue-600 mb-2">
+                    El instructor ha proporcionado un archivo de referencia. Descárgalo para completar la actividad correctamente.
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(() => {
+                      try {
+                        const archivos = JSON.parse(actividad.archivoInicial);
+                        if (Array.isArray(archivos)) {
+                          return archivos.map((filename: string, index: number) => {
+                            // Extraer nombre original del filename
+                            let nombreOriginal = filename;
+                            if (filename.includes('___')) {
+                              const parts = filename.split('___');
+                              nombreOriginal = parts.length >= 3 ? parts[2] : filename;
+                            } else if (filename.includes('-')) {
+                              const parts = filename.split('-');
+                              nombreOriginal = parts.length >= 3 ? parts.slice(2).join('-') : filename;
+                            }
+                            return (
+                              <Button
+                                key={index}
+                                size="sm"
+                                variant="light"
+                                color="primary"
+                                startContent={<Download size={12} />}
+                                onClick={() => handleDescargarArchivoInicial(filename, nombreOriginal)}
+                              >
+                                {nombreOriginal.length > 20 ? `${nombreOriginal.substring(0, 20)}...` : nombreOriginal}
+                              </Button>
+                            );
+                          });
+                        }
+                      } catch (error) {
+                        console.error('Error al parsear archivos iniciales:', error);
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </div>
               )}
-              {existingRespuesta.comentarioInstructor && (
-                <p className="text-sm text-red-600 mt-2">
-                  <strong>Comentario del instructor:</strong> {existingRespuesta.comentarioInstructor}
-                </p>
+              {existingRespuesta && (
+                <div className={`mt-2 p-3 rounded ${
+                  existingRespuesta.estado === 'rechazado'
+                    ? 'bg-red-50 border border-red-200'
+                    : existingRespuesta.estado === 'aprobado'
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <p className="text-sm font-medium">Estado de respuesta:
+                    <span className={`ml-1 px-2 py-1 text-xs rounded ${
+                      existingRespuesta.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
+                      existingRespuesta.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {existingRespuesta.estado === 'aprobado' ? 'Aprobada - Finalizada' :
+                       existingRespuesta.estado === 'rechazado' ? 'Rechazada - Requiere Corrección' :
+                       'Enviada - Esperando Calificación'}
+                    </span>
+                  </p>
+                  {existingRespuesta.estado === 'rechazado' && (
+                    <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded">
+                      <p className="text-sm font-medium text-red-800">
+                        ⚠️ Esta respuesta fue rechazada. Debe corregir y volver a enviar.
+                      </p>
+                    </div>
+                  )}
+                  {existingRespuesta.comentarioInstructor && (
+                    <p className="text-sm text-red-600 mt-2">
+                      <strong>Comentario del instructor:</strong> {existingRespuesta.comentarioInstructor}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Solo mostrar formulario si puede editar (sin respuesta, rechazada) */}
-        {(!existingRespuesta || existingRespuesta.estado === 'rechazado') && (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Descripción de la respuesta
-              </label>
-              <textarea
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md resize-none"
-                rows={4}
-                placeholder="Describe cómo realizaste la actividad..."
-              />
-            </div>
+            {/* Solo mostrar formulario si puede editar (sin respuesta, rechazada) */}
+            {(!existingRespuesta || existingRespuesta.estado === 'rechazado') && (
+              <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                  <Textarea
+                    label="Descripción de la respuesta"
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Describe cómo realizaste la actividad..."
+                    minRows={4}
+                    isRequired
+                  />
+                </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Archivos (opcional)
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                onChange={(e) => setArchivos(e.target.files)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Formatos permitidos: PDF, Word, Excel, imágenes
-              </p>
-            </div>
+                <div className="mb-4">
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    label="Archivos (opcional)"
+                    multiple
+                    onChange={(e) => setArchivos(e.target.files)}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    description="Formatos permitidos: PDF, Word, Excel, imágenes"
+                  />
+                </div>
 
-            {/* Sección de devoluciones de materiales */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Devoluciones de Materiales (opcional)
-              </label>
-              <p className="text-xs text-gray-600 mb-3">
-                Si no usaste todos los materiales asignados, indica las cantidades que devuelves al inventario.
-              </p>
+            {/* Sección de devoluciones de materiales - Solo para el responsable */}
+            {actividad.responsable?.identificacion === currentUserIdentificacion && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Devoluciones de Materiales (opcional)
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Como responsable de esta actividad, puedes devolver materiales no utilizados al inventario.
+                </p>
 
               {/* Mostrar materiales asignados a la actividad */}
               {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
@@ -431,60 +429,55 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                   </ul>
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  setMaterialesDevueltos([]);
-                }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`px-4 py-2 text-white rounded-md disabled:opacity-50 ${
-                  existingRespuesta?.estado === 'rechazado'
-                    ? 'bg-orange-600 hover:bg-orange-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {isSubmitting
-                  ? 'Enviando...'
-                  : existingRespuesta?.estado === 'rechazado'
-                  ? 'Corregir y Reenviar'
-                  : 'Enviar Respuesta'
-                }
-              </button>
-            </div>
-          </form>
-        )}
+                <ModalFooter>
+                  <Button
+                    type="button"
+                    variant="light"
+                    onClick={() => {
+                      onClose();
+                      setMaterialesDevueltos([]);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    color={existingRespuesta?.estado === 'rechazado' ? 'warning' : 'primary'}
+                    isLoading={isSubmitting}
+                  >
+                    {isSubmitting
+                      ? 'Enviando...'
+                      : existingRespuesta?.estado === 'rechazado'
+                      ? 'Corregir y Reenviar'
+                      : 'Enviar Respuesta'
+                    }
+                  </Button>
+                </ModalFooter>
+              </form>
+            )}
 
-        {/* Mostrar información cuando no puede editar */}
-        {existingRespuesta && existingRespuesta.estado !== 'rechazado' && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-md">
-            <p className="text-sm text-gray-600">
-              {existingRespuesta.estado === 'pendiente'
-                ? 'Tu respuesta ha sido enviada y está esperando calificación del instructor.'
-                : 'Esta actividad ya ha sido finalizada y aprobada.'
-              }
-            </p>
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+            {/* Mostrar información cuando no puede editar */}
+            {existingRespuesta && existingRespuesta.estado !== 'rechazado' && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                <p className="text-sm text-gray-600">
+                  {existingRespuesta.estado === 'pendiente'
+                    ? 'Tu respuesta ha sido enviada y está esperando calificación del instructor.'
+                    : 'Esta actividad ya ha sido finalizada y aprobada.'
+                  }
+                </p>
+                <div className="flex justify-end mt-4">
+                  <Button onClick={onClose} color="default">
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 };

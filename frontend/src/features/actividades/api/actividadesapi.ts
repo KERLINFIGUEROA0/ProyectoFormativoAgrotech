@@ -187,3 +187,27 @@ export const devolverMaterialesFinal = async (id: number, materialesDevueltos: {
   });
   return response.data;
 };
+
+/**
+ * Registra pagos para pasantes.
+ */
+export const registrarPagosPasantes = async (pagos: Array<{
+  idUsuario: number;
+  idActividad: number;
+  monto: number;
+  horasTrabajadas: number;
+  tarifaHora: number;
+  descripcion: string;
+  fechaPago: string;
+}>) => {
+  const response = await api.post('/pagos', pagos);
+  return response.data;
+};
+
+/**
+ * Obtiene los pagos de un usuario (solo para pasantes).
+ */
+export const obtenerPagosUsuario = async (userId: number) => {
+  const response = await api.get(`/pagos/usuario/${userId}`);
+  return response.data;
+};

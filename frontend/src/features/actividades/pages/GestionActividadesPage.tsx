@@ -20,6 +20,7 @@ import ActividadCard from '../components/ActividadCard';
 import FormularioActividad from '../components/FormularioActividad';
 import ModalResponderActividad from '../components/ModalResponderActividad';
 import ModalVerRespuestas from '../components/ModalVerRespuestas';
+import ModalPagoPasante from '../components/ModalPagoPasante';
 import { useAuth } from '../../../context/AuthContext';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem } from '@heroui/react';
 import type {
@@ -294,6 +295,15 @@ const GestionActividadesPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [actividadToDelete, setActividadToDelete] = useState<Actividad | null>(null);
 
+  // Estados para el modal de pago de pasantes
+  const [showPagoModal, setShowPagoModal] = useState(false);
+  const [actividadPago, setActividadPago] = useState<Actividad | null>(null);
+  const [pasantesPago, setPasantesPago] = useState<Array<{
+    identificacion: number;
+    nombre: string;
+    apellidos: string;
+  }>>([]);
+
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
@@ -372,7 +382,18 @@ const GestionActividadesPage: React.FC = () => {
   };
 
   const handleCloseVerRespuestasModal = () => {
-    setActividadVerRespuestas(null);
+     setActividadVerRespuestas(null);
+   };
+
+  // Función para abrir el modal de pago de pasantes
+  const handleAbrirPago = (actividad: Actividad, pasantes: Array<{
+    identificacion: number;
+    nombre: string;
+    apellidos: string;
+  }>) => {
+    setActividadPago(actividad);
+    setPasantesPago(pasantes);
+    setShowPagoModal(true);
   };
 
   // (handleSave sin cambios)
@@ -676,6 +697,11 @@ const GestionActividadesPage: React.FC = () => {
         actividad={actividadVerRespuestas!}
         isOpen={!!actividadVerRespuestas}
         onClose={handleCloseVerRespuestasModal}
+        onSuccess={() => {
+          cargarDatos(); // Recargar actividades cuando se califique una respuesta
+          setRespuestasKey(prev => prev + 1); // Forzar recarga del modal de respuestas
+        }}
+        onOpenPago={handleAbrirPago}
       />
 
       {/* Modal de Eliminar Actividad */}
@@ -706,6 +732,23 @@ const GestionActividadesPage: React.FC = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Modal de Pago de Pasantes */}
+      {actividadPago && (
+        <ModalPagoPasante
+          isOpen={showPagoModal}
+          onClose={() => setShowPagoModal(false)}
+          actividad={actividadPago}
+          pasantes={pasantesPago}
+          onPagoSuccess={() => {
+            setShowPagoModal(false);
+            setActividadPago(null);
+            setPasantesPago([]);
+            cargarDatos(); // Recargar para actualizar estados
+            toast.success('El proceso de pago ha finalizado correctamente.');
+          }}
+        />
+      )}
     </div>
   );
 };

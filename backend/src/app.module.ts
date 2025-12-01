@@ -37,6 +37,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module';
 import { FichasModule } from './modules/fichas/fichas.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
+import { PagosModule } from './modules/pagos/pagos.module';
 
 
 @Module({
@@ -87,6 +88,7 @@ import { MovimientosModule } from './movimientos/movimientos.module';
     MqttConfigModule,
     FichasModule,
     MovimientosModule,
+    PagosModule,
   ],
   providers: [],
   controllers: []

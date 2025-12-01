@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Download, FileText, Image, File, Check, X as XIcon } from 'lucide-react';
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Table, TableHeader, TableBody, TableRow, TableCell, TableColumn, Chip } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { obtenerRespuestasPorActividad, calificarRespuesta } from '../api/actividadesapi';
 import ModalComentarioRechazo from './ModalComentarioRechazo';
@@ -18,20 +19,29 @@ const getOriginalFilename = (fullFilename: string): string => {
 };
 
 interface ModalVerRespuestasProps {
-  actividad: Actividad;
-  isOpen: boolean;
-  onClose: () => void;
+    actividad: Actividad;
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess?: () => void;
+    onOpenPago?: (actividad: Actividad, pasantes: Array<{
+      identificacion: number;
+      nombre: string;
+      apellidos: string;
+    }>) => void;
 }
 
 const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
-  actividad,
-  isOpen,
-  onClose,
+    actividad,
+    isOpen,
+    onClose,
+    onSuccess,
+    onOpenPago,
 }) => {
   const [respuestas, setRespuestas] = useState<RespuestaActividad[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalComentarioOpen, setModalComentarioOpen] = useState(false);
   const [respuestaSeleccionada, setRespuestaSeleccionada] = useState<number | null>(null);
+
 
   const cargarRespuestas = useCallback(async () => {
     setLoading(true);
@@ -51,6 +61,8 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       cargarRespuestas();
     }
   }, [isOpen, actividad, cargarRespuestas]);
+
+
 
   const getFileIcon = (filename: string) => {
     const originalFilename = getOriginalFilename(filename);
@@ -103,9 +115,83 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
 
   const handleAprobar = async (respuestaId: number) => {
     try {
-      await calificarRespuesta(respuestaId, { estado: 'aprobado' });
-      // Recargar respuestas
-      cargarRespuestas();
+      console.log('🚀 Iniciando aprobación de respuesta ID:', respuestaId);
+
+      // Calificar la respuesta - el backend ahora retorna si el usuario es pasante
+      const resultadoCalificacion = await calificarRespuesta(respuestaId, { estado: 'aprobado' });
+
+      console.log('📋 Respuesta completa del backend:', JSON.stringify(resultadoCalificacion, null, 2));
+      console.log('👤 Usuario en respuesta:', resultadoCalificacion.usuario);
+      console.log('🔍 esPasante:', resultadoCalificacion.esPasante);
+      console.log('👥 TipoUsuario:', resultadoCalificacion.usuario?.tipoUsuario);
+
+      // Recargar respuestas para actualizar la UI
+      await cargarRespuestas();
+
+      // Verificar si el usuario es pasante usando la información retornada por el backend
+      if (resultadoCalificacion.esPasante) {
+        console.log('✅ Usuario aprobado es pasante, llamando función del padre para abrir modal de pago');
+
+        // Llamar a la función del padre para abrir el modal de pago
+        if (onOpenPago) {
+          onOpenPago(actividad, [{
+            identificacion: resultadoCalificacion.usuario.identificacion,
+            nombre: resultadoCalificacion.usuario.nombre,
+            apellidos: resultadoCalificacion.usuario.apellidos,
+          }]);
+          console.log('✅ Función onOpenPago llamada exitosamente');
+
+          // Cerrar el modal de respuestas para evitar conflictos visuales
+          onClose();
+          return; // Salir de la función para evitar ejecutar el resto del código
+        } else {
+          console.warn('⚠️ onOpenPago no está definido en las props');
+        }
+      } else {
+        console.log('❌ Usuario aprobado no es pasante o esPasante es false/undefined');
+        console.log('Valor de esPasante:', resultadoCalificacion.esPasante);
+        console.log('Tipo de esPasante:', typeof resultadoCalificacion.esPasante);
+      }
+
+      // Verificar el caso general (todas respuestas aprobadas) - Solo si NO se abrió pago individual
+      // Usar las respuestas actualizadas después de recargar
+      const respuestasActualizadas = await obtenerRespuestasPorActividad(actividad.id);
+      const todasAprobadas = respuestasActualizadas.every(r => r.estado === 'aprobado');
+      const totalRespuestas = respuestasActualizadas.length;
+
+      console.log('Estado después de recargar respuestas:');
+      console.log('Respuestas:', respuestasActualizadas.map(r => ({ nombre: r.usuario.nombre, estado: r.estado, tipoUsuario: r.usuario.tipoUsuario?.nombre })));
+      console.log('Todas aprobadas:', todasAprobadas);
+      console.log('Total respuestas:', totalRespuestas);
+
+      // Si todas están aprobadas y hay pasantes que aún no se pagaron, mostrar modal general
+      // Pero solo si no se abrió pago individual en esta misma aprobación
+      if (todasAprobadas && totalRespuestas > 0 && !resultadoCalificacion.esPasante) {
+        const pasantesSinPagar = respuestasActualizadas
+          .filter(r => {
+            const esPasante = r.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+            return esPasante && r.estado === 'aprobado';
+          })
+          .map(r => ({
+            identificacion: r.usuario.identificacion,
+            nombre: r.usuario.nombre,
+            apellidos: r.usuario.apellidos,
+          }));
+
+        // Solo mostrar si hay pasantes que no se pagaron aún
+        if (pasantesSinPagar.length > 0) {
+          console.log('Actividad completada, mostrando pasantes restantes:', pasantesSinPagar);
+          if (onOpenPago) {
+            onOpenPago(actividad, pasantesSinPagar);
+            // Cerrar el modal de respuestas para evitar conflictos visuales
+            onClose();
+            return; // Salir de la función
+          }
+        }
+      }
+
+      // Notificar al componente padre para recargar actividades
+      onSuccess?.();
     } catch (error) {
       console.error('Error al aprobar respuesta:', error);
       alert('Error al aprobar respuesta');
@@ -123,6 +209,8 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
         await calificarRespuesta(respuestaSeleccionada, { estado: 'rechazado', comentarioInstructor: comentario });
         // Recargar respuestas
         cargarRespuestas();
+        // Notificar al componente padre para recargar actividades
+        onSuccess?.();
       } catch (error) {
         console.error('Error al rechazar respuesta:', error);
         alert('Error al rechazar respuesta');
@@ -133,126 +221,129 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Respuestas de la Actividad</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            <h2 className="text-xl font-bold">Respuestas de la Actividad</h2>
+          </ModalHeader>
+          <ModalBody>
+            <div className="mb-4">
+              <h3 className="font-semibold text-lg">{actividad.titulo}</h3>
+              <p className="text-sm text-gray-600">{actividad.descripcion}</p>
+            </div>
 
-        <div className="mb-4">
-          <h3 className="font-semibold">{actividad.titulo}</h3>
-          <p className="text-sm text-gray-600">{actividad.descripcion}</p>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">
-            <p>Cargando respuestas...</p>
-          </div>
-        ) : respuestas.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No hay respuestas para esta actividad.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-4 py-2 text-left">Nombre</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">ID Ficha</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Descripción</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Estado</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Comentario Instructor</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Archivos</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Fecha</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {respuestas.map((respuesta) => (
-                  <tr key={respuesta.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.usuario.nombre} {respuesta.usuario.apellidos}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.usuario.ficha?.id_ficha || 'N/A'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.descripcion || 'Sin descripción'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        respuesta.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
-                        respuesta.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {respuesta.estado === 'aprobado' ? 'Aprobado' :
-                         respuesta.estado === 'rechazado' ? 'Rechazado' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.comentarioInstructor || 'Sin comentario'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.archivos ? (
-                        <div className="flex flex-wrap gap-2">
-                          {JSON.parse(respuesta.archivos).map((filename: string, index: number) => (
-                            <button
-                              key={index}
-                              onClick={() => downloadFile(filename)}
-                              className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+            {loading ? (
+              <div className="text-center py-8">
+                <p>Cargando respuestas...</p>
+              </div>
+            ) : respuestas.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No hay respuestas para esta actividad.</p>
+              </div>
+            ) : (
+              <Table aria-label="Tabla de respuestas de actividad">
+                <TableHeader>
+                  <TableColumn>Nombre</TableColumn>
+                  <TableColumn>ID Ficha</TableColumn>
+                  <TableColumn>Descripción</TableColumn>
+                  <TableColumn>Estado</TableColumn>
+                  <TableColumn>Comentario Instructor</TableColumn>
+                  <TableColumn>Archivos</TableColumn>
+                  <TableColumn>Fecha</TableColumn>
+                  <TableColumn>Acciones</TableColumn>
+                </TableHeader>
+                <TableBody>
+                  {respuestas.map((respuesta) => (
+                    <TableRow key={respuesta.id}>
+                      <TableCell>
+                        {respuesta.usuario.nombre} {respuesta.usuario.apellidos}
+                      </TableCell>
+                      <TableCell>
+                        {respuesta.usuario.ficha?.id_ficha || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {respuesta.descripcion || 'Sin descripción'}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          color={
+                            respuesta.estado === 'aprobado' ? 'success' :
+                            respuesta.estado === 'rechazado' ? 'danger' : 'warning'
+                          }
+                          variant="flat"
+                          size="sm"
+                        >
+                          {respuesta.estado === 'aprobado' ? 'Aprobado' :
+                           respuesta.estado === 'rechazado' ? 'Rechazado' : 'Pendiente'}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        {respuesta.comentarioInstructor || 'Sin comentario'}
+                      </TableCell>
+                      <TableCell>
+                        {respuesta.archivos ? (
+                          <div className="flex flex-wrap gap-2">
+                            {JSON.parse(respuesta.archivos).map((filename: string, index: number) => (
+                              <Button
+                                key={index}
+                                size="sm"
+                                variant="light"
+                                color="primary"
+                                startContent={getFileIcon(filename)}
+                                endContent={<Download size={12} />}
+                                onClick={() => downloadFile(filename)}
+                              >
+                                {getOriginalFilename(filename).length > 15
+                                  ? `${getOriginalFilename(filename).substring(0, 15)}...`
+                                  : getOriginalFilename(filename)}
+                              </Button>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-sm">Sin archivos</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(respuesta.fechaEnvio).toLocaleDateString('es-ES')}
+                      </TableCell>
+                      <TableCell>
+                        {respuesta.estado === 'pendiente' && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              color="success"
+                              variant="flat"
+                              startContent={<Check size={14} />}
+                              onClick={() => handleAprobar(respuesta.id)}
                             >
-                              {getFileIcon(filename)}
-                              {getOriginalFilename(filename)}
-                              <Download size={12} />
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">Sin archivos</span>
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {new Date(respuesta.fechaEnvio).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {respuesta.estado === 'pendiente' && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAprobar(respuesta.id)}
-                            className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm"
-                          >
-                            <Check size={14} />
-                            Aprobar
-                          </button>
-                          <button
-                            onClick={() => handleRechazar(respuesta.id)}
-                            className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
-                          >
-                            <XIcon size={14} />
-                            Rechazar
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-          >
-            Cerrar
-          </button>
-        </div>
-      </div>
+                              Aprobar
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="danger"
+                              variant="flat"
+                              startContent={<XIcon size={14} />}
+                              onClick={() => handleRechazar(respuesta.id)}
+                            >
+                              Rechazar
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={onClose} color="default">
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <ModalComentarioRechazo
         isOpen={modalComentarioOpen}
@@ -262,7 +353,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
         }}
         onConfirm={handleConfirmarRechazo}
       />
-    </div>
+    </>
   );
 };
 
