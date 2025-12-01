@@ -10,16 +10,22 @@ export interface MaterialUsado {
 }
 // Interfaz para un usuario simple, tal como viene en la relación
 export interface UsuarioSimple {
-  id: number;
-  identificacion: number;
-  nombre: string;
-  apellidos: string;
-  // Información de ficha para filtrado y agrupación
-  ficha?: {
-    id: number;
-    nombre: string;
-    id_ficha: string;
-  };
+   id: number;
+   identificacion: number;
+   nombre: string;
+   apellidos: string;
+   // Información de ficha para filtrado y agrupación
+   ficha?: {
+     id: number;
+     nombre: string;
+     id_ficha: string;
+   };
+   // Información del tipo de usuario
+   tipoUsuario?: {
+     id: number;
+     nombre: string;
+     descripcion: string;
+   };
 }
 
 // Interfaz para un cultivo simple
@@ -106,13 +112,14 @@ export interface CalificarActividadPayload {
 
 // 7. Interfaz para RespuestaActividad
 export interface RespuestaActividad {
-  id: number;
-  descripcion?: string;
-  archivos?: string;
-  fechaEnvio: string;
-  estado: 'pendiente' | 'aprobado' | 'rechazado';
-  comentarioInstructor?: string;
-  usuario: UsuarioSimple;
+   id: number;
+   descripcion?: string;
+   archivos?: string;
+   fechaEnvio: string;
+   estado: 'pendiente' | 'aprobado' | 'rechazado';
+   comentarioInstructor?: string;
+   usuario: UsuarioSimple;
+   esPasante?: boolean; // Campo adicional retornado por el backend al calificar
 }
 // Refleja AsignarActividadDto del backend
 export interface AsignarActividadPayload {

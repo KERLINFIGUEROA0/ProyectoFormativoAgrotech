@@ -737,6 +737,7 @@ export class ActividadesService {
   async obtenerRespuestasPorActividad(id: number, userIdentificacion?: number, userRole?: string) {
     const query = this.respuestaRepository.createQueryBuilder('respuesta')
       .leftJoinAndSelect('respuesta.usuario', 'usuario')
+      .leftJoinAndSelect('usuario.tipoUsuario', 'tipoUsuario')
       .leftJoinAndSelect('usuario.ficha', 'ficha')
       .where('respuesta.actividad = :actividadId', { actividadId: id })
       .orderBy('respuesta.fechaEnvio', 'DESC');
@@ -758,7 +759,7 @@ export class ActividadesService {
 
     const respuesta = await this.respuestaRepository.findOne({
       where: { id: respuestaId },
-      relations: ['actividad'],
+      relations: ['actividad', 'usuario', 'usuario.tipoUsuario'],
     });
     if (!respuesta) {
       throw new NotFoundException(`Respuesta con ID ${respuestaId} no encontrada.`);
@@ -777,7 +778,17 @@ export class ActividadesService {
       await this.verificarEstadoActividad(actividadCompleta);
     }
 
-    return savedRespuesta;
+    // Retornar información adicional sobre si el usuario es pasante
+    const esPasante = respuesta.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+
+    return {
+      ...savedRespuesta,
+      esPasante,
+      usuario: {
+        ...savedRespuesta.usuario,
+        tipoUsuario: respuesta.usuario.tipoUsuario,
+      },
+    };
   }
 
   async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {

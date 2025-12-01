@@ -99,6 +99,7 @@ const baseMenuItems: MenuItemType[] = [
     children: [
       { id: "gestion-actividades", label: "Tareas", icon: Activity },
       { id: "cronograma", label: "Cronograma", icon: Calendar },
+      { id: "pagos-pasante", label: "Mis Pagos", icon: TrendingUp },
     ],
   },
   // ---------------------------------

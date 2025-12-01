@@ -43,8 +43,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     cultivo: "",
     estado: "completado" as EstadoActividad,
     imagenes: [] as File[],
-    horas: '' as number | string, // <-- AÑADIDO
-    tarifaHora: '' as number | string, // <-- AÑADIDO
+    horas: '' as number | string, // <-- AÑADIDO (solo para creación)
+    tarifaHora: '' as number | string, // <-- AÑADIDO (solo para creación)
   });
 
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
@@ -77,7 +77,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   // Precargar datos de edición (MODIFICADO)
   useEffect(() => {
     if (isEditing && actividadInicial) {
-      // --- CORRECCIÓN 2: Precargar horas y tarifaHora ---
+      // --- CORRECCIÓN 2: NO precargar horas y tarifaHora en edición ---
       setFormData({
         titulo: actividadInicial.titulo || "",
         descripcion: actividadInicial.descripcion || "",
@@ -87,8 +87,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         cultivo: actividadInicial.cultivo?.id?.toString() || "",
         estado: actividadInicial.estado || "pendiente",
         imagenes: [],
-        horas: actividadInicial.horas || '', // <-- AÑADIDO
-        tarifaHora: actividadInicial.tarifaHora || '', // <-- AÑADIDO
+        horas: '', // <-- NO precargar en edición
+        tarifaHora: '', // <-- NO precargar en edición
       });
       
       // Precargar materiales (Tu código ya estaba correcto aquí)
@@ -236,9 +236,11 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     dataToSend.append("cultivo", formData.cultivo);
     dataToSend.append("estado", formData.estado);
 
-    // --- AÑADIDO: Enviar campos de costo ---
-    dataToSend.append("horas", formData.horas.toString() || "0");
-    dataToSend.append("tarifaHora", formData.tarifaHora.toString() || "0");
+    // --- AÑADIDO: Enviar campos de costo SOLO en creación ---
+    if (!isEditing) {
+      dataToSend.append("horas", formData.horas.toString() || "0");
+      dataToSend.append("tarifaHora", formData.tarifaHora.toString() || "0");
+    }
 
     // --- (Tu corrección de 'isEditing' ya estaba aquí, está perfecta) ---
     if (!isEditing) {
@@ -361,33 +363,35 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             />
           </div>
 
-          {/* Costos */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Input
-                type="number"
-                name="horas"
-                value={formData.horas.toString()}
-                onChange={handleChange}
-                placeholder="Ej: 4"
-                label="Horas Trabajadas"
-                min="0"
-                step="0.5"
-              />
+          {/* Costos - Solo mostrar en creación, NO en edición */}
+          {!isEditing && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Input
+                  type="number"
+                  name="horas"
+                  value={formData.horas.toString()}
+                  onChange={handleChange}
+                  placeholder="Ej: 4"
+                  label="Horas Trabajadas"
+                  min="0"
+                  step="0.5"
+                />
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  name="tarifaHora"
+                  value={formData.tarifaHora.toString()}
+                  onChange={handleChange}
+                  placeholder="Ej: 5000"
+                  label="Tarifa por Hora (COP)"
+                  min="0"
+                  step="500"
+                />
+              </div>
             </div>
-            <div>
-              <Input
-                type="number"
-                name="tarifaHora"
-                value={formData.tarifaHora.toString()}
-                onChange={handleChange}
-                placeholder="Ej: 5000"
-                label="Tarifa por Hora (COP)"
-                min="0"
-                step="500"
-              />
-            </div>
-          </div>
+          )}
 
         </div>
 

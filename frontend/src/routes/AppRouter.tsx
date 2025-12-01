@@ -25,6 +25,7 @@ import DashboardProduccion from "../features/cultivos/pages/DashboardProduccion"
 import TrazabilidadCultivoPage from "../features/cultivos/pages/TrazabilidadCultivoPage";
 import ActividadesPrincipal from "../features/actividades/pages/PrincipalAcvidades";
 import GestionActiviadesPage from "../features/actividades/pages/GestionActividadesPage";
+import PagosPasantePage from "../features/actividades/pages/PagosPasantePage";
 import GestionFitosanitarioPage from "../features/fitosanitario/pages/GestionFitosanitarioPage";
 import GestionInventarioPage from "../features/inventario/pages/GestionInventarioPage";
 import DetalleMaterialPage from "../features/inventario/pages/DetalleMaterialPage";
@@ -110,6 +111,11 @@ export default function AppRouter() {
           <Route path="/cronograma" element={
             <PermissionRoute module="Actividades">
               <GestionActiviadesPage />
+            </PermissionRoute>
+          } />
+          <Route path="/pagos-pasante" element={
+            <PermissionRoute module="Actividades">
+              <PagosPasantePage />
             </PermissionRoute>
           } />
         </Route>
