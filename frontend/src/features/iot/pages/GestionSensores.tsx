@@ -1152,6 +1152,17 @@ export default function GestionSensoresPage(): ReactElement {
                  title="Gestionar Brokers"
                />
 
+               {/* BOTÓN DE DESCARGA DE TRAZABILIDAD - DISPONIBLE EN AMBOS MODOS */}
+               <Button
+                 onClick={() => setIsTrazabilidadModalOpen(true)}
+                 variant="light"
+                 color="success"
+                 size="sm"
+                 className="min-w-0 px-2"
+                 startContent={<Download size={14} />}
+                 title="Descargar Reporte de Trazabilidad"
+               />
+
                {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
                  <>
                    <Button
@@ -1172,16 +1183,6 @@ export default function GestionSensoresPage(): ReactElement {
                      className="min-w-0 px-2"
                      startContent={<RefreshCw size={14} />}
                      title="Sincronizar Sensores"
-                   />
-
-                   <Button
-                     onClick={() => setIsTrazabilidadModalOpen(true)}
-                     variant="light"
-                     color="success"
-                     size="sm"
-                     className="min-w-0 px-2"
-                     startContent={<Download size={14} />}
-                     title="Descargar Reporte de Trazabilidad"
                    />
                  </>
                )}

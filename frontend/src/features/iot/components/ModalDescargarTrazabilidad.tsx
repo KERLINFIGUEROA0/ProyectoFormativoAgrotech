@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import Modal from '../../../components/Modal'; // Ajustar ruta según tu estructura
 import { obtenerLotes } from '../../cultivos/api/lotesApi';
 import { obtenerSublotesPorLote } from '../../cultivos/api/sublotesApi';
-import { descargarReporteApi } from '../api/sensoresApi';
+import { descargarReporteApi, getCultivosActivosLote } from '../api/sensoresApi';
 
 interface Props {
   isOpen: boolean;
@@ -14,6 +14,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
   const { register, handleSubmit, watch } = useForm();
   const [lotes, setLotes] = useState([]);
   const [sublotes, setSublotes] = useState([]);
+  const [cultivos, setCultivos] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const selectedLoteId = watch('loteId');
@@ -29,6 +30,18 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     if (selectedLoteId) {
       // Cargar sublotes si selecciona lote
       obtenerSublotesPorLote(selectedLoteId).then(response => setSublotes(response.data?.data || []));
+      // Cargar cultivos activos del lote
+      getCultivosActivosLote(selectedLoteId).then(response => {
+        console.log('Cultivos cargados:', response.data);
+        setCultivos(response.data || []);
+      }).catch(error => {
+        console.error('Error cargando cultivos:', error);
+        setCultivos([]);
+      });
+    } else {
+      // Limpiar cuando no hay lote seleccionado
+      setSublotes([]);
+      setCultivos([]);
     }
   }, [selectedLoteId]);
 
@@ -40,6 +53,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
         formato: data.formato,
         loteId: Number(data.loteId),
         subloteId: data.subloteId && data.subloteId !== "" ? Number(data.subloteId) : undefined,
+        cultivoId: data.cultivoId && data.cultivoId !== "" ? Number(data.cultivoId) : undefined,
         fechaInicio: data.fechaInicio,
         fechaFin: data.fechaFin,
       };
@@ -54,22 +68,18 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
       // Llamada a la API
       const result = await descargarReporteApi(payload);
 
-      if (payload.formato === 'json') {
-        // Mostrar datos JSON
-        console.log('Datos del reporte:', result);
-        alert('Datos obtenidos correctamente. Revisa la consola para ver los datos JSON.');
-        onClose();
-      } else {
-        // Descargar archivo
-        const url = window.URL.createObjectURL(new Blob([result]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `trazabilidad_${payload.loteId}.${payload.formato}`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        onClose();
-      }
+      // Descargar archivo
+      const url = window.URL.createObjectURL(new Blob([result]));
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = payload.cultivoId
+        ? `trazabilidad_cultivo_${payload.cultivoId}.${payload.formato}`
+        : `trazabilidad_lote_${payload.loteId}.${payload.formato}`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      onClose();
     } catch (error: any) {
       console.error("Error generando reporte", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Error desconocido";
@@ -79,15 +89,16 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     }
   };
 
+  console.log('Modal renderizando, cultivos:', cultivos, 'loteId:', selectedLoteId);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Descargar Trazabilidad Completa">
+    <Modal isOpen={isOpen} onClose={onClose} title="Descargar Reporte de Trazabilidad">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4">
 
         {/* Formato */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Formato</label>
           <select {...register('formato')} className="mt-1 block w-full border rounded-md p-2">
-            <option value="json">JSON (Para Testing)</option>
             <option value="pdf">PDF (Reporte Completo)</option>
             <option value="excel">Excel (Datos Crudos)</option>
           </select>
@@ -115,6 +126,33 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
           </select>
         </div>
 
+        {/* CULTIVO ESPECÍFICO - ESTE ES EL INPUT QUE BUSCAS */}
+        <div className="border-2 border-blue-200 bg-blue-50 p-4 rounded-lg">
+          <label className="block text-sm font-medium text-blue-800 mb-2">
+            🎯 Cultivo Específico (Opcional)
+          </label>
+          <select
+            {...register('cultivoId')}
+            className="mt-1 block w-full border border-blue-300 rounded-md p-2 bg-white"
+            disabled={!selectedLoteId}
+          >
+            <option value="">📊 Todos los cultivos del lote</option>
+            {cultivos.length > 0 ? cultivos.map((c: any) => (
+              <option key={c.id} value={c.id}>
+                🌱 {c.nombre} {c.tipoCultivo?.nombre ? `(${c.tipoCultivo.nombre})` : ''}
+                {c.sublotes?.nombre ? ` - 📍 Sublote: ${c.sublotes.nombre}` : ''}
+              </option>
+            )) : (
+              <option disabled>⏳ Cargando cultivos...</option>
+            )}
+          </select>
+          <small className="text-blue-600 mt-2 block font-medium">
+            💡 Solo muestra cultivos activos (no finalizados) con producción pendiente.
+            <br />
+            📈 {cultivos.length} cultivo(s) encontrado(s) en este lote.
+          </small>
+        </div>
+
         {/* Rango de Fechas */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -133,7 +171,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
             disabled={loading}
             className={`px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ${loading ? 'opacity-50' : ''}`}
           >
-            {loading ? 'Generando Reporte...' : 'Descargar'}
+            {loading ? 'Generando Reporte...' : 'Generar Reporte'}
           </button>
         </div>
       </form>

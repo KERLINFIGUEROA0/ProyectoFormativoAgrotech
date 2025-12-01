@@ -417,9 +417,36 @@ export class SensoresService {
     return { tendencia, prediccion: prediccion.toFixed(2) };
   }
 
+  // Función auxiliar para generar recomendaciones basadas en datos
+  private generarRecomendaciones(sensorNombre: string, stats: any): string[] {
+    const recomendaciones: string[] = [];
+    const nombre = sensorNombre.toLowerCase();
+
+    if (nombre.includes('luz') || nombre.includes('radiacion')) {
+      if (stats.maximo > 800) recomendaciones.push('⚠️ Exceso de radiación: Evaluar uso de malla sombra para proteger el cultivo.');
+      if (stats.promedio < 200) recomendaciones.push('⚠️ Luz insuficiente: Podría retrasar el crecimiento. Considerar iluminación suplementaria.');
+    }
+
+    if (nombre.includes('humedad') || nombre.includes('humedad_suelo')) {
+      if (stats.minimo < 20) recomendaciones.push('💧 Humedad crítica baja detectada: Verificar sistema de riego y retención del suelo.');
+      if (stats.maximo > 90) recomendaciones.push('🍄 Humedad excesiva: Riesgo de hongos/plagas. Mejorar ventilación y drenaje.');
+    }
+
+    if (nombre.includes('temperatura')) {
+      if (stats.maximo > 35) recomendaciones.push('🌡️ Temperatura elevada: Implementar sistemas de enfriamiento o sombra.');
+      if (stats.minimo < 10) recomendaciones.push('❄️ Temperatura baja: Proteger contra heladas nocturnas.');
+    }
+
+    if (nombre.includes('ph')) {
+      if (stats.promedio < 5.5 || stats.promedio > 7.5) recomendaciones.push('🧪 pH fuera de rango óptimo: Realizar corrección del suelo.');
+    }
+
+    return recomendaciones;
+  }
+
   async getFullTraceabilityData(dto: GenerarReporteTrazabilidadDto) {
     try {
-      const { loteId, subloteId, fechaInicio, fechaFin } = dto;
+      const { loteId, subloteId, cultivoId, fechaInicio, fechaFin } = dto;
 
       // Validar lote
       const lote = await this.loteRepo.findOne({ where: { id: loteId } });
@@ -427,86 +454,280 @@ export class SensoresService {
         throw new NotFoundException(`Lote no encontrado`);
       }
 
-      // 1. Obtener cultivos básicos del lote
-      const cultivos = await this.cultivoRepo.find({
-        where: { lote: { id: loteId } },
-        relations: ['producciones', 'gastos']
-      });
+      // 1. Obtener cultivos con todas las relaciones necesarias
+      // Buscar cultivos directamente en el lote O en sublotes del lote
+      let query = this.cultivoRepo.createQueryBuilder('cultivo')
+        .leftJoinAndSelect('cultivo.tipoCultivo', 'tipoCultivo')
+        .leftJoinAndSelect('cultivo.producciones', 'producciones')
+        .leftJoinAndSelect('cultivo.gastos', 'gastos')
+        .leftJoinAndSelect('cultivo.actividades', 'actividades')
+        .leftJoinAndSelect('actividades.responsable', 'responsable')
+        .leftJoinAndSelect('actividades.actividadMaterial', 'am')
+        .leftJoinAndSelect('am.material', 'material')
+        .leftJoinAndSelect('cultivo.sublotes', 'sublotes')
+        .leftJoinAndSelect('sublotes.lote', 'subloteLote')
+        .where('(cultivo.loteId = :loteId OR subloteLote.id = :loteId)', { loteId })
+        .andWhere('cultivo.Fecha_Plantado <= :fechaFin', { fechaFin })
+        .andWhere('(cultivo.Fecha_Fin IS NULL OR cultivo.Fecha_Fin >= :fechaInicio)', { fechaInicio })
+        .andWhere('(cultivo.Estado IS NULL OR cultivo.Estado != :estadoFinalizado)', { estadoFinalizado: 'Finalizado' });
+
+      // Si se especifica un cultivo específico, filtrar por ese cultivo
+      if (cultivoId) {
+        query = query.andWhere('cultivo.id = :cultivoId', { cultivoId });
+      }
+
+      const cultivos = await query.getMany();
 
       const reporte: any = {
-        loteNombre: lote.nombre,
-        fechaInicio,
-        fechaFin,
-        resumen: {
-          totalCultivos: cultivos.length,
-          diasSembrado: 0,
-          totalInversion: 0,
-          totalVentas: 0,
-          gananciaNeta: 0,
-          totalProduccionKg: 0
-        },
+        lote: lote.nombre,
+        rango: `${fechaInicio} al ${fechaFin}`,
+        fechaGeneracion: new Date().toISOString(),
         cultivos: [],
-        datosSensores: {}
+        sensores: {}
       };
 
-      // 2. Procesar cultivos
-      for (const cultivo of cultivos) {
-        const inicio = new Date(cultivo.Fecha_Plantado);
-        const fin = cultivo.Fecha_Fin ? new Date(cultivo.Fecha_Fin) : new Date();
-        const diffTime = Math.abs(fin.getTime() - inicio.getTime());
-        reporte.resumen.diasSembrado += Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // 2. Procesar Cultivos (Finanzas y Actividades)
+      for (const c of cultivos) {
+        const datosCultivo: any = {
+          nombre: c.nombre,
+          tipo: c.tipoCultivo?.nombre || 'Sin tipo',
+          diasSembrado: Math.floor((new Date().getTime() - new Date(c.Fecha_Plantado).getTime()) / (1000 * 3600 * 24)),
+          fechaSiembra: c.Fecha_Plantado,
+          resumenFinanciero: {
+            totalInversion: 0,
+            totalVentas: 0,
+            gananciaNeta: 0,
+            detalleMateriales: [],
+            detalleGastos: [],
+            detalleVentas: []
+          },
+          actividadesLog: [],
+          produccionTotalKg: 0,
+          estadoActual: c.Estado || 'Activo'
+        };
 
-        // Gastos
-        if (cultivo.gastos) {
-          reporte.resumen.totalInversion += cultivo.gastos.reduce((a, b) => a + Number(b.monto), 0);
-        }
+        // A. Procesar Actividades y Materiales
+        if (c.actividades) {
+          for (const act of c.actividades) {
+            // Log de actividades
+            datosCultivo.actividadesLog.push({
+              fecha: act.fecha,
+              tarea: act.titulo,
+              descripcion: act.descripcion,
+              responsable: act.responsable ? `${act.responsable.nombre} ${act.responsable.apellidos || ''}`.trim() : 'No asignado',
+              estado: act.estado,
+              cumplida: act.estado === 'completado',
+              horasTrabajadas: act.horas || 0,
+              costoManoObra: (act.horas || 0) * (act.tarifaHora || 0)
+            });
 
-        // Producción y ventas
-        if (cultivo.producciones) {
-          for (const prod of cultivo.producciones) {
-            reporte.resumen.totalProduccionKg += Number(prod.cantidad || 0);
-            const ventas = await this.ventaRepo.find({ where: { produccion: { id: prod.id } } });
-            reporte.resumen.totalVentas += ventas.reduce((a, b) => a + Number(b.valorTotalVenta), 0);
+            // Costos de materiales
+            if (act.actividadMaterial) {
+              for (const am of act.actividadMaterial) {
+                if (am.material) {
+                  // Usar la cantidad y unidad ORIGINAL en que se gastó el material
+                  const cantidadOriginal = am.cantidadUsada || 0;
+                  const unidadOriginal = am.unidadMedida || 'unidad';
+                  const precioMaterial = am.material.precio || 0;
+                  const pesoPorUnidad = am.material.pesoPorUnidad || 1;
+
+                  // Precio por unidad base (gramo/ml) = precio_total / peso_total
+                  const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+                  // Convertir la cantidad original a unidades base para calcular el costo
+                  const cantidadBase = am.cantidadUsadaBase || am.cantidadUsada || 0;
+                  const costoTotal = precioPorUnidadBase * cantidadBase;
+
+                  // Calcular precio unitario en la UNIDAD ORIGINAL
+                  // precio_unitario_original = costo_total / cantidad_original
+                  const precioUnitarioOriginal = cantidadOriginal > 0 ? costoTotal / cantidadOriginal : 0;
+
+                  datosCultivo.resumenFinanciero.totalInversion += costoTotal;
+                  datosCultivo.resumenFinanciero.detalleMateriales.push({
+                    fecha: act.fecha,
+                    nombre: am.material.nombre,
+                    tipo: 'Material',
+                    cantidad: cantidadOriginal, // Mostrar cantidad original
+                    unidad: unidadOriginal.toLowerCase(), // Mostrar unidad original
+                    precioUnitario: precioUnitarioOriginal, // Precio por unidad original
+                    costoTotal: costoTotal
+                  });
+                }
+              }
+            }
+
+            // Costos de mano de obra
+            if (act.horas && act.tarifaHora) {
+              datosCultivo.resumenFinanciero.totalInversion += (act.horas * act.tarifaHora);
+            }
           }
         }
 
-        reporte.cultivos.push({
-          nombre: cultivo.nombre,
-          tipo: cultivo.tipoCultivo?.nombre || 'Sin tipo',
-          fechaSiembra: cultivo.Fecha_Plantado,
-          produccionTotal: cultivo.producciones?.reduce((a, b) => a + Number(b.cantidad || 0), 0) || 0
-        });
+        // B. Gastos adicionales
+        if (c.gastos) {
+          for (const g of c.gastos) {
+            datosCultivo.resumenFinanciero.totalInversion += Number(g.monto);
+            datosCultivo.resumenFinanciero.detalleGastos.push({
+              fecha: g.fecha,
+              descripcion: g.descripcion,
+              monto: Number(g.monto),
+              tipo: g.tipo
+            });
+          }
+        }
+
+        // C. Producción y Ventas
+        if (c.producciones) {
+          for (const p of c.producciones) {
+            const cantidadCosechada = Number(p.cantidad || 0);
+            datosCultivo.produccionTotalKg += cantidadCosechada;
+
+            // Ventas asociadas a esta producción específica
+            const ventas = await this.ventaRepo.find({
+              where: { produccion: { id: p.id } },
+              relations: ['produccion']
+            });
+
+            const cantidadVendida = ventas.reduce((sum, v) => sum + Number(v.cantidadVenta), 0);
+            const cantidadRestante = cantidadCosechada - cantidadVendida;
+
+            // Agregar información de cosecha con inventario restante
+            datosCultivo.cosechas = datosCultivo.cosechas || [];
+            datosCultivo.cosechas.push({
+              fecha: p.fecha,
+              cantidadCosechada: cantidadCosechada,
+              cantidadVendida: cantidadVendida,
+              cantidadRestante: cantidadRestante,
+              estado: cantidadRestante > 0 ? 'Pendiente' : 'Completada'
+            });
+
+            for (const v of ventas) {
+              const valorTotal = Number(v.valorTotalVenta);
+              datosCultivo.resumenFinanciero.totalVentas += valorTotal;
+              datosCultivo.resumenFinanciero.detalleVentas.push({
+                fecha: v.fecha,
+                descripcion: v.descripcion || `Venta de ${c.nombre}`,
+                cantidadVendida: v.cantidadVenta,
+                precioUnitario: Number(v.precioUnitario),
+                valorTotal: valorTotal
+              });
+            }
+          }
+        }
+
+        // Calcular ganancia neta
+        datosCultivo.resumenFinanciero.gananciaNeta =
+          datosCultivo.resumenFinanciero.totalVentas - datosCultivo.resumenFinanciero.totalInversion;
+
+        reporte.cultivos.push(datosCultivo);
       }
 
-      reporte.resumen.gananciaNeta = reporte.resumen.totalVentas - reporte.resumen.totalInversion;
+      // 3. Procesar Sensores con análisis avanzado
+      // Buscar sensores directamente en el lote O en sublotes del lote
+      const sensores = await this.sensorRepo.find({
+        where: [
+          { lote: { id: loteId } },
+          { sublote: { lote: { id: loteId } } }
+        ],
+        relations: ['lote', 'sublote']
+      });
 
-      // 3. Datos de sensores básicos
-      const sensores = await this.sensorRepo.find({ where: { lote: { id: loteId } } });
-
-      for (const sensor of sensores) {
-        const datos = await this.infoSensorRepo.createQueryBuilder('info')
-          .where('info.sensorId = :sid', { sid: sensor.id })
+      for (const s of sensores) {
+        // A. Registros Históricos (Respetan el rango de fechas para gráficas y promedios)
+        const registros = await this.infoSensorRepo.createQueryBuilder('info')
+          .where('info.sensorId = :sid', { sid: s.id })
           .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin })
           .orderBy('info.fechaRegistro', 'ASC')
           .getMany();
 
-        if (datos.length > 0) {
-          const valores = datos.map(d => Number(d.valor));
-          const picosAltos = [...datos].sort((a, b) => Number(b.valor) - Number(a.valor)).slice(0, 5);
-          const picosBajos = [...datos].sort((a, b) => Number(a.valor) - Number(b.valor)).slice(0, 5);
+        // B. ✅ NUEVO: Último Dato Real (Tiempo Real - Ignora fechas del reporte)
+        // Esto garantiza que si hay una alerta AHORA MISMO, salga en el PDF.
+        const ultimoDatoReal = await this.infoSensorRepo.findOne({
+            where: { sensor: { id: s.id } },
+            order: { fechaRegistro: 'DESC' }
+        });
 
-          reporte.datosSensores[sensor.nombre] = {
-            unidad: 'Unidad',
-            estadisticas: {
-              maximo: Math.max(...valores),
-              minimo: Math.min(...valores),
-              promedio: (valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(2)
-            },
-            picosAltos,
-            picosBajos,
-            totalRegistros: datos.length
-          };
+        // Si no hay registros históricos en el rango, usamos arrays vacíos para no romper el código
+        const valores = registros.map(r => Number(r.valor));
+        const stats = registros.length > 0 ? {
+            maximo: Math.max(...valores),
+            minimo: Math.min(...valores),
+            promedio: Number((valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(2)),
+            totalRegistros: registros.length
+        } : {
+            maximo: 0, minimo: 0, promedio: 0, totalRegistros: 0
+        };
+
+        // Lógica de actuadores (bomba para humedad)
+        const eventosBomba: any[] = [];
+        if (s.nombre.toLowerCase().includes('humedad')) {
+          registros.forEach(r => {
+            if (Number(r.valor) < 20) { // Umbral configurable
+              eventosBomba.push({
+                fecha: r.fechaRegistro,
+                valor: Number(r.valor),
+                accion: 'ENCENDIDO AUTOMÁTICO (Bomba de riego)',
+                duracionEstimada: '15-30 minutos' // Estimación
+              });
+            }
+          });
         }
+
+        // Muestreo diario (últimos 5 datos por día)
+        const agrupadoPorDia: any = registros.reduce((acc, curr) => {
+          const dia = new Date(curr.fechaRegistro).toISOString().split('T')[0];
+          if (!acc[dia]) acc[dia] = [];
+          acc[dia].push(curr);
+          return acc;
+        }, {});
+
+        const muestreoDiario: any[] = Object.keys(agrupadoPorDia).map(dia => ({
+          dia,
+          datos: agrupadoPorDia[dia].slice(-5).map((d: any) => ({
+            hora: new Date(d.fechaRegistro).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+            valor: Number(d.valor)
+          }))
+        }));
+
+        // Picos altos y bajos (top 5)
+        const picosAltos: any[] = [...registros]
+          .sort((a, b) => Number(b.valor) - Number(a.valor))
+          .slice(0, 5)
+          .map(p => ({
+            fecha: p.fechaRegistro,
+            valor: Number(p.valor)
+          }));
+
+        const picosBajos: any[] = [...registros]
+          .sort((a, b) => Number(a.valor) - Number(b.valor))
+          .slice(0, 5)
+          .map(p => ({
+            fecha: p.fechaRegistro,
+            valor: Number(p.valor)
+          }));
+
+        reporte.sensores[s.nombre] = {
+          unidad: 'unidad', // Campo por defecto
+          umbralMinimo: s.valor_minimo_alerta,
+          umbralMaximo: s.valor_maximo_alerta,
+          stats,
+          eventosBomba,
+          muestreoDiario,
+          picosAltos,
+          picosBajos,
+
+          // ✅ ENVIAMOS EL DATO EN TIEMPO REAL AL PDF
+          ultimoRegistro: ultimoDatoReal ? {
+              valor: Number(ultimoDatoReal.valor),
+              fecha: ultimoDatoReal.fechaRegistro
+          } : null,
+
+          recomendaciones: this.generarRecomendaciones(s.nombre, stats),
+          alertas: registros.filter(r =>
+            Number(r.valor) > Number(s.valor_maximo_alerta || 999) ||
+            Number(r.valor) < Number(s.valor_minimo_alerta || 0)
+          ).length
+        };
       }
 
       return reporte;
@@ -514,5 +735,25 @@ export class SensoresService {
       console.error('Error generando reporte de trazabilidad:', error);
       throw error;
     }
+  }
+
+  /**
+   * Obtiene cultivos activos de un lote para el selector de reportes
+   */
+  async getCultivosActivosLote(loteId: number) {
+    return await this.cultivoRepo.createQueryBuilder('cultivo')
+      .leftJoinAndSelect('cultivo.tipoCultivo', 'tipoCultivo')
+      .leftJoinAndSelect('cultivo.sublotes', 'sublotes')
+      .leftJoinAndSelect('sublotes.lote', 'subloteLote')
+      .where('(cultivo.loteId = :loteId OR subloteLote.id = :loteId)', { loteId })
+      .andWhere('(cultivo.Estado IS NULL OR cultivo.Estado != :estadoFinalizado)', { estadoFinalizado: 'Finalizado' })
+      .select([
+        'cultivo.id',
+        'cultivo.nombre',
+        'tipoCultivo.nombre',
+        'sublotes.nombre',
+        'subloteLote.nombre'
+      ])
+      .getMany();
   }
 }

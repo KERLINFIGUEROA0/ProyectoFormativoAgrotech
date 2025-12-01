@@ -13,9 +13,61 @@ import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, Sel
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
-const getStatusInfo = (cantidad: number) => {
-  if (cantidad <= 10) return { text: 'Crítico', bg: 'bg-red-100', text_color: 'text-red-800' };
-  if (cantidad <= 25) return { text: 'Stock Bajo', bg: 'bg-yellow-100', text_color: 'text-yellow-800' };
+// Función para mostrar cantidad amigable (Paquetes + Peso Total)
+const renderCantidadAmigable = (cantidadTotal: number | null | undefined, pesoPorUnidad: number | null | undefined, tipoEmpaque: string) => {
+  // Caso 1: Herramientas o items sin peso definido
+  if (!pesoPorUnidad || pesoPorUnidad <= 0) {
+    return (
+      <div className="font-semibold text-center text-gray-800">
+        {cantidadTotal || 0} {tipoEmpaque}
+      </div>
+    );
+  }
+
+  // Caso 2: Consumibles (Abonos, Químicos)
+  // Calculamos cuántos paquetes COMPLETOS hay
+  const cantidad = cantidadTotal || 0;
+  const paquetesEstimados = cantidad / pesoPorUnidad;
+
+  // Calculamos el peso total en KG o Litros para mostrar abajo
+  // Asumimos que si es > 1000g lo mostramos en Kg
+  const totalEnKg = cantidad / 1000;
+
+  // Formateamos para quitar decimales feos si es exacto (50.0 -> 50)
+  const paquetesVisual = Number.isInteger(paquetesEstimados)
+      ? paquetesEstimados
+      : paquetesEstimados.toFixed(1);
+
+  const totalVisual = Number.isInteger(totalEnKg)
+      ? totalEnKg
+      : totalEnKg.toFixed(2);
+
+  const esLiquido = false; // Podrías pasar la unidad para saber si poner L o kg, por defecto kg para el ejemplo.
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="font-bold text-gray-800 text-base">
+        {paquetesVisual} {tipoEmpaque}s
+      </div>
+      <div className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full mt-1">
+        Total: {totalVisual} {esLiquido ? 'L' : 'kg'}
+      </div>
+    </div>
+  );
+};
+
+const getStatusInfo = (cantidad: number | null | undefined, pesoPorUnidad: number | null | undefined) => {
+  const cantidadReal = cantidad || 0;
+  let cantidadParaEvaluar = cantidadReal;
+
+  // Si tiene peso por unidad, convertimos el total de gramos a "Paquetes" para evaluar la alerta
+  if (pesoPorUnidad && pesoPorUnidad > 0) {
+    cantidadParaEvaluar = cantidadReal / pesoPorUnidad;
+  }
+
+  // Ahora sí evaluamos si quedan menos de 10 PAQUETES (o 10 unidades sueltas)
+  if (cantidadParaEvaluar <= 5) return { text: 'Crítico', bg: 'bg-red-100', text_color: 'text-red-800' };
+  if (cantidadParaEvaluar <= 15) return { text: 'Stock Bajo', bg: 'bg-yellow-100', text_color: 'text-yellow-800' };
   return { text: 'Normal', bg: 'bg-green-100', text_color: 'text-green-800' };
 };
 
@@ -150,7 +202,7 @@ export default function GestionInventarioPage() {
       const coincideUbicacion = filtroUbicacion === 'Todas' || mat.ubicacion === filtroUbicacion;
       const coincideProveedor = filtroProveedor === 'Todos' || mat.proveedor === filtroProveedor;
 
-      const estadoStock = getStatusInfo(mat.cantidad).text;
+      const estadoStock = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
       const coincideEstadoStock = filtroEstadoStock === 'Todos' || estadoStock === filtroEstadoStock;
 
       const coincideEstadoMaterial = filtroEstadoMaterial === 'Todos' ||
@@ -337,7 +389,7 @@ export default function GestionInventarioPage() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {currentMateriales.map((mat) => {
-              const status = getStatusInfo(mat.cantidad);
+              const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
               const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.medidasDeContenido);
 
               return (
@@ -362,10 +414,15 @@ export default function GestionInventarioPage() {
                     </div>
                   </td>
 
+                  {/* ✅ COLUMNA CANTIDAD CORREGIDA */}
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-center text-gray-800">{mat.cantidad} {mat.tipoEmpaque}</div>
+                    {renderCantidadAmigable(mat.cantidad, mat.pesoPorUnidad, mat.tipoEmpaque)}
+
+                    {/* Muestra de cuánto es cada paquete (opcional, ya lo tienes) */}
                     {textoContenido && (
-                      <div className="text-center text-xs text-gray-500">{textoContenido}</div>
+                      <div className="text-center text-xs text-gray-400 mt-1">
+                        (Pres. {textoContenido})
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4">{mat.ubicacion}</td>

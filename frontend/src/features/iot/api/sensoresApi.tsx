@@ -115,6 +115,11 @@ export const generateSensorReport = async (params: {
   }
 };
 
+export const getCultivosActivosLote = async (loteId: number) => {
+  const response = await api.get(`/sensores/cultivos-activos-lote/${loteId}`);
+  return response.data;
+};
+
 export const descargarReporteApi = async (data: {
   formato: 'pdf' | 'excel' | 'json';
   loteId: number;

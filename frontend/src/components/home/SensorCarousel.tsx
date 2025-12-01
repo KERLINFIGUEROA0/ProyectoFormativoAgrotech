@@ -1,220 +1,173 @@
-import { motion } from 'framer-motion';
-import { Card, CardBody } from '@heroui/react';
-import { Thermometer, Droplets, Wind, Sun, Activity, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardBody, Badge } from '@heroui/react';
+import { Thermometer, Droplets, Wind, Sun, Activity, Wifi } from 'lucide-react';
 import type { LatestSensorData } from '../../features/iot/interfaces/iot';
 
 interface SensorCarouselProps {
   sensors: LatestSensorData[];
-  loading: boolean;
 }
 
-const getSensorIcon = (nombre: string) => {
-  const lowerName = nombre.toLowerCase();
-  if (lowerName.includes('temperatura') || lowerName.includes('temp')) {
-    return <Thermometer size={20} className="text-orange-500" />;
-  }
-  if (lowerName.includes('humedad') || lowerName.includes('humidity')) {
-    return <Droplets size={20} className="text-blue-500" />;
-  }
-  if (lowerName.includes('viento') || lowerName.includes('wind')) {
-    return <Wind size={20} className="text-gray-500" />;
-  }
-  if (lowerName.includes('solar') || lowerName.includes('radiación')) {
-    return <Sun size={20} className="text-yellow-500" />;
-  }
-  return <Activity size={20} className="text-green-500" />;
-};
-
-const getSensorColor = (nombre: string) => {
-  const lowerName = nombre.toLowerCase();
-  if (lowerName.includes('temperatura') || lowerName.includes('temp')) {
-    return 'border-orange-200 bg-orange-50';
-  }
-  if (lowerName.includes('humedad') || lowerName.includes('humidity')) {
-    return 'border-blue-200 bg-blue-50';
-  }
-  if (lowerName.includes('viento') || lowerName.includes('wind')) {
-    return 'border-gray-200 bg-gray-50';
-  }
-  if (lowerName.includes('solar') || lowerName.includes('radiación')) {
-    return 'border-yellow-200 bg-yellow-50';
-  }
-  return 'border-green-200 bg-green-50';
-};
-
-export default function SensorCarousel({ sensors, loading }: SensorCarouselProps) {
+export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Lógica del Carrusel: Cambia de sensor cada 5 segundos
   useEffect(() => {
-    if (sensors.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % sensors.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [sensors.length]);
+    if (!sensors || sensors.length === 0) return;
 
-  if (loading) {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % sensors.length);
+    }, 5000); // 5000ms = 5 segundos
+
+    return () => clearInterval(interval);
+  }, [sensors.length]); // Solo depende del número de sensores, no de los datos
+
+  // Función para determinar la unidad del sensor
+  const getSensorUnit = (sensor: LatestSensorData) => {
+    const name = sensor.nombre.toLowerCase();
+    const topic = sensor.topic?.toLowerCase() || '';
+
+    if (name.includes('temperatura') || topic.includes('temp')) return '°C';
+    if (name.includes('humedad') || topic.includes('hum')) return '%';
+    if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad')) return 'lux';
+    if (name.includes('ph') || topic.includes('ph')) return '';
+    if (name.includes('suelo') || topic.includes('soil')) return '%';
+    if (name.includes('viento') || topic.includes('wind')) return 'km/h';
+    return 'unidades'; // fallback
+  };
+
+  // Función para obtener el icono del sensor
+  const getSensorIcon = (sensor: LatestSensorData) => {
+    const name = sensor.nombre.toLowerCase();
+    const topic = sensor.topic?.toLowerCase() || '';
+
+    if (name.includes('temperatura') || topic.includes('temp')) return <Thermometer size={24} />;
+    if (name.includes('humedad') || topic.includes('hum')) return <Droplets size={24} />;
+    if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad')) return <Sun size={24} />;
+    if (name.includes('viento') || topic.includes('wind')) return <Wind size={24} />;
+    if (name.includes('ph') || topic.includes('ph')) return <Activity size={24} />;
+    return <Activity size={24} />;
+  };
+
+  // Función para obtener colores del icono del sensor (solo para el icono)
+  const getSensorIconColor = (sensor: LatestSensorData) => {
+    const name = sensor.nombre.toLowerCase();
+    const topic = sensor.topic?.toLowerCase() || '';
+
+    if (name.includes('temperatura') || topic.includes('temp')) return 'text-orange-500';
+    if (name.includes('humedad') || topic.includes('hum')) return 'text-blue-500';
+    if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad')) return 'text-yellow-500';
+    if (name.includes('viento') || topic.includes('wind')) return 'text-gray-500';
+    return 'text-green-500';
+  };
+
+  // Si no hay datos, muestra un estado de carga o vacío
+  if (!sensors || sensors.length === 0) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-3">
-          <Activity className="text-purple-600" size={24} />
-          Monitoreo de Sensores IoT
-        </h3>
-        <div className="flex gap-4 overflow-hidden">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="min-w-[280px] bg-gray-100 rounded-lg p-4 animate-pulse">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                <div className="w-16 h-4 bg-gray-200 rounded"></div>
-              </div>
-              <div className="w-20 h-6 bg-gray-200 rounded mb-2"></div>
-              <div className="w-24 h-4 bg-gray-200 rounded"></div>
-            </div>
-          ))}
-        </div>
+      <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-center text-gray-400">
+        <span className="animate-pulse">Cargando sensores...</span>
       </div>
     );
   }
-
-  if (sensors.length === 0) {
-    return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-3">
-          <Activity className="text-purple-600" size={24} />
-          Monitoreo de Sensores IoT
-        </h3>
-        <div className="text-center py-8 text-gray-500">
-          <Activity size={48} className="mx-auto mb-3 opacity-50" />
-          <p>No hay datos de sensores disponibles</p>
-        </div>
-      </div>
-    );
-  }
-
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % sensors.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + sensors.length) % sensors.length);
-  };
 
   const currentSensor = sensors[currentIndex];
+  const unit = getSensorUnit(currentSensor);
+  const sensorIcon = getSensorIcon(currentSensor);
+  const iconColor = getSensorIconColor(currentSensor);
+
+  // Animation variants for fade effect
+  const fadeVariants = {
+    enter: {
+      opacity: 0,
+      y: 20,
+      scale: 0.95
+    },
+    center: {
+      opacity: 1,
+      y: 0,
+      scale: 1
+    },
+    exit: {
+      opacity: 0,
+      y: -20,
+      scale: 0.95
+    }
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.6 }}
-      className="bg-white rounded-lg p-3 shadow-sm border border-gray-100"
-    >
-      <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <Activity className="text-purple-600" size={16} />
-        Sensores IoT
-        <span className="text-xs text-gray-500 font-normal">({sensors.length})</span>
-      </h3>
-
-      <div className="relative">
-        <div className="flex items-center justify-center gap-4 mb-3">
-          <button
-            onClick={prevSlide}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
-          <div className="flex gap-2">
-            {sensors.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? 'bg-purple-600' : 'bg-gray-300'
-                }`}
-              />
-            ))}
+    <Card className="shadow-lg border-2 border-gray-100 hover:shadow-xl transition-shadow duration-300">
+      <CardBody className="p-4">
+        {/* Header with Live Indicator and Counter */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <Badge color="success" variant="flat" className="text-xs px-2 py-1">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Live
+              </div>
+            </Badge>
           </div>
-
-          <button
-            onClick={nextSlide}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
+          <Badge variant="flat" className="text-xs">
+            {currentIndex + 1} / {sensors.length}
+          </Badge>
         </div>
 
-        <motion.div
-          key={currentSensor.id}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.5 }}
-          className="flex justify-center"
-        >
-          <Card className={`w-full max-w-sm ${getSensorColor(currentSensor.nombre)} border-2`}>
-            <CardBody className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {getSensorIcon(currentSensor.nombre)}
-                  <span className="font-semibold text-gray-800 text-sm">{currentSensor.nombre}</span>
-                </div>
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Activo
+        {/* Main Sensor Display */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSensor.id}
+            variants={fadeVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              opacity: { duration: 0.3 },
+              y: { duration: 0.4 },
+              scale: { duration: 0.4 }
+            }}
+            className="text-center"
+          >
+            {/* Sensor Icon */}
+            <div className="flex justify-center mb-3">
+              <div className={`p-3 bg-gray-50 rounded-full border-2 border-gray-100 ${iconColor}`}>
+                {React.cloneElement(sensorIcon, { size: 24 })}
+              </div>
+            </div>
+
+            {/* Sensor Name */}
+            <h4 className="text-sm font-semibold text-gray-800 mb-2">
+              {currentSensor.nombre}
+            </h4>
+
+            {/* Sensor Value Display */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-3 border border-blue-100">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-2xl font-bold text-gray-900">
+                  {currentSensor.valor ?? '--'}
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {unit}
                 </span>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Valor actual</p>
+            </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">Valor actual:</span>
-                  <span className="font-bold text-lg text-gray-900">
-                    {currentSensor.valor ?? 'N/A'}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">Rango normal:</span>
-                  <span className="text-xs text-gray-700">
-                    {currentSensor.valorMinimo} - {currentSensor.valorMaximo}
-                  </span>
-                </div>
-
-                {currentSensor.fechaRegistro && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">Actualización:</span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(currentSensor.fechaRegistro).toLocaleString('es-CO', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        day: 'numeric',
-                        month: 'short'
-                      })}
-                    </span>
-                  </div>
-                )}
-
-                {currentSensor.valor && (
-                  currentSensor.valor < currentSensor.valorMinimo || currentSensor.valor > currentSensor.valorMaximo
-                ) && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg"
-                  >
-                    <AlertTriangle size={16} className="text-red-500" />
-                    <span className="text-sm text-red-700">Valor fuera del rango normal</span>
-                  </motion.div>
-                )}
+            {/* Status indicators */}
+            <div className="flex justify-center gap-4 text-xs text-gray-600">
+              <div className="flex items-center gap-1">
+                <Wifi size={12} />
+                <span>Conectado</span>
               </div>
-            </CardBody>
-          </Card>
-        </motion.div>
-      </div>
-
-      <div className="mt-2 text-center text-xs text-gray-500">
-        Auto-rotación cada 5s • {currentIndex + 1}/{sensors.length}
-      </div>
-    </motion.div>
+              <div className="flex items-center gap-1">
+                <Activity size={12} />
+                <span>Activo</span>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </CardBody>
+    </Card>
   );
-}
+};
+
+export default SensorCarousel;

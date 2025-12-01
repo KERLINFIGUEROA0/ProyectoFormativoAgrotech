@@ -62,6 +62,10 @@ export class GastosProduccionService {
       monto: parseFloat(g.monto as any),
       fecha: g.fecha,
       tipo: g.tipo,
+      // ✅ NUEVOS CAMPOS PARA EL DESGLOSE FINANCIERO
+      cantidad: g.cantidad,
+      unidad: g.unidad,
+      precioUnitario: g.precioUnitario,
       // Opcional: añadir info de a qué está ligado
       asociadoA: g.produccion ? `Producción ID: ${g.produccion.id}` : (g.cultivo ? `Cultivo: ${g.cultivo.nombre}` : 'General')
     }));

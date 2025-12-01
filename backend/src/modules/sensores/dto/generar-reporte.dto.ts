@@ -16,6 +16,10 @@ export class GenerarReporteTrazabilidadDto {
   @IsNumber()
   subloteId?: number;
 
+  @IsOptional()
+  @IsNumber()
+  cultivoId?: number; // Nuevo campo opcional para cultivo específico
+
   @IsDateString()
   fechaInicio: string;
 

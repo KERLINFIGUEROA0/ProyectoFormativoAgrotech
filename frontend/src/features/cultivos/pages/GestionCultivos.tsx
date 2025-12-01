@@ -60,7 +60,6 @@ export default function GestionCultivosPage(): ReactElement {
   const [filteredCultivos, setFilteredCultivos] = useState<Cultivo[]>([]);
   const [tiposCultivo, setTiposCultivo] = useState<TipoCultivo[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
-  const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [allSublotes, setAllSublotes] = useState<Sublote[]>([]);
   const [selectedLote, setSelectedLote] = useState<Lote | null>(null);
   const [selectedSubloteCultivo, setSelectedSubloteCultivo] = useState<any | null>(null);
@@ -263,17 +262,8 @@ export default function GestionCultivosPage(): ReactElement {
 
   const handleSelectLote = async (lote: Lote | null) => {
     setSelectedLote(lote);
-    if (lote) {
-      try {
-        const sublotesRes = await obtenerSublotesPorLote(lote.id);
-        setSublotes(sublotesRes.data || []);
-      } catch (error) {
-        toast.error("Error al cargar sublotes.");
-        setSublotes([]);
-      }
-    } else {
-      setSublotes([]);
-    }
+    // Note: sublotes state was removed as it wasn't being used for rendering
+    // The map uses sublotesConCultivos derived from allSublotes instead
   };
 
   const handleSave = async (data: any) => {
@@ -560,6 +550,23 @@ export default function GestionCultivosPage(): ReactElement {
                             Trazabilidad
                           </Button>
 
+                          {/* Botón Finalizar Cultivo (Solo si no está finalizado) */}
+                          {cultivo.Estado !== 'Finalizado' && (
+                            <Tooltip content="Finalizar cultivo (liberar terreno)">
+                              <Button
+                                isIconOnly
+                                className="bg-orange-100 text-orange-600 hover:bg-orange-200 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => handleClickFinalizar(cultivo)}
+                                aria-label="Finalizar cultivo"
+                              >
+                                <CheckCircle size={16} />
+                              </Button>
+                            </Tooltip>
+                          )}
+  
                           {/* Botón Registrar Cosecha (Solo si no está finalizado) */}
                           {cultivo.Estado !== 'Finalizado' && (
                             <Tooltip content="Registrar cosecha">
@@ -678,7 +685,19 @@ export default function GestionCultivosPage(): ReactElement {
           </ModalHeader>
           <ModalBody>
             <CultivoForm
-              initialData={editingCultivo ? { ...editingCultivo, tipoCultivoId: editingCultivo.tipoCultivo?.id } : {}}
+              initialData={editingCultivo ? {
+                ...editingCultivo,
+                // Extraemos el ID del tipo de cultivo
+                tipoCultivoId: editingCultivo.tipoCultivo?.id,
+                // Extraemos el ID del lote (usando casting a any si TS se queja, o accediendo directo si la interfaz lo permite)
+                loteId: (editingCultivo as any).lote?.id,
+                // Extraemos el ID del sublote (asumiendo que puede estar en 'sublotes' array o 'sublote' objeto)
+                subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
+                // Formateamos la fecha a YYYY-MM-DD para el input type="date"
+                Fecha_Plantado: editingCultivo.Fecha_Plantado
+                  ? new Date(editingCultivo.Fecha_Plantado).toISOString().split('T')[0]
+                  : ''
+              } : {}}
               tiposCultivo={tiposCultivo}
               cultivos={cultivos}
               onSave={handleSave}

@@ -99,6 +99,15 @@ export class SensoresController {
     return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
   }
 
+  /**
+   * Obtiene cultivos activos de un lote para el selector de reportes
+   */
+  @Get('cultivos-activos-lote/:loteId')
+  async getCultivosActivosLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const cultivos = await this.sensoresService.getCultivosActivosLote(loteId);
+    return { success: true, data: cultivos };
+  }
+
   @Post('reporte-trazabilidad')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
     console.log('Recibiendo solicitud de reporte:', dto);

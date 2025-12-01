@@ -7,6 +7,7 @@ export type EstadoActividad = 'pendiente' | 'en proceso' | 'enviado' | 'aprobado
 export interface MaterialUsado {
   materialId: number;
   cantidadUsada: number;
+  unidadMedida?: string; // Unidad de medida seleccionada por el usuario
 }
 // Interfaz para un usuario simple, tal como viene en la relación
 export interface UsuarioSimple {
