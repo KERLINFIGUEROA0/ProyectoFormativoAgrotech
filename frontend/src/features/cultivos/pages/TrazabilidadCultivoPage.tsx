@@ -99,26 +99,43 @@ export default function TrazabilidadCultivoPage() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline mb-4">
-        <ArrowLeft size={18} />
-        Volver a Gestión de Cultivos
-      </Link>
-      
-      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      {/* Welcome Banner */}
+      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Trazabilidad del Cultivo</h1>
-            <p className="text-xl font-semibold text-green-700">{data.cultivo.nombre}</p>
+            <h2 className="text-2xl font-bold mb-1">
+              Trazabilidad del Cultivo
+            </h2>
+            <p className="text-green-100">{data.cultivo.nombre} - Seguimiento completo de la producción</p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FileText size={18} />
-            Generar PDF de Trazabilidad
-          </button>
+          <div className="hidden md:flex items-center gap-2 text-green-100">
+            <FileText size={20} />
+            <span className="text-sm">
+              {new Date().toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
         </div>
+      </div>
+
+      {/* Navigation and Actions */}
+      <div className="flex justify-between items-center">
+        <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline font-semibold">
+          <ArrowLeft size={18} />
+          Volver a Gestión de Cultivos
+        </Link>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+        >
+          <FileText size={18} />
+          Generar PDF de Trazabilidad
+        </button>
       </div>
 
       <div className="relative pl-8">

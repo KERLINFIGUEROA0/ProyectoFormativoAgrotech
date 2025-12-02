@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin, RefreshCw
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,9 +12,10 @@ import {
   Select, SelectItem, Chip, ScrollShadow, Divider,
   CardHeader, Tooltip, Switch
 } from '@heroui/react';
+import { Progress } from '@heroui/react';
 
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha, actualizarEstadosLotes } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, registrarCosecha } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
@@ -23,37 +24,6 @@ import LotesMap from '../components/LotesMap';
 import ModalUbicacionCultivo from '../components/ModalUbicacionCultivo';
 import type { Cultivo, TipoCultivo, Lote, Sublote } from '../interfaces/cultivos';
 
-// --- Componente StatCard Más Compacto (Menos altura) ---
-const CompactStat = ({ icon, title, value, color }: { icon: ReactElement; title: string; value: number | string; color: 'primary' | 'danger' | 'success' | 'warning' }) => {
-  const colorStyles = {
-    primary: "bg-blue-100 text-blue-600",
-    danger: "bg-red-100 text-red-600",
-    success: "bg-green-100 text-green-600",
-    warning: "bg-yellow-100 text-yellow-600",
-  };
-
-  return (
-    <Card shadow="sm" className="border border-gray-100">
-      {/* Reducimos el padding a p-3 y el gap a gap-3 */}
-      <CardBody className="flex flex-row items-center gap-3 p-3">
-        {/* Contenedor del icono más pequeño (p-2) y bordes un poco menos redondeados (rounded-lg) */}
-        <div className={`p-2 rounded-lg ${colorStyles[color]}`}>
-          {icon}
-        </div>
-        <div>
-          {/* Texto más pequeño y en mayúsculas para mejor lectura en espacio reducido */}
-          <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">
-            {title}
-          </p>
-          {/* Value con leading-none para quitar altura de línea extra */}
-          <p className="text-lg sm:text-xl font-extrabold text-gray-900 leading-none">
-            {value}
-          </p>
-        </div>
-      </CardBody>
-    </Card>
-  );
-};
 
 export default function GestionCultivosPage(): ReactElement {
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
@@ -70,10 +40,6 @@ export default function GestionCultivosPage(): ReactElement {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('todos');
 
-  // Estados para finalizar cultivo
-  const [showFinalizarModal, setShowFinalizarModal] = useState(false);
-  const [cultivoAFinalizar, setCultivoAFinalizar] = useState<Cultivo | null>(null);
-  const [fechaFin, setFechaFin] = useState(new Date().toISOString().split('T')[0]);
 
   // Estados para registrar cosecha
   const [showCosechaModal, setShowCosechaModal] = useState(false);
@@ -113,13 +79,21 @@ export default function GestionCultivosPage(): ReactElement {
       const allSublotesArrays = await Promise.all(allSublotesPromises);
       const flattenedSublotes = allSublotesArrays.flat();
       setAllSublotes(flattenedSublotes);
-    } catch (error) {
+    } catch {
       toast.error("Error al cargar los datos de cultivos.");
     }
   };
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Automatic refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Filtrado
@@ -175,27 +149,6 @@ export default function GestionCultivosPage(): ReactElement {
     setEditingCultivo(null);
   };
 
-  // Funciones para finalizar cultivo
-  const handleClickFinalizar = (cultivo: Cultivo) => {
-    setCultivoAFinalizar(cultivo);
-    setFechaFin(new Date().toISOString().split('T')[0]);
-    setShowFinalizarModal(true);
-  };
-
-  const handleConfirmarFinalizar = async () => {
-    if (!cultivoAFinalizar) return;
-
-    try {
-      await finalizarCultivo(cultivoAFinalizar.id, fechaFin);
-      toast.success(`Cultivo "${cultivoAFinalizar.nombre}" finalizado correctamente. Los terrenos han sido liberados.`);
-      setShowFinalizarModal(false);
-      setCultivoAFinalizar(null);
-      await fetchData(); // Recargar datos para ver cambios
-    } catch (error: any) {
-      console.error('Error al finalizar cultivo:', error);
-      toast.error(error.response?.data?.message || "Error al finalizar el cultivo.");
-    }
-  };
 
   // Funciones para registrar cosecha
   const handleClickCosecha = (cultivo: Cultivo) => {
@@ -257,7 +210,7 @@ export default function GestionCultivosPage(): ReactElement {
     const toastId = toast.loading("Guardando cultivo...");
 
     try {
-      let finalCultivoData = { ...cultivoData };
+      const finalCultivoData = { ...cultivoData };
       let cultivoId: number;
 
       if (newTipoCultivoName) {
@@ -301,53 +254,132 @@ export default function GestionCultivosPage(): ReactElement {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-gray-50/30 gap-6 p-6">
-      
-      {/* --- CABECERA Y ESTADÍSTICAS --- */}
-      <div className="flex flex-col gap-6 flex-shrink-0">
-        <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      {/* Welcome Banner */}
+      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Cultivos</h1>
-            <p className="text-gray-500 mt-1">Administra tu producción agrícola de forma eficiente.</p>
+            <h2 className="text-2xl font-bold mb-1">
+              Gestión de Cultivos
+            </h2>
+            <p className="text-green-100">Administra tu producción agrícola de forma eficiente</p>
           </div>
-          <div className="flex gap-3">
-            <Button
-              onPress={async () => {
-                try {
-                  const result = await actualizarEstadosLotes();
-                  toast.success(`Estados actualizados: ${result.data.lotesActualizados} lotes corregidos`);
-                  await fetchData(); // Recargar datos
-                } catch (error: any) {
-                  toast.error(error.response?.data?.message || "Error al actualizar estados");
-                }
-              }}
-              color="secondary"
-              variant="flat"
-              className="font-semibold"
-              size="lg"
-              startContent={<RefreshCw size={20} strokeWidth={2.5} />}
-            >
-              Actualizar Estados
-            </Button>
-            <Button
-              onPress={() => openModal()}
-              color="primary"
-              className="font-semibold shadow-md shadow-blue-500/30"
-              size="lg"
-              startContent={<Plus size={20} strokeWidth={2.5} />}
-            >
-              Nuevo Cultivo
-            </Button>
+          <div className="hidden md:flex items-center gap-2 text-green-100">
+            <Clock size={20} />
+            <span className="text-sm">
+              {new Date().toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <CompactStat icon={<Sprout size={24} />} title="Total Cultivos" value={stats.total} color="success" />
-          <CompactStat icon={<CheckCircle size={24} />} title="Activos" value={stats.activos} color="primary" />
-          <CompactStat icon={<Leaf size={24} />} title="Variedades" value={stats.tipos} color="warning" />
-          <CompactStat icon={<Clock size={24} />} title="Total Plantas" value={new Intl.NumberFormat('es-CO').format(stats.totalPlantas)} color="danger" />
+        <div className="mt-4 flex justify-end">
+          <Button
+            onPress={() => openModal()}
+            color="success"
+            className="font-semibold shadow-md shadow-green-500/30"
+            size="md"
+            startContent={<Plus size={20} strokeWidth={2.5} />}
+          >
+            Nuevo Cultivo
+          </Button>
         </div>
       </div>
+
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Cultivos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">registrados</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <Sprout className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.total * 10, 100)}
+              className="mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de cultivos totales: ${stats.total}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Cultivos Activos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activos}</p>
+                <p className="text-xs text-gray-500">en producción</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <CheckCircle className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.activos * 10, 100)}
+              className="mt-3"
+              color="primary"
+              size="sm"
+              aria-label={`Progreso de cultivos activos: ${stats.activos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Variedades</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.tipos}</p>
+                <p className="text-xs text-gray-500">diferentes</p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-full">
+                <Leaf className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.tipos * 20, 100)}
+              className="mt-3"
+              color="warning"
+              size="sm"
+              aria-label={`Progreso de variedades: ${stats.tipos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Plantas</p>
+                <p className="text-2xl font-bold text-gray-900">{new Intl.NumberFormat('es-CO').format(stats.totalPlantas)}</p>
+                <p className="text-xs text-gray-500">plantadas</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <Clock className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.totalPlantas / 100, 100)}
+              className="mt-3"
+              color="secondary"
+              size="sm"
+              aria-label={`Progreso de plantas totales: ${stats.totalPlantas}`}
+            />
+          </CardBody>
+        </Card>
+      </div>
+
 
       {/* --- CONTENEDOR PRINCIPAL TIPO "TARJETA FLOTANTE" --- */}
       {/* Esta es la Card grande blanca que contiene todo lo demás */}
@@ -680,57 +712,6 @@ export default function GestionCultivosPage(): ReactElement {
         </ModalContent>
       </Modal>
 
-      {/* Modal de Finalizar Cultivo */}
-      <Modal
-        isOpen={showFinalizarModal}
-        onOpenChange={setShowFinalizarModal}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">Finalizar Cultivo</h3>
-              <p className="text-sm text-gray-600">Cosecha terminada - Liberar terrenos</p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <p className="text-sm text-gray-600 mb-4">
-              Vas a finalizar el cultivo <strong>"{cultivoAFinalizar?.nombre}"</strong>.
-              Esto liberará automáticamente los lotes y sublotes asociados para que puedan ser reutilizados.
-            </p>
-            <Input
-              type="date"
-              label="Fecha de Finalización"
-              value={fechaFin}
-              onValueChange={setFechaFin}
-              isRequired
-              className="mb-2"
-            />
-            <p className="text-xs text-gray-500">
-              Los terrenos quedarán disponibles para nuevos cultivos después de la finalización.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => setShowFinalizarModal(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              color="success"
-              className="text-white"
-              onPress={handleConfirmarFinalizar}
-            >
-              Confirmar y Liberar Lotes
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
 
       {/* Modal de Registrar Cosecha */}
       <Modal
