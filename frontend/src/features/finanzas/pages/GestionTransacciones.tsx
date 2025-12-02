@@ -28,22 +28,15 @@ interface Cultivo {
 export default function GestionTransaccionesPage(): ReactElement {
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number; tipo: string } | null }>({ isOpen: false, item: null });
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number | string; tipo: string } | null }>({ isOpen: false, item: null });
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
   const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
       const transRes = await obtenerTransacciones();
-
-      const transacciones = (transRes.data || []).map((t: any) => ({
-        ...t,
-        tipo: t.tipo || 'ingreso',
-        cantidad: t.cantidad || 1,
-        precioUnitario: t.precioUnitario || t.monto,
-      }));
-
-      setTransacciones(transacciones);
+      // Ya viene mapeado desde la API, solo asignamos
+      setTransacciones(transRes.data || []);
     } catch (error) {
       toast.error("Error al cargar las transacciones.");
     }
@@ -71,7 +64,7 @@ export default function GestionTransaccionesPage(): ReactElement {
     }
   };
 
-  const handleDelete = (id: number, tipo: string) => {
+  const handleDelete = (id: number | string, tipo: string) => {
     setDeleteModal({ isOpen: true, item: { id, tipo } });
   };
 
@@ -219,8 +212,9 @@ export default function GestionTransaccionesPage(): ReactElement {
             <tr>
               <th className="px-4 py-3 text-left">Fecha</th>
               <th className="px-4 py-3 text-left">Tipo</th>
-              <th className="px-4 py-3 text-left">Descripción</th>
+              <th className="px-4 py-3 text-left w-1/3">Descripción</th>
               <th className="px-4 py-3 text-right">Cantidad</th>
+              <th className="px-4 py-3 text-center">Unidad</th> {/* ✅ Nueva columna */}
               <th className="px-4 py-3 text-right">Precio Unitario</th>
               <th className="px-4 py-3 text-right">Valor Total</th>
               <th className="px-4 py-3 text-center">Acciones</th>
@@ -238,9 +232,18 @@ export default function GestionTransaccionesPage(): ReactElement {
                     {t.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-medium">{t.descripcion}</td>
-                <td className="px-4 py-3 text-right">{t.cantidad}</td>
-                <td className="px-4 py-3 text-right">{currencyFormatter.format(t.precioUnitario || 0)}</td>
+                <td className="px-4 py-3 font-medium truncate max-w-xs" title={t.descripcion}>
+                  {t.descripcion}
+                </td>
+                <td className="px-4 py-3 text-right font-mono">
+                  {t.cantidad}
+                </td>
+                <td className="px-4 py-3 text-center text-gray-500"> {/* ✅ Nueva celda */}
+                  {t.unidad || '-'}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-gray-600">
+                  {currencyFormatter.format(t.precioUnitario || 0)}
+                </td>
                 <td className={`px-4 py-3 font-semibold text-right ${t.tipo === 'egreso' ? 'text-red-600' : 'text-green-600'}`}>
                   {t.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(t.monto)}
                 </td>

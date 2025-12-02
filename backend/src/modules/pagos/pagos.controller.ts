@@ -9,7 +9,12 @@ export class PagosController {
   constructor(private readonly pagosService: PagosService) {}
 
   @Post()
-  create(@Body() createPagoDto: CreatePagoDto) {
+  create(@Body() createPagoDto: CreatePagoDto | CreatePagoDto[]) {
+    // Si es un array, crear múltiples pagos
+    if (Array.isArray(createPagoDto)) {
+      return this.pagosService.createMultiple(createPagoDto);
+    }
+    // Si es un solo pago, crear uno
     return this.pagosService.create(createPagoDto);
   }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { toast } from 'sonner';
 import {
   Package,
@@ -13,6 +13,8 @@ import {
 import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } from '../api/inventarioApi';
 import type { MovimientoData } from '../interfaces/inventario';
 import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
+// ✅ IMPORTAR HELPER DE CONVERSIÓN
+import { convertirStockAUnidad, formatearCantidadInteligente } from '../../../utils/unitConversion';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
@@ -187,9 +189,11 @@ const GestionMovimientosPage: React.FC = () => {
               onSelectionChange={(keys) => setSelectedTipo(Array.from(keys)[0] as string)}
             >
               <SelectItem key="">Todos los tipos</SelectItem>
-              {tiposMovimiento.map(tipo => (
-                <SelectItem key={tipo}>{getTipoLabel(tipo)}</SelectItem>
-              ))}
+              <Fragment>
+                {tiposMovimiento.map((tipo) => (
+                  <SelectItem key={tipo}>{getTipoLabel(tipo)}</SelectItem>
+                ))}
+              </Fragment>
             </Select>
             <Select
               placeholder="Todos los materiales"
@@ -198,11 +202,13 @@ const GestionMovimientosPage: React.FC = () => {
               onSelectionChange={(keys) => setSelectedMaterial(Array.from(keys)[0] as string)}
             >
               <SelectItem key="">Todos los materiales</SelectItem>
-              {materiales.map(material => (
-                <SelectItem key={material.id.toString()}>
-                  {material.nombre}
-                </SelectItem>
-              ))}
+              <Fragment>
+                {materiales.map((material) => (
+                  <SelectItem key={material.id.toString()}>
+                    {material.nombre}
+                  </SelectItem>
+                ))}
+              </Fragment>
             </Select>
           </div>
         </CardBody>
@@ -222,7 +228,16 @@ const GestionMovimientosPage: React.FC = () => {
               <TableColumn>Referencia</TableColumn>
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>
-              {movimientosFiltrados.map((movimiento) => (
+              {movimientosFiltrados.map((movimiento) => {
+                // ✅ FORMATO INTELIGENTE POR FILA
+                const unidadReferencia = (movimiento.material as any)?.medidasDeContenido || (movimiento.material as any)?.unidadBase;
+                const { cantidad, unidad } = formatearCantidadInteligente(Number(movimiento.cantidad), unidadReferencia);
+
+                const cantidadVisual = Number.isInteger(cantidad)
+                    ? cantidad
+                    : parseFloat(cantidad.toFixed(4));
+
+                return (
                 <TableRow key={movimiento.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -244,7 +259,13 @@ const GestionMovimientosPage: React.FC = () => {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{movimiento.cantidad}</TableCell>
+                  {/* ✅ CELDA DE CANTIDAD ACTUALIZADA */}
+                  <TableCell>
+                    <span className="font-semibold">{cantidadVisual}</span>
+                    <span className="text-xs text-gray-600 ml-1 font-bold">
+                      {unidad}
+                    </span>
+                  </TableCell>
                   <TableCell>{movimiento.descripcion || 'Sin descripción'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -267,7 +288,8 @@ const GestionMovimientosPage: React.FC = () => {
                   </TableCell>
                   <TableCell>{movimiento.referencia || 'N/A'}</TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardBody>

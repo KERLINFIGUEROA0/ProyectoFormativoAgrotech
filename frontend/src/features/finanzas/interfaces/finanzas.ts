@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react';
 
 export interface Transaccion {
-  id: number; // <-- ID debe ser numérico
+  id: number | string; // Permitir string para los IDs compuestos 'gasto-123'
   descripcion: string;
   monto: number;
   fecha: string;
   tipo: string; // <-- Nuevo campo: 'ingreso' o 'egreso'
   cantidad?: number;
+  unidad?: string; // <-- ✅ Nuevo campo agregado
   precioUnitario?: number;
   rutaFacturaPdf?: string; // <-- Nuevo campo
 }

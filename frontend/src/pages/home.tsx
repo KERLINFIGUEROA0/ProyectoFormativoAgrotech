@@ -6,7 +6,6 @@ import {
   CardBody,
   CardHeader,
   Progress,
-  Badge
 } from "@heroui/react";
 import {
   Activity,
@@ -23,10 +22,11 @@ import {
 // APIs
 import { obtenerTransacciones } from "../features/finanzas/api/transaccionesApi";
 import { listarMateriales } from "../features/inventario/api/inventarioApi";
-import { getLatestSensorData } from "../features/iot/api/sensoresApi";
+import { getLatestSensorData, listarSensores } from "../features/iot/api/sensoresApi";
 import { listarCultivos } from "../features/cultivos/api/cultivosApi";
 import { obtenerEstadisticasLotes } from "../features/cultivos/api/lotesApi";
-import type { LatestSensorData } from "../features/iot/interfaces/iot";
+import { SensorCarousel } from "../components/home/SensorCarousel";
+import type { LatestSensorData, Sensor } from "../features/iot/interfaces/iot";
 
 interface Movimiento {
   id: string | number;
@@ -67,11 +67,31 @@ export default function HomePage() {
       enMantenimiento: 0
     }
   });
-  const [sensorsData, setSensorsData] = useState<LatestSensorData[]>([]);
+  const [, setSensorsData] = useState<Sensor[]>([]);
+  const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
+  }, []);
+
+  // Polling for sensor data (similar to GestionSensores)
+  useEffect(() => {
+    const fetchSensorData = async () => {
+      try {
+        const latestSensorsRes = await getLatestSensorData();
+        setLatestData(latestSensorsRes || []);
+      } catch (error) {
+        console.error("Error fetching sensor data", error);
+      }
+    };
+
+    // Initial fetch
+    fetchSensorData();
+
+    // Poll every 2 seconds for better responsiveness
+    const interval = setInterval(fetchSensorData, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadDashboardData = async () => {
@@ -83,11 +103,13 @@ export default function HomePage() {
         cultivosRes,
         inventarioRes,
         sensorsRes,
+        latestSensorsRes,
         lotesStatsRes
       ] = await Promise.allSettled([
         obtenerTransacciones(),
         listarCultivos(),
         listarMateriales(),
+        listarSensores(),
         getLatestSensorData(),
         obtenerEstadisticasLotes(),
       ]);
@@ -122,12 +144,17 @@ export default function HomePage() {
       }
 
       // Process sensors data
-      let sensors: any[] = [];
+      let sensors: Sensor[] = [];
+      let latestSensors: LatestSensorData[] = [];
       let sensoresActivos = 0;
 
       if (sensorsRes.status === 'fulfilled') {
-        sensors = sensorsRes.value || [];
-        sensoresActivos = sensors.length;
+        sensors = sensorsRes.value.data || [];
+      }
+
+      if (latestSensorsRes.status === 'fulfilled') {
+        latestSensors = latestSensorsRes.value || [];
+        sensoresActivos = latestSensors.length;
       }
 
       // Process lotes stats
@@ -159,6 +186,7 @@ export default function HomePage() {
       });
 
       setSensorsData(sensors);
+      setLatestData(latestSensors);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -170,16 +198,6 @@ export default function HomePage() {
 
   const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
-  const getSensorUnit = (topic: string | null) => {
-    if (!topic) return '';
-    const topicLower = topic.toLowerCase();
-    if (topicLower.includes('temp')) return '°C';
-    if (topicLower.includes('hum')) return '%';
-    if (topicLower.includes('wind')) return 'km/h';
-    if (topicLower.includes('soil')) return '%';
-    if (topicLower.includes('ph')) return '';
-    return '';
-  };
 
   if (loading) {
     return (
@@ -193,7 +211,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+    <div className="h-full flex flex-col space-y-4 p-4 bg-gray-50">
       {/* Welcome Banner */}
       <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
@@ -201,7 +219,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold mb-1">
               ¡Bienvenido{userData ? ` ${userData.nombres?.split(' ')[0] || 'Usuario'}` : ''}!
             </h2>
-            <p className="text-green-100">Sistema de Monitoreo Agrícola - Dashboard Principal</p>
+            <p className="text-green-100">Sistema de Monitoreo y Gestión Agrícola</p>
           </div>
           <div className="hidden md:flex items-center gap-2 text-green-100">
             <Clock size={20} />
@@ -313,104 +331,63 @@ export default function HomePage() {
       </div>
 
       {/* Detailed Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Sensor Monitoring */}
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Thermometer className="h-5 w-5 text-blue-600" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 rounded-md">
+                <Thermometer className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Monitoreo de Sensores</h3>
-                <p className="text-sm text-gray-600">Datos en tiempo real</p>
+                <h3 className="text-sm font-semibold text-gray-800">Sensores en Tiempo Real</h3>
+                <p className="text-xs text-gray-600">Monitoreo automático</p>
               </div>
             </div>
           </CardHeader>
-          <CardBody>
-            {sensorsData.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sensorsData.slice(0, 6).map((sensor, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">{sensor.nombre || sensor.topic || `Sensor ${index + 1}`}</span>
-                      <Badge color="success" variant="flat" size="sm">Activo</Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600">Valor actual:</span>
-                        <span className="text-sm font-semibold text-gray-900">
-                          {sensor.valor !== null ? `${sensor.valor} ${getSensorUnit(sensor.topic)}` : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600">Rango:</span>
-                        <span className="text-xs text-gray-500">
-                          {sensor.valorMinimo} - {sensor.valorMaximo}
-                        </span>
-                      </div>
-                      {sensor.fechaRegistro && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">Última lectura:</span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(sensor.fechaRegistro).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay datos de sensores disponibles</p>
-              </div>
-            )}
+          <CardBody className="pt-0">
+            <SensorCarousel sensors={latestData} />
           </CardBody>
         </Card>
 
         {/* Financial Summary */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="h-5 w-5 text-green-600" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-green-100 rounded-md">
+                <DollarSign className="h-4 w-4 text-green-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Movimientos Financieros</h3>
-                <p className="text-sm text-gray-600">Últimas transacciones</p>
+                <h3 className="text-sm font-semibold text-gray-800">Movimientos</h3>
+                <p className="text-xs text-gray-600">Últimas transacciones</p>
               </div>
             </div>
           </CardHeader>
-          <CardBody>
-            <div className="space-y-3">
+          <CardBody className="pt-0">
+            <div className="space-y-2">
               {statsData.movimientosRecientes.length > 0 ? (
-                statsData.movimientosRecientes.map((movimiento) => (
-                  <div key={movimiento.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-1.5 rounded-full ${movimiento.tipo === 'ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <TrendingUp className={`h-3 w-3 ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`} />
+                statsData.movimientosRecientes.slice(0, 3).map((movimiento) => (
+                  <div key={movimiento.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1 rounded-full ${movimiento.tipo === 'ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <TrendingUp className={`h-2.5 w-2.5 ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 truncate max-w-32">{movimiento.descripcion}</p>
+                        <p className="text-xs font-medium text-gray-900 truncate max-w-24">{movimiento.descripcion}</p>
                         <p className="text-xs text-gray-500">
                           {new Date(movimiento.fecha).toLocaleDateString('es-ES')}
                         </p>
                       </div>
                     </div>
-                    <span className={`text-sm font-semibold ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-xs font-semibold ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
                       {movimiento.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(movimiento.monto)}
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay movimientos recientes</p>
+                <div className="text-center py-4 text-gray-500">
+                  <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Sin movimientos</p>
                 </div>
               )}
             </div>
@@ -420,38 +397,38 @@ export default function HomePage() {
 
       {/* Lotes Status Overview */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-indigo-100 rounded-md">
+              <BarChart3 className="h-4 w-4 text-indigo-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-800">Estado de Lotes</h3>
-              <p className="text-sm text-gray-600">Distribución por estado actual</p>
+              <h3 className="text-sm font-semibold text-gray-800">Estado de Lotes</h3>
+              <p className="text-xs text-gray-600">Distribución por estado</p>
             </div>
           </div>
         </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <CardBody className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto mb-3">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-16 h-16 mx-auto mb-2">
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="2"
+                    strokeWidth="3"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#3b82f6"
-                    strokeWidth="2"
+                    strokeWidth="3"
                     strokeDasharray={`${(statsData.lotesStats.parcialmenteOcupado / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.parcialmenteOcupado}</span>
+                  <span className="text-sm font-bold text-gray-900">{statsData.lotesStats.parcialmenteOcupado}</span>
                 </div>
               </div>
               <h4 className="font-semibold text-gray-800">Parcialmente Ocupado</h4>
@@ -459,78 +436,78 @@ export default function HomePage() {
             </div>
 
             <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto mb-3">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-16 h-16 mx-auto mb-2">
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="2"
+                    strokeWidth="3"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#10b981"
-                    strokeWidth="2"
+                    strokeWidth="3"
                     strokeDasharray={`${(statsData.lotesStats.enCultivo / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.enCultivo}</span>
+                  <span className="text-sm font-bold text-gray-900">{statsData.lotesStats.enCultivo}</span>
                 </div>
               </div>
-              <h4 className="font-semibold text-gray-800">En Cultivo</h4>
-              <p className="text-sm text-gray-600">Completamente activos</p>
+              <h4 className="text-xs font-semibold text-gray-800">En Cultivo</h4>
+              <p className="text-xs text-gray-600">Activos</p>
             </div>
 
             <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto mb-3">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-16 h-16 mx-auto mb-2">
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="2"
+                    strokeWidth="3"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#f59e0b"
-                    strokeWidth="2"
+                    strokeWidth="3"
                     strokeDasharray={`${(statsData.lotesStats.enPreparacion / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.enPreparacion}</span>
+                  <span className="text-sm font-bold text-gray-900">{statsData.lotesStats.enPreparacion}</span>
                 </div>
               </div>
-              <h4 className="font-semibold text-gray-800">En Preparación</h4>
-              <p className="text-sm text-gray-600">Pendientes</p>
+              <h4 className="text-xs font-semibold text-gray-800">Preparación</h4>
+              <p className="text-xs text-gray-600">Pendientes</p>
             </div>
 
             <div className="text-center">
-              <div className="relative w-24 h-24 mx-auto mb-3">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-16 h-16 mx-auto mb-2">
+                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="2"
+                    strokeWidth="3"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="#dc2626"
-                    strokeWidth="2"
+                    strokeWidth="3"
                     strokeDasharray={`${(statsData.lotesStats.enMantenimiento / Math.max(statsData.lotesStats.total, 1)) * 100}, 100`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-gray-900">{statsData.lotesStats.enMantenimiento}</span>
+                  <span className="text-sm font-bold text-gray-900">{statsData.lotesStats.enMantenimiento}</span>
                 </div>
               </div>
-              <h4 className="font-semibold text-gray-800">En Mantenimiento</h4>
-              <p className="text-sm text-gray-600">Requieren atención</p>
+              <h4 className="text-xs font-semibold text-gray-800">Mantenimiento</h4>
+              <p className="text-xs text-gray-600">Atención</p>
             </div>
           </div>
         </CardBody>

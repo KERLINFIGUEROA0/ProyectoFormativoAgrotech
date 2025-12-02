@@ -33,6 +33,7 @@ export class Actividad {
 usuario: Usuario | null;
 
  @ManyToOne(() => Cultivo, (cultivo) => cultivo.actividades, { onDelete: 'CASCADE' })
+ @JoinColumn({ name: 'Id_Cultivo' })
   cultivo: Cultivo;
 
   @ManyToOne(() => Lote, (lote) => lote.id, { nullable: true })

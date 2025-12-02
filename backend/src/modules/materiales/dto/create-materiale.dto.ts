@@ -5,6 +5,7 @@ import { TipoMaterial } from '../../../common/enums/tipo-material.enum';
 import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum';
 import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
 import { TipoConsumo } from '../../../common/enums/tipo-consumo.enum';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
 import { is } from 'cheerio/dist/commonjs/api/traversing';
 
 export class CreateMaterialeDto {
@@ -78,4 +79,19 @@ export class CreateMaterialeDto {
   @IsDateString()
   @IsOptional()
   fechaVencimiento?: string;
+
+  // Campos para ingreso con paquetes
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  cantidadPaquetes?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0.001)
+  tamañoPorPaquete?: number;
+
+  @IsEnum(UnidadMedida)
+  @IsOptional()
+  unidadMedidaIngreso?: UnidadMedida;
 }

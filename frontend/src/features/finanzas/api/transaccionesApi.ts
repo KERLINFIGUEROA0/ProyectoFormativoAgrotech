@@ -14,6 +14,7 @@ export const obtenerTransacciones = async () => {
     id: v.id,
     tipo: 'ingreso',
     cantidad: v.cantidad || 1,
+    unidad: v.unidadMedida || 'Unid', // Mapeo de ventas si aplica
     precioUnitario: v.precioUnitario || v.monto,
   }));
 
@@ -21,8 +22,10 @@ export const obtenerTransacciones = async () => {
     ...g,
     id: `gasto-${g.id}`,
     tipo: 'egreso',
-    cantidad: 1,
-    precioUnitario: g.monto,
+    // ✅ Aquí recuperamos los datos calculados del backend
+    cantidad: g.cantidad !== null ? Number(g.cantidad) : 1,
+    unidad: g.unidad || '-',
+    precioUnitario: g.precioUnitario !== null ? Number(g.precioUnitario) : g.monto,
   }));
 
   // Combinar y ordenar por fecha descendente

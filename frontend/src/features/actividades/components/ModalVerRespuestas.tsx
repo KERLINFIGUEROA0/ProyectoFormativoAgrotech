@@ -4,7 +4,6 @@ import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Table
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { obtenerRespuestasPorActividad, calificarRespuesta } from '../api/actividadesapi';
 import ModalComentarioRechazo from './ModalComentarioRechazo';
-import ModalPagoPasante from './ModalPagoPasante';
 
 // Función helper para extraer el nombre original del archivo
 const getOriginalFilename = (fullFilename: string): string => {
@@ -20,28 +19,29 @@ const getOriginalFilename = (fullFilename: string): string => {
 };
 
 interface ModalVerRespuestasProps {
-   actividad: Actividad;
-   isOpen: boolean;
-   onClose: () => void;
-   onSuccess?: () => void;
+    actividad: Actividad;
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess?: () => void;
+    onOpenPago?: (actividad: Actividad, pasantes: Array<{
+      identificacion: number;
+      nombre: string;
+      apellidos: string;
+    }>) => void;
 }
 
 const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
-   actividad,
-   isOpen,
-   onClose,
-   onSuccess,
+    actividad,
+    isOpen,
+    onClose,
+    onSuccess,
+    onOpenPago,
 }) => {
   const [respuestas, setRespuestas] = useState<RespuestaActividad[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalComentarioOpen, setModalComentarioOpen] = useState(false);
   const [respuestaSeleccionada, setRespuestaSeleccionada] = useState<number | null>(null);
-  const [modalPagoOpen, setModalPagoOpen] = useState(false);
-  const [pasantesParaPagar, setPasantesParaPagar] = useState<Array<{
-    identificacion: number;
-    nombre: string;
-    apellidos: string;
-  }>>([]);
+
 
   const cargarRespuestas = useCallback(async () => {
     setLoading(true);
@@ -61,6 +61,8 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       cargarRespuestas();
     }
   }, [isOpen, actividad, cargarRespuestas]);
+
+
 
   const getFileIcon = (filename: string) => {
     const originalFilename = getOriginalFilename(filename);
@@ -113,45 +115,58 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
 
   const handleAprobar = async (respuestaId: number) => {
     try {
+      console.log('🚀 Iniciando aprobación de respuesta ID:', respuestaId);
+
       // Calificar la respuesta - el backend ahora retorna si el usuario es pasante
       const resultadoCalificacion = await calificarRespuesta(respuestaId, { estado: 'aprobado' });
+
+      console.log('📋 Respuesta completa del backend:', JSON.stringify(resultadoCalificacion, null, 2));
+      console.log('👤 Usuario en respuesta:', resultadoCalificacion.usuario);
+      console.log('🔍 esPasante:', resultadoCalificacion.esPasante);
+      console.log('👥 TipoUsuario:', resultadoCalificacion.usuario?.tipoUsuario);
 
       // Recargar respuestas para actualizar la UI
       await cargarRespuestas();
 
       // Verificar si el usuario es pasante usando la información retornada por el backend
       if (resultadoCalificacion.esPasante) {
-        console.log('Usuario aprobado es pasante, abriendo modal de pago individual');
+        console.log('✅ Usuario aprobado es pasante, llamando función del padre para abrir modal de pago');
 
-        // Abrir modal de pago para este pasante específico
-        const pasanteParaPagar = [{
-          identificacion: resultadoCalificacion.usuario.identificacion,
-          nombre: resultadoCalificacion.usuario.nombre,
-          apellidos: resultadoCalificacion.usuario.apellidos,
-        }];
-
-        console.log('Abriendo modal de pago para pasante:', pasanteParaPagar);
-        setPasantesParaPagar(pasanteParaPagar);
-        setModalPagoOpen(true);
+        // Llamar a la función del padre para abrir el modal de pago
+        if (onOpenPago) {
+          onOpenPago(actividad, [{
+            identificacion: resultadoCalificacion.usuario.identificacion,
+            nombre: resultadoCalificacion.usuario.nombre,
+            apellidos: resultadoCalificacion.usuario.apellidos,
+          }]);
+          console.log('✅ Función onOpenPago llamada exitosamente');
+          // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
+        } else {
+          console.warn('⚠️ onOpenPago no está definido en las props');
+        }
       } else {
-        console.log('Usuario aprobado no es pasante');
+        console.log('❌ Usuario aprobado no es pasante o esPasante es false/undefined');
+        console.log('Valor de esPasante:', resultadoCalificacion.esPasante);
+        console.log('Tipo de esPasante:', typeof resultadoCalificacion.esPasante);
       }
 
-      // Verificar si TODAS las respuestas están aprobadas para el caso general
-      const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
-      const totalRespuestas = respuestas.length;
+      // Verificar el caso general (todas respuestas aprobadas) - Solo si NO se abrió pago individual
+      // Usar las respuestas actualizadas después de recargar
+      const respuestasActualizadas = await obtenerRespuestasPorActividad(actividad.id);
+      const todasAprobadas = respuestasActualizadas.every(r => r.estado === 'aprobado');
+      const totalRespuestas = respuestasActualizadas.length;
 
       console.log('Estado después de recargar respuestas:');
-      console.log('Respuestas:', respuestas.map(r => ({ nombre: r.usuario.nombre, estado: r.estado, tipoUsuario: r.usuario.tipoUsuario?.nombre })));
+      console.log('Respuestas:', respuestasActualizadas.map(r => ({ nombre: r.usuario.nombre, estado: r.estado, tipoUsuario: r.usuario.tipoUsuario?.nombre })));
       console.log('Todas aprobadas:', todasAprobadas);
       console.log('Total respuestas:', totalRespuestas);
 
       // Si todas están aprobadas y hay pasantes que aún no se pagaron, mostrar modal general
-      if (todasAprobadas && totalRespuestas > 0) {
-        const pasantesSinPagar = respuestas
+      // Pero solo si no se abrió pago individual en esta misma aprobación
+      if (todasAprobadas && totalRespuestas > 0 && !resultadoCalificacion.esPasante) {
+        const pasantesSinPagar = respuestasActualizadas
           .filter(r => {
             const esPasante = r.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
-            // Solo incluir pasantes que no se pagaron individualmente
             return esPasante && r.estado === 'aprobado';
           })
           .map(r => ({
@@ -161,10 +176,12 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
           }));
 
         // Solo mostrar si hay pasantes que no se pagaron aún
-        if (pasantesSinPagar.length > 0 && !modalPagoOpen) {
+        if (pasantesSinPagar.length > 0) {
           console.log('Actividad completada, mostrando pasantes restantes:', pasantesSinPagar);
-          setPasantesParaPagar(pasantesSinPagar);
-          setModalPagoOpen(true);
+          if (onOpenPago) {
+            onOpenPago(actividad, pasantesSinPagar);
+            // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
+          }
         }
       }
 
@@ -222,20 +239,26 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             ) : (
               <Table aria-label="Tabla de respuestas de actividad">
                 <TableHeader>
-                  <TableColumn>Nombre</TableColumn>
-                  <TableColumn>ID Ficha</TableColumn>
-                  <TableColumn>Descripción</TableColumn>
-                  <TableColumn>Estado</TableColumn>
-                  <TableColumn>Comentario Instructor</TableColumn>
-                  <TableColumn>Archivos</TableColumn>
-                  <TableColumn>Fecha</TableColumn>
-                  <TableColumn>Acciones</TableColumn>
-                </TableHeader>
+                   <TableColumn>Nombre</TableColumn>
+                   <TableColumn>Rol</TableColumn>
+                   <TableColumn>ID Ficha</TableColumn>
+                   <TableColumn>Descripción</TableColumn>
+                   <TableColumn>Estado</TableColumn>
+                   <TableColumn>Comentario Instructor</TableColumn>
+                   <TableColumn>Archivos</TableColumn>
+                   <TableColumn>Fecha</TableColumn>
+                   <TableColumn>Acciones</TableColumn>
+                 </TableHeader>
                 <TableBody>
                   {respuestas.map((respuesta) => (
                     <TableRow key={respuesta.id}>
                       <TableCell>
                         {respuesta.usuario.nombre} {respuesta.usuario.apellidos}
+                      </TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          {respuesta.usuario.tipoUsuario?.nombre || 'N/A'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {respuesta.usuario.ficha?.id_ficha || 'N/A'}
@@ -330,21 +353,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
           setRespuestaSeleccionada(null);
         }}
         onConfirm={handleConfirmarRechazo}
-      />
-
-      <ModalPagoPasante
-        actividad={actividad}
-        isOpen={modalPagoOpen}
-        onClose={() => {
-          setModalPagoOpen(false);
-          setPasantesParaPagar([]);
-        }}
-        onPagoSuccess={() => {
-          setModalPagoOpen(false);
-          setPasantesParaPagar([]);
-          onSuccess?.();
-        }}
-        pasantes={pasantesParaPagar}
       />
     </>
   );

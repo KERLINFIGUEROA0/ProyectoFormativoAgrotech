@@ -26,8 +26,12 @@ export class InformacionSensorService {
     }
 
     // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el lote, sublote y brokers del lote
+    // ✅ Ahora incluye sensores desconectados para reactivarlos
     const sensores = await this.sensorRepo.find({
-      where: { topic: topic, estado: 'Activo' }, // Solo sensores activos
+      where: [
+        { topic: topic, estado: 'Activo' },
+        { topic: topic, estado: 'Desconectado' }
+      ],
       relations: ['lote', 'sublote', 'lote.brokerLotes', 'lote.brokerLotes.broker'],
     });
 
@@ -62,6 +66,14 @@ export class InformacionSensorService {
 
         // Actualizar timestamp del último mensaje MQTT
         sensor.ultimo_mqtt_mensaje = new Date();
+
+        // 🧠 LÓGICA DE REACTIVACIÓN INDIVIDUAL
+        // Si estaba marcado como desconectado, lo volvemos a activar
+        if (sensor.estado === 'Desconectado' || sensor.estado === 'Inactivo') {
+            sensor.estado = 'Activo';
+            this.logger.log(`⚡ Sensor [${sensor.nombre}] CONECTADO nuevamente.`);
+        }
+
         await this.sensorRepo.save(sensor);
 
         guardados++;
@@ -128,9 +140,12 @@ export class InformacionSensorService {
   async getLatestData(maxAgeMinutes: number = 10): Promise<any[]> {
     this.logger.log('🔍 Iniciando getLatestData...');
 
-    // Usamos TypeORM QueryBuilder para obtener todos los sensores activos
+    // ✅ Ahora incluye sensores activos Y desconectados
     const sensores = await this.sensorRepo.find({
-      where: { estado: 'Activo' },
+      where: [
+        { estado: 'Activo' },
+        { estado: 'Desconectado' }
+      ],
       relations: ['lote', 'sublote'],
     });
 
@@ -150,33 +165,29 @@ export class InformacionSensorService {
       sensores.map(async (sensor) => {
         this.logger.debug(`🔎 Buscando último dato para sensor ID: ${sensor.id}, Nombre: ${sensor.nombre}`);
 
-        let valor: number | null = null;
+        let valor: number = 0; // Por defecto 0
         let fechaRegistro: string | null = null;
+        let estadoLogico = sensor.estado;
 
-        // Verificar si hay mensajes MQTT recientes
-        if (sensor.ultimo_mqtt_mensaje) {
-          const fechaMqtt = new Date(sensor.ultimo_mqtt_mensaje);
-          if (fechaMqtt >= limiteTiempo) {
-            // Hay mensajes MQTT recientes, buscar el último dato
-            const ultimoDato = await this.infoRepo.findOne({
-              where: { sensor: { id: sensor.id } },
-              order: { fechaRegistro: 'DESC' },
-            });
-
-            if (ultimoDato) {
-              valor = Number(ultimoDato.valor);
-              fechaRegistro = ultimoDato.fechaRegistro.toISOString();
-              this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${valor}, Último MQTT=${fechaMqtt.toISOString()} (ACTIVO)`);
-            } else {
-              this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): MQTT reciente pero sin datos en BD`);
-            }
-          } else {
-            // Último mensaje MQTT es antiguo
-            this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Último MQTT antiguo (${fechaMqtt.toISOString()}), mostrando N/A`);
-          }
+        // 🛑 Si el Watchdog lo marcó como desconectado, forzamos el 0
+        if (sensor.estado === 'Desconectado') {
+             valor = 0;
+             estadoLogico = 'Desconectado'; // Para pintar rojo en el frontend
+             this.logger.warn(`❌ Sensor ${sensor.id} (${sensor.nombre}): DESCONECTADO - mostrando 0`);
         } else {
-          // Nunca ha recibido mensajes MQTT
-          this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): Nunca ha recibido mensajes MQTT`);
+             // ✅ Si está activo, buscamos su último dato real
+             const ultimoDato = await this.infoRepo.findOne({
+               where: { sensor: { id: sensor.id } },
+               order: { fechaRegistro: 'DESC' },
+             });
+
+             if (ultimoDato) {
+                 valor = Number(ultimoDato.valor);
+                 fechaRegistro = ultimoDato.fechaRegistro.toISOString();
+                 this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${valor} (ACTIVO)`);
+             } else {
+                 this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): ACTIVO pero sin datos en BD`);
+             }
         }
 
         const resultado = {
@@ -185,8 +196,10 @@ export class InformacionSensorService {
           topic: sensor.topic,
           valorMinimo: sensor.valor_minimo_alerta,
           valorMaximo: sensor.valor_maximo_alerta,
-          valor: valor,
+          valor: valor, // Aquí va el 0 o el dato real
           fechaRegistro: fechaRegistro,
+          estado: estadoLogico, // 'Activo' o 'Desconectado'
+          unidad: 'u' // Puedes mejorar esto agregando unidad a la entidad Sensor
         };
 
         return resultado;

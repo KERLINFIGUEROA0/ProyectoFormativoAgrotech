@@ -17,7 +17,7 @@ const defaultTopics = ['luz', 'temperatura', 'humedad', 'humedad_suelo'];
 export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers }: BrokerFormModalProps) {
   const [lotes, setLotes] = useState<Lote[]>([]);
   // Removido: funcionalidad de surcos/sublotes específicos por simplicidad
-  const [topicosAdicionales, setTopicosAdicionales] = useState<string[]>(['']);
+  const [topicosAdicionales, setTopicosAdicionales] = useState<Array<{topic: string, min?: number, max?: number}>>([{topic: '', min: undefined, max: undefined}]);
   const [defaultTopicsEnabled, setDefaultTopicsEnabled] = useState<Record<string, boolean>>({
     luz: true,
     temperatura: true,
@@ -85,17 +85,25 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         // Si no hay, dejar vacío
         // Para edición, determinar cuáles defaults están habilitados
         const enabled: Record<string, boolean> = { luz: false, temperatura: false, humedad: false, humedad_suelo: false };
-        const additional: string[] = [];
+        const additional: Array<{topic: string, min?: number, max?: number}> = [];
         const prefix = broker.prefijoTopicos || '';
-        broker.topicosAdicionales?.forEach(t => {
-          if (t === prefix + 'luz') enabled.luz = true;
-          else if (t === prefix + 'temperatura') enabled.temperatura = true;
-          else if (t === prefix + 'humedad') enabled.humedad = true;
-          else if (t === prefix + 'humedad_suelo') enabled.humedad_suelo = true;
-          else additional.push(t.replace(prefix + '/', ''));
+        broker.topicosAdicionales?.forEach((t: any) => {
+          const topicStr = typeof t === 'string' ? t : t.topic;
+          if (topicStr === prefix + 'luz') enabled.luz = true;
+          else if (topicStr === prefix + 'temperatura') enabled.temperatura = true;
+          else if (topicStr === prefix + 'humedad') enabled.humedad = true;
+          else if (topicStr === prefix + 'humedad_suelo') enabled.humedad_suelo = true;
+          else {
+            const cleanTopic = topicStr.replace(prefix + '/', '');
+            if (typeof t === 'string') {
+              additional.push({topic: cleanTopic, min: undefined, max: undefined});
+            } else {
+              additional.push({topic: cleanTopic, min: t.min, max: t.max});
+            }
+          }
         });
         setDefaultTopicsEnabled(enabled);
-        setTopicosAdicionales(additional.length > 0 ? additional : ['']);
+        setTopicosAdicionales(additional.length > 0 ? additional : [{topic: '', min: undefined, max: undefined}]);
       } else {
         // Reset para creación
         setFormData({
@@ -109,7 +117,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           usuario: '',
           password: '',
         });
-        setTopicosAdicionales(['']);
+        setTopicosAdicionales([{topic: '', min: undefined, max: undefined}]);
       }
     }
   }, [isOpen, broker]);
@@ -122,6 +130,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
     try {
+      // Para probar conexión, solo enviamos strings (la API de prueba no maneja objetos complejos)
       const data = {
         nombre: formData.nombre,
         protocolo: formData.protocolo,
@@ -131,8 +140,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
-          ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
-        ],
+          ...topicosAdicionales.filter(t => t.topic && t.topic.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t.topic}` : t.topic)
+        ] as string[],
         usuario: formData.usuario || undefined,
         password: formData.password || undefined,
       };
@@ -164,8 +173,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
-          ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
-        ],
+          ...topicosAdicionales.filter(t => t.topic && t.topic.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t.topic}` : t.topic)
+        ] as string[],
         usuario: formData.usuario || undefined,
         password: formData.password || undefined,
       };
@@ -184,6 +193,24 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     try {
       // Normalizar el prefijo para que no empiece con '/' y no termine con '/', y sin múltiples '/'
       let normalizedPrefix = (formData.prefijoTopicos || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\/+/g, '/');
+
+      // Preparar tópicos adicionales con configuración personalizada
+      const topicosConConfig = topicosAdicionales
+        .filter(t => t.topic && t.topic.trim() !== '')
+        .map(t => {
+          if (t.min !== undefined || t.max !== undefined) {
+            // Tópico con configuración personalizada
+            return {
+              topic: normalizedPrefix ? `${normalizedPrefix}/${t.topic}` : t.topic,
+              min: t.min,
+              max: t.max
+            };
+          } else {
+            // Tópico simple (se convertirá a string)
+            return normalizedPrefix ? `${normalizedPrefix}/${t.topic}` : t.topic;
+          }
+        });
+
       const data = {
         nombre: formData.nombre,
         protocolo: formData.protocolo,
@@ -193,7 +220,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         prefijoTopicos: normalizedPrefix || undefined,
         topicosAdicionales: [
           ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
-          ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
+          ...topicosConConfig
         ],
         usuario: formData.usuario || undefined,
         password: formData.password || undefined,
@@ -221,7 +248,22 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           password: '',
         });
         setDefaultTopicsEnabled({ luz: true, temperatura: true, humedad: true, humedad_suelo: true });
-        setTopicosAdicionales(['']);
+        setTopicosAdicionales([{topic: '', min: undefined, max: undefined}]);
+      } else {
+        // Reset para creación
+        setFormData({
+          nombre: '',
+          protocolo: 'mqtt://',
+          host: '',
+          puerto: '',
+          loteId: '',
+          // Removido: surcoId
+          prefijoTopicos: '',
+          usuario: '',
+          password: '',
+        });
+        setDefaultTopicsEnabled({ luz: true, temperatura: true, humedad: true, humedad_suelo: true });
+        setTopicosAdicionales([{topic: '', min: undefined, max: undefined}]);
       }
       onClose();
       onSuccess?.();
@@ -405,12 +447,21 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tópicos Configurados
                     </label>
-                    <ul className="list-disc list-inside text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                    <ul className="list-disc list-inside text-sm text-gray-600 bg-gray-50 p-3 rounded-md space-y-1">
                       {[
-                        ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t),
-                        ...topicosAdicionales.filter(t => t.trim() !== '').map(t => normalizedPrefix ? `${normalizedPrefix}/${t}` : t)
-                      ].map((topic) => (
-                        <li key={topic}>{topic}</li>
+                        ...defaultTopics.filter(t => defaultTopicsEnabled[t]).map(t => ({
+                          topic: normalizedPrefix ? `${normalizedPrefix}/${t}` : t,
+                          config: 'predeterminado' as const
+                        })),
+                        ...topicosAdicionales.filter(t => t.topic && t.topic.trim() !== '').map(t => ({
+                          topic: normalizedPrefix ? `${normalizedPrefix}/${t.topic}` : t.topic,
+                          config: (t.min !== undefined || t.max !== undefined) ? `personalizado (${t.min ?? 0}-${t.max ?? 100})` : 'sin configuración'
+                        }))
+                      ].map((item, index) => (
+                        <li key={`${item.topic}-${index}`} className="flex justify-between items-center">
+                          <span>{item.topic}</span>
+                          <span className="text-xs text-blue-600 italic">({item.config})</span>
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -419,35 +470,82 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                       Tópicos Adicionales
                     </label>
                     {topicosAdicionales.map((topico, index) => (
-                      <div key={index} className="flex mb-2">
-                        <input
-                          type="text"
-                          value={topico}
-                          onChange={(e) => {
-                            const newTopicos = [...topicosAdicionales];
-                            newTopicos[index] = e.target.value;
-                            setTopicosAdicionales(newTopicos);
-                          }}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                          placeholder="ej: sensor/custom"
-                        />
-                        {topicosAdicionales.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setTopicosAdicionales(topicosAdicionales.filter((_, i) => i !== index))}
-                            className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                          >
-                            -
-                          </button>
+                      <div key={index} className="mb-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Tópico
+                            </label>
+                            <input
+                              type="text"
+                              value={topico.topic}
+                              onChange={(e) => {
+                                const newTopicos = [...topicosAdicionales];
+                                newTopicos[index] = { ...topico, topic: e.target.value };
+                                setTopicosAdicionales(newTopicos);
+                              }}
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                              placeholder="ej: sensor/custom"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Min (opcional)
+                            </label>
+                            <input
+                              type="number"
+                              value={topico.min || ''}
+                              onChange={(e) => {
+                                const newTopicos = [...topicosAdicionales];
+                                newTopicos[index] = { ...topico, min: e.target.value ? Number(e.target.value) : undefined };
+                                setTopicosAdicionales(newTopicos);
+                              }}
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="relative">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Max (opcional)
+                            </label>
+                            <div className="flex">
+                              <input
+                                type="number"
+                                value={topico.max || ''}
+                                onChange={(e) => {
+                                  const newTopicos = [...topicosAdicionales];
+                                  newTopicos[index] = { ...topico, max: e.target.value ? Number(e.target.value) : undefined };
+                                  setTopicosAdicionales(newTopicos);
+                                }}
+                                className="flex-1 border border-gray-300 rounded-l px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                                placeholder="100"
+                              />
+                              {topicosAdicionales.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setTopicosAdicionales(topicosAdicionales.filter((_, i) => i !== index))}
+                                  className="px-2 py-1.5 bg-red-500 text-white rounded-r hover:bg-red-600 transition-colors text-sm"
+                                  title="Eliminar tópico"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {(topico.min !== undefined || topico.max !== undefined) && (
+                          <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                            📊 Umbrales personalizados: {topico.min !== undefined ? `Min: ${topico.min}` : ''} {topico.max !== undefined ? `Max: ${topico.max}` : ''}
+                          </div>
                         )}
                       </div>
                     ))}
                     <button
                       type="button"
-                      onClick={() => setTopicosAdicionales([...topicosAdicionales, ''])}
+                      onClick={() => setTopicosAdicionales([...topicosAdicionales, {topic: '', min: undefined, max: undefined}])}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-sm"
                     >
-                      + Agregar Tópico
+                      + Agregar Tópico Personalizado
                     </button>
                   </div>
                 </div>

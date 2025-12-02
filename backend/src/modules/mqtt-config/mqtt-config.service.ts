@@ -14,6 +14,13 @@ import { SensoresService } from '../sensores/sensores.service';
 import { CreateSensoreDto } from '../sensores/dto/create-sensore.dto';
 import { MqttClientService } from './mqtt-client.service';
 
+// Interfaz auxiliar para configuración personalizada de tópicos
+interface TopicoConfig {
+  topic: string;
+  min?: number;
+  max?: number;
+}
+
 @Injectable()
 export class MqttConfigService {
   private readonly logger = new Logger(MqttConfigService.name);
@@ -44,10 +51,15 @@ export class MqttConfigService {
       const lote = await this.brokerRepo.manager.findOne(Lote, { where: { id: loteId } });
       if (!lote) throw new NotFoundException(`Lote con ID ${loteId} no encontrado.`);
 
+      // Convertir topicosAdicionales a solo strings para guardar en BrokerLote
+      const topicosStrings = topicosAdicionales.map(item =>
+        typeof item === 'string' ? item : item.topic
+      );
+
       const brokerLote = this.brokerLoteRepo.create({
         broker: brokerGuardado,
         lote: lote,
-        topicos: topicosAdicionales
+        topicos: topicosStrings
       });
       await this.brokerLoteRepo.save(brokerLote);
 
@@ -304,26 +316,53 @@ export class MqttConfigService {
   }
 
   // --- Método auxiliar para crear sensores ---
-  public async crearSensoresParaTopicos(broker: Broker, loteId: number, topicos: string[]): Promise<void> {
+  public async crearSensoresParaTopicos(
+    broker: Broker,
+    loteId: number,
+    topicos: (string | TopicoConfig)[]
+  ): Promise<void> {
+    // Tus defaults actuales (NO LOS BORRES, son para los 4 primeros sensores)
     const topicDefaults = {
-      'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 }, // 1500-50000 lux
+      'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 },
       'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },
       'humedad': { nombre: 'Sensor de Humedad', min: 30, max: 85 },
       'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 20, max: 90 },
     };
 
-    for (const topic of topicos) {
-      const topicName = topic.split('/').pop() || topic; // Última parte del tópico
-      const defaults = topicDefaults[topicName] || { nombre: `Sensor ${topicName}`, min: 0, max: 100 };
+    for (const item of topicos) {
+      // Normalizamos la entrada: extraemos el string del tópico y los posibles valores custom
+      let topicStr: string;
+      let customMin: number | undefined;
+      let customMax: number | undefined;
+
+      if (typeof item === 'string') {
+        topicStr = item;
+      } else {
+        topicStr = item.topic;
+        customMin = item.min;
+        customMax = item.max;
+      }
+
+      const topicName = topicStr.split('/').pop() || topicStr;
+      const defaults = topicDefaults[topicName];
+
+      // Lógica de Prioridad:
+      // 1. Valores personalizados (si vienen en el objeto)
+      // 2. Valores predeterminados (si el nombre coincide con luz, temperatura, etc.)
+      // 3. Fallback genérico (0 - 100)
+
+      const minFinal = customMin ?? defaults?.min ?? 0;
+      const maxFinal = customMax ?? defaults?.max ?? 100;
+      const nombreFinal = defaults?.nombre ?? `Sensor ${topicName}`;
 
       const sensorDto: CreateSensoreDto = {
-        nombre: defaults.nombre,
+        nombre: nombreFinal,
         loteId: loteId,
-        fecha_instalacion: new Date().toISOString().split('T')[0], // Fecha actual en formato YYYY-MM-DD
-        valor_minimo_alerta: defaults.min,
-        valor_maximo_alerta: defaults.max,
+        fecha_instalacion: new Date().toISOString().split('T')[0],
+        valor_minimo_alerta: minFinal, // Usamos el valor calculado
+        valor_maximo_alerta: maxFinal, // Usamos el valor calculado
         estado: 'Activo',
-        topic: topic,
+        topic: topicStr,
         broker: {
           nombre: broker.nombre,
           protocolo: broker.protocolo,
@@ -336,9 +375,9 @@ export class MqttConfigService {
 
       try {
         await this.sensoresService.create(sensorDto);
-        this.logger.log(`Sensor creado para tópico: ${topic}`);
+        this.logger.log(`Sensor creado para tópico: ${topicStr} con rango [${minFinal} - ${maxFinal}]`);
       } catch (error) {
-        this.logger.error(`Error creando sensor para tópico ${topic}:`, error);
+        this.logger.error(`Error creando sensor para tópico ${topicStr}:`, error);
       }
     }
   }

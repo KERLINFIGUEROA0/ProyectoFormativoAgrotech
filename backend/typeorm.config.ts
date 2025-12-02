@@ -34,6 +34,7 @@ import { Broker } from './src/modules/mqtt-config/entities/broker.entity';
 import { BrokerLote } from './src/modules/mqtt-config/entities/broker-lote.entity';
 import { Subscripcion } from './src/modules/mqtt-config/entities/subscripcion.entity';
 import { Movimiento } from './src/movimientos/entities/movimiento.entity';
+import { Pago } from './src/modules/pagos/entities/pago.entity';
 
 const isCompiled = __dirname.includes('dist');
 
@@ -75,6 +76,7 @@ export const AppDataSource = new DataSource({
     BrokerLote,
     Subscripcion,
     Movimiento,
+    Pago,
   ],
   migrations: [
     isCompiled

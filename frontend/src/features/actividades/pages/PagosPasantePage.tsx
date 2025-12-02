@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Calendar, Clock, FileText, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
+import { obtenerPagosUsuario } from '../api/actividadesapi';
 
 interface Pago {
   id: number;
@@ -47,20 +48,9 @@ const PagosPasantePage: React.FC = () => {
         return;
       }
 
-      const token = localStorage.getItem('token');
       const userId = userData.identificacion;
 
-      const response = await fetch(`/pagos/usuario/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al cargar pagos');
-      }
-
-      const data = await response.json();
+      const data = await obtenerPagosUsuario(userId);
       setPagos(data);
 
       // Calcular estadísticas

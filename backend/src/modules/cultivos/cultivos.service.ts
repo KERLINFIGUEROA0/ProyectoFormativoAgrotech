@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, In } from 'typeorm';
+import { Repository, IsNull, Not, In, EntityManager } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import * as XLSX from 'xlsx';
 import { Cultivo } from './entities/cultivo.entity';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
@@ -9,6 +11,11 @@ import { TipoCultivo } from '../tipo_cultivo/entities/tipo_cultivo.entity';
 import { Lote } from '../lotes/entities/lote.entity';
 import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Produccion } from '../producciones/entities/produccione.entity';
+import { Actividad } from '../actividades/entities/actividade.entity';
+import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
+import { Venta } from '../../common/enums/ventas/entities/venta.entity';
+import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Material } from '../materiales/entities/materiale.entity';
 
 @Injectable()
 export class CultivosService {
@@ -21,7 +28,25 @@ export class CultivosService {
     private readonly loteRepository: Repository<Lote>,
     @InjectRepository(Sublote)
     private readonly subloteRepository: Repository<Sublote>,
+    @InjectRepository(Actividad)
+    private readonly actividadRepository: Repository<Actividad>,
+    @InjectRepository(Produccion)
+    private readonly produccionRepository: Repository<Produccion>,
+    @InjectRepository(Gasto)
+    private readonly gastoRepository: Repository<Gasto>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  // Método auxiliar para limpiar caché de lotes
+  private async clearLotesCache(loteId?: number) {
+    await this.cacheManager.del('lotes_todos');
+    await this.cacheManager.del('lotes_todos_alt');
+    await this.cacheManager.del('lotes_estadisticas');
+    if (loteId) {
+      await this.cacheManager.del(`/lotes/${loteId}`);
+    }
+    console.log('Caché de lotes invalidada por cambios en cultivos');
+  }
 
   async crear(dto: CreateCultivoDto): Promise<Cultivo> {
     const queryRunner = this.cultivoRepository.manager.connection.createQueryRunner();
@@ -43,7 +68,7 @@ export class CultivosService {
       cultivo.cantidad = dto.cantidad;
       cultivo.tipoCultivo = tipoCultivo;
       cultivo.lote = lote;
-      cultivo.Fecha_Plantado = dto.Fecha_Plantado ? new Date(dto.Fecha_Plantado) : new Date();
+      cultivo.Fecha_Plantado = new Date(dto.Fecha_Plantado + 'T00:00:00-05:00');
       cultivo.descripcion = dto.descripcion || '';
       cultivo.Estado = dto.Estado || 'Activo';
       if (dto.img) cultivo.img = dto.img;
@@ -92,8 +117,11 @@ export class CultivosService {
       }
 
       await queryRunner.commitTransaction();
-      return cultivoGuardado;
 
+      // NUEVO: Limpiar caché para que se vea ocupado inmediatamente
+      await this.clearLotesCache(lote.id);
+
+      return cultivoGuardado;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       console.error('Error creando cultivo:', err);
@@ -121,12 +149,17 @@ export class CultivosService {
       cultivo.tipoCultivo = tipoCultivo;
     }
     Object.assign(cultivo, dto);
-    return await this.cultivoRepository.save(cultivo);
+    const updated = await this.cultivoRepository.save(cultivo);
+    // Limpiar cache si se actualiza
+    if(cultivo.lote) await this.clearLotesCache(cultivo.lote.id);
+    return updated;
   }
 
   async eliminar(id: number): Promise<void> {
     const cultivo = await this.buscarPorId(id);
+    const loteId = cultivo.lote?.id;
     await this.cultivoRepository.remove(cultivo);
+    if(loteId) await this.clearLotesCache(loteId);
   }
   
   // --- ✅ CORRECCIÓN AQUÍ ---
@@ -189,9 +222,8 @@ export class CultivosService {
 
         // B. Actualizar estado del lote después de liberar sublotes
         if (cultivo.lote) {
-          // Usar la función auxiliar para actualizar el estado del lote
-          // Esta función considera sublotes activos y cultivos directos en el lote
-          await this.actualizarEstadoLote(cultivo.lote.id);
+          // CORRECCIÓN: Pasamos queryRunner.manager como segundo argumento
+          await this.actualizarEstadoLote(cultivo.lote.id, queryRunner.manager);
         }
 
       } else {
@@ -203,6 +235,12 @@ export class CultivosService {
       await queryRunner.manager.save(Cultivo, cultivo);
       await queryRunner.commitTransaction();
 
+      // NUEVO: Limpiar caché después de confirmar la transacción
+      // Esto asegura que al listar lotes, aparezcan "Disponible" y sin el nombre del cultivo
+      if (cultivo.lote) {
+        await this.clearLotesCache(cultivo.lote.id);
+      }
+
       return cultivo;
 
     } catch (err) {
@@ -213,10 +251,15 @@ export class CultivosService {
     }
   }
 
-  // Función auxiliar para actualizar el estado del lote basado en sus sublotes ACTIVOS y cultivos asignados
-  private async actualizarEstadoLote(loteId: number): Promise<void> {
-    // Obtener todos los sublotes ACTIVOS del lote (excluye soft-deleted)
-    const sublotesActivos = await this.subloteRepository.find({
+  // Función auxiliar modificada para soportar transacciones
+  private async actualizarEstadoLote(loteId: number, manager?: EntityManager): Promise<void> {
+    // Definir qué repositorio usar: si hay manager (transacción), usarlo; si no, usar el normal.
+    const subloteRepo = manager ? manager.getRepository(Sublote) : this.subloteRepository;
+    const cultivoRepo = manager ? manager.getRepository(Cultivo) : this.cultivoRepository;
+    const loteRepo = manager ? manager.getRepository(Lote) : this.loteRepository;
+
+    // Obtener todos los sublotes ACTIVOS del lote usando el repo correcto
+    const sublotesActivos = await subloteRepo.find({
       where: { lote: { id: loteId } },
       relations: ['cultivo']
     });
@@ -226,19 +269,20 @@ export class CultivosService {
       .filter(s => s.cultivo !== null && (s.cultivo.Estado === 'Activo' || s.cultivo.Estado === 'En Cosecha'))
       .length;
 
-    // Verificar si hay cultivos asignados directamente al lote (sin sublotes)
-    const cultivosDirectosEnLote = await this.cultivoRepository.count({
+    // Verificar cultivos directos usando el repo correcto
+    const cultivosDirectosEnLote = await cultivoRepo.count({
       where: {
         lote: { id: loteId },
         Estado: In(['Activo', 'En Cosecha']),
-        sublotes: { id: IsNull() } // Cultivos sin sublotes asignados
+        sublotes: { id: IsNull() }
       }
     });
 
     // Si no hay cultivos activos (ni en sublotes ni directos), el lote está en preparación
     if (cultivosEnSublotes === 0 && cultivosDirectosEnLote === 0) {
-      await this.loteRepository.update(loteId, { estado: 'En preparación' });
-      console.log(`Lote ${loteId} cambió a estado: En preparación (sin cultivos activos)`);
+      // AQUÍ ESTÁ LA CLAVE: Usamos loteRepo que está conectado a la transacción
+      await loteRepo.update(loteId, { estado: 'En preparación' });
+      console.log(`Lote ${loteId} cambió a estado: En preparación (Transaccional)`);
       return;
     }
 
@@ -259,12 +303,12 @@ export class CultivosService {
         nuevoEstado = 'Parcialmente ocupado';
       }
 
-      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      await loteRepo.update(loteId, { estado: nuevoEstado });
       console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${cultivosEnSublotes}/${totalSublotesActivos} sublotes con cultivos activos)`);
     } else {
       // No hay sublotes activos, pero hay cultivos directos
       const nuevoEstado = cultivosDirectosEnLote > 0 ? 'En cultivación' : 'En preparación';
-      await this.loteRepository.update(loteId, { estado: nuevoEstado });
+      await loteRepo.update(loteId, { estado: nuevoEstado });
       console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (sin sublotes activos, ${cultivosDirectosEnLote} cultivos directos activos)`);
     }
   }
@@ -345,9 +389,10 @@ export class CultivosService {
       if (item.necesitaActualizacion) {
         await this.loteRepository.update(item.loteId, { estado: item.estadoCorrecto });
         actualizados++;
-        console.log(`Lote ${item.loteId} (${item.loteNombre}) actualizado: ${item.estadoActual} → ${item.estadoCorrecto}`);
       }
     }
+
+    await this.clearLotesCache(); // Limpiar cache aquí también
 
     return {
       message: `Estados de lotes actualizados correctamente. ${actualizados} lotes corregidos.`,
@@ -391,7 +436,7 @@ export class CultivosService {
         'ID Cultivo': cultivo.id,
         'Nombre del Cultivo': cultivo.nombre,
         'Tipo de Cultivo': cultivo.tipoCultivo.nombre,
-        'Fecha de Plantado': new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO'),
+        'Fecha de Plantado': cultivo.Fecha_Plantado || '',
         'Estado': cultivo.Estado,
         'Cantidad Total Producida': cantidadTotalProducida,
         'Cantidad Total Vendida': cantidadTotalVendida,
@@ -584,6 +629,47 @@ export class CultivosService {
     // Generar el archivo Excel
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     return excelBuffer;
+  }
+
+  // --- MÉTODOS AUXILIARES PARA CONSULTAS EFICIENTES ---
+
+  async getActividadesWithMateriales(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Actividad[]> {
+    const query = this.actividadRepository.createQueryBuilder('a')
+      .leftJoin('a.cultivo', 'c')
+      .where('c.id = :cultivoId', { cultivoId })
+      .leftJoinAndSelect('a.actividadMaterial', 'am')
+      .leftJoinAndSelect('am.material', 'm');
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('a.fecha BETWEEN :inicio AND :fin', { inicio: new Date(fechaInicio), fin: new Date(fechaFin + 'T23:59:59.999') });
+    }
+
+    const actividades = await query.orderBy('a.fecha', 'ASC').getMany();
+    return actividades;
+  }
+
+  async getProduccionesWithVentasYGastos(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Produccion[]> {
+    const query = this.produccionRepository.createQueryBuilder('p')
+      .leftJoinAndSelect('p.ventas', 'v')
+      .leftJoinAndSelect('p.gastos', 'g')
+      .where('p.cultivoId = :cultivoId', { cultivoId });
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('p.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio: new Date(fechaInicio), fechaFin: new Date(fechaFin + 'T23:59:59.999') });
+    }
+
+    return await query.orderBy('p.fecha', 'ASC').getMany();
+  }
+
+  async getGastosDirectos(cultivoId: number, fechaInicio?: string, fechaFin?: string): Promise<Gasto[]> {
+    const query = this.gastoRepository.createQueryBuilder('g')
+      .where('g.cultivoId = :cultivoId', { cultivoId });
+
+    if (fechaInicio && fechaFin) {
+      query.andWhere('g.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio: new Date(fechaInicio), fechaFin: new Date(fechaFin + 'T23:59:59.999') });
+    }
+
+    return await query.orderBy('g.fecha', 'ASC').getMany();
   }
 
 

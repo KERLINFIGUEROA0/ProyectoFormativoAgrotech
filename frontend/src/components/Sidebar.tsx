@@ -76,7 +76,7 @@ const baseMenuItems: MenuItemType[] = [
     icon: Package,
     module: "Inventario",
     children: [
-      { id: "stock", label: "Stock", icon: Package },
+      { id: "stock", label: "Gestion de Productos", icon: Package },
       { id: "movimientos", label: "Movimientos", icon: TrendingUp },
     ],
   },
