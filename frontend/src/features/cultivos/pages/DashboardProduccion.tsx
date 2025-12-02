@@ -109,20 +109,37 @@ export default function DashboardProduccion() {
   if (!cultivoId) return <div>ID de cultivo no proporcionado.</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full space-y-6">
-      
-      {/* ✅ 2. AÑADE EL ENLACE DE "VOLVER" AQUÍ */}
-      <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline mb-4 font-semibold">
-        <ArrowLeft size={18} />
-        Volver a Gestión de Cultivos
-      </Link>
-
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard de Producción</h1>
-          <p className="text-green-700 font-semibold">{cultivoNombre}</p>
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      {/* Welcome Banner */}
+      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold mb-1">
+              Dashboard de Producción
+            </h2>
+            <p className="text-green-100">{cultivoNombre} - Monitoreo detallado de cosechas y rendimiento</p>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-green-100">
+            <BarChart size={20} />
+            <span className="text-sm">
+              {new Date().toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
         </div>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
+      </div>
+
+      {/* Navigation and Actions */}
+      <div className="flex justify-between items-center">
+        <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline font-semibold">
+          <ArrowLeft size={18} />
+          Volver a Gestión de Cultivos
+        </Link>
+        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-md">
             <Plus /> Registrar Cosecha
         </button>
       </div>

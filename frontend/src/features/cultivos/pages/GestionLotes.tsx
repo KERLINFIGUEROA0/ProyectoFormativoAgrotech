@@ -1,36 +1,15 @@
-import { useState, useEffect, type ReactElement } from 'react';
+import { useState, useEffect, useCallback, type ReactElement } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
+import { FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
+import { Plus, Clock } from 'lucide-react';
 import { obtenerLotes, crearLote, actualizarLote, obtenerEstadisticasLotes } from '../api/lotesApi';
 import FormModal from '../../../components/FormModal';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
-import type { Lote, LoteData, StatCardProps } from '../interfaces/cultivos';
-import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination } from '@heroui/react';
+import type { Lote, LoteData } from '../interfaces/cultivos';
+import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Progress } from '@heroui/react';
 
-// --- Componente StatCard con Hero UI ---
-const StatCard = ({ icon, title, value, color }: StatCardProps): ReactElement => {
-  const colorMap = {
-    blue: 'primary',
-    red: 'danger',
-    green: 'success',
-    yellow: 'warning',
-    success: 'success',
-    danger: 'danger',
-  } as const;
-  return (
-    <Card className="p-2">
-      <CardBody className="flex flex-col items-center text-center py-1">
-        <div className={`p-1.5 rounded-full bg-${colorMap[color]}-100 text-${colorMap[color]}-600 mb-1`}>
-          {icon}
-        </div>
-        <p className="font-bold text-xl leading-tight mb-1">{value}</p>
-        <p className="text-gray-500 text-xs leading-tight">{title}</p>
-      </CardBody>
-    </Card>
-  );
-};
 
 export default function GestionLotesPage(): ReactElement {
   const [lotes, setLotes] = useState<Lote[]>([]);
@@ -49,7 +28,7 @@ export default function GestionLotesPage(): ReactElement {
   const [itemsPerPage] = useState(10);
   const location = useLocation(); 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
     try {
       const [lotesResponse, statsResponse] = await Promise.all([obtenerLotes(), obtenerEstadisticasLotes()]);
       const fetchedLotes: Lote[] = lotesResponse.data || [];
@@ -58,11 +37,16 @@ export default function GestionLotesPage(): ReactElement {
     } catch {
       toast.error("Error al cargar los datos de los lotes.");
     }
-  };
+  }, []);
   
   useEffect(() => {
     fetchData();
-  }, [location]); 
+  }, [location]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -119,25 +103,154 @@ const handleViewLocation = (lote: Lote) => {
   const totalPages = Math.ceil(filteredLotes.length / itemsPerPage);
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      <div className="flex-shrink-0">
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      {/* Welcome Banner */}
+      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Gestión de Lotes</h1>
-          <Button onClick={() => openModal()} color="primary" startContent={<FaPlus />}>
+          <div>
+            <h2 className="text-2xl font-bold mb-1">
+              Gestión de Lotes
+            </h2>
+            <p className="text-green-100">Administra tus terrenos agrícolas de manera eficiente</p>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-green-100">
+            <Clock size={20} />
+            <span className="text-sm">
+              {new Date().toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            onPress={() => openModal()}
+            color="success"
+            className="font-semibold shadow-md shadow-green-500/30"
+            size="md"
+            startContent={<Plus size={20} strokeWidth={2.5} />}
+          >
             Nuevo Lote
           </Button>
         </div>
       </div>
-      <div className="flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-600 mb-3">Información General de los Lotes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard icon={<FaThList size={20}/>} title="Total Lotes" value={stats.total} color="green" />
-          <StatCard icon={<FaTools size={20}/>} title="En Preparación" value={stats.enPreparacion} color="yellow" />
-          <StatCard icon={<FaLeaf size={20}/>} title="Parcialmente Ocupado" value={stats.parcialmenteOcupado} color="blue" />
-          <StatCard icon={<FaLeaf size={20}/>} title="En Cultivo" value={stats.enCultivo} color="green" />
-          <StatCard icon={<FaTools size={20}/>} title="En Mantenimiento" value={stats.enMantenimiento} color="red" />
-        </div>
+
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Lotes</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">registrados</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaThList className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.total * 10, 100)}
+              className="mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de lotes totales: ${stats.total}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Preparación</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.enPreparacion}</p>
+                <p className="text-xs text-gray-500">pendientes</p>
+              </div>
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <FaTools className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enPreparacion / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="warning"
+              size="sm"
+              aria-label={`Progreso de lotes en preparación: ${stats.enPreparacion}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Parcialmente Ocupado</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.parcialmenteOcupado}</p>
+                <p className="text-xs text-gray-500">algunos cultivos</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.parcialmenteOcupado / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="primary"
+              size="sm"
+              aria-label={`Progreso de lotes parcialmente ocupados: ${stats.parcialmenteOcupado}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Cultivo</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.enCultivo}</p>
+                <p className="text-xs text-gray-500">completamente activos</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enCultivo / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de lotes en cultivo: ${stats.enCultivo}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Mantenimiento</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.enMantenimiento}</p>
+                <p className="text-xs text-gray-500">requieren atención</p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <FaTools className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enMantenimiento / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="danger"
+              size="sm"
+              aria-label={`Progreso de lotes en mantenimiento: ${stats.enMantenimiento}`}
+            />
+          </CardBody>
+        </Card>
       </div>
+
       
       <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-0">
         <div className="w-full lg:w-3/5 xl:w-2/3 flex flex-col">

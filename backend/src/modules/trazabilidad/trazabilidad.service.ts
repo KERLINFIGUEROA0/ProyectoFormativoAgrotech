@@ -98,7 +98,7 @@ export class TrazabilidadService {
         // 4. Añadir los materiales usados (si existen)
         if (act.actividadMaterial && act.actividadMaterial.length > 0) {
           const materialesList = act.actividadMaterial
-            .map(am => `${am.material?.nombre || 'Material desconocido'} (${am.cantidadUsada})`)
+            .map(am => `${am.material?.nombre || 'Material desconocido'} (${Number(am.cantidadUsada).toFixed(0)} ${am.material?.medidasDeContenido || 'unidades'})`)
             .join(', ');
           descripcionCompleta += `\nMateriales utilizados: ${materialesList}.`;
 
