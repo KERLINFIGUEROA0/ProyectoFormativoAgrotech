@@ -68,7 +68,13 @@ export class CultivosService {
       cultivo.cantidad = dto.cantidad;
       cultivo.tipoCultivo = tipoCultivo;
       cultivo.lote = lote;
-      cultivo.Fecha_Plantado = new Date(dto.Fecha_Plantado + 'T00:00:00-05:00');
+
+      // CORRECCIÓN: Crear fecha a mediodía en zona horaria local para evitar offset
+      // dto.Fecha_Plantado viene como 'YYYY-MM-DD'
+      if (!dto.Fecha_Plantado) {
+        throw new BadRequestException('La fecha de plantado es requerida');
+      }
+      cultivo.Fecha_Plantado = new Date(dto.Fecha_Plantado + 'T12:00:00-05:00');
       cultivo.descripcion = dto.descripcion || '';
       cultivo.Estado = dto.Estado || 'Activo';
       if (dto.img) cultivo.img = dto.img;

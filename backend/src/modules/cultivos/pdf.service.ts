@@ -167,7 +167,7 @@ export class PdfService {
 
     // Agregar gastos de materiales
     data.recursos.forEach(recurso => {
-      const categoria = recurso.descripcion.split(' ')[0] || 'Otros'; // Primera palabra como categoría
+      const categoria = 'Materiales'; // Agrupar todos los materiales bajo una categoría común
       if (!gastosPorCategoriaMap.has(categoria)) {
         gastosPorCategoriaMap.set(categoria, 0);
       }
@@ -175,10 +175,21 @@ export class PdfService {
       gastosPorCategoriaMap.set(categoria, current + recurso.costo);
     });
 
-    // Agregar gastos directos
-    if (directGastosCost > 0) {
-      gastosPorCategoriaMap.set('Gastos Directos', directGastosCost);
-    }
+    // Agregar gastos directos categorizados por descripción
+    data.gastos.forEach(gasto => {
+      let categoria = 'Otros Gastos';
+      const desc = gasto.descripcion.toLowerCase();
+      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador')) {
+        categoria = 'Mano de obra';
+      } else {
+        categoria = gasto.descripcion.split(' ')[0] || 'Otros Gastos';
+      }
+      if (!gastosPorCategoriaMap.has(categoria)) {
+        gastosPorCategoriaMap.set(categoria, 0);
+      }
+      const current = gastosPorCategoriaMap.get(categoria);
+      gastosPorCategoriaMap.set(categoria, current + Number(gasto.monto));
+    });
 
     const totalGastos = costos;
     const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => {

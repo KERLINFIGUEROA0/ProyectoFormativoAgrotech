@@ -48,7 +48,6 @@ export default function CultivoForm({
   const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [isLoadingSublotes, setIsLoadingSublotes] = useState(false);
   const [tieneSublotes, setTieneSublotes] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Estados de modales para tipos de cultivo
   const [showTipoModal, setShowTipoModal] = useState(false);
@@ -72,24 +71,11 @@ export default function CultivoForm({
   // Función para cargar lotes disponibles
   const loadLotes = async (showToasts = true) => {
     try {
-      console.log("Cargando lotes disponibles...");
       const response = await obtenerLotesDisponibles();
-      console.log("Respuesta de lotes disponibles:", response);
       const lotesData = response.data || [];
-      console.log("Lotes disponibles encontrados:", lotesData.length);
       setLotes(lotesData);
 
       if (lotesData.length === 0 && showToasts) {
-        console.warn(
-          'No se encontraron lotes disponibles. Asegúrate de que existan lotes en estado "En preparación"'
-        );
-        console.log("💡 Para crear lotes disponibles:");
-        console.log("1. Ve a la gestión de lotes");
-        console.log("2. Crea un lote nuevo");
-        console.log('3. Asegúrate de que su estado sea "En preparación"');
-        console.log(
-          '4. Si el lote ya existe, cambia su estado a "En preparación"'
-        );
 
         toast.info(
           "No hay lotes disponibles para asignar cultivos. Crea lotes en estado 'En preparación' primero.",
@@ -101,84 +87,12 @@ export default function CultivoForm({
         );
       }
     } catch (error) {
-      console.error("Error cargando lotes disponibles", error);
       if (showToasts) {
         toast.error("Error al cargar listado de lotes disponibles");
       }
     }
   };
 
-  // Función de diagnóstico global (disponible en window para debugging)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      (window as any).diagnosticarSistemaCultivos = async () => {
-        console.log("🔍 DIAGNÓSTICO DEL SISTEMA DE CULTIVOS");
-        console.log("=====================================");
-
-        try {
-          // Verificar lotes totales
-          const lotesResponse = await fetch("/lotes/listar");
-          const lotesData = await lotesResponse.json();
-          console.log("📦 LOTES TOTALES:", lotesData.data?.length || 0);
-          lotesData.data?.forEach((lote: any) => {
-            console.log(
-              `  - ${lote.nombre}: ${lote.estado} (${
-                lote.sublotes?.length || 0
-              } sublotes)`
-            );
-          });
-
-          // Verificar lotes disponibles
-          const disponiblesResponse = await fetch("/lotes/disponibles");
-          const disponiblesData = await disponiblesResponse.json();
-          console.log(
-            "✅ LOTES DISPONIBLES (En preparación/Parcialmente ocupado):",
-            disponiblesData.data?.length || 0
-          );
-
-          // Verificar estadísticas de lotes
-          const estadisticasResponse = await fetch("/lotes/estadisticas");
-          const estadisticasData = await estadisticasResponse.json();
-          console.log("📊 ESTADÍSTICAS DE LOTES:", estadisticasData.data);
-
-          // Verificar cultivos
-          const cultivosResponse = await fetch("/cultivos/listar");
-          const cultivosData = await cultivosResponse.json();
-          console.log("🌱 CULTIVOS TOTALES:", cultivosData.data?.length || 0);
-
-          console.log("💡 RECOMENDACIONES:");
-          if ((disponiblesData.data?.length || 0) === 0) {
-            console.log(
-              '  - Crea lotes (se crean automáticamente en estado "En preparación")'
-            );
-            console.log(
-              '  - Los lotes pasan a "Parcialmente ocupado" cuando tienen algunos cultivos'
-            );
-            console.log(
-              '  - Los lotes pasan a "En cultivación" cuando están completamente ocupados'
-            );
-            console.log(
-              '  - Los lotes pasan a "En mantenimiento" cuando necesitan mantenimiento'
-            );
-          }
-          if ((lotesData.data?.length || 0) > 0) {
-            console.log(
-              '  - Asegúrate de que los lotes tengan sublotes en estado "Disponible"'
-            );
-            console.log(
-              '  - Los sublotes pasan a "En cultivación" cuando se les asigna un cultivo'
-            );
-          }
-        } catch (error) {
-          console.error("❌ Error en diagnóstico:", error);
-        }
-      };
-
-      console.log(
-        "🔧 Función de diagnóstico disponible: window.diagnosticarSistemaCultivos()"
-      );
-    }
-  }, []);
 
   // Cargar Lotes Disponibles al iniciar
   useEffect(() => {
@@ -227,7 +141,6 @@ export default function CultivoForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log("Archivo seleccionado:", file);
       toast.info(`Archivo "${file.name}" seleccionado.`);
       // Guarda el objeto File completo en el estado para subirlo después
       setImageFile(file);
@@ -264,9 +177,7 @@ export default function CultivoForm({
     setIsLoadingSublotes(true);
     setSublotes([]); // Limpiar anteriores
     try {
-      console.log(`Cargando sublotes disponibles para lote ${loteId}...`);
       const response = await obtenerSublotesDisponiblesPorLote(loteId);
-      console.log("Respuesta de sublotes disponibles:", response);
 
       // Manejar diferentes estructuras de respuesta posibles
       let sublotesData: Sublote[] = [];
@@ -289,20 +200,12 @@ export default function CultivoForm({
         sublotesData = [];
       }
 
-      console.log(
-        `Sublotes disponibles encontrados para lote ${loteId}:`,
-        sublotesData.length
-      );
       setSublotes(sublotesData);
       setTieneSublotes(sublotesData.length > 0);
 
       if (sublotesData.length === 0) {
-        console.warn(
-          `No se encontraron sublotes disponibles en el lote ${loteId}. Solo se mostrarán sublotes en estado 'Disponible'`
-        );
       }
     } catch (error) {
-      console.error("Error cargando sublotes:", error);
       setSublotes([]); // En caso de error, asegurar array vacío
       setTieneSublotes(false);
     } finally {
@@ -405,17 +308,12 @@ export default function CultivoForm({
       payload.img = formData.img;
     }
 
-    console.log("Payload a enviar:", payload);
-    console.log("Image file:", imageFile);
-
     onSave({
       ...payload,
       imageFile,
       newTipoCultivoName: showNewTipoInput ? newTipoCultivoName : null,
     });
   };
-
-  // Componente de diagnóstico para mostrar información del sistema
 
   return (
     <div className="flex flex-col gap-4 p-4">
