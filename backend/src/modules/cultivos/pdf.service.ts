@@ -94,7 +94,7 @@ export class PdfService {
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada ?? 0,
       unidad: am.material.medidasDeContenido || 'unidades',
-      costo: am.material.precio ? (am.cantidadUsada ?? 0) * am.material.precio : 0
+      costo: Number(am.costo) || 0
     })) || []);
 
     // Procesar producciones y ventas
@@ -141,15 +141,15 @@ export class PdfService {
     const ingresos = data.producciones.reduce((sum, p) => sum + parseFloat(p.totalVentas), 0);
 
     // Calcular costos de mano de obra
-    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((act.horas || 0) * (act.tarifaHora || 0)), 0);
+    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((Number(act.horas) || 0) * (Number(act.tarifaHora) || 0)), 0);
 
     // Calcular costos de materiales
     const materialesCost = data.fullActividades.reduce((sum, act) => {
-      return sum + (act.actividadMaterial?.reduce((subSum, am) => subSum + (am.cantidadUsada * (am.material?.precio || 0)), 0) || 0);
+      return sum + (act.actividadMaterial?.reduce((subSum, am) => subSum + (Number(am.costo) || 0), 0) || 0);
     }, 0);
 
     // Calcular costos de gastos directos
-    const directGastosCost = data.gastos.reduce((sum, g) => sum + (g.monto || 0), 0);
+    const directGastosCost = data.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
 
     // Calcular costos totales
     const costos = laborCost + materialesCost + directGastosCost;
@@ -171,7 +171,8 @@ export class PdfService {
       if (!gastosPorCategoriaMap.has(categoria)) {
         gastosPorCategoriaMap.set(categoria, 0);
       }
-      gastosPorCategoriaMap.set(categoria, gastosPorCategoriaMap.get(categoria) + recurso.costo);
+      const current = gastosPorCategoriaMap.get(categoria);
+      gastosPorCategoriaMap.set(categoria, current + recurso.costo);
     });
 
     // Agregar gastos directos
@@ -180,11 +181,13 @@ export class PdfService {
     }
 
     const totalGastos = costos;
-    const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => ({
-      categoria,
-      total: total.toFixed(2),
-      porcentaje: totalGastos > 0 ? ((total / totalGastos) * 100).toFixed(1) : '0'
-    }));
+    const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => {
+      return {
+        categoria,
+        total: total.toFixed(2),
+        porcentaje: totalGastos > 0 ? ((total / totalGastos) * 100).toFixed(1) : '0'
+      };
+    });
 
     return {
       costos,
@@ -265,21 +268,24 @@ export class PdfService {
         <td>${act.fecha}</td>
         <td>${act.titulo}</td>
         <td>${act.estado}</td>
-        <td>${act.materiales.map(m => `${m.nombre} (${m.cantidad} ${m.unidad})`).join(', ')}</td>
+        <td>${act.materiales.map(m => `${m.nombre} (${Number(m.cantidad).toFixed(0)} ${m.unidad})`).join(', ')}</td>
       </tr>
     `).join('');
     html = html.replace('{{#each actividades}}{{/each}}', actividadesHtml);
 
     // Para recursos
-    const recursosHtml = data.recursos.map(rec => `
+    const recursosHtml = data.recursos.map(rec => {
+      const cantidadNum = parseFloat(rec.cantidad);
+      const formattedCantidad = Number.isInteger(cantidadNum) ? cantidadNum.toString() : cantidadNum.toFixed(2);
+      return `
       <tr>
         <td>${rec.fecha}</td>
         <td>${rec.descripcion}</td>
-        <td>${rec.cantidad}</td>
-        <td>${rec.unidad}</td>
+        <td>${formattedCantidad} ${rec.unidad}</td>
         <td>${Number(rec.costo).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
     html = html.replace('{{#each recursos}}{{/each}}', recursosHtml);
 
     // Para producciones
