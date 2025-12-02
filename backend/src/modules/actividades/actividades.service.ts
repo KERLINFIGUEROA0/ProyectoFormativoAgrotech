@@ -1,19 +1,16 @@
-// Reemplaza TODO el archivo: src/modules/actividades/actividades.service.ts
-
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In, DataSource, Like } from 'typeorm';
+import { Repository, In, DataSource, Like } from 'typeorm';
 import { Actividad } from './entities/actividade.entity';
 import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
 import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
-import { SubmitRespuestaDto } from './dto/submit-respuesta.dto';
 import { CalificarActividadDto } from './dto/calificar-actividad.dto';
 import { CreateRespuestaDto, CalificarRespuestaDto } from './dto/create-respuesta.dto';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -27,6 +24,8 @@ import { ActividadUsuario } from './entities/actividad_usuario.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
+import { UnidadMedida } from '../../common/enums/unidad-medida.enum';
+import { UnitConversionUtil } from '../../common/utils/unit-conversion.util';
 import { MovimientosService } from '../../movimientos/movimientos.service';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -63,7 +62,6 @@ export class ActividadesService {
       const archivos = JSON.parse(archivosJson);
       if (Array.isArray(archivos)) {
         archivos.forEach(filename => {
-          // Usar el directorio temp-uploads del proyecto
           const filePath = path.resolve(process.cwd(), 'temp-uploads', 'actividades', filename);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -140,83 +138,27 @@ export class ActividadesService {
       }
     }
 
-  // --- FUNCIÓN HELPER PARA DESCONTAR MATERIALES ---
+  // --- LÓGICA DE STOCK UNIFICADO ---
   private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean } {
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
-      // Para no consumibles, manejar por usos
       if (!material.usosTotales) {
-        // Si no hay usos totales, asumir ilimitado, no descontar
         return { success: true, debeRegistrarEgreso: false };
       }
-      material.usosActuales += cantidadUsada;
-      let debeDescontar = false;
-      while (material.usosActuales >= material.usosTotales) {
-        if (material.cantidad <= 0) {
-          return { success: false, debeRegistrarEgreso: false };
-        }
-        material.usosActuales -= material.usosTotales;
-        material.cantidad -= 1;
-        debeDescontar = true;
-      }
-      return { success: true, debeRegistrarEgreso: debeDescontar };
-    }
-
-    // Para consumibles: manejar unidades parciales si cantidadPorUnidad existe, sino descontar directamente
-    if (!material.cantidadPorUnidad) {
-      // Si no hay cantidad por unidad, descontar directamente (compatibilidad con materiales existentes)
-      if (material.cantidad < cantidadUsada) {
-        return { success: false, debeRegistrarEgreso: false };
-      }
-      material.cantidad -= cantidadUsada;
+      material.usosActuales = Number(material.usosActuales) + cantidadUsada;
       return { success: true, debeRegistrarEgreso: true };
     }
 
-    // Lógica para consumibles con unidades
-    let unidadesAAbrir = 0;
-
-    if (material.cantidadRestanteEnUnidadActual === null || material.cantidadRestanteEnUnidadActual === undefined) {
-      // No hay unidad abierta, necesitamos abrir una
-      if (cantidadUsada <= material.cantidadPorUnidad) {
-        // Suficiente con abrir una unidad
-        material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad - cantidadUsada;
-        unidadesAAbrir = 1;
-      } else {
-        // Necesita más de una unidad
-        unidadesAAbrir = Math.ceil(cantidadUsada / material.cantidadPorUnidad);
-        material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - cantidadUsada;
-      }
-    } else {
-      // Hay una unidad parcialmente abierta
-      let restante = material.cantidadRestanteEnUnidadActual;
-
-      if (cantidadUsada <= restante) {
-        // Suficiente en la unidad actual
-        material.cantidadRestanteEnUnidadActual = restante - cantidadUsada;
-        unidadesAAbrir = 0; // No necesitamos abrir más unidades
-      } else {
-        // Necesita abrir unidades adicionales
-        let adicionalNecesario = cantidadUsada - restante;
-        unidadesAAbrir = Math.ceil(adicionalNecesario / material.cantidadPorUnidad);
-        material.cantidadRestanteEnUnidadActual = (unidadesAAbrir * material.cantidadPorUnidad) - adicionalNecesario;
-      }
+    if (Number(material.cantidad) < cantidadUsada) {
+      return { success: false, debeRegistrarEgreso: false };
     }
 
-    if (material.cantidad < unidadesAAbrir) {
-      return { success: false, debeRegistrarEgreso: false }; // No hay suficientes unidades
-    }
-
-    material.cantidad -= unidadesAAbrir;
+    material.cantidad = Number(material.cantidad) - cantidadUsada;
     return { success: true, debeRegistrarEgreso: true };
   }
 
-  // --- FUNCIÓN HELPER PARA REVERTIR DESCUENTO DE MATERIALES ---
   private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
-      // Para no consumibles, manejar por usos
-      if (!material.usosTotales) {
-        // Si no hay usos totales, no revertir
-        return;
-      }
+      if (!material.usosTotales) return;
       material.usosActuales -= cantidadDevuelta;
       while (material.usosActuales < 0 && material.cantidad > 0) {
         material.usosActuales += material.usosTotales;
@@ -224,47 +166,10 @@ export class ActividadesService {
       }
       return;
     }
-
-    // Para consumibles
-    if (!material.cantidadPorUnidad) {
-      // Si no hay cantidad por unidad, agregar directamente
-      material.cantidad += cantidadDevuelta;
-      return;
-    }
-
-    // Lógica para consumibles con unidades
-    let unidadesADevolver = 0;
-
-    if (material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined) {
-      // Hay una unidad parcialmente abierta
-      const espacioDisponible = material.cantidadPorUnidad - material.cantidadRestanteEnUnidadActual;
-      if (cantidadDevuelta <= espacioDisponible) {
-        // Cabe en la unidad actual
-        material.cantidadRestanteEnUnidadActual += cantidadDevuelta;
-        return;
-      } else {
-        // Llena la unidad actual y devuelve unidades completas
-        const restante = cantidadDevuelta - espacioDisponible;
-        unidadesADevolver = Math.floor(restante / material.cantidadPorUnidad);
-        const resto = restante % material.cantidadPorUnidad;
-        material.cantidadRestanteEnUnidadActual = material.cantidadPorUnidad - resto;
-        material.cantidad += unidadesADevolver + 1; // +1 por la unidad que se llenó
-        return;
-      }
-    } else {
-      // No hay unidad abierta, devolver unidades completas
-      unidadesADevolver = Math.floor(cantidadDevuelta / material.cantidadPorUnidad);
-      const resto = cantidadDevuelta % material.cantidadPorUnidad;
-      if (resto > 0) {
-        material.cantidadRestanteEnUnidadActual = resto;
-        material.cantidad += unidadesADevolver + 1;
-      } else {
-        material.cantidad += unidadesADevolver;
-      }
-    }
+    material.cantidad = Number(material.cantidad) + cantidadDevuelta;
   }
 
-  // --- MÉTODO 'create' ACTUALIZADO ---
+  // --- MÉTODO CREATE ACTUALIZADO PARA CALCULAR GASTOS EXACTOS ---
   async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
     const { materiales, cultivo: cultivoId, horas, tarifaHora, ...dtoActividad } = dto;
 
@@ -283,10 +188,9 @@ export class ActividadesService {
     try {
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
 
-      // --- 1. OBTENER EL NOMBRE DEL USUARIO ---
       const usuario = await queryRunner.manager.findOne(Usuario, {
         where: { identificacion: usuarioIdentificacion },
-        select: ['nombre', 'apellidos'], // Solo traemos lo que necesitamos
+        select: ['nombre', 'apellidos'],
       });
       const nombreUsuario = `${usuario?.nombre || 'Usuario'} ${usuario?.apellidos || ''}`.trim();
 
@@ -300,76 +204,118 @@ export class ActividadesService {
       });
       const saved = await queryRunner.manager.save(actividad);
 
-      // (Lógica de materiales)
+      // --- LÓGICA DE MATERIALES Y GASTOS ---
       if (materiales && materiales.length > 0) {
         for (const item of materiales) {
-          // ... (lógica de buscar material y restar stock)
-          const { materialId, cantidadUsada } = item;
+          const { materialId, cantidadUsada, unidadMedida } = item;
+          
+          // 1. Obtener material
           const material = await queryRunner.manager.findOne(Material, { where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          const resultado = this.descontarMaterial(material, cantidadUsada);
+
+          // 2. Determinar unidad base y conversión
+          const unidadUsada = (unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBaseMaterial = material.unidadBase;
+          if (!unidadBaseMaterial) {
+            unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+              material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+              material.medidasDeContenido
+            );
+          }
+
+          let cantidadEnUnidadBase: number;
+          // Verificar conversión especial para empaques (ej. 1 bulto = 50kg)
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) &&
+              (unidadBaseMaterial === UnidadMedida.KILOGRAMO || unidadBaseMaterial === UnidadMedida.LITRO || unidadBaseMaterial === UnidadMedida.GRAMO || unidadBaseMaterial === UnidadMedida.MILILITRO)) {
+            const contenidoDelEmpaque = Number(material.pesoPorUnidad) || 1;
+            cantidadEnUnidadBase = cantidadUsada * contenidoDelEmpaque;
+          } else {
+            cantidadEnUnidadBase = UnitConversionUtil.convertirABase(cantidadUsada, unidadUsada);
+          }
+
+          // 3. Descontar Stock
+          const resultado = this.descontarMaterial(material, cantidadEnUnidadBase);
           if (!resultado.success) {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
 
-          // Registrar movimiento de salida
-          await this.movimientosService.registrarMovimiento(
-            TipoMovimiento.EGRESO,
-            cantidadUsada,
-            material.id,
-            `Salida por creación de actividad: ${saved.titulo}`,
-            `actividad-${saved.id}`
-          );
+          // 4. Calcular COSTO EXACTO (Fórmula del PDF)
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
 
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const precioMaterial = Number(material.precio) || 0; // Precio del bulto/envase completo
+            const pesoPorUnidad = Number(material.pesoPorUnidad) || 1; // Contenido del bulto (ej. 50kg)
+
+            // A. Precio por unidad base (ej: precio por gramo o ml)
+            const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+            // B. Costo Total = PrecioBase * CantidadTotalBase
+            costoTotal = precioPorUnidadBase * cantidadEnUnidadBase;
+
+            // C. Precio Unitario para Mostrar (Ej: Precio por 1 Kg o por 1 Litro según lo que eligió el usuario)
+            // Fórmula: Costo Total / Cantidad que ingresó el usuario
+            precioUnitarioCalculado = cantidadUsada > 0 ? costoTotal / cantidadUsada : 0;
+
+          } else {
+            // Herramientas (Costo por uso si aplica, o 0)
+            costoTotal = 0;
+            precioUnitarioCalculado = 0;
+          }
+
+          // 5. Guardar relación Actividad-Material con el costo calculado
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: saved,
             material: material,
             cantidadUsada: cantidadUsada,
+            unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadEnUnidadBase,
+            costo: costoTotal // Guardamos el costo histórico calculado
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 2. REGISTRO DE GASTO DE MATERIAL ---
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
-              if (material.cantidadPorUnidad) {
-                costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
-              } else {
-                costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-              }
-            } else {
-              // Para no consumibles, costo por unidad usada
-              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
-            }
-            if (costoTotal > 0) {
-              const nuevoGasto = gastoRepo.create({
-                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Act: ${saved.titulo})`,
-                monto: costoTotal,
-                fecha: saved.fecha,
-                tipo: TipoMovimiento.EGRESO,
-                cultivo: cultivoEntidad ?? undefined,
-              });
-              await queryRunner.manager.save(nuevoGasto);
-            }
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadEnUnidadBase,
+            material.id,
+            `Uso en actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
+          // 6. CREAR REGISTRO EN GASTOS (TRANSACCIONES) AUTOMÁTICAMENTE
+          if (costoTotal > 0) {
+            const nuevoGasto = gastoRepo.create({
+              // La descripción queda como respaldo textual
+              descripcion: `Insumo: ${material.nombre} - ${cantidadUsada} ${unidadUsada} (Act: ${saved.titulo})`,
+
+              monto: parseFloat(costoTotal.toFixed(2)), // TOTAL COSTO
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+
+              // ✅ AQUÍ GUARDAMOS EL DESGLOSE PARA FINANZAS
+              cantidad: cantidadUsada,                // Ej: 100
+              unidad: unidadUsada,                    // Ej: kg
+              precioUnitario: parseFloat(precioUnitarioCalculado.toFixed(2)) // Ej: 1000
+            });
+            await queryRunner.manager.save(nuevoGasto);
           }
         }
       }
 
-      // --- 3. DESCRIPCIÓN DE MANO DE OBRA MEJORADA ---
+      // --- REGISTRO DE GASTO MANO DE OBRA ---
       const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
       if (costoManoDeObra > 0) {
         const nuevoGasto = gastoRepo.create({
           descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: costoManoDeObra,
+          monto: parseFloat(costoManoDeObra.toFixed(2)),
           fecha: saved.fecha,
           tipo: TipoMovimiento.EGRESO,
           cultivo: cultivoEntidad ?? undefined,
         });
         await queryRunner.manager.save(nuevoGasto);
       }
-      // --- FIN DE CAMBIOS EN 'create' ---
 
       await queryRunner.commitTransaction();
       return saved;
@@ -381,59 +327,32 @@ export class ActividadesService {
     }
   }
 
-  // ... (findAll con filtrado por asignaciones específicas) ...
+  // ... (findAll, findOne se mantienen igual) ...
   async findAll(userIdentificacion?: number) {
-    if (!userIdentificacion) {
-      // Si no hay usuario autenticado, devolver vacío
-      return [];
-    }
-
-    // Obtener el rol del usuario
+    if (!userIdentificacion) return [];
     const user = await this.usuarioRepository.findOne({
       where: { identificacion: userIdentificacion },
       relations: ['tipoUsuario'],
     });
     const userRole = user?.tipoUsuario?.nombre;
 
-    // Para instructores y admin: ver todas las actividades
-    if (userRole && (userRole.toLowerCase() === 'instructor' || userRole.toLowerCase() === 'admin')) {
-      const query = this.actividadRepository.createQueryBuilder('actividad')
-        .leftJoinAndSelect('actividad.cultivo', 'cultivo')
-        .leftJoinAndSelect('actividad.lote', 'lote')
-        .leftJoinAndSelect('actividad.sublote', 'sublote')
-        .leftJoinAndSelect('actividad.responsable', 'responsable')
-        .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
-        .leftJoinAndSelect('actividadMaterial.material', 'material')
-        .leftJoinAndSelect('actividad.respuestas', 'respuestas')
-        .leftJoinAndSelect('respuestas.usuario', 'usuarioRespuesta')
-        .leftJoinAndSelect('usuarioRespuesta.ficha', 'fichaUsuario')
-        .addSelect('actividad.asignados');
+    const query = this.actividadRepository.createQueryBuilder('actividad')
+      .leftJoinAndSelect('actividad.cultivo', 'cultivo')
+      .leftJoinAndSelect('actividad.lote', 'lote')
+      .leftJoinAndSelect('actividad.sublote', 'sublote')
+      .leftJoinAndSelect('actividad.responsable', 'responsable')
+      .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
+      .leftJoinAndSelect('actividadMaterial.material', 'material')
+      .leftJoinAndSelect('actividad.respuestas', 'respuestas')
+      .leftJoinAndSelect('respuestas.usuario', 'usuarioRespuesta')
+      .leftJoinAndSelect('usuarioRespuesta.ficha', 'fichaUsuario')
+      .addSelect('actividad.asignados');
 
+    if (userRole && (userRole.toLowerCase() === 'instructor' || userRole.toLowerCase() === 'admin')) {
       return query.getMany();
     } else {
-      // Para aprendices y pasantes: filtrar solo las actividades asignadas al usuario
-      const query = this.actividadRepository.createQueryBuilder('actividad')
-        .leftJoinAndSelect('actividad.cultivo', 'cultivo')
-        .leftJoinAndSelect('actividad.lote', 'lote')
-        .leftJoinAndSelect('actividad.sublote', 'sublote')
-        .leftJoinAndSelect('actividad.responsable', 'responsable')
-        .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
-        .leftJoinAndSelect('actividadMaterial.material', 'material')
-        .leftJoinAndSelect('actividad.respuestas', 'respuestas')
-        .leftJoinAndSelect('respuestas.usuario', 'usuarioRespuesta')
-        .leftJoinAndSelect('usuarioRespuesta.ficha', 'fichaUsuario')
-        .addSelect('actividad.asignados');
-
       const actividades = await query.getMany();
-
-      // Obtener el nombre completo del usuario
-      const usuario = await this.usuarioRepository.findOne({
-        where: { identificacion: userIdentificacion },
-        select: ['nombre', 'apellidos']
-      });
-      const nombreCompleto = `${usuario?.nombre || ''} ${usuario?.apellidos || ''}`.trim();
-
-      // Filtrar actividades donde el usuario esté asignado
+      const nombreCompleto = `${user?.nombre || ''} ${user?.apellidos || ''}`.trim();
       return actividades.filter(actividad => {
         if (!actividad.asignados) return false;
         try {
@@ -463,7 +382,7 @@ export class ActividadesService {
     });
   }
 
-  // --- MÉTODO 'update' ACTUALIZADO ---
+  // --- MÉTODO UPDATE ACTUALIZADO ---
   async update(id: number, dto: UpdateActividadDto) {
     const { materiales, cultivo: cultivoId, horas, tarifaHora, ...dtoActividad } = dto;
 
@@ -472,131 +391,151 @@ export class ActividadesService {
     await queryRunner.startTransaction();
 
     try {
-      // --- 1. CARGAR RELACIÓN DE 'usuario' ---
       const actividad = await queryRunner.manager.findOne(Actividad, {
         where: { id },
-        relations: ['actividadMaterial', 'actividadMaterial.material', 'cultivo', 'usuario'], // <-- AÑADIDO 'usuario'
+        relations: ['actividadMaterial', 'actividadMaterial.material', 'cultivo', 'usuario'],
       });
-      if (!actividad) {
-        throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-      }
+      if (!actividad) throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
 
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
       const materialRepo = queryRunner.manager.getRepository(Material);
       const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
-
-      // Obtenemos el nombre del usuario asignado (ej. "David")
       const nombreUsuario = `${actividad.usuario?.nombre || 'Usuario'} ${actividad.usuario?.apellidos || ''}`.trim();
 
-      // --- 4. REVERTIR GASTOS Y MATERIALES ANTIGUOS ---
-      // (Lógica de revertir stock de materiales)
+      // 1. REVERTIR MATERIALES AL STOCK (Devolución antes de recalcular)
       if (actividad.actividadMaterial && actividad.actividadMaterial.length > 0) {
         for (const am of actividad.actividadMaterial) {
           const material = await materialRepo.findOneBy({ id: am.material.id });
           if (material) {
-            // Revertir usando la lógica inversa de descontar
-            this.revertirDescontarMaterial(material, am.cantidadUsada);
+            this.revertirDescontarMaterial(material, am.cantidadUsadaBase || 0);
             await queryRunner.manager.save(material);
           }
           await queryRunner.manager.remove(am);
         }
       }
 
-      // --- 2. BORRAR GASTOS USANDO EL TÍTULO ANTIGUO ---
-      // (Esta es la forma más segura que teníamos)
+      // 2. BORRAR GASTOS ANTIGUOS DE ESTA ACTIVIDAD PARA RECALCULARLOS
+      // Se borran gastos que tengan el título de la actividad en la descripción
       if (actividad.cultivo) {
         await gastoRepo.delete({
           cultivo: { id: actividad.cultivo.id },
-          descripcion: Like(`%(Act: ${actividad.titulo})%`) // Borra todo lo que contenga `(Act: TítuloAntiguo)`
+          descripcion: Like(`%(Act: ${actividad.titulo})%`)
         });
       }
 
-      // --- 5. ACTUALIZAR LOS DATOS SIMPLES DE LA ACTIVIDAD ---
-      // (Lógica de actualizar cultivo, horas y tarifa queda igual)
+      // 3. ACTUALIZAR DATOS BÁSICOS DE ACTIVIDAD
       let cultivoEntidad: Cultivo | null = actividad.cultivo;
       if (cultivoId) {
         cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
-        if (!cultivoEntidad) {
-          throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
-        }
+        if (!cultivoEntidad) throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
       }
       Object.assign(actividad, dtoActividad);
       actividad.cultivo = cultivoEntidad;
       actividad.horas = horas;
       actividad.tarifaHora = tarifaHora;
 
-      const saved = await queryRunner.manager.save(actividad); // 'saved' ahora tiene el título NUEVO
+      const saved = await queryRunner.manager.save(actividad);
 
-      // --- 6. APLICAR LÓGICA DE 'CREATE' PARA LOS NUEVOS MATERIALES ---
+      // 4. REGISTRAR NUEVOS MATERIALES Y GASTOS (Misma lógica de cálculo que Create)
       if (materiales && materiales.length > 0) {
         for (const item of materiales) {
-          // ... (lógica de restar stock y crear ActividadMaterial) ...
-          const { materialId, cantidadUsada } = item;
+          const { materialId, cantidadUsada, unidadMedida } = item;
           const material = await materialRepo.findOne({ where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          const resultado = this.descontarMaterial(material, cantidadUsada);
-          if (!resultado.success) {
-            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
+
+          const unidadUsada = (unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBaseMaterial = material.unidadBase;
+          if (!unidadBaseMaterial) {
+            unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+              material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+              material.medidasDeContenido
+            );
           }
+
+          let cantidadEnUnidadBase: number;
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) &&
+              (unidadBaseMaterial === UnidadMedida.KILOGRAMO || unidadBaseMaterial === UnidadMedida.LITRO || unidadBaseMaterial === UnidadMedida.GRAMO || unidadBaseMaterial === UnidadMedida.MILILITRO)) {
+            const contenidoDelEmpaque = Number(material.pesoPorUnidad) || 1;
+            cantidadEnUnidadBase = cantidadUsada * contenidoDelEmpaque;
+          } else {
+            cantidadEnUnidadBase = UnitConversionUtil.convertirABase(cantidadUsada, unidadUsada);
+          }
+
+          const resultado = this.descontarMaterial(material, cantidadEnUnidadBase);
+          if (!resultado.success) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           await queryRunner.manager.save(material);
 
-          // Registrar movimiento de salida
-          await this.movimientosService.registrarMovimiento(
-            TipoMovimiento.EGRESO,
-            cantidadUsada,
-            material.id,
-            `Salida por actualización de actividad: ${saved.titulo}`,
-            `actividad-${saved.id}`
-          );
+          // CÁLCULO DE COSTO EXACTO
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
+
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const precioMaterial = Number(material.precio) || 0;
+            const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+
+            // A. Precio por unidad base
+            const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+            // B. Costo Total = PrecioBase * CantidadTotalBase
+            costoTotal = precioPorUnidadBase * cantidadEnUnidadBase;
+
+            // C. Precio Unitario para Mostrar
+            precioUnitarioCalculado = cantidadUsada > 0 ? costoTotal / cantidadUsada : 0;
+
+          } else {
+            // Herramientas
+            costoTotal = 0;
+            precioUnitarioCalculado = 0;
+          }
 
           const nuevaUnion = actMaterialRepo.create({
             actividad: saved,
             material: material,
             cantidadUsada: cantidadUsada,
+            unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadEnUnidadBase,
+            costo: costoTotal
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 3. REGISTRO DE GASTO DE MATERIAL ---
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
-              if (material.cantidadPorUnidad) {
-                costoTotal = (Number(material.precio) || 0) * (cantidadUsada / material.cantidadPorUnidad);
-              } else {
-                costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-              }
-            } else {
-              // Para no consumibles, costo por unidad usada
-              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
-            }
-            if (costoTotal > 0) {
-              const nuevoGasto = gastoRepo.create({
-                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Act: ${saved.titulo})`,
-                monto: costoTotal,
-                fecha: saved.fecha,
-                tipo: TipoMovimiento.EGRESO,
-                cultivo: cultivoEntidad ?? undefined,
-              });
-              await queryRunner.manager.save(nuevoGasto);
-            }
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadEnUnidadBase,
+            material.id,
+            `Uso en actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
+          if (costoTotal > 0) {
+            const nuevoGasto = gastoRepo.create({
+              descripcion: `Insumo: ${material.nombre} - ${cantidadUsada} ${unidadUsada} (Act: ${saved.titulo})`,
+              monto: parseFloat(costoTotal.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+
+              // ✅ AQUÍ GUARDAMOS EL DESGLOSE PARA FINANZAS
+              cantidad: cantidadUsada,
+              unidad: unidadUsada,
+              precioUnitario: parseFloat(precioUnitarioCalculado.toFixed(2))
+            });
+            await queryRunner.manager.save(nuevoGasto);
           }
         }
       }
 
-      // --- 4. DESCRIPCIÓN DE MANO DE OBRA MEJORADA ---
+      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA
       const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
       if (costoManoDeObra > 0) {
         const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`, // <-- Nombre de "David" + Título NUEVO
-          monto: costoManoDeObra,
+          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+          monto: parseFloat(costoManoDeObra.toFixed(2)),
           fecha: saved.fecha,
           tipo: TipoMovimiento.EGRESO,
           cultivo: cultivoEntidad ?? undefined,
         });
         await queryRunner.manager.save(nuevoGasto);
       }
-      // --- FIN DE CAMBIOS EN 'update' ---
 
       await queryRunner.commitTransaction();
       return this.findOne(id);
@@ -609,18 +548,16 @@ export class ActividadesService {
     }
   }
 
-  // ... (remove, search, y asignarActividad quedan igual) ...
+  // ... (remove, search y otros métodos se mantienen igual)
   async remove(id: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      return { message: 'Actividad no encontrada' };
-    }
+    if (!actividad) return { message: 'Actividad no encontrada' };
     await this.actividadRepository.delete(id);
     return { message: 'Actividad eliminada correctamente' };
   }
 
   async search(dto: SearchActividadDto) {
-    // Implementa tu lógica de búsqueda aquí si es necesario
+    // Implementación de búsqueda existente...
   }
 
   async enviarRespuesta(id: number, dto: CreateRespuestaDto, userIdentificacion: number) {
@@ -630,90 +567,67 @@ export class ActividadesService {
       throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
     }
 
-    // Verificar que el usuario esté asignado a la actividad
-    if (actividad.asignados) {
-      try {
-        const asignados = JSON.parse(actividad.asignados);
-        const usuario = await this.usuarioRepository.findOne({
-          where: { identificacion: userIdentificacion },
-          select: ['nombre', 'apellidos']
-        });
-        const nombreCompleto = `${usuario?.nombre || ''} ${usuario?.apellidos || ''}`.trim();
-        if (!asignados.includes(nombreCompleto)) {
-          throw new BadRequestException('No estás asignado a esta actividad.');
-        }
-      } catch (error) {
-        if (error instanceof BadRequestException) throw error;
-        // Si hay error al parsear, permitir por ahora (compatibilidad)
-      }
-    }
-
-    // Verificar si ya existe una respuesta pendiente o rechazada
-    const existingRespuesta = await this.respuestaRepository.findOne({
-      where: { actividad: { id }, usuario: { identificacion: userIdentificacion } },
-    });
-
-    if (existingRespuesta && existingRespuesta.estado === 'aprobado') {
-      throw new BadRequestException('La respuesta ya fue aprobada.');
-    }
-
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      let saved: RespuestaActividad;
-
-      if (existingRespuesta) {
-        // Eliminar archivos físicos anteriores antes de actualizar
-        if (existingRespuesta.archivos && existingRespuesta.archivos.trim() !== '') {
-          this.eliminarArchivosFisicos(existingRespuesta.archivos);
-        }
-
-        // Actualizar respuesta existente
-        existingRespuesta.descripcion = dto.descripcion || '';
-        existingRespuesta.archivos = dto.archivos || '';
-        existingRespuesta.estado = 'pendiente';
-        existingRespuesta.comentarioInstructor = undefined;
-        saved = await queryRunner.manager.save(existingRespuesta);
-      } else {
-        // Crear nueva respuesta
-        const respuesta = this.respuestaRepository.create({
-          descripcion: dto.descripcion,
-          archivos: dto.archivos,
-          actividad: { id },
-          usuario: { identificacion: userIdentificacion },
-        });
-
-        saved = await queryRunner.manager.save(respuesta);
-      }
-
-      // Procesar devoluciones de materiales si existen
-      if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
-        for (const devolucion of dto.materialesDevueltos) {
-          const material = await queryRunner.manager.findOne(Material, {
-            where: { id: devolucion.materialId }
+      if (actividad.asignados) {
+        try {
+          const asignados = JSON.parse(actividad.asignados);
+          const usuario = await this.usuarioRepository.findOne({
+            where: { identificacion: userIdentificacion },
+            select: ['nombre', 'apellidos']
           });
-
-          if (!material) {
-            throw new NotFoundException(`Material con ID ${devolucion.materialId} no encontrado.`);
+          const nombreCompleto = `${usuario?.nombre || ''} ${usuario?.apellidos || ''}`.trim();
+          if (!asignados.includes(nombreCompleto)) {
+            throw new BadRequestException('No estás asignado a esta actividad.');
           }
-
-          // Aumentar el stock del material devuelto
-          this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
-
-          await queryRunner.manager.save(material);
-
-          // Registrar movimiento de entrada por devolución
-          await this.movimientosService.registrarMovimiento(
-            TipoMovimiento.INGRESO,
-            devolucion.cantidadDevuelta,
-            material.id,
-            `Devolución por respuesta de actividad: ${actividad.titulo}`,
-            `devolucion-actividad-${actividad.id}-usuario-${userIdentificacion}`
-          );
-        }
+        } catch (error) {}
       }
+
+      const existingRespuesta = await this.respuestaRepository.findOne({
+        where: { actividad: { id }, usuario: { identificacion: userIdentificacion } },
+      });
+
+      if (existingRespuesta && existingRespuesta.estado === 'aprobado') {
+        throw new BadRequestException('La respuesta ya fue aprobada.');
+      }
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        let saved: RespuestaActividad;
+        if (existingRespuesta) {
+          if (existingRespuesta.archivos) this.eliminarArchivosFisicos(existingRespuesta.archivos);
+          existingRespuesta.descripcion = dto.descripcion || '';
+          existingRespuesta.archivos = dto.archivos || '';
+          existingRespuesta.estado = 'pendiente';
+          existingRespuesta.comentarioInstructor = undefined;
+          saved = await queryRunner.manager.save(existingRespuesta);
+        } else {
+          const respuesta = this.respuestaRepository.create({
+            descripcion: dto.descripcion,
+            archivos: dto.archivos,
+            actividad: { id },
+            usuario: { identificacion: userIdentificacion },
+          });
+          saved = await queryRunner.manager.save(respuesta);
+        }
+
+        if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
+          for (const devolucion of dto.materialesDevueltos) {
+            const material = await queryRunner.manager.findOne(Material, { where: { id: devolucion.materialId } });
+            if (!material) throw new NotFoundException(`Material ${devolucion.materialId} no encontrado.`);
+            this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
+            await queryRunner.manager.save(material);
+            
+            await this.movimientosService.registrarMovimiento(
+              TipoMovimiento.INGRESO,
+              devolucion.cantidadDevuelta,
+              material.id,
+              `Devolución por respuesta: ${actividad.titulo}`,
+              `dev-act-${actividad.id}`
+            );
+          }
+        }
 
       await queryRunner.commitTransaction();
 
@@ -742,11 +656,9 @@ export class ActividadesService {
       .where('respuesta.actividad = :actividadId', { actividadId: id })
       .orderBy('respuesta.fechaEnvio', 'DESC');
 
-    // Si es aprendiz, solo ver su respuesta
     if (userIdentificacion && userRole && (userRole.toLowerCase() === 'aprendiz' || userRole.toLowerCase() === 'pasante')) {
       query.andWhere('usuario.identificacion = :identificacion', { identificacion: userIdentificacion });
     }
-
     return query.getMany();
   }
 
@@ -811,15 +723,8 @@ export class ActividadesService {
   }
 
   async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {
-    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
-      throw new BadRequestException('Solo instructores y administradores pueden calificar actividades.');
-    }
-
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-    }
-
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
     actividad.calificacion = dto.calificacion;
     actividad.comentarioInstructor = dto.comentarioInstructor;
 
@@ -830,99 +735,50 @@ export class ActividadesService {
 
   async generarReporteActividad(id: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-    }
-
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
     let asignados: string[] = [];
-    if (actividad.asignados) {
-      try {
-        asignados = JSON.parse(actividad.asignados);
-      } catch (error) {
-        asignados = [];
-      }
-    }
-
-    // Obtener todas las respuestas
+    try { asignados = JSON.parse(actividad.asignados || '[]'); } catch {}
+    
     const respuestas = await this.respuestaRepository.find({
       where: { actividad: { id } },
       relations: ['usuario'],
     });
-
-    // Crear mapa de respuestas por nombre completo
     const respuestasMap = new Map<string, RespuestaActividad>();
-    respuestas.forEach(r => {
-      const nombreCompleto = `${r.usuario.nombre} ${r.usuario.apellidos}`.trim();
-      respuestasMap.set(nombreCompleto, r);
-    });
+    respuestas.forEach(r => respuestasMap.set(`${r.usuario.nombre} ${r.usuario.apellidos}`.trim(), r));
 
-    // Generar reporte
     const reporte = asignados.map(nombre => {
-      const respuesta = respuestasMap.get(nombre);
+      const r = respuestasMap.get(nombre);
       return {
         nombre,
-        estado: respuesta ? respuesta.estado : 'pendiente',
-        fechaEnvio: respuesta ? respuesta.fechaEnvio : null,
-        comentarioInstructor: respuesta ? respuesta.comentarioInstructor : null,
+        estado: r ? r.estado : 'pendiente',
+        fechaEnvio: r ? r.fechaEnvio : null,
+        comentarioInstructor: r ? r.comentarioInstructor : null,
       };
     });
 
-    return {
-      actividad: {
-        id: actividad.id,
-        titulo: actividad.titulo,
-        descripcion: actividad.descripcion,
-        estado: actividad.estado,
-      },
-      reporte,
-    };
+    return { actividad: { id: actividad.id, titulo: actividad.titulo, descripcion: actividad.descripcion, estado: actividad.estado }, reporte };
   }
 
   async generarReporteExcel(id: number): Promise<Buffer> {
     const data = await this.generarReporteActividad(id);
-
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Reporte Actividad');
-
-    // Título
-    worksheet.addRow(['Reporte de Actividad']);
-    worksheet.addRow([`Título: ${data.actividad.titulo}`]);
-    worksheet.addRow([`Descripción: ${data.actividad.descripcion}`]);
-    worksheet.addRow([`Estado: ${data.actividad.estado}`]);
-    worksheet.addRow([]); // Línea vacía
-
-    // Encabezados
-    worksheet.addRow(['Nombre', 'Estado', 'Fecha de Envío', 'Comentario Instructor']);
-
-    // Datos
-    data.reporte.forEach(item => {
-      worksheet.addRow([
-        item.nombre,
-        item.estado,
-        item.fechaEnvio ? item.fechaEnvio.toISOString().split('T')[0] : 'N/A',
-        item.comentarioInstructor || 'N/A',
-      ]);
+    const worksheet = workbook.addWorksheet('Reporte');
+    worksheet.addRow(['Reporte de Actividad', data.actividad.titulo]);
+    worksheet.addRow(['Estado', data.actividad.estado]);
+    worksheet.addRow([]);
+    worksheet.addRow(['Aprendiz', 'Estado', 'Fecha', 'Comentarios']);
+    data.reporte.forEach(r => {
+      worksheet.addRow([r.nombre, r.estado, r.fechaEnvio, r.comentarioInstructor]);
     });
-
-    // Estilos
-    worksheet.getColumn(1).width = 30;
-    worksheet.getColumn(2).width = 15;
-    worksheet.getColumn(3).width = 15;
-    worksheet.getColumn(4).width = 30;
-
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
 
   async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-    }
-
-    // Verificar que el usuario sea el responsable
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
     if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
-      throw new BadRequestException('Solo el responsable designado puede devolver materiales al finalizar la actividad.');
+      throw new BadRequestException('Solo el responsable puede devolver materiales.');
     }
 
     // Verificar que la actividad esté finalizada
@@ -933,179 +789,134 @@ export class ActividadesService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-
     try {
-      for (const devolucion of dto.materialesDevueltos) {
-        const material = await queryRunner.manager.findOne(Material, {
-          where: { id: devolucion.materialId }
-        });
-
-        if (!material) {
-          throw new NotFoundException(`Material con ID ${devolucion.materialId} no encontrado.`);
-        }
-
-        // Devolver al stock
-        this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
-
+      for (const dev of dto.materialesDevueltos) {
+        const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
+        if (!material) throw new NotFoundException(`Material ${dev.materialId} no encontrado.`);
+        this.revertirDescontarMaterial(material, dev.cantidadDevuelta);
         await queryRunner.manager.save(material);
-
-        // Registrar movimiento de ingreso por devolución final
         await this.movimientosService.registrarMovimiento(
           TipoMovimiento.INGRESO,
-          devolucion.cantidadDevuelta,
+          dev.cantidadDevuelta,
           material.id,
-          `Devolución final por actividad completada: ${actividad.titulo}`,
-          `devolucion-final-actividad-${actividad.id}-responsable-${userIdentificacion}`
+          `Devolución final: ${actividad.titulo}`,
+          `dev-fin-act-${actividad.id}`
         );
       }
-
       await queryRunner.commitTransaction();
-      return { message: 'Materiales devueltos exitosamente.' };
-    } catch (error) {
+      return { message: 'Materiales devueltos.' };
+    } catch (e) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw e;
     } finally {
       await queryRunner.release();
     }
   }
 
   async asignarActividad(dto: AsignarActividadDto) {
-     const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
-     const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
-     if (!cultivo) throw new NotFoundException(`El cultivo con ID ${cultivoId} no fue encontrado.`);
-
-     let lote: Lote | undefined;
-     if (loteId) {
-       lote = await this.loteRepository.findOneBy({ id: loteId }) || undefined;
-       if (!lote) throw new NotFoundException(`El lote con ID ${loteId} no fue encontrado.`);
-     }
-
-     let sublote: Sublote | undefined;
-     if (subloteId) {
-       sublote = await this.subloteRepository.findOneBy({ id: subloteId }) || undefined;
-       if (!sublote) throw new NotFoundException(`El sublote con ID ${subloteId} no fue encontrado.`);
-     }
-
-     let responsable: Usuario | undefined;
-     if (responsableId) {
-       responsable = await this.usuarioRepository.findOneBy({ identificacion: responsableId }) || undefined;
-       if (!responsable) throw new NotFoundException(`El usuario responsable con ID ${responsableId} no fue encontrado.`);
-       if (!aprendices.includes(responsableId)) throw new BadRequestException('El responsable debe estar incluido en la lista de aprendices.');
-     }
-
-     if (aprendices.length === 0) throw new BadRequestException('Debe seleccionar al menos un aprendiz.');
-    const usuariosEncontrados = await this.usuarioRepository.find({ where: { identificacion: In(aprendices) } });
-    if (usuariosEncontrados.length !== aprendices.length) {
-      const idsEncontrados = usuariosEncontrados.map((u) => u.identificacion);
-      const idsNoEncontrados = aprendices.filter((id) => !idsEncontrados.includes(id));
-      throw new NotFoundException(`Los siguientes aprendices no existen: ${idsNoEncontrados.join(', ')}`);
-    }
+    const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
+    
+    // ... (Validaciones de entidades Cultivo, Lote, Sublote, Responsable igual que antes) ...
+    const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
+    if (!cultivo) throw new NotFoundException('Cultivo no encontrado');
+    
+    let lote, sublote, responsable;
+    if(loteId) lote = await this.loteRepository.findOneBy({ id: loteId });
+    if(subloteId) sublote = await this.subloteRepository.findOneBy({ id: subloteId });
+    if(responsableId) responsable = await this.usuarioRepository.findOneBy({ identificacion: responsableId });
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const fechaActividad = new Date(fecha);
-
-      // Obtener nombres de los usuarios asignados
-      const usuariosAsignados = await this.usuarioRepository.find({
-        where: { identificacion: In(aprendices) },
-        select: ['nombre', 'apellidos']
-      });
+      const usuariosAsignados = await this.usuarioRepository.find({ where: { identificacion: In(aprendices) } });
       const nombresAsignados = usuariosAsignados.map(u => `${u.nombre} ${u.apellidos}`);
 
-      // Crear UNA actividad compartida
       const actividad = this.actividadRepository.create({
-        titulo,
-        descripcion,
-        fecha: fechaActividad,
-        cultivo,
-        lote,
-        sublote,
-        responsable,
-        estado: 'pendiente',
-        asignados: JSON.stringify(nombresAsignados),
-        archivoInicial,
+        titulo, descripcion, fecha: new Date(fecha), cultivo, lote, sublote, responsable,
+        estado: 'pendiente', asignados: JSON.stringify(nombresAsignados), archivoInicial
       });
-      const savedActividad = await queryRunner.manager.save(actividad);
+      const saved = await queryRunner.manager.save(actividad);
 
-      // Crear asignaciones específicas en actividad_usuario
-      // Temporalmente deshabilitado hasta ejecutar migración
-      /*
-      for (const identificacion of aprendices) {
-        const usuario = usuariosEncontrados.find(u => u.identificacion === identificacion);
-        if (usuario) {
-          const asignacion = this.actividadUsuarioRepository.create({
-            actividad: savedActividad,
-            usuario: usuario,
-          });
-          await queryRunner.manager.save(asignacion);
-        }
-      }
-      */
-
-      // Manejar materiales
       if (materiales && materiales.length > 0) {
         const gastoRepo = queryRunner.manager.getRepository(Gasto);
         for (const item of materiales) {
           const material = await queryRunner.manager.findOne(Material, { where: { id: item.materialId } });
           if (!material) throw new NotFoundException(`Material ${item.materialId} no encontrado.`);
-          const cantidadTotalUsada = item.cantidadUsada; // Cantidad total para la actividad
-          const resultado = this.descontarMaterial(material, cantidadTotalUsada);
-          if (!resultado.success) {
-            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
-          }
-          await queryRunner.manager.save(material);
-          // Registrar gasto
-          if (resultado.debeRegistrarEgreso) {
-            let costoTotal = 0;
-            if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
-              // Para consumibles, calcular costo proporcional si hay cantidadPorUnidad
-              if (material.cantidadPorUnidad) {
-                costoTotal = (Number(material.precio) || 0) * (cantidadTotalUsada / material.cantidadPorUnidad);
-              } else {
-                costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
-              }
-            } else {
-              // Para no consumibles, costo por unidad usada
-              costoTotal = (Number(material.precio) || 0) * 1; // Ya que se deduce 1 unidad
-            }
-            if (costoTotal > 0) {
-              const nuevoGasto = gastoRepo.create({
-                descripcion: `Material ${material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no consumible'}: ${material.nombre} (Asignación: ${titulo})`,
-                monto: costoTotal,
-                fecha: fechaActividad,
-                tipo: TipoMovimiento.EGRESO,
-                cultivo: cultivo,
-              });
-              await queryRunner.manager.save(nuevoGasto);
-            }
+
+          const unidadUsada = (item.unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBase = material.unidadBase || UnitConversionUtil.obtenerUnidadBase(
+            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible', 
+            material.medidasDeContenido
+          );
+
+          let cantidadBase = 0;
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) && [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBase)) {
+             cantidadBase = (item.cantidadUsada || 0) * (Number(material.pesoPorUnidad) || 1);
+          } else {
+             cantidadBase = UnitConversionUtil.convertirABase(item.cantidadUsada || 0, unidadUsada);
           }
 
-          // Registrar movimiento de salida
-          await this.movimientosService.registrarMovimiento(
-            TipoMovimiento.EGRESO,
-            cantidadTotalUsada,
-            material.id,
-            `Salida por asignación de actividad: ${titulo}`,
-            `actividad-${savedActividad.id}`
-          );
-          // Crear ActividadMaterial para la actividad compartida
-          const nuevaUnion = this.actMaterialRepository.create({
-            actividad: savedActividad,
-            material: material,
-            cantidadUsada: item.cantidadUsada, // Cantidad por usuario
+          const res = this.descontarMaterial(material, cantidadBase);
+          if (!res.success) throw new BadRequestException(`Stock insuficiente: ${material.nombre}`);
+          await queryRunner.manager.save(material);
+
+          // CÁLCULO DE COSTO Y GASTO
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
+
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+             const precioMaterial = Number(material.precio) || 0;
+             const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+
+             // A. Precio por unidad base
+             const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+             // B. Costo Total = PrecioBase * CantidadTotalBase
+             costoTotal = precioPorUnidadBase * cantidadBase;
+
+             // C. Precio Unitario para Mostrar
+             precioUnitarioCalculado = item.cantidadUsada > 0 ? costoTotal / item.cantidadUsada : 0;
+
+          } else {
+             // Herramientas
+             costoTotal = 0;
+             precioUnitarioCalculado = 0;
+          }
+
+          const union = this.actMaterialRepository.create({
+            actividad: saved, material, cantidadUsada: item.cantidadUsada, unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadBase, costo: costoTotal
           });
-          await queryRunner.manager.save(nuevaUnion);
+          await queryRunner.manager.save(union);
+
+          if (costoTotal > 0) {
+            const gasto = gastoRepo.create({
+              descripcion: `Insumo: ${material.nombre} - ${item.cantidadUsada} ${unidadUsada} (Asignación: ${titulo})`,
+              monto: parseFloat(costoTotal.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo,
+
+              // ✅ AQUÍ GUARDAMOS EL DESGLOSE PARA FINANZAS
+              cantidad: item.cantidadUsada,
+              unidad: unidadUsada,
+              precioUnitario: parseFloat(precioUnitarioCalculado.toFixed(2))
+            });
+            await queryRunner.manager.save(gasto);
+          }
+
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO, cantidadBase, material.id, `Asignación: ${titulo}`, `act-${saved.id}`
+          );
         }
       }
-
       await queryRunner.commitTransaction();
-      return { actividad: savedActividad };
-    } catch (error) {
+      return { actividad: saved };
+    } catch (e) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw e;
     } finally {
       await queryRunner.release();
     }

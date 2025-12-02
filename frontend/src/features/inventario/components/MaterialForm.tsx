@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ChangeEvent, type ReactElement, type ComponentType, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { useState, useEffect, useMemo, type ChangeEvent, type ReactElement, type ComponentType, type ReactNode, type InputHTMLAttributes } from 'react';
 import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
 import { toast } from 'sonner';
 import {
@@ -18,6 +18,7 @@ import {
 import {
   TipoCategoria,
   categoriasYMateriales,
+  TipoMaterial,
   TipoEmpaque,
   MedidasDeContenido,
   type MaterialData,
@@ -28,7 +29,7 @@ import {
 // --- ✅ INICIO DE LA CORRECCIÓN: VALIDACIÓN DE ERRORES ---
 
 // 1. Se añade la propiedad opcional "error" a las interfaces
-interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'defaultValue'> {
+interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'defaultValue' | 'color' | 'children'> {
   icon: ComponentType<{ size: number, className: string }>;
   label: string;
   error?: boolean;
@@ -48,7 +49,7 @@ interface FormSelectProps {
 function FormInput({ icon: Icon, label, error, ...props }: FormInputProps) {
   return (
     <Input
-      {...props}
+      {...(props as any)}
       value={props.value?.toString() || ''}
       label={label}
       startContent={<Icon size={16} className="text-green-600" />}
@@ -61,13 +62,13 @@ function FormInput({ icon: Icon, label, error, ...props }: FormInputProps) {
 function FormSelect({ icon: Icon, label, children, error, ...props }: FormSelectProps) {
   return (
     <Select
-      {...props}
+      {...(props as any)}
       label={label}
       startContent={<Icon size={16} className="text-green-600" />}
       isInvalid={error}
       errorMessage={error ? "Campo requerido" : undefined}
     >
-      {children}
+      {children as any}
     </Select>
   );
 }
@@ -90,23 +91,41 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    setFormData(initialData);
-    setImageFile(null);
-    setErrors({}); // Limpiar errores al cambiar los datos iniciales
+    if (Object.keys(initialData).length > 0) {
+      // Clonamos para no mutar
+      const dataToLoad = { ...initialData };
 
-    if (initialData?.id && initialData.medidasDeContenido && initialData.pesoPorUnidad) {
-      const pesoNum = Number(initialData.pesoPorUnidad);
-      const esLiquido = ['L', 'ml'].includes(initialData.medidasDeContenido);
-      if (pesoNum < 1) {
-        setCantidadContenido(String(pesoNum * 1000));
-        setMedidaContenido(esLiquido ? 'ml' : 'g');
-      } else {
-        setCantidadContenido(String(pesoNum));
-        setMedidaContenido(esLiquido ? 'L' : 'kg');
+      // LÓGICA DE CORRECCIÓN: Si es un empaque, convertimos el Total almacenado a Cantidad de Paquetes
+      // Ej: Si la DB tiene 400 (Litros) y el peso es 20, mostramos 20 (Botellas) en el input.
+      if (
+        initialData.pesoPorUnidad &&
+        initialData.pesoPorUnidad > 0 &&
+        initialData.tipoEmpaque &&
+        initialData.tipoEmpaque !== 'Unidad'
+      ) {
+         // Math.floor o redondeo para evitar decimales extraños en la visualización del input
+         dataToLoad.cantidad = Number(initialData.cantidad) / Number(initialData.pesoPorUnidad);
       }
-    } else {
-      setCantidadContenido('');
-      setMedidaContenido('kg');
+
+      setFormData(dataToLoad);
+      setImageFile(null);
+      setErrors({});
+
+      // ... (El resto de tu lógica de contenido/medida sigue igual) ...
+      if (initialData?.id && initialData.medidasDeContenido && initialData.pesoPorUnidad) {
+        const pesoNum = Number(initialData.pesoPorUnidad);
+        const esLiquido = ['L', 'ml', 'l', 'ml', 'cm3'].includes(initialData.medidasDeContenido); // Agregué minúsculas
+        if (pesoNum < 1) {
+          setCantidadContenido(String(pesoNum * 1000));
+          setMedidaContenido(esLiquido ? 'ml' : 'g');
+        } else {
+          setCantidadContenido(String(pesoNum));
+          setMedidaContenido(esLiquido ? 'l' : 'kg'); // Ajustado a abreviaturas
+        }
+      } else {
+        setCantidadContenido('');
+        setMedidaContenido('kg');
+      }
     }
   }, [initialData]);
 
@@ -160,18 +179,18 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
     return Object.keys(newErrors).length === 0;
   };
 
-  // 5. Se actualiza handleSubmit para que llame a la validación primero
   const handleSubmit = () => {
     const isValid = validate();
     if (!isValid) {
       toast.error('Por favor, completa todos los campos obligatorios (*).');
       return;
     }
-    
-    // El resto de la lógica de guardado se mantiene igual
+
+    const cantPaquetes = Number(formData.cantidad); // Ej: 50 (Bultos)
+
     const payload: Partial<MaterialData> = {
       nombre: formData.nombre,
-      cantidad: Number(formData.cantidad),
+      // NO asignamos 'cantidad' todavía, esperaremos al cálculo
       tipoCategoria: formData.tipoCategoria,
       tipoMaterial: formData.tipoMaterial,
       tipoEmpaque: formData.tipoEmpaque,
@@ -185,28 +204,42 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       usosTotales: formData.usosTotales ? Number(formData.usosTotales) : undefined,
     };
 
+    // LÓGICA DE CÁLCULO DEL TOTAL REAL
     if (mostrarSeccionContenido && cantidadContenido) {
-      const cantContenidoNum = parseFloat(cantidadContenido);
+      const cantContenidoNum = parseFloat(cantidadContenido); // Ej: 50 (kg)
+
       if (cantContenidoNum > 0) {
         payload.medidasDeContenido = medidaContenido as any;
+        let pesoFinalEnBase: number | undefined;
 
-        let pesoFinalEnKg: number | undefined;
+        // 1. Convertimos el contenido de UN paquete a la base (g o ml)
         switch (medidaContenido) {
-          case 'kg': pesoFinalEnKg = cantContenidoNum; break;
-          case 'g': pesoFinalEnKg = cantContenidoNum / 1000; break;
-          case 'L': pesoFinalEnKg = cantContenidoNum; break;
-          case 'ml': pesoFinalEnKg = cantContenidoNum / 1000; break;
-          case 'lb': pesoFinalEnKg = cantContenidoNum * 0.453592; break;
-          case 'unidades': pesoFinalEnKg = cantContenidoNum; break; // Para unidades, usar como cantidad
-          default: pesoFinalEnKg = undefined;
+          case 'kg': pesoFinalEnBase = cantContenidoNum * 1000; break;
+          case 'g': pesoFinalEnBase = cantContenidoNum; break;
+          case 'L': pesoFinalEnBase = cantContenidoNum * 1000; break;
+          case 'ml': pesoFinalEnBase = cantContenidoNum; break;
+          case 'lb': pesoFinalEnBase = cantContenidoNum * 453.592; break;
+          case 'unidad': pesoFinalEnBase = cantContenidoNum; break;
+          default: pesoFinalEnBase = undefined;
         }
-        payload.pesoPorUnidad = pesoFinalEnKg;
 
-        // Para consumibles, usar el contenido como cantidadPorUnidad
-        if (tipoConsumoInferido === 'consumible') {
-          payload.cantidadPorUnidad = cantContenidoNum;
+        payload.pesoPorUnidad = pesoFinalEnBase; // Ej: 50,000 g
+        payload.cantidadPorUnidad = cantContenidoNum; // Visual (50)
+
+        // 2. IMPORTANTE: Calculamos el Stock Total para la BD
+        // 50 Bultos * 50,000g = 2,500,000g
+        if (pesoFinalEnBase) {
+            payload.cantidad = cantPaquetes * pesoFinalEnBase;
+        } else {
+            payload.cantidad = cantPaquetes; // Fallback
         }
+
+      } else {
+        payload.cantidad = cantPaquetes;
       }
+    } else {
+      // Si es una herramienta (no tiene contenido), la cantidad es directa
+      payload.cantidad = cantPaquetes;
     }
 
     onSave(payload as MaterialData);
@@ -250,7 +283,7 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
             selectedKeys={formData.tipoMaterial ? [formData.tipoMaterial] : []}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0];
-              setFormData(prev => ({ ...prev, tipoMaterial: selected }));
+              setFormData(prev => ({ ...prev, tipoMaterial: selected as unknown as TipoMaterial }));
             }}
           >
             <SelectItem key="">Selecciona el tipo de material</SelectItem>
@@ -282,6 +315,8 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           value={formData.cantidad || ''}
           onChange={handleChange}
           placeholder={mostrarSeccionContenido ? "Ej: 50" : "Ej: 10"}
+          min="0"
+          max="1000000"
           error={errors.cantidad}
         />
       </div>
@@ -309,6 +344,8 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
             value={cantidadContenido}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setCantidadContenido(e.target.value)}
             placeholder="Ej: 25"
+            min="0"
+            max="1000000"
           />
           <FormSelect
             icon={Ruler}

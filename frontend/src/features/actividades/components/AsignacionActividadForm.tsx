@@ -32,6 +32,8 @@ import type {
 } from '../interfaces/actividades';
 // --- AÑADIR IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
+import { UnidadMedida } from '../../inventario/interfaces/inventario';
+import { obtenerUnidadesDisponibles, esUnidadEmpaque, convertirStockAUnidad, FACTORES_CONVERSION } from '../../../utils/unitConversion';
 
 interface AsignacionFormProps {
   usuarios: UsuarioSimple[];
@@ -44,6 +46,7 @@ interface AsignacionFormProps {
 interface MaterialSeleccionado extends MaterialUsado {
   nombre: string;
   stockDisponible: number;
+  unidadMedida: UnidadMedida;
 }
 
 interface AsignacionFormState {
@@ -61,6 +64,7 @@ interface AsignacionFormState {
    materiales: MaterialSeleccionado[];
    materialActual: string; // ID
    cantidadMaterial: number | string;
+   unidadSeleccionada: UnidadMedida; // Nueva unidad seleccionada
    archivosIniciales: FileList | null;
    // --- FIN CAMPOS ---
 }
@@ -86,6 +90,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     materiales: [],
     materialActual: '',
     cantidadMaterial: 1,
+    unidadSeleccionada: UnidadMedida.UNIDAD,
     archivosIniciales: null,
     // --- FIN ESTADO ---
   });
@@ -96,13 +101,31 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   const [sublotesDisponibles, setSublotesDisponibles] = useState<SubloteSimple[]>([]);
   // --- FIN ESTADO ---
 
-  // Función para calcular el stock disponible
+  // Función para calcular el stock TOTAL en UNIDAD BASE (g o ml)
   const calcularStockDisponible = (material: Material): number => {
-    if (material.tipoConsumo === 'consumible' && material.cantidadPorUnidad) {
-      const openPackageAdjustment = material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined ? 1 : 0;
-      return (material.cantidad - openPackageAdjustment) * material.cantidadPorUnidad + (material.cantidadRestanteEnUnidadActual || 0);
-    }
+    // STOCK UNIFICADO: Todo el inventario es un único tanque/pila
+    // 'material.cantidad' YA ES el total en gramos/ml (ej: 2,500,000)
+    // No hay distinción entre paquetes cerrados y abiertos.
     return material.cantidad;
+  };
+
+  // Función para calcular el costo estimado
+  const calcularCostoEstimado = (material: Material, cantidad: number, unidad: UnidadMedida): number => {
+    if (material.tipoConsumo !== 'consumible' || !material.precio) return 0;
+    if (!material.pesoPorUnidad || material.pesoPorUnidad === 0) return 0;
+
+    // 1. Obtener factor de la unidad seleccionada (Ej: si eligió Kg, factor es 1000)
+    const factor = FACTORES_CONVERSION[unidad] || 1;
+
+    // 2. Calcular cuántos GRAMOS/ML está pidiendo el usuario
+    // Si elige "2 Kg", son 2 * 1000 = 2000 gramos.
+    const cantidadEnBase = cantidad * factor;
+
+    // 3. Calcular el precio por GRAMO/ML
+    // Precio del paquete / Peso del paquete en gramos
+    const precioPorUnidadBase = material.precio / material.pesoPorUnidad;
+
+    return precioPorUnidadBase * cantidadEnBase;
   };
 
   // ... (useMemo de fichasUnicas y usuariosFiltrados sin cambios) ...
@@ -180,6 +203,47 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
 
   // Obtener material seleccionado para mostrar unidad
   const materialSeleccionado = materialesDisponibles.find(m => m.id === parseInt(formData.materialActual));
+  
+  // Obtener unidades disponibles para el material seleccionado
+  const unidadesDisponibles = materialSeleccionado
+    ? obtenerUnidadesDisponibles(materialSeleccionado.tipoConsumo || 'consumible', materialSeleccionado.medidasDeContenido)
+    : [UnidadMedida.UNIDAD];
+  
+  // --- USEEFFECT PARA ACTUALIZAR UNIDAD CUANDO CAMBIA MATERIAL ---
+  useEffect(() => {
+    if (materialSeleccionado && unidadesDisponibles.length > 0) {
+      // Si la unidad actual no está disponible para este material, cambiar a la primera disponible
+      if (!unidadesDisponibles.includes(formData.unidadSeleccionada)) {
+        setFormData(prev => ({ ...prev, unidadSeleccionada: unidadesDisponibles[0] }));
+      }
+    }
+  }, [materialSeleccionado, unidadesDisponibles, formData.unidadSeleccionada]);
+
+  // --- CÁLCULO DINÁMICO DE STOCK EN LA UNIDAD SELECCIONADA ---
+  const stockEnUnidadSeleccionada = useMemo(() => {
+    if (!materialSeleccionado) return 0;
+
+    const stockTotalBase = calcularStockDisponible(materialSeleccionado); // Total en gramos
+    const unidad = formData.unidadSeleccionada;
+    const factor = FACTORES_CONVERSION[unidad];
+
+    // Si es un empaque, dividimos por el peso del empaque
+    if (esUnidadEmpaque(unidad)) {
+      if (materialSeleccionado.pesoPorUnidad) {
+        return Math.floor(stockTotalBase / materialSeleccionado.pesoPorUnidad);
+      }
+      return Math.floor(stockTotalBase);
+    }
+
+    // Si es masa/volumen (Kg, g, L), usamos el factor de conversión
+    // Ej: Tengo 500,000g (stockTotalBase). Selecciono Kg (factor 1000).
+    // 500,000 / 1000 = 500 Kg disponibles.
+    if (factor) {
+        return stockTotalBase / factor;
+    }
+
+    return stockTotalBase;
+  }, [materialSeleccionado, formData.unidadSeleccionada]);
 
   // ... (funciones de seleccionar/deseleccionar ficha sin cambios) ...
   const seleccionarTodosDeFicha = (fichaId: string) => {
@@ -259,6 +323,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       return;
     }
 
+    // Calcular costo estimado para mostrarlo en la lista
+    const costoEstimado = calcularCostoEstimado(material, cantidad, formData.unidadSeleccionada);
+
     // Evitar duplicados
     const existente = formData.materiales.find(m => m.materialId === id);
     if (existente) {
@@ -274,7 +341,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 materialId: material.id,
                 nombre: material.nombre,
                 cantidadUsada: cantidad,
+                unidadMedida: formData.unidadSeleccionada,
                 stockDisponible: calcularStockDisponible(material),
+                costoEstimado: costoEstimado, // Guardamos esto para mostrarlo
             }
         ],
         materialActual: '',
@@ -309,7 +378,8 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     // --- MODIFICACIÓN: Añadir materiales al payload ---
     const materialesPayload = formData.materiales.map(m => ({
         materialId: m.materialId,
-        cantidadUsada: m.cantidadUsada
+        cantidadUsada: m.cantidadUsada,
+        unidadMedida: m.unidadMedida
     }));
 
     const payload: AsignarActividadPayload = {
@@ -493,15 +563,32 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     })}
                   </Select>
                 </div>
-                <div className="w-1/3">
+                <div className="w-1/4">
                   <Input
                     type="number"
                     value={formData.cantidadMaterial.toString()}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
-                    label={`Cantidad (${materialSeleccionado?.medidasDeContenido || 'unidades'})`}
+                    label="Cantidad"
                     startContent={<Hash size={14} />}
                   />
+                </div>
+                <div className="w-1/4">
+                  <Select
+                    selectedKeys={[formData.unidadSeleccionada]}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0] as UnidadMedida;
+                      setFormData(prev => ({ ...prev, unidadSeleccionada: selected }));
+                    }}
+                    label="Unidad"
+                    placeholder="Unidad"
+                  >
+                    {unidadesDisponibles.map((unidad) => (
+                      <SelectItem key={unidad}>
+                        {unidad}
+                      </SelectItem>
+                    ))}
+                  </Select>
                 </div>
                 <Button
                   type="button"
@@ -513,6 +600,44 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 </Button>
               </div>
 
+              {/* --- ZONA DE INFORMACIÓN DE STOCK DINÁMICO --- */}
+              {materialSeleccionado && (
+                <div className="w-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col gap-1">
+                   <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 font-medium">Stock Disponible:</span>
+                      <span className={`text-sm font-bold ${
+                         Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada
+                         ? 'text-red-600'
+                         : 'text-blue-600'
+                      }`}>
+                         {stockEnUnidadSeleccionada.toLocaleString('es-CO', { maximumFractionDigits: 2 })} {formData.unidadSeleccionada}
+                      </span>
+                   </div>
+
+                   {/* Barra de progreso visual */}
+                   <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${
+                           Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada ? 'bg-red-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${Math.min((Number(formData.cantidadMaterial) / (stockEnUnidadSeleccionada || 1)) * 100, 100)}%` }}
+                      ></div>
+                   </div>
+
+                   <p className="text-xs text-gray-400 mt-1">
+                     Total en inventario: {calcularStockDisponible(materialSeleccionado).toFixed(2)} {materialSeleccionado.unidadBase || 'g/ml'} (Base Unificada)
+                   </p>
+                </div>
+              )}
+
+              {/* --- FEEDBACK VISUAL PARA UNIDADES DE EMPAQUE --- */}
+              {esUnidadEmpaque(formData.unidadSeleccionada) && materialSeleccionado?.pesoPorUnidad && (
+                <div className="mt-2 p-2 bg-blue-50 text-blue-700 text-sm rounded border border-blue-200">
+                  💡 <strong>Nota:</strong> Estás usando <strong>{formData.unidadSeleccionada}</strong>.
+                  El sistema convertirá automáticamente a la unidad base para descontar del stock unificado.
+                </div>
+              )}
+
               <div className="space-y-2">
                 {formData.materiales.map((m) => (
                   <div
@@ -520,10 +645,14 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     className="flex justify-between items-center bg-gray-100 p-2 border rounded-md"
                   >
                     <div className="text-sm">
-                      <p className="font-medium">{m.nombre}</p>
-                      <p className="text-xs text-gray-500">
-                        Cantidad total: {m.cantidadUsada}
-                      </p>
+                      <p className="font-medium text-gray-800">{m.nombre}</p>
+                      <div className="flex gap-4 text-xs text-gray-600">
+                         <span>Cant: <strong>{m.cantidadUsada} {m.unidadMedida}</strong></span>
+                         {/* Mostramos el costo estimado */}
+                         <span className="text-green-700 font-semibold">
+                           Costo aprox: ${(m as any).costoEstimado?.toLocaleString('es-CO') || 0}
+                         </span>
+                      </div>
                     </div>
                     <Button
                       type="button"

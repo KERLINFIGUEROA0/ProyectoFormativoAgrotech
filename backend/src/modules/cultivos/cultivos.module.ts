@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CacheModule } from '@nestjs/cache-manager';
 import { CultivosController } from './cultivos.controller';
 import { CultivosService } from './cultivos.service';
 import { PdfService } from './pdf.service';
@@ -15,7 +16,10 @@ import { Venta } from '../../common/enums/ventas/entities/venta.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cultivo, TipoCultivo, Lote, Sublote, Actividad, ActividadMaterial, Produccion, Gasto, Venta, Material])],
+  imports: [
+    TypeOrmModule.forFeature([Cultivo, TipoCultivo, Lote, Sublote, Actividad, Produccion, Gasto, Venta]),
+    CacheModule.register(),
+  ],
   controllers: [CultivosController],
   providers: [CultivosService, PdfService],
   exports: [CultivosService, PdfService],

@@ -92,9 +92,9 @@ export class PdfService {
         return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '';
       })(),
       descripcion: am.material.nombre,
-      cantidad: am.cantidadUsada,
+      cantidad: am.cantidadUsada ?? 0,
       unidad: am.material.medidasDeContenido || 'unidades',
-      costo: am.material.precio ? am.cantidadUsada * am.material.precio : 0
+      costo: am.material.precio ? (am.cantidadUsada ?? 0) * am.material.precio : 0
     })) || []);
 
     // Procesar producciones y ventas

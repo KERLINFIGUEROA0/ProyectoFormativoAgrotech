@@ -13,7 +13,6 @@ import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
 import { MaterialesModule } from '../materiales/materiales.module';
-import { ActividadesMaterialesModule } from '../actividades_materiales/actividades_materiales.module';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity'; // <-- 1. IMPORTAR GASTO
 import { RespuestaActividad } from './entities/respuesta_actividad.entity';
 import { ActividadUsuario } from './entities/actividad_usuario.entity';
@@ -53,7 +52,6 @@ import { MovimientosModule } from '../../movimientos/movimientos.module';
       }),
     }),
     MaterialesModule,
-    ActividadesMaterialesModule,
     MovimientosModule,
   ],
   controllers: [ActividadesController],

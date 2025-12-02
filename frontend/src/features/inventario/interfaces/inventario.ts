@@ -85,6 +85,29 @@ export const TipoEmpaque = {
 } as const;
 export type TipoEmpaque = typeof TipoEmpaque[keyof typeof TipoEmpaque];
 
+// --- UNIDADES DE MEDIDA PARA CONVERSIONES ---
+// Actualizado a abreviaturas estándar
+export const UnidadMedida = {
+  UNIDAD: 'Unidad',
+  CAJA: 'Caja',
+  PAQUETE: 'Paquete',
+  SACO: 'Saco',
+  BULTO: 'Bulto',
+  ROLLO: 'Rollo',
+
+  // Masa (Abreviaturas estándar)
+  KILOGRAMO: 'kg',
+  GRAMO: 'g',
+  MILIGRAMO: 'mg',
+  LIBRA: 'lb',
+
+  // Volumen (Abreviaturas estándar)
+  LITRO: 'l',
+  MILILITRO: 'ml',
+  CENTIMETRO_CUBICO: 'cm3',
+} as const;
+export type UnidadMedida = typeof UnidadMedida[keyof typeof UnidadMedida];
+
 // --- 2. RELACIÓN LÓGICA ENTRE CATEGORÍAS Y MATERIALES ---
 export const categoriasYMateriales: Record<TipoCategoria, TipoMaterial[]> = {
   [TipoCategoria.INSUMOS_AGRICOLAS]: [TipoMaterial.SEMILLA, TipoMaterial.PLANTULA, TipoMaterial.ABONO_ORGANICO, TipoMaterial.ABONO_QUIMICO, TipoMaterial.FERTILIZANTE, TipoMaterial.ENMIENDA, TipoMaterial.COMPOST, TipoMaterial.SUSTRATO],
@@ -114,12 +137,13 @@ export interface Material {
   tipoMaterial?: TipoMaterial;
   tipoEmpaque: TipoEmpaque;
   medidasDeContenido?: MedidaDeContenido;
-  pesoPorUnidad: number | null;
-  tipoConsumo?: string;
+  pesoPorUnidad?: number | null; // Para saber cuánto pesa un saco
+  tipoConsumo?: 'consumible' | 'no_consumible';
   cantidadPorUnidad?: number;
   cantidadRestanteEnUnidadActual?: number;
   usosTotales?: number;
   usosActuales?: number;
+  unidadBase?: UnidadMedida; // Unidad base para conversiones
 }
 
 export interface MaterialData {
@@ -152,6 +176,8 @@ export interface UsuarioMovimiento {
 export interface MaterialMovimiento {
   id: number;
   nombre: string;
+  medidasDeContenido?: MedidaDeContenido;
+  tipoEmpaque?: TipoEmpaque;
 }
 
 export interface MovimientoData {

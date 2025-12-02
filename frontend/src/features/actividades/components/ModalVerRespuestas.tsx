@@ -140,10 +140,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             apellidos: resultadoCalificacion.usuario.apellidos,
           }]);
           console.log('✅ Función onOpenPago llamada exitosamente');
-
-          // Cerrar el modal de respuestas para evitar conflictos visuales
-          onClose();
-          return; // Salir de la función para evitar ejecutar el resto del código
+          // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
         } else {
           console.warn('⚠️ onOpenPago no está definido en las props');
         }
@@ -183,9 +180,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
           console.log('Actividad completada, mostrando pasantes restantes:', pasantesSinPagar);
           if (onOpenPago) {
             onOpenPago(actividad, pasantesSinPagar);
-            // Cerrar el modal de respuestas para evitar conflictos visuales
-            onClose();
-            return; // Salir de la función
+            // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
           }
         }
       }
@@ -244,20 +239,26 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             ) : (
               <Table aria-label="Tabla de respuestas de actividad">
                 <TableHeader>
-                  <TableColumn>Nombre</TableColumn>
-                  <TableColumn>ID Ficha</TableColumn>
-                  <TableColumn>Descripción</TableColumn>
-                  <TableColumn>Estado</TableColumn>
-                  <TableColumn>Comentario Instructor</TableColumn>
-                  <TableColumn>Archivos</TableColumn>
-                  <TableColumn>Fecha</TableColumn>
-                  <TableColumn>Acciones</TableColumn>
-                </TableHeader>
+                   <TableColumn>Nombre</TableColumn>
+                   <TableColumn>Rol</TableColumn>
+                   <TableColumn>ID Ficha</TableColumn>
+                   <TableColumn>Descripción</TableColumn>
+                   <TableColumn>Estado</TableColumn>
+                   <TableColumn>Comentario Instructor</TableColumn>
+                   <TableColumn>Archivos</TableColumn>
+                   <TableColumn>Fecha</TableColumn>
+                   <TableColumn>Acciones</TableColumn>
+                 </TableHeader>
                 <TableBody>
                   {respuestas.map((respuesta) => (
                     <TableRow key={respuesta.id}>
                       <TableCell>
                         {respuesta.usuario.nombre} {respuesta.usuario.apellidos}
+                      </TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          {respuesta.usuario.tipoUsuario?.nombre || 'N/A'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {respuesta.usuario.ficha?.id_ficha || 'N/A'}

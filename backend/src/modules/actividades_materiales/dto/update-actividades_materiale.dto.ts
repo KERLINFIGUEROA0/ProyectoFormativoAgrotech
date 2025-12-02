@@ -1,3 +1,12 @@
+import { IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+
 export class UpdateActividadesMaterialeDto {
-  // Add properties here
+  @IsNumber()
+  @IsOptional()
+  cantidadUsada?: number;
+
+  @IsEnum(UnidadMedida)
+  @IsOptional()
+  unidadMedida?: UnidadMedida;
 }

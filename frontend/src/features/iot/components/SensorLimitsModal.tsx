@@ -110,9 +110,34 @@ export default function SensorLimitsModal({ isOpen, onClose, sensors, onSuccess 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Configurar Límites de Sensores" size="3xl">
       <div className="p-4">
-        <p className="text-sm text-gray-600 mb-4">
-          Configura los límites de alerta para cada sensor en porcentaje. El sistema convertirá automáticamente los valores a las unidades apropiadas.
-        </p>
+        <div className="flex justify-between items-start mb-4">
+          <p className="text-sm text-gray-600 flex-1">
+            Configura los límites de alerta para cada sensor en porcentaje. El sistema convertirá automáticamente los valores a las unidades apropiadas.
+          </p>
+
+          {/* Leyenda de Colores de Estado - Posición superior derecha */}
+          <div className="flex items-center gap-3 p-2 bg-red-50 rounded-lg border border-red-200 ml-4">
+            <span className="text-xs font-medium text-red-700">Estados:</span>
+
+            {/* Alto - Rojo */}
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-xs text-red-700 font-medium">Alto</span>
+            </div>
+
+            {/* Bajo - Azul */}
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="text-xs text-red-700 font-medium">Bajo</span>
+            </div>
+
+            {/* Óptimo - Gris */}
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+              <span className="text-xs text-red-700 font-medium">Óptimo</span>
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-4 max-h-96 overflow-y-auto">
           {sensors.map(sensor => {
