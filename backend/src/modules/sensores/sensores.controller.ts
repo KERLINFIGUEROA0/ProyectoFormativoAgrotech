@@ -1,12 +1,18 @@
-import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { SensoresService } from './sensores.service';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
 import { UpdateSensoreDto } from './dto/update-sensore.dto';
 import { UpdateSensoreEstadoDto } from './dto/update-sensore-estado.dto';
+import { GenerarReporteTrazabilidadDto } from './dto/generar-reporte.dto';
+import { PdfService } from '../pdf/pdf.service';
 
 @Controller('sensores')
 export class SensoresController {
-  constructor(private readonly sensoresService: SensoresService) {}
+  constructor(
+    private readonly sensoresService: SensoresService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Post('crear')
   async create(@Body() createSensoreDto: CreateSensoreDto) {
@@ -91,5 +97,52 @@ export class SensoresController {
   async sincronizarSensoresLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const result = await this.sensoresService.sincronizarSensoresLote(loteId);
     return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
+  }
+
+  /**
+   * Obtiene cultivos activos de un lote para el selector de reportes
+   */
+  @Get('cultivos-activos-lote/:loteId')
+  async getCultivosActivosLote(@Param('loteId', ParseIntPipe) loteId: number) {
+    const cultivos = await this.sensoresService.getCultivosActivosLote(loteId);
+    return { success: true, data: cultivos };
+  }
+
+  @Post('reporte-trazabilidad')
+  async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
+    console.log('Recibiendo solicitud de reporte:', dto);
+    try {
+      const datos = await this.sensoresService.getFullTraceabilityData(dto);
+      console.log('Datos obtenidos, generando PDF...');
+
+      if (dto.formato === 'pdf') {
+        console.log('Intentando generar PDF...');
+        try {
+          const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
+          console.log('PDF generado exitosamente, tamaño:', buffer.length);
+
+          res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.pdf`,
+            'Content-Length': buffer.length,
+          });
+          res.end(buffer);
+        } catch (pdfError) {
+          console.error('Error generando PDF:', pdfError);
+          // Si falla el PDF, devolver JSON para debugging
+          res.json({
+            error: 'Error generando PDF',
+            datos: datos,
+            pdfError: pdfError.message
+          });
+        }
+      } else {
+        // Devolver JSON para testing
+        res.json(datos);
+      }
+    } catch (error) {
+      console.error('Error en descargarReporte:', error);
+      res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+    }
   }
 }

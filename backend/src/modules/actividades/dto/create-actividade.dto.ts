@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested,Min } from 'class-validator';
+ import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested,Min } from 'class-validator';
 // --- 1. IMPORTA plainToInstance ---
 import { Transform, Type, plainToInstance } from 'class-transformer';
 
@@ -10,6 +10,10 @@ export class MaterialUsadoDto {
   @IsNumber()
   @IsPositive()
   cantidadUsada: number;
+
+  @IsString()
+  @IsOptional()
+  unidadMedida?: string;
 }
 
 export class CreateActividadDto {

@@ -184,6 +184,11 @@ export default function LotesMap({
               }}
               title={`${sublote.nombre}: ${sublote.cultivo.nombre} (${sublote.cultivo.tipoCultivo?.nombre || 'Sin tipo'})`}
               onClick={() => {
+                // Zoom automático al cultivo
+                if (mapRef.current) {
+                  mapRef.current.panTo(position);
+                  mapRef.current.setZoom(18);
+                }
                 onSelectSubloteCultivo?.(sublote);
               }}
             />

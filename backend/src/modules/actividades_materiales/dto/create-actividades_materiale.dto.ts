@@ -1,5 +1,20 @@
+import { IsNumber, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+
 export class CreateActividadesMaterialeDto {
-  ubicacion: string;
-  proveedor: string;
-  fechaVencimiento: Date;
+  @IsNumber()
+  @IsNotEmpty()
+  materialId: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  actividadId: number;
+
+  @IsNumber()
+  @IsOptional()
+  cantidadUsada?: number;
+
+  @IsEnum(UnidadMedida)
+  @IsOptional()
+  unidadMedida?: UnidadMedida;
 }

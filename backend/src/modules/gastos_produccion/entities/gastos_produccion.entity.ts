@@ -20,6 +20,17 @@ export class Gasto {
   @Column({ name: 'Tipo', type: 'enum', enum: TipoMovimiento, default: TipoMovimiento.EGRESO })
   tipo: TipoMovimiento;
 
+  // --- ✅ NUEVOS CAMPOS PARA EL DETALLE FINANCIERO ---
+  @Column({ name: 'cantidad', type: 'numeric', precision: 10, scale: 3, nullable: true })
+  cantidad: number;
+
+  @Column({ name: 'unidad', type: 'varchar', length: 20, nullable: true })
+  unidad: string;
+
+  @Column({ name: 'precio_unitario', type: 'decimal', precision: 14, scale: 2, nullable: true })
+  precioUnitario: number;
+  // ----------------------------------------------------
+
   // --- 2. MODIFICAR PRODUCCION (hacerla opcional) ---
   @ManyToOne(() => Produccion, (produccion) => produccion.gastos, { 
     nullable: true, // <-- AÑADIR

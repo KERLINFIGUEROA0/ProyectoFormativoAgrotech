@@ -114,3 +114,28 @@ export const generateSensorReport = async (params: {
     throw error;
   }
 };
+
+export const getCultivosActivosLote = async (loteId: number) => {
+  const response = await api.get(`/sensores/cultivos-activos-lote/${loteId}`);
+  return response.data;
+};
+
+export const descargarReporteApi = async (data: {
+  formato: 'pdf' | 'excel' | 'json';
+  loteId: number;
+  subloteId?: number;
+  fechaInicio: string;
+  fechaFin: string;
+}) => {
+  if (data.formato === 'json') {
+    // Para testing, devolver JSON directamente
+    const response = await api.post('/sensores/reporte-trazabilidad', data);
+    return response.data;
+  } else {
+    // Para PDF/Excel, descargar como blob
+    const response = await api.post('/sensores/reporte-trazabilidad', data, {
+      responseType: 'blob',
+    });
+    return response.data; // Retorna el blob
+  }
+};

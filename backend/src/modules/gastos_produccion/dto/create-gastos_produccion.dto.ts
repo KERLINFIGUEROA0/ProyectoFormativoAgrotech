@@ -21,4 +21,17 @@ export class CreateGastosProduccionDto {
   @IsNumber()
   @IsOptional() // <-- Añadir cultivo como opcional
   cultivo?: number;
+
+  // --- ✅ NUEVOS CAMPOS ---
+  @IsNumber()
+  @IsOptional()
+  cantidad?: number;
+
+  @IsString()
+  @IsOptional()
+  unidad?: string;
+
+  @IsNumber()
+  @IsOptional()
+  precioUnitario?: number;
 }

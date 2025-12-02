@@ -56,6 +56,7 @@ export interface LatestSensorData {
   valorMaximo: number;
   valor: number | null;
   fechaRegistro: string | null;
+  estado?: 'Activo' | 'Desconectado'; // Nuevo campo para estado del sensor
 }
 
 // --- Interfaces para la Configuración del Broker ---
@@ -81,6 +82,13 @@ export interface Broker {
   subscripciones: Subscripcion[];
 }
 
+// Clase auxiliar para configuración personalizada de tópicos
+export interface TopicoConfig {
+  topic: string;
+  min?: number;
+  max?: number;
+}
+
 export interface CreateBrokerDto {
   nombre: string;
   protocolo: string;
@@ -90,7 +98,7 @@ export interface CreateBrokerDto {
   password?: string;
   loteId: number;
   prefijoTopicos?: string;
-  topicosAdicionales?: string[];
+  topicosAdicionales?: (string | TopicoConfig)[];
 }
 
 export interface CreateSubscripcionDto {
