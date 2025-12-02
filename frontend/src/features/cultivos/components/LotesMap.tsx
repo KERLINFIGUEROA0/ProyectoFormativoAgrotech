@@ -143,7 +143,7 @@ export default function LotesMap({
       unsubscribeSubloteEstado();
       unsubscribeSubloteLiberado();
     };
-  }, [lotes, sublotesConCultivos, onLotesUpdate, onSublotesUpdate]);
+  }, [sublotesConCultivos, onLotesUpdate, onSublotesUpdate]);
 
   // CORRECCIÓN 2: También condicionamos este cálculo
   const centerForInfoWindow = isLoaded && selectedLote?.coordenadas && selectedLote.coordenadas.type === 'polygon'

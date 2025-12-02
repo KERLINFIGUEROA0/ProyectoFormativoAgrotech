@@ -9,6 +9,7 @@ import { UpdateLoteDto } from './dto/update-lote.dto';
 import { UpdateLoteEstadoDto } from './dto/update-lote-estado.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { AppWebSocketGateway } from '../../websocket/websocket.gateway';
 
 @Injectable()
 export class LotesService {
@@ -16,6 +17,7 @@ export class LotesService {
     @InjectRepository(Lote)
     private readonly loteRepository: Repository<Lote>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly websocketGateway: AppWebSocketGateway,
   ) {}
 
   private async clearCache(id?: number) {
@@ -86,9 +88,14 @@ export class LotesService {
 
   async actualizarEstado(id: number, dto: UpdateLoteEstadoDto): Promise<Lote> {
     const lote = await this.buscarPorId(id);
+    const estadoAnterior = lote.estado;
     lote.estado = dto.estado;
     const loteActualizado = await this.loteRepository.save(lote);
     await this.clearCache(id);
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    this.websocketGateway.emitLoteEstadoActualizado(id, dto.estado, loteActualizado.nombre);
+
     return loteActualizado;
   }
 

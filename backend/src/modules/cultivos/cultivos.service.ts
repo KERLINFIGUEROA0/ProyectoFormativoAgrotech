@@ -55,6 +55,9 @@ export class CultivosService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    // Variable para capturar el nuevo estado y enviarlo por WebSocket
+    let nuevoEstadoNotificacion = '';
+
     try {
 
       // 1. Validaciones
@@ -63,6 +66,21 @@ export class CultivosService {
 
       const lote = await this.loteRepository.findOne({ where: { id: dto.loteId } });
       if (!lote) throw new NotFoundException(`El lote con ID ${dto.loteId} no existe`);
+
+      // 1.1 VALIDACIÓN DE CONCURRENCIA: Verificar que el lote no esté ocupado
+      const cultivosActivosEnLote = await this.cultivoRepository.count({
+        where: {
+          lote: { id: lote.id },
+          Estado: In(['Activo', 'En Cosecha']) // Solo cuentan cultivos activos
+        }
+      });
+
+      if (cultivosActivosEnLote > 0) {
+        throw new BadRequestException(
+          `No se puede crear el cultivo. El lote "${lote.nombre}" ya tiene ${cultivosActivosEnLote} cultivo(s) activo(s). ` +
+          `Finalice los cultivos existentes antes de crear uno nuevo.`
+        );
+      }
 
       // 2. Crear el cultivo (solo un registro)
       const cultivo = new Cultivo();
@@ -83,11 +101,20 @@ export class CultivosService {
         // ASIGNACIÓN ESPECÍFICA: Solo a un sublote
         const sublote = await this.subloteRepository.findOne({
           where: { id: dto.subloteId },
-          relations: ['lote']
+          relations: ['lote', 'cultivo']
         });
 
         if (!sublote) throw new NotFoundException('Sublote no encontrado');
         if (sublote.lote.id !== lote.id) throw new BadRequestException('El sublote no pertenece al lote indicado');
+
+        // VALIDACIÓN DE CONCURRENCIA: Verificar que el sublote específico no esté ocupado
+        if (sublote.cultivo) {
+          throw new BadRequestException(
+            `No se puede asignar el cultivo al sublote "${sublote.nombre}". ` +
+            `Este sublote ya tiene asignado el cultivo "${sublote.cultivo.nombre}". ` +
+            `Finalice el cultivo existente o elija otro sublote.`
+          );
+        }
 
         // Asignar cultivo al sublote específico
         sublote.cultivo = cultivoGuardado;
@@ -97,14 +124,26 @@ export class CultivosService {
         // Estado del lote: Parcialmente ocupado
         lote.estado = 'Parcialmente ocupado';
         await queryRunner.manager.save(Lote, lote);
+        nuevoEstadoNotificacion = 'Parcialmente ocupado';
 
       } else {
         // ASIGNACIÓN MASIVA: A todos los sublotes del lote
         const todosSublotes = await this.subloteRepository.find({
-          where: { lote: { id: lote.id } }
+          where: { lote: { id: lote.id } },
+          relations: ['cultivo']
         });
 
         if (todosSublotes.length > 0) {
+          // VALIDACIÓN DE CONCURRENCIA: Verificar que ningún sublote esté ocupado
+          const sublotesOcupados = todosSublotes.filter(sub => sub.cultivo !== null);
+          if (sublotesOcupados.length > 0) {
+            const nombresOcupados = sublotesOcupados.map(sub => `"${sub.nombre}" (${sub.cultivo?.nombre})`).join(', ');
+            throw new BadRequestException(
+              `No se puede asignar el cultivo masivamente. Los siguientes sublotes ya están ocupados: ${nombresOcupados}. ` +
+              `Finalice los cultivos existentes o use asignación específica a sublotes disponibles.`
+            );
+          }
+
           // Asignar el mismo cultivo a todos los sublotes
           for (const sub of todosSublotes) {
             sub.cultivo = cultivoGuardado;
@@ -116,12 +155,23 @@ export class CultivosService {
         // Estado del lote: En cultivación (totalmente ocupado)
         lote.estado = 'En cultivación';
         await queryRunner.manager.save(Lote, lote);
+        nuevoEstadoNotificacion = 'En cultivación';
       }
 
       await queryRunner.commitTransaction();
 
-      // NUEVO: Limpiar caché para que se vea ocupado inmediatamente
+      // ============================================================
+      // 🔥 EMITIR EVENTO WEBSOCKET PARA TIEMPO REAL
+      // ============================================================
+
+      // 1. Limpiar caché para que se vea ocupado inmediatamente
       await this.clearLotesCache(lote.id);
+
+      // 2. Notificar a todos los clientes conectados (Tiempo Real)
+      if (nuevoEstadoNotificacion) {
+        this.webSocketGateway.emitLoteEstadoActualizado(lote.id, nuevoEstadoNotificacion);
+        console.log(`🚀 WebSocket emitido: Lote ${lote.id} ahora está ${nuevoEstadoNotificacion}`);
+      }
 
       return cultivoGuardado;
     } catch (err) {
@@ -177,6 +227,9 @@ export class CultivosService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let loteId: number | null = null;
+    let resultadoEstadoLote: { liberado: boolean, nuevoEstado?: string } | undefined;
+
     try {
       // 1. Obtener el cultivo con sus relaciones de terreno
       const cultivo = await this.cultivoRepository.findOne({
@@ -186,6 +239,8 @@ export class CultivosService {
 
       if (!cultivo) throw new NotFoundException(`Cultivo no encontrado`);
       if (cultivo.Estado === 'Finalizado') throw new BadRequestException(`Este cultivo ya fue finalizado`);
+
+      loteId = cultivo.lote?.id || null;
 
       // 2. Crear el registro de Producción (Historial de lo que salió hoy)
       const produccion = new Produccion();
@@ -220,8 +275,8 @@ export class CultivosService {
         }
 
         // C. Actualizar estado del Lote (Ahora detectará que NO hay cultivos activos)
-        if (cultivo.lote) {
-          await this.actualizarEstadoLote(cultivo.lote.id, queryRunner.manager);
+        if (loteId) {
+          resultadoEstadoLote = await this.actualizarEstadoLote(loteId, queryRunner.manager);
         }
 
       } else {
@@ -232,10 +287,21 @@ export class CultivosService {
       await queryRunner.manager.save(Cultivo, cultivo);
       await queryRunner.commitTransaction();
 
-      // NUEVO: Limpiar caché después de confirmar la transacción
-      // Esto asegura que al listar lotes, aparezcan "Disponible" y sin el nombre del cultivo
-      if (cultivo.lote) {
-        await this.clearLotesCache(cultivo.lote.id);
+      // 🔥 IMPORTANTE: Emitir WebSocket FUERA de la transacción
+      // Solo después de confirmar que todo se guardó correctamente
+      if (esFinal && loteId && resultadoEstadoLote) {
+        if (resultadoEstadoLote.liberado) {
+          // Emitir evento de liberación del lote
+          this.webSocketGateway.emitLoteLiberado(loteId);
+        } else if (resultadoEstadoLote.nuevoEstado) {
+          // Emitir evento de cambio de estado
+          this.webSocketGateway.emitLoteEstadoActualizado(loteId, resultadoEstadoLote.nuevoEstado);
+        }
+      }
+
+      // Limpiar caché después de confirmar la transacción
+      if (loteId) {
+        await this.clearLotesCache(loteId);
       }
 
       return cultivo;
@@ -249,7 +315,7 @@ export class CultivosService {
   }
 
   // --- 🔥 MÉTODO BLINDADO: CALCULAR ESTADO DEL LOTE ---
-  private async actualizarEstadoLote(loteId: number, manager?: EntityManager): Promise<void> {
+  private async actualizarEstadoLote(loteId: number, manager?: EntityManager): Promise<{ liberado: boolean, nuevoEstado?: string }> {
     const loteRepo = manager ? manager.getRepository(Lote) : this.loteRepository;
     const cultivoRepo = manager ? manager.getRepository(Cultivo) : this.cultivoRepository;
     const subloteRepo = manager ? manager.getRepository(Sublote) : this.subloteRepository;
@@ -271,11 +337,7 @@ export class CultivosService {
     if (totalCultivosActivos === 0) {
       await loteRepo.update(loteId, { estado: 'En preparación' });
       console.log(`✅ Lote ${loteId} liberado completamente: 'En preparación'`);
-
-      // Emitir evento WebSocket para notificar liberación
-      this.webSocketGateway.emitLoteLiberado(loteId);
-
-      return;
+      return { liberado: true };
     }
 
     // CASO 2: Si hay cultivos activos, determinamos si es parcial o total
@@ -301,8 +363,7 @@ export class CultivosService {
     await loteRepo.update(loteId, { estado: nuevoEstado });
     console.log(`ℹ️ Lote ${loteId} actualizado a: ${nuevoEstado}`);
 
-    // Emitir evento WebSocket para notificar cambio de estado
-    this.webSocketGateway.emitLoteEstadoActualizado(loteId, nuevoEstado);
+    return { liberado: false, nuevoEstado };
   }
 
   async finalizarCultivo(id: number, fechaFin: string): Promise<Cultivo> {
@@ -376,6 +437,14 @@ export class CultivosService {
     for (const item of diagnostico.diagnostico) {
       if (item.necesitaActualizacion) {
         await this.loteRepository.update(item.loteId, { estado: item.estadoCorrecto });
+
+        // Emitir evento WebSocket para notificar el cambio
+        if (item.estadoCorrecto === 'En preparación') {
+          this.webSocketGateway.emitLoteLiberado(item.loteId);
+        } else {
+          this.webSocketGateway.emitLoteEstadoActualizado(item.loteId, item.estadoCorrecto);
+        }
+
         actualizados++;
       }
     }

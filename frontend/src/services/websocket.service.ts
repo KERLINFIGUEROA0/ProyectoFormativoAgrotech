@@ -2,56 +2,101 @@ import { io, Socket } from 'socket.io-client';
 
 class WebSocketService {
   private socket: Socket | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private listeners: Map<string, any[]> = new Map();
+  private currentToken: string | undefined;
 
-  // Callbacks para eventos
-  private eventCallbacks: { [eventName: string]: ((data: any) => void)[] } = {};
+  // Método para conectar explícitamente pasando el token (opcional)
+  connect(token?: string) {
+    // Si ya estamos conectados con el mismo token, no hacer nada
+    if (this.socket?.connected && this.currentToken === token) {
+      return;
+    }
 
-  constructor() {
-    this.connect();
-  }
+    // Si hay una conexión existente, desconectarla primero
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
 
-  private connect() {
-    const API_URL = import.meta.env.VITE_BACKEND_URL;
+    this.currentToken = token;
 
-    this.socket = io(API_URL, {
-      transports: ['websocket', 'polling'],
-      timeout: 20000,
-      forceNew: true,
-    });
+    const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
+    const options: any = {
+      // 🚀 CLAVE: Forzar websocket evita el handshake lento HTTP y reduce desconexiones
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    };
+
+    // Solo enviar token si existe y es válido
+    if (token) {
+      options.auth = { token };
+    }
+
+    this.socket = io(API_URL, options);
 
     this.socket.on('connect', () => {
       console.log('🟢 WebSocket conectado:', this.socket?.id);
-      this.reconnectAttempts = 0;
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('🔴 WebSocket desconectado:', reason);
-      this.handleReconnect();
+      console.warn('🔴 WebSocket desconectado:', reason);
+      if (reason === 'io server disconnect') {
+        // Si el servidor nos echó, no intentamos reconectar automáticamente
+        // para evitar el bucle infinito. El AuthContext se encargará de reconectar cuando sea necesario.
+        console.warn('El servidor desconectó la conexión WebSocket.');
+      }
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Error de conexión WebSocket:', error);
-      this.handleReconnect();
+      console.error('⚠️ Error de conexión WebSocket:', error.message);
     });
 
     // Configurar listeners para eventos conocidos
     this.setupEventListeners();
   }
 
-  private handleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`🔄 Intentando reconectar... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-
-      setTimeout(() => {
-        this.connect();
-      }, this.reconnectDelay * this.reconnectAttempts);
-    } else {
-      console.error('❌ Máximo número de intentos de reconexión alcanzado');
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
+  }
+
+  // Método optimizado para suscribirse a eventos
+  on(event: string, callback: (data: any) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)?.push(callback);
+
+    // Si el socket ya existe, registrar el evento
+    if (this.socket) {
+      this.socket.on(event, callback);
+    }
+
+    // Retornar función para desuscribirse (limpieza)
+    return () => {
+      this.socket?.off(event, callback);
+      const eventListeners = this.listeners.get(event) || [];
+      this.listeners.set(event, eventListeners.filter(cb => cb !== callback));
+    };
+  }
+
+  // Emitir eventos al servidor si fuera necesario
+  emit(event: string, data?: any) {
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
+    } else {
+      console.warn('⚠️ No se puede emitir, socket desconectado.');
+    }
+  }
+
+  // Método para verificar estado de conexión
+  isConnected(): boolean {
+    return this.socket ? this.socket.connected : false;
   }
 
   private setupEventListeners() {
@@ -91,50 +136,9 @@ class WebSocketService {
     });
   }
 
-  // Método para suscribirse a eventos
-  on(eventName: string, callback: (data: any) => void) {
-    if (!this.eventCallbacks[eventName]) {
-      this.eventCallbacks[eventName] = [];
-    }
-    this.eventCallbacks[eventName].push(callback);
-
-    // Devolver función para desuscribirse
-    return () => {
-      this.off(eventName, callback);
-    };
-  }
-
-  // Método para desuscribirse de eventos
-  off(eventName: string, callback: (data: any) => void) {
-    if (this.eventCallbacks[eventName]) {
-      this.eventCallbacks[eventName] = this.eventCallbacks[eventName].filter(
-        cb => cb !== callback
-      );
-    }
-  }
-
-  // Método para emitir eventos al servidor
-  emit(eventName: string, data?: any) {
-    if (this.socket && this.socket.connected) {
-      this.socket.emit(eventName, data);
-    } else {
-      console.warn('⚠️ WebSocket no conectado, no se puede emitir evento:', eventName);
-    }
-  }
-
-  // Método para enviar ping
-  ping() {
-    this.emit('ping');
-  }
-
-  // Método para solicitar actualización manual
-  solicitarActualizacionLotes() {
-    this.emit('solicitar-actualizacion-lotes');
-  }
-
   private triggerCallbacks(eventName: string, data: any) {
-    if (this.eventCallbacks[eventName]) {
-      this.eventCallbacks[eventName].forEach(callback => {
+    if (this.listeners.has(eventName)) {
+      this.listeners.get(eventName)?.forEach(callback => {
         try {
           callback(data);
         } catch (error) {
@@ -143,26 +147,8 @@ class WebSocketService {
       });
     }
   }
-
-  // Método para verificar estado de conexión
-  isConnected(): boolean {
-    return this.socket ? this.socket.connected : false;
-  }
-
-  // Método para desconectar manualmente
-  disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-  }
-
-  // Método para obtener el ID del socket
-  getSocketId(): string | undefined {
-    return this.socket?.id;
-  }
 }
 
 // Exportar instancia singleton
-export const websocketService = new WebSocketService();
+const websocketService = new WebSocketService();
 export default websocketService;
