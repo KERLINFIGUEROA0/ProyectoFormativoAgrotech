@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Calendar, Clock, FileText, TrendingUp } from 'lucide-react';
+import { DollarSign, Calendar, Clock, FileText, TrendingUp, Edit, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
-import { obtenerPagosUsuario } from '../api/actividadesapi';
+import { obtenerPagosUsuario, obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
 
 interface Pago {
   id: number;
@@ -18,11 +18,24 @@ interface Pago {
     id: number;
     titulo: string;
     fecha: string;
+    usuario?: {
+      identificacion: number;
+      nombre: string;
+      apellidos: string;
+    };
+  };
+  usuario?: {
+    identificacion: number;
+    nombre: string;
+    apellidos: string;
+    tipoUsuario: {
+      nombre: string;
+    };
   };
 }
 
 const PagosPasantePage: React.FC = () => {
-  const { userData } = useAuth();
+  const { userData, userPermissions, userModules } = useAuth();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -31,26 +44,74 @@ const PagosPasantePage: React.FC = () => {
     promedioHora: 0,
     totalHoras: 0,
   });
+  const [isInstructor, setIsInstructor] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingPago, setEditingPago] = useState<Pago | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
-    // Verificar que el usuario sea pasante
-    if (userData?.rolNombre?.toLowerCase() !== 'pasante') {
-      toast.error('Esta página solo está disponible para pasantes');
-      return;
+    // Determinar si es instructor/admin basado en permisos y módulos
+    const esInstructor = (userPermissions && userPermissions.some(p =>
+      p.includes('actividades') || p.includes('admin')
+    )) || (userModules && userModules['Actividades'] && userModules['Actividades'].length > 0) || false;
+
+    // También verificar por rol como fallback
+    const rol = userData?.rolNombre?.toLowerCase();
+    const esInstructorPorRol = rol === 'instructor';
+    const esAdminPorRol = rol === 'admin' || rol === 'administrador';
+
+    // Lógica simplificada basada en el rol del usuario
+    if (rol === 'pasante') {
+      setIsInstructor(false);
+      setIsAdmin(false);
+    } else if (rol === 'admin' || rol === 'administrador') {
+      setIsInstructor(false);
+      setIsAdmin(true);
+    } else if (rol === 'instructor') {
+      setIsInstructor(true);
+      setIsAdmin(false);
+    } else {
+      // Fallback: si no hay rol claro, verificar permisos
+      const tienePermisosInstructor = esInstructor || esInstructorPorRol;
+      const tienePermisosAdmin = esAdminPorRol || (userPermissions && userPermissions.some(p => p.includes('admin'))) || false;
+      setIsInstructor(tienePermisosInstructor);
+      setIsAdmin(tienePermisosAdmin);
     }
-    cargarPagos();
-  }, [userData]);
+  }, [userData, userPermissions, userModules]);
+
+  // Segundo useEffect para cargar pagos después de que se seteen los estados
+  useEffect(() => {
+    const rol = userData?.rolNombre?.toLowerCase();
+    const tieneAcceso = rol === 'pasante' || rol === 'instructor' || rol === 'admin' || rol === 'administrador';
+
+    // Solo cargar pagos si tenemos acceso y los estados están definidos
+    if (tieneAcceso && isInstructor !== undefined && isAdmin !== undefined) {
+      cargarPagos();
+    }
+  }, [isInstructor, isAdmin, userData]);
+
 
   const cargarPagos = async () => {
     try {
-      if (!userData?.identificacion) {
-        toast.error('No se pudo obtener la información del usuario');
+      let data: Pago[];
+      const rol = userData?.rolNombre?.toLowerCase();
+
+      if (rol === 'admin' || rol === 'administrador' || rol === 'instructor') {
+        // Administradores e instructores ven todos los pagos (cada uno según sus permisos en el backend)
+        data = await obtenerTodosPagos();
+      } else if (rol === 'pasante') {
+        // Pasantes ven solo sus pagos
+        if (!userData?.identificacion) {
+          toast.error('No se pudo obtener la información del usuario');
+          return;
+        }
+        data = await obtenerPagosUsuario(userData.identificacion);
+      } else {
+        // Usuario sin rol definido
+        toast.error('Rol de usuario no reconocido');
         return;
       }
 
-      const userId = userData.identificacion;
-
-      const data = await obtenerPagosUsuario(userId);
       setPagos(data);
 
       // Calcular estadísticas
@@ -87,14 +148,44 @@ const PagosPasantePage: React.FC = () => {
     });
   };
 
+  const handleEditarPago = (pago: Pago) => {
+    setEditingPago(pago);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (updatedPago: Partial<Pago>) => {
+    if (!editingPago) return;
+
+    try {
+      const updateData: any = {};
+      if (updatedPago.horasTrabajadas !== undefined) updateData.horasTrabajadas = updatedPago.horasTrabajadas;
+      if (updatedPago.tarifaHora !== undefined) updateData.tarifaHora = updatedPago.tarifaHora;
+      if (updatedPago.descripcion !== undefined) updateData.descripcion = updatedPago.descripcion;
+      if (updatedPago.fechaPago !== undefined) updateData.fechaPago = updatedPago.fechaPago;
+
+      await actualizarPago(editingPago.id, updateData);
+      toast.success('Pago actualizado correctamente');
+      setShowEditModal(false);
+      setEditingPago(null);
+      cargarPagos(); // Recargar datos
+    } catch (error: any) {
+      console.error('Error al actualizar pago:', error);
+      toast.error(error.response?.data?.message || 'Error al actualizar el pago');
+    }
+  };
+
   // Verificar permisos antes de renderizar
-  if (userData?.rolNombre?.toLowerCase() !== 'pasante') {
+  const rol = userData?.rolNombre?.toLowerCase();
+  const tieneAcceso = rol === 'pasante' || rol === 'instructor' || rol === 'admin' || rol === 'administrador';
+
+
+  if (!tieneAcceso) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">🚫</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Acceso Denegado</h1>
-          <p className="text-gray-600">Esta página solo está disponible para pasantes.</p>
+          <p className="text-gray-600">No tienes permisos para acceder a esta página.</p>
         </div>
       </div>
     );
@@ -111,56 +202,106 @@ const PagosPasantePage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Mis Pagos</h1>
-        <p className="text-gray-600">Historial de pagos por actividades realizadas</p>
+        <div className="flex items-center gap-3 mb-2">
+          {isAdmin && (
+            <>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <TrendingUp className="w-8 h-8 text-red-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">Administración de Pagos</h1>
+                <p className="text-red-600 font-medium">Vista completa del sistema</p>
+              </div>
+            </>
+          )}
+          {isInstructor && (
+            <>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <DollarSign className="w-8 h-8 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
+                <p className="text-blue-600 font-medium">Actividades que has asignado</p>
+              </div>
+            </>
+          )}
+          {!isAdmin && !isInstructor && (
+            <>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileText className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">Mis Pagos</h1>
+                <p className="text-green-600 font-medium">Historial personal</p>
+              </div>
+            </>
+          )}
+        </div>
+        <p className="text-gray-600 mt-2">
+          {isAdmin
+            ? 'Vista completa de todos los pagos realizados en el sistema. Puedes editar cualquier pago.'
+            : isInstructor
+            ? 'Historial de pagos de actividades que has asignado. Gestiona y edita los pagos de tus aprendices.'
+            : 'Historial de pagos por actividades realizadas. Revisa tus compensaciones económicas.'
+          }
+        </p>
       </div>
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
           <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-full">
-              <FileText className="w-6 h-6 text-blue-600" />
+            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
+              <FileText className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Pagos</p>
+              <p className="text-sm font-medium text-gray-600">
+                {isAdmin ? 'Total Pagos Sistema' : isInstructor ? 'Pagos Gestionados' : 'Mis Pagos'}
+              </p>
               <p className="text-2xl font-bold text-gray-800">{stats.totalPagos}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
           <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-full">
-              <DollarSign className="w-6 h-6 text-green-600" />
+            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
+              <DollarSign className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Recibido</p>
+              <p className="text-sm font-medium text-gray-600">
+                {isAdmin ? 'Total Sistema' : isInstructor ? 'Total Gestionado' : 'Total Recibido'}
+              </p>
               <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.totalMonto)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
           <div className="flex items-center">
-            <div className="p-3 bg-purple-100 rounded-full">
-              <Clock className="w-6 h-6 text-purple-600" />
+            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
+              <Clock className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Horas Totales</p>
+              <p className="text-sm font-medium text-gray-600">
+                {isAdmin ? 'Horas Totales Sistema' : isInstructor ? 'Horas Gestionadas' : 'Mis Horas'}
+              </p>
               <p className="text-2xl font-bold text-gray-800">{stats.totalHoras}h</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
           <div className="flex items-center">
-            <div className="p-3 bg-orange-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
+            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
+              <TrendingUp className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-orange-600'}`} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Promedio/Hora</p>
               <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.promedioHora)}</p>
+              {(isAdmin || isInstructor) && (
+                <p className="text-xs text-gray-500 mt-1">Por actividad</p>
+              )}
             </div>
           </div>
         </div>
@@ -169,20 +310,58 @@ const PagosPasantePage: React.FC = () => {
       {/* Tabla de pagos */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {isAdmin
+                  ? 'Mostrando todos los pagos del sistema'
+                  : isInstructor
+                  ? 'Mostrando pagos de actividades que has asignado'
+                  : 'Mostrando tus pagos personales'
+                }
+              </p>
+            </div>
+          </div>
         </div>
 
         {pagos.length === 0 ? (
           <div className="text-center py-12">
             <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">No hay pagos registrados</h3>
-            <p className="text-gray-500">Cuando completes actividades, aparecerán aquí tus pagos.</p>
+            <h3 className="text-lg font-medium text-gray-600 mb-2">
+              {isAdmin
+                ? 'No hay pagos en el sistema'
+                : isInstructor
+                ? 'No hay pagos en tus actividades'
+                : 'No hay pagos registrados'
+              }
+            </h3>
+            <p className="text-gray-500">
+              {isAdmin
+                ? 'Los pagos aparecerán aquí cuando se registren en el sistema.'
+                : isInstructor
+                ? 'Los pagos de tus aprendices aparecerán aquí cuando completes actividades.'
+                : 'Cuando completes actividades, aparecerán aquí tus pagos.'
+              }
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  {(isAdmin || isInstructor) && (
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pasante
+                      </th>
+                      {isInstructor && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Instructor
+                        </th>
+                      )}
+                    </>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actividad
                   </th>
@@ -201,11 +380,35 @@ const PagosPasantePage: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Descripción
                   </th>
+                  {(isAdmin || isInstructor) && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {pagos.map((pago) => (
                   <tr key={pago.id} className="hover:bg-gray-50">
+                    {(isAdmin || isInstructor) && (
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {pago.usuario?.tipoUsuario.nombre}
+                          </div>
+                        </td>
+                        {isInstructor && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {pago.actividad?.usuario ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}` : 'N/A'}
+                            </div>
+                          </td>
+                        )}
+                      </>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {pago.actividad.titulo}
@@ -243,10 +446,112 @@ const PagosPasantePage: React.FC = () => {
                         {pago.descripcion}
                       </span>
                     </td>
+                    {(isAdmin || isInstructor) && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleEditarPago(pago)}
+                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded p-1 transition-colors"
+                          title="Editar pago"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Modal de edición de pago */}
+        {showEditModal && editingPago && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-bold mb-4">Editar Pago</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Horas Trabajadas
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    defaultValue={editingPago.horasTrabajadas}
+                    onChange={(e) => {
+                      const newHoras = parseFloat(e.target.value) || 0;
+                      setEditingPago(prev => prev ? { ...prev, horasTrabajadas: newHoras } : null);
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tarifa por Hora
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    defaultValue={editingPago.tarifaHora}
+                    onChange={(e) => {
+                      const newTarifa = parseFloat(e.target.value) || 0;
+                      setEditingPago(prev => prev ? { ...prev, tarifaHora: newTarifa } : null);
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Descripción
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue={editingPago.descripcion}
+                    onChange={(e) => {
+                      const newDesc = e.target.value;
+                      setEditingPago(prev => prev ? { ...prev, descripcion: newDesc } : null);
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Pago
+                  </label>
+                  <input
+                    type="date"
+                    defaultValue={editingPago.fechaPago.split('T')[0]}
+                    onChange={(e) => {
+                      const newFecha = e.target.value;
+                      setEditingPago(prev => prev ? { ...prev, fechaPago: newFecha } : null);
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div className="text-sm text-gray-600">
+                  Monto calculado: {formatCurrency((editingPago.horasTrabajadas || 0) * (editingPago.tarifaHora || 0))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingPago(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleSaveEdit(editingPago)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

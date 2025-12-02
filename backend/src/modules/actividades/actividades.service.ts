@@ -815,11 +815,11 @@ export class ActividadesService {
 
   async asignarActividad(dto: AsignarActividadDto) {
     const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
-    
+
     // ... (Validaciones de entidades Cultivo, Lote, Sublote, Responsable igual que antes) ...
     const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
     if (!cultivo) throw new NotFoundException('Cultivo no encontrado');
-    
+
     let lote, sublote, responsable;
     if(loteId) lote = await this.loteRepository.findOneBy({ id: loteId });
     if(subloteId) sublote = await this.subloteRepository.findOneBy({ id: subloteId });
@@ -830,8 +830,20 @@ export class ActividadesService {
     await queryRunner.startTransaction();
 
     try {
-      const usuariosAsignados = await this.usuarioRepository.find({ where: { identificacion: In(aprendices) } });
+      const usuariosAsignados = await this.usuarioRepository.find({
+        where: { identificacion: In(aprendices) },
+        relations: ['tipoUsuario']
+      });
       const nombresAsignados = usuariosAsignados.map(u => `${u.nombre} ${u.apellidos}`);
+
+      // Lógica para asignar responsable automáticamente si hay solo un aprendiz o pasante
+      if (aprendices.length === 1 && !responsable) {
+        const usuarioUnico = usuariosAsignados[0];
+        const tipoUsuario = usuarioUnico.tipoUsuario?.nombre?.toLowerCase();
+        if (tipoUsuario === 'aprendiz' || tipoUsuario === 'pasante') {
+          responsable = usuarioUnico;
+        }
+      }
 
       const actividad = this.actividadRepository.create({
         titulo, descripcion, fecha: new Date(fecha), cultivo, lote, sublote, responsable,

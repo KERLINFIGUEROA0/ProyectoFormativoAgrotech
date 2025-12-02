@@ -5,6 +5,7 @@ import { Pago } from './entities/pago.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Actividad } from '../actividades/entities/actividade.entity';
 import { CreatePagoDto } from './dto/create-pago.dto';
+import { UpdatePagoDto } from './dto/update-pago.dto';
 
 @Injectable()
 export class PagosService {
@@ -161,11 +162,28 @@ export class PagosService {
     });
   }
 
-  async findAll() {
-    return this.pagoRepository.find({
-      relations: ['usuario', 'actividad'],
-      order: { fechaPago: 'DESC' },
-    });
+  async findAll(userIdentificacion?: number, userRole?: string) {
+    const role = userRole?.toLowerCase();
+
+    // Si es admin o instructor, ver todos los pagos
+    if (role === 'admin' || role === 'administrador' || role === 'instructor') {
+      return this.pagoRepository.find({
+        relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario'],
+        order: { fechaPago: 'DESC' },
+      });
+    }
+
+    // Si es pasante, solo ver sus propios pagos
+    if (userIdentificacion && role === 'pasante') {
+      return this.pagoRepository.find({
+        where: { idUsuario: userIdentificacion },
+        relations: ['usuario', 'actividad'],
+        order: { fechaPago: 'DESC' },
+      });
+    }
+
+    // Por defecto, devolver vacío si no hay usuario identificado
+    return [];
   }
 
   async findOne(id: number) {
@@ -179,5 +197,47 @@ export class PagosService {
     }
 
     return pago;
+  }
+
+  async update(id: number, updatePagoDto: UpdatePagoDto, userRole?: string) {
+    // Validar permisos - solo instructores y administradores pueden editar pagos
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden editar pagos');
+    }
+
+    const pago = await this.pagoRepository.findOne({
+      where: { id },
+      relations: ['usuario', 'actividad'],
+    });
+
+    if (!pago) {
+      throw new NotFoundException(`Pago con ID ${id} no encontrado`);
+    }
+
+    // Actualizar campos proporcionados
+    if (updatePagoDto.monto !== undefined) {
+      pago.monto = updatePagoDto.monto;
+    }
+    if (updatePagoDto.horasTrabajadas !== undefined) {
+      pago.horasTrabajadas = updatePagoDto.horasTrabajadas;
+    }
+    if (updatePagoDto.tarifaHora !== undefined) {
+      pago.tarifaHora = updatePagoDto.tarifaHora;
+    }
+    if (updatePagoDto.descripcion !== undefined) {
+      pago.descripcion = updatePagoDto.descripcion;
+    }
+    if (updatePagoDto.fechaPago !== undefined) {
+      pago.fechaPago = new Date(updatePagoDto.fechaPago);
+    }
+
+    // Recalcular monto si se cambiaron horas o tarifa
+    if (updatePagoDto.horasTrabajadas !== undefined || updatePagoDto.tarifaHora !== undefined) {
+      const horas = updatePagoDto.horasTrabajadas !== undefined ? updatePagoDto.horasTrabajadas : pago.horasTrabajadas;
+      const tarifa = updatePagoDto.tarifaHora !== undefined ? updatePagoDto.tarifaHora : pago.tarifaHora;
+      pago.monto = horas * tarifa;
+    }
+
+    return this.pagoRepository.save(pago);
   }
 }
