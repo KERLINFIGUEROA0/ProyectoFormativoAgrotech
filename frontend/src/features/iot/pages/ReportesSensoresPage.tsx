@@ -8,22 +8,22 @@ import html2canvas from 'html2canvas';
 // --- APIS ---
 import { generateSensorReport } from '../api/sensoresApi';
 import { listarCultivos } from '../../cultivos/api/cultivosApi';
-import { listarSurcos } from '../../cultivos/api/surcosApi';
 
 // --- INTERFACES ---
 import type { ReportData, SensorReport } from '../interfaces/iot';
-import type { Cultivo, Surco } from '../../cultivos/interfaces/cultivos';
+import type { Cultivo } from '../../cultivos/interfaces/cultivos';
+
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 export default function ReportesSensoresPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
-  const [surcos, setSurcos] = useState<Surco[]>([]);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Filtros
-  const [scope, setScope] = useState<'surco' | 'cultivo'>('cultivo');
   const [scopeId, setScopeId] = useState<number | null>(null);
   const [timeFilter, setTimeFilter] = useState<'day' | 'date' | 'month'>('day');
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -34,33 +34,24 @@ export default function ReportesSensoresPage() {
 
   const loadData = async () => {
     try {
-      const [cultivosRes, surcosRes] = await Promise.all([
-        listarCultivos(),
-        listarSurcos()
-      ]);
+      const cultivosRes = await listarCultivos();
       setCultivos(cultivosRes.data || []);
-      setSurcos(surcosRes.data || []);
     } catch (error) {
       console.error('Error loading data', error);
     }
   };
 
   const getScopeName = () => {
-    if (scope === 'cultivo') {
-      const cultivo = cultivos.find(c => c.id === scopeId);
-      return cultivo ? cultivo.nombre : 'Desconocido';
-    } else {
-      const surco = surcos.find(s => s.id === scopeId);
-      return surco ? surco.nombre : 'Desconocido';
-    }
+    const cultivo = cultivos.find(c => c.id === scopeId);
+    return cultivo ? cultivo.nombre : 'Desconocido';
   };
 
   const generateReport = async () => {
     console.log('Starting report generation...');
-    console.log('Scope:', scope, 'ScopeId:', scopeId, 'TimeFilter:', timeFilter, 'Date:', selectedDate);
+    console.log('ScopeId:', scopeId, 'TimeFilter:', timeFilter, 'Date:', selectedDate);
 
     if (!scopeId) {
-      toast.error('Selecciona un cultivo o surco');
+      toast.error('Selecciona un cultivo');
       return;
     }
 
@@ -73,7 +64,7 @@ export default function ReportesSensoresPage() {
     try {
       console.log('Calling generateSensorReport API...');
       const params = {
-        scope,
+        scope: 'cultivo' as const,
         scopeId,
         timeFilter,
         date: selectedDate || undefined
@@ -100,16 +91,7 @@ export default function ReportesSensoresPage() {
   };
 
   const formatDate = (dateString: string) => {
-    // Ajustar por huso horario: restar 5 horas (UTC-5)
-    const date = new Date(dateString);
-    date.setHours(date.getHours() - 5);
-    return date.toLocaleString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return DateUtils.formatToTable(dateString);
   };
 
   const downloadReport = async () => {
@@ -130,7 +112,7 @@ export default function ReportesSensoresPage() {
 
       // Report info
       pdf.setFontSize(12);
-      pdf.text(`Alcance: ${reportData.scope === 'cultivo' ? 'Cultivo General' : 'Surco Individual'}`, 20, yPosition);
+      pdf.text('Alcance: Cultivo General', 20, yPosition);
       yPosition += 8;
       pdf.text(`Nombre: ${getScopeName()}`, 20, yPosition);
       yPosition += 8;
@@ -232,11 +214,11 @@ export default function ReportesSensoresPage() {
       for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);
         pdf.setFontSize(8);
-        pdf.text(`Generado el ${new Date().toLocaleString('es-CO')}`, 20, pageHeight - 10);
+        pdf.text(`Generado el ${DateUtils.formatToTable(new Date())}`, 20, pageHeight - 10);
         pdf.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
       }
 
-      const fileName = `reporte-sensores-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `reporte-sensores-${DateUtils.formatDateOnly(new Date()).replace(/\//g, '-')}.pdf`;
       console.log('Saving PDF:', fileName);
       pdf.save(fileName);
 
@@ -321,43 +303,23 @@ export default function ReportesSensoresPage() {
         <div className="flex items-center gap-3 mb-6">
           <FileText className="text-blue-600" size={32} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Reportes Avanzados de Sensores</h1>
-            <p className="text-sm text-gray-500 mt-1">Análisis estadístico y visualización de datos IoT</p>
+            <h1 className="text-2xl font-bold text-gray-800">Reportes de Sensores por Cultivo</h1>
+            <p className="text-sm text-gray-500 mt-1">Análisis estadístico y visualización de datos IoT por cultivo</p>
           </div>
         </div>
 
         {/* FILTROS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Alcance</label>
-            <select
-              value={scope}
-              onChange={(e) => {
-                setScope(e.target.value as 'surco' | 'cultivo');
-                setScopeId(null);
-              }}
-              className="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block py-2.5 px-3"
-            >
-              <option value="cultivo">Cultivo General</option>
-              <option value="surco">Surco Individual</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {scope === 'cultivo' ? 'Cultivo' : 'Surco'}
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cultivo</label>
             <select
               value={scopeId || ''}
               onChange={(e) => setScopeId(Number(e.target.value))}
               className="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block py-2.5 px-3"
             >
-              <option value="">Seleccionar...</option>
-              {scope === 'cultivo' && cultivos.map(c => (
+              <option value="">Seleccionar cultivo...</option>
+              {cultivos.map(c => (
                 <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-              {scope === 'surco' && surcos.map(s => (
-                <option key={s.id} value={s.id}>{s.nombre}</option>
               ))}
             </select>
           </div>
@@ -441,15 +403,13 @@ export default function ReportesSensoresPage() {
               Resumen del Reporte
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="text-sm text-gray-500">Alcance</div>
-                <div className="font-semibold text-gray-800">
-                  {reportData.scope === 'cultivo' ? 'Cultivo General' : 'Surco Individual'}
-                </div>
+                <div className="font-semibold text-gray-800">Cultivo General</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">{scope === 'cultivo' ? 'Cultivo' : 'Surco'}</div>
+                <div className="text-sm text-gray-500">Cultivo</div>
                 <div className="font-semibold text-gray-800">{getScopeName()}</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">

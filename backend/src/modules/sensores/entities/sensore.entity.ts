@@ -46,6 +46,12 @@ export class Sensor {
   @Column({ name: 'mqtt_topic', type: 'varchar', length: 255, nullable: true })
   topic: string | null;
 
+  // ✅ NUEVO CAMPO: Clave del JSON a leer (opcional)
+  // Si es null, el sistema asume que el payload es un número directo.
+  // Si tiene texto (ej: "temperatura"), buscará esa clave en el JSON.
+  @Column({ name: 'json_key', type: 'varchar', length: 50, nullable: true })
+  json_key: string | null;
+
   @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
   ultimo_mqtt_mensaje: Date | null;
 

@@ -34,7 +34,7 @@ import ModalDescargarTrazabilidad from '../components/ModalDescargarTrazabilidad
   
 // --- INTERFACES ---
 import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
-import type { Sublote, Lote } from '../../cultivos/interfaces/cultivos';
+import type { Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 // --- TIPOS GLOBALES ---
@@ -634,11 +634,9 @@ export default function GestionSensoresPage(): ReactElement {
   
   // Estados de Filtros
   const [modoVista, setModoVista] = useState<'GENERAL' | 'LOTE'>('GENERAL');
-  const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [filtroId, setFiltroId] = useState<number | 'TODOS'>('TODOS');
-  const [surcoSeleccionado, setSurcoSeleccionado] = useState<number | 'TODOS'>('TODOS');
 
   // Modales y UI
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
@@ -673,9 +671,6 @@ export default function GestionSensoresPage(): ReactElement {
       setBrokers(brokersRes || []);
       const lotesData = lotesRes.data || [];
       setLotes(lotesData);
-      // Extraer todos los sublotes de todos los lotes
-      const allSublotes = lotesData.flatMap((lote: Lote) => (lote.sublotes || []).filter((s: any) => s.lote && s.lote.id));
-      setSublotes(allSublotes);
 
       // Si no hay brokers, abrir automáticamente el modal para crear uno
       if (!brokersRes || brokersRes.length === 0) {
@@ -770,7 +765,7 @@ export default function GestionSensoresPage(): ReactElement {
 
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, [filtroId, surcoSeleccionado, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
+  }, [filtroId, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
 
 
   // Cargar historiales para sensores seleccionados en gráfica
@@ -854,7 +849,6 @@ export default function GestionSensoresPage(): ReactElement {
   const handleModoChange = (modo: 'GENERAL' | 'LOTE') => {
     setModoVista(modo);
     setFiltroId('TODOS');
-    setSurcoSeleccionado('TODOS');
     setSensoresGrafica([]);
     setLatestData([]);
     setSensorHistories({});
@@ -1025,7 +1019,7 @@ export default function GestionSensoresPage(): ReactElement {
     if (modoVista === 'GENERAL') {
       // En modo general, permitir filtrar por lote
       if (filtroId !== 'TODOS') {
-        res = res.filter(s => s.lote?.id === filtroId || s.surco?.lote?.id === filtroId);
+        res = res.filter(s => s.lote?.id === filtroId);
       }
       return res;
     }
@@ -1033,13 +1027,10 @@ export default function GestionSensoresPage(): ReactElement {
     if (modoVista === 'LOTE') {
       // Mostrar solo sensores asociados directamente al lote (creados por sincronización)
       res = res.filter(s => s.lote?.id === filtroId);
-      if (surcoSeleccionado !== 'TODOS') {
-        res = res.filter(s => s.surco?.id === surcoSeleccionado);
-      }
     }
 
     return res;
-  }, [sensores, latestData, modoVista, filtroId, surcoSeleccionado, sublotes]);
+  }, [sensores, latestData, modoVista, filtroId]);
 
   // Cálculo de sensores para la página actual
   const sensoresPaginaActual = useMemo(() => {
@@ -1101,7 +1092,6 @@ export default function GestionSensoresPage(): ReactElement {
                       const selected = Array.from(keys);
                       const value = selected.length > 0 ? selected[0] : 'TODOS';
                       setFiltroId(value === 'TODOS' ? 'TODOS' : Number(value));
-                      setSurcoSeleccionado('TODOS');
                       setLatestData([]);
                       setSensorHistories({});
                       setPaginaSensores(0);
@@ -1116,22 +1106,6 @@ export default function GestionSensoresPage(): ReactElement {
                 >
                   {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
                 </Select>
-
-                {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                  <select
-                    value={surcoSeleccionado}
-                    onChange={(e) => {
-                        setSurcoSeleccionado(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value));
-                        setLatestData([]);
-                        setSensorHistories({});
-                        setPaginaSensores(0);
-                    }}
-                    className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 min-w-32 shadow-sm transition-all duration-200 hover:shadow-md"
-                  >
-                    <option value="TODOS">Todos los Surcos</option>
-                    {sublotes.filter(s => s.lote.id === filtroId).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
-                )}
               </div>
             )}
           </div>
@@ -1212,12 +1186,6 @@ export default function GestionSensoresPage(): ReactElement {
                 {modoVista === 'GENERAL' ? 'Todos los Sensores' :
                  `Lote: ${lotes.find(l=>l.id===filtroId)?.nombre || 'Seleccionar'}`}
               </h2>
-
-              {modoVista === 'LOTE' && surcoSeleccionado !== 'TODOS' && (
-                <span className="px-2 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-700">
-                  Sublote: {sublotes.find(s=>s.id===surcoSeleccionado)?.nombre}
-                </span>
-              )}
 
               {/* Estado del sistema */}
               {modoVista === 'LOTE' && filtroId !== 'TODOS' && (

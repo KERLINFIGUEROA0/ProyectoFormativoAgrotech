@@ -27,6 +27,7 @@ import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
 import { UnidadMedida } from '../../common/enums/unidad-medida.enum';
 import { UnitConversionUtil } from '../../common/utils/unit-conversion.util';
 import { MovimientosService } from '../../movimientos/movimientos.service';
+import { DateUtil } from '../../common/utils/date.util';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ExcelJS from 'exceljs';
@@ -613,20 +614,138 @@ export class ActividadesService {
         }
 
         if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
+          console.log('🔄 PROCESANDO DEVOLUCIONES:', dto.materialesDevueltos);
+          const gastoRepo = queryRunner.manager.getRepository(Gasto);
+
           for (const devolucion of dto.materialesDevueltos) {
+            console.log('📦 Procesando devolución:', devolucion);
             const material = await queryRunner.manager.findOne(Material, { where: { id: devolucion.materialId } });
-            if (!material) throw new NotFoundException(`Material ${devolucion.materialId} no encontrado.`);
-            this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
+            if (!material) {
+              console.error(`❌ Material ${devolucion.materialId} no encontrado`);
+              continue;
+            }
+
+            console.log('📊 Material encontrado:', {
+              id: material.id,
+              nombre: material.nombre,
+              tipoConsumo: material.tipoConsumo,
+              cantidadActual: material.cantidad,
+              usosActuales: material.usosActuales
+            });
+
+            // Convertir strings a números si vienen del frontend
+            const cantBuenas = Number(devolucion.cantidadDevuelta) || 0;
+            const cantMalas = Number(devolucion.cantidadDanada) || 0;
+            const totalRetorno = cantBuenas + cantMalas;
+
+            console.log('🔢 Cantidades procesadas:', {
+              cantBuenas,
+              cantMalas,
+              totalRetorno,
+              tipoConsumo: material.tipoConsumo
+            });
+
+            // =========================================================
+            // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+            // =========================================================
+            if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+              console.log('🔧 Procesando herramienta no consumible');
+
+                // 1. LIMPIAR PRÉSTAMO (El usuario devuelve TODO, bueno o malo)
+                const usosAntes = Number(material.usosActuales);
+                material.usosActuales = usosAntes - totalRetorno;
+                if (material.usosActuales < 0) material.usosActuales = 0;
+                console.log(`📉 Usos actuales: ${usosAntes} → ${material.usosActuales}`);
+
+                // 2. REGISTRAR ENTRADA DE LO BUENO (Stock disponible)
+                if (cantBuenas > 0) {
+                    console.log(`✅ Registrando entrada de ${cantBuenas} unidades buenas`);
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.INGRESO,
+                        cantBuenas,
+                        material.id,
+                        `Devolución (Buen Estado): ${cantBuenas} Unidades - ${actividad.titulo}`,
+                        `dev-ok-${actividad.id}`
+                    );
+                }
+
+                // 3. REGISTRAR BAJA DE LO MALO (Pérdida de Activo)
+                if (cantMalas > 0) {
+                    console.log(`💥 Procesando ${cantMalas} unidades dañadas`);
+
+                    // 🔥 RESTAR DEL STOCK FÍSICO TOTAL porque se rompieron
+                    const stockAntes = Number(material.cantidad);
+                    material.cantidad = stockAntes - cantMalas;
+                    if (material.cantidad < 0) material.cantidad = 0;
+                    console.log(`📊 Stock físico: ${stockAntes} → ${material.cantidad}`);
+
+                    const precioUnitario = Number(material.precio) || 0;
+                    const costoDano = cantMalas * precioUnitario;
+                    console.log(`💰 Costo del daño: ${cantMalas} × ${precioUnitario} = ${costoDano}`);
+
+                    // A. TRANSACCIÓN FINANCIERA (GASTO)
+                    console.log('💸 Creando transacción financiera...');
+                    const cobroPorDano = gastoRepo.create({
+                        descripcion: `Pérdida/Daño Herramienta: ${material.nombre} (${cantMalas} Unds)`,
+                        monto: parseFloat(costoDano.toFixed(2)),
+                        fecha: DateUtil.getCurrentDate(),
+                        tipo: TipoMovimiento.EGRESO,
+                        cultivo: actividad.cultivo,
+                        cantidad: cantMalas,
+                        unidad: 'Unidad',
+                        precioUnitario: precioUnitario
+                    });
+                    await queryRunner.manager.save(cobroPorDano);
+                    console.log('✅ Transacción financiera creada');
+
+                    // B. MOVIMIENTO DE BAJA (KARDEX)
+                    console.log('📝 Registrando movimiento de baja...');
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.EGRESO,
+                        cantMalas,
+                        material.id,
+                        `BAJA POR DAÑO: ${cantMalas} Unidades - ${actividad.titulo}`,
+                        `baja-dano-${actividad.id}`
+                    );
+                    console.log('✅ Movimiento de baja registrado');
+                } else {
+                  console.log('ℹ️ No hay unidades dañadas para procesar');
+                }
+            }
+            // =========================================================
+            // 🧪 CASO B: CONSUMIBLES (Insumos)
+            // =========================================================
+            else {
+                console.log('🧪 Procesando insumo consumible');
+
+                // Solo devolvemos al stock lo que sobró (lo bueno)
+                if (cantBuenas > 0) {
+                     console.log(`✅ Devolviendo ${cantBuenas} unidades al stock`);
+                     this.revertirDescontarMaterial(material, cantBuenas);
+
+                     await this.movimientosService.registrarMovimiento(
+                       TipoMovimiento.INGRESO,
+                       cantBuenas,
+                       material.id,
+                       `Devolución sobrante insumo: ${actividad.titulo}`,
+                       `dev-cons-${actividad.id}`
+                     );
+                } else {
+                  console.log('ℹ️ No hay sobrantes para devolver');
+                }
+                // Los consumibles "dañados" no generan transacción extra
+                if (cantMalas > 0) {
+                  console.log(`⚠️ Consumible tiene ${cantMalas} unidades marcadas como dañadas, pero no se procesan`);
+                }
+            }
+
+            console.log('💾 Guardando cambios en material...');
+            // Guardar actualización del material
             await queryRunner.manager.save(material);
-            
-            await this.movimientosService.registrarMovimiento(
-              TipoMovimiento.INGRESO,
-              devolucion.cantidadDevuelta,
-              material.id,
-              `Devolución por respuesta: ${actividad.titulo}`,
-              `dev-act-${actividad.id}`
-            );
+            console.log('✅ Material actualizado');
           }
+        } else {
+          console.log('ℹ️ No hay materiales devueltos para procesar');
         }
 
       await queryRunner.commitTransaction();
@@ -777,34 +896,122 @@ export class ActividadesService {
   async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
     const actividad = await this.findOne(id);
     if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
+
+    // Verificar permisos
     if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
       throw new BadRequestException('Solo el responsable puede devolver materiales.');
     }
 
-    // Verificar que la actividad esté finalizada
-     if (actividad.estado !== 'completado') {
-       throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
-     }
+    if (actividad.estado !== 'completado') {
+      throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
+    }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
     try {
+      const gastoRepo = queryRunner.manager.getRepository(Gasto);
+
       for (const dev of dto.materialesDevueltos) {
         const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
-        if (!material) throw new NotFoundException(`Material ${dev.materialId} no encontrado.`);
-        this.revertirDescontarMaterial(material, dev.cantidadDevuelta);
+        if (!material) continue;
+
+        // Convertir strings a números si vienen del frontend
+        const cantBuenas = Number(dev.cantidadDevuelta) || 0;
+        const cantMalas = Number(dev.cantidadDanada) || 0;
+
+        // 🔥 AGREGAR ESTA LÍNEA QUE FALTA 🔥
+        const totalRetorno = cantBuenas + cantMalas;
+
+        // =========================================================
+        // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+        // =========================================================
+        if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+
+            // 1. LIMPIAR PRÉSTAMO (El usuario devuelve TODO, bueno o malo)
+            // Si prestó 10, y devuelve 7 buenas + 3 malas, se liberan las 10 de 'usosActuales'.
+            // AHORA SÍ FUNCIONARÁ porque 'totalRetorno' ya existe
+            material.usosActuales = Number(material.usosActuales) - totalRetorno;
+            if (material.usosActuales < 0) material.usosActuales = 0;
+
+            // 2. REGISTRAR ENTRADA DE LO BUENO (Stock disponible)
+            if (cantBuenas > 0) {
+                // OJO: No sumamos a material.cantidad porque al ser NO_CONSUMIBLE,
+                // la cantidad física nunca se restó al prestarse, solo se movió a 'usosActuales'.
+                // Solo registramos el movimiento para el historial.
+
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.INGRESO,
+                    cantBuenas,
+                    material.id,
+                    `Devolución (Buen Estado): ${cantBuenas} Unidades - ${actividad.titulo}`, // 👈 Muestra Unidades
+                    `dev-ok-${actividad.id}`
+                );
+            }
+
+            // 3. REGISTRAR BAJA DE LO MALO (Pérdida de Activo)
+            if (cantMalas > 0) {
+                // 🔥 AQUÍ SÍ RESTAMOS DEL STOCK FÍSICO TOTAL porque se rompieron
+                material.cantidad = Number(material.cantidad) - cantMalas;
+                if (material.cantidad < 0) material.cantidad = 0;
+
+                const precioUnitario = Number(material.precio) || 0;
+                const costoDano = cantMalas * precioUnitario;
+
+                // A. TRANSACCIÓN FINANCIERA (GASTO)
+                const cobroPorDano = gastoRepo.create({
+                    descripcion: `Pérdida/Daño Herramienta: ${material.nombre} (${cantMalas} Unds)`,
+                    monto: parseFloat(costoDano.toFixed(2)),
+                    fecha: new Date(),
+                    tipo: TipoMovimiento.EGRESO,
+                    cultivo: actividad.cultivo,
+
+                    // ✅ DATOS CLAVE PARA FINANZAS
+                    cantidad: cantMalas,
+                    unidad: 'Unidad', // 👈 Se guarda como 'Unidad'
+                    precioUnitario: precioUnitario
+                });
+                await queryRunner.manager.save(cobroPorDano);
+
+                // B. MOVIMIENTO DE BAJA (KARDEX)
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.EGRESO,
+                    cantMalas,
+                    material.id,
+                    `BAJA POR DAÑO: ${cantMalas} Unidades - ${actividad.titulo}`, // 👈 Muestra Unidades
+                    `baja-dano-${actividad.id}`
+                );
+            }
+        }
+
+        // =========================================================
+        // CASO B: CONSUMIBLES (Insumos)
+        // =========================================================
+        else {
+            // Solo devolvemos al stock lo que sobró (lo bueno)
+            if (cantBuenas > 0) {
+                 this.revertirDescontarMaterial(material, cantBuenas);
+
+                 await this.movimientosService.registrarMovimiento(
+                   TipoMovimiento.INGRESO,
+                   cantBuenas,
+                   material.id,
+                   `Devolución sobrante insumo: ${actividad.titulo}`,
+                   `dev-cons-${actividad.id}`
+                 );
+            }
+            // Los consumibles "dañados" o gastados no generan transacción extra aquí
+            // porque ya se cobraron totalmente al asignarse la actividad.
+        }
+
+        // Guardar actualización de stock del material
         await queryRunner.manager.save(material);
-        await this.movimientosService.registrarMovimiento(
-          TipoMovimiento.INGRESO,
-          dev.cantidadDevuelta,
-          material.id,
-          `Devolución final: ${actividad.titulo}`,
-          `dev-fin-act-${actividad.id}`
-        );
       }
+
       await queryRunner.commitTransaction();
-      return { message: 'Materiales devueltos.' };
+      return { message: 'Devolución procesada correctamente.' };
+
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
@@ -814,7 +1021,14 @@ export class ActividadesService {
   }
 
   async asignarActividad(dto: AsignarActividadDto) {
-    const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
+    let { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
+
+    // --- 🚀 LÓGICA NUEVA: Auto-asignar responsable si es único ---
+    if (aprendices.length === 1 && !responsableId) {
+        // Si es uno solo y no eligieron líder, él es el líder automático
+        responsableId = aprendices[0];
+    }
+    // -------------------------------------------------------------
     
     // ... (Validaciones de entidades Cultivo, Lote, Sublote, Responsable igual que antes) ...
     const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });

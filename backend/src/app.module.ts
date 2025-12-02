@@ -38,6 +38,7 @@ import { MqttConfigModule } from './modules/mqtt-config/mqtt-config.module';
 import { FichasModule } from './modules/fichas/fichas.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
 import { PagosModule } from './modules/pagos/pagos.module';
+import { WebSocketModule } from './websocket/websocket.module';
 
 
 @Module({
@@ -89,6 +90,7 @@ import { PagosModule } from './modules/pagos/pagos.module';
     FichasModule,
     MovimientosModule,
     PagosModule,
+    WebSocketModule,
   ],
   providers: [],
   controllers: []

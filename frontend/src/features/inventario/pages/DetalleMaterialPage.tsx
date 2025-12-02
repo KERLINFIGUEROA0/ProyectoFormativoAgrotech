@@ -328,17 +328,29 @@ export default function DetalleMaterialPage() {
             <h3 className="font-semibold text-gray-700 mb-2">Movimientos Recientes</h3>
             <div className="space-y-2 text-sm max-h-48 overflow-y-auto">
               {movimientos.length > 0 ? movimientos.slice(0, 10).map(mov => {
-                // ✅ USAMOS EL FORMATO INTELIGENTE AQUÍ
-                // Le pasamos la cantidad base (g/ml) y la unidad del producto para saber si es sólido o líquido
-                const { cantidad, unidad } = formatearCantidadInteligente(
-                    Number(mov.cantidad),
-                    material.medidasDeContenido || material.unidadBase
-                );
 
-                // Formateo visual limpio (quita decimales .00 si es entero)
-                const cantidadVisual = Number.isInteger(cantidad)
-                    ? cantidad
-                    : parseFloat(cantidad.toFixed(4)); // 4 decimales max para precisión en mg
+                // 🛠️ LÓGICA CORREGIDA: Separar Herramientas de Insumos
+                let cantidadVisual = 0;
+                let unidadVisual = '';
+
+                // CASO A: HERRAMIENTAS (No Consumibles) -> Siempre son Unidades
+                if (material.tipoConsumo === 'no_consumible') {
+                    cantidadVisual = Number(mov.cantidad);
+                    unidadVisual = 'Und';
+                }
+                // CASO B: INSUMOS (Consumibles) -> Usar formato inteligente (kg, g, L, ml)
+                else {
+                    const res = formatearCantidadInteligente(
+                        Number(mov.cantidad),
+                        material.medidasDeContenido || material.unidadBase
+                    );
+
+                    cantidadVisual = Number.isInteger(res.cantidad)
+                        ? res.cantidad
+                        : parseFloat(res.cantidad.toFixed(4));
+
+                    unidadVisual = res.unidad;
+                }
 
                 return (
                   <div key={mov.id} className={`flex justify-between items-center p-2 rounded-md ${mov.tipo === 'ingreso' ? 'bg-green-50' : 'bg-red-50'}`}>
@@ -347,7 +359,7 @@ export default function DetalleMaterialPage() {
                       <span className="text-xs text-gray-500 ml-2">({new Date(mov.fecha).toLocaleDateString('es-ES')})</span>
                     </p>
                     <p className={`font-bold ${mov.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
-                      {mov.tipo === 'ingreso' ? '+' : '-'}{cantidadVisual} <span className="text-xs text-gray-500">{unidad}</span>
+                      {mov.tipo === 'ingreso' ? '+' : '-'}{cantidadVisual} <span className="text-xs text-gray-500">{unidadVisual}</span>
                     </p>
                   </div>
                 )

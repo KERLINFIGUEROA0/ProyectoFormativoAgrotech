@@ -2,12 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { join } from 'path';
 
+// --- CONFIGURACIÓN DE ZONA HORARIA ---
+process.env.TZ = 'America/Bogota';
 
 async function bootstrap() {
   // --- 2. Especifica el tipo de la app ---
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // --- WebSocket Adapter ---
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   app.enableCors({
     origin: true,

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, FileText, Package  } from 'lucide-react';
+import {  Download, FileText, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Button, Textarea, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { enviarRespuesta, obtenerRespuestasPorActividad, descargarArchivoActividad } from '../api/actividadesapi';
+import { FormularioDevolucionMateriales } from './FormularioDevolucionMateriales';
 import { toast } from 'sonner';
 
 interface ModalResponderActividadProps {
@@ -28,7 +29,10 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [materialesDevueltos, setMaterialesDevueltos] = useState<{materialId: number, cantidadDevuelta: number, nombre: string}[]>([]);
+  const [datosDevolucion, setDatosDevolucion] = useState<any[]>([]);
+
+  // Determinar si el usuario puede devolver materiales (solo el responsable)
+  const puedeDevolverMateriales = actividad?.responsable?.identificacion === currentUserIdentificacion;
 
   useEffect(() => {
     if (isOpen && actividad) {
@@ -79,7 +83,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!descripcion.trim() && !archivos && materialesDevueltos.length === 0) {
+    if (!descripcion.trim() && !archivos && datosDevolucion.length === 0) {
       alert('Debe proporcionar una descripción, subir archivos o reportar devoluciones de materiales.');
       return;
     }
@@ -96,13 +100,9 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
       }
 
       // Agregar materiales devueltos si existen
-      if (materialesDevueltos.length > 0) {
-        const materialesParaEnviar = materialesDevueltos.map(m => ({
-          materialId: m.materialId,
-          cantidadDevuelta: m.cantidadDevuelta
-        }));
-        console.log('Materiales devueltos a enviar:', materialesParaEnviar);
-        formData.append('materialesDevueltos', JSON.stringify(materialesParaEnviar));
+      if (datosDevolucion.length > 0) {
+        console.log('Materiales devueltos a enviar:', datosDevolucion);
+        formData.append('materialesDevueltos', JSON.stringify(datosDevolucion));
       } else {
         // Enviar array vacío para evitar errores de validación
         formData.append('materialesDevueltos', JSON.stringify([]));
@@ -114,7 +114,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
       await cargarRespuestaExistente();
 
       // Mostrar modal de éxito con los archivos subidos
-      if (archivos || materialesDevueltos.length > 0) {
+      if (archivos || datosDevolucion.length > 0) {
         setUploadedFiles(Array.from(archivos || []));
         setShowSuccessModal(true);
       } else {
@@ -122,7 +122,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
         onClose();
         setDescripcion('');
         setArchivos(null);
-        setMaterialesDevueltos([]);
+        setDatosDevolucion([]);
       }
     } catch (error) {
       console.error('Error al enviar respuesta:', error);
@@ -195,7 +195,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
               setDescripcion('');
               setArchivos(null);
               setUploadedFiles([]);
-              setMaterialesDevueltos([]);
+              setDatosDevolucion([]);
             }}
           >
             Aceptar
@@ -343,92 +343,44 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                   />
                 </div>
 
-            {/* Sección de devoluciones de materiales - Solo para el responsable */}
-            {actividad.responsable?.identificacion === currentUserIdentificacion && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">
-                  Devoluciones de Materiales (opcional)
-                </label>
-                <p className="text-xs text-gray-600 mb-3">
-                  Como responsable de esta actividad, puedes devolver materiales no utilizados al inventario.
-                </p>
-
-              {/* Mostrar materiales asignados a la actividad */}
-              {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
-                <div className="space-y-3">
-                  {actividad.actividadMaterial.map((am) => (
-                    <div key={am.material.id} className="border border-gray-200 rounded-md p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm font-medium">{am.material.nombre}</span>
-                          <span className="text-xs text-gray-500">
-                            (Asignado: {am.cantidadUsada})
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-600">Cantidad a devolver:</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max={am.cantidadUsada}
-                          step="0.01"
-                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
-                          onChange={(e) => {
-                            const cantidad = parseFloat(e.target.value) || 0;
-                            if (cantidad > 0) {
-                              setMaterialesDevueltos(prev => {
-                                const existing = prev.find(m => m.materialId === am.material.id);
-                                if (existing) {
-                                  return prev.map(m =>
-                                    m.materialId === am.material.id
-                                      ? { ...m, cantidadDevuelta: cantidad }
-                                      : m
-                                  );
-                                } else {
-                                  return [...prev, {
-                                    materialId: am.material.id,
-                                    cantidadDevuelta: cantidad,
-                                    nombre: am.material.nombre
-                                  }];
-                                }
-                              });
-                            } else {
-                              setMaterialesDevueltos(prev =>
-                                prev.filter(m => m.materialId !== am.material.id)
-                              );
-                            }
-                          }}
-                          placeholder="0"
-                        />
-                        <span className="text-xs text-gray-500">
-                          Máx: {am.cantidadUsada}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+            {/* SECCIÓN: DEVOLUCIÓN DE MATERIALES (🔐 SOLO RESPONSABLE) */}
+            {puedeDevolverMateriales ? (
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200 animate-fadeIn">
+                <div className="flex items-center gap-2 mb-4 border-b border-green-200 pb-2">
+                  <ShieldCheck className="text-green-700" size={20} />
+                  <div>
+                    <h4 className="text-sm font-bold text-green-800">Zona de Responsable</h4>
+                    <p className="text-xs text-green-600">
+                      Eres el responsable de esta actividad y debes gestionar la devolución de materiales.
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500 italic">
-                  No hay materiales asignados a esta actividad.
-                </p>
-              )}
 
-              {/* Mostrar resumen de devoluciones */}
-              {materialesDevueltos.length > 0 && (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <h4 className="text-sm font-medium text-green-800 mb-2">Materiales a devolver:</h4>
-                  <ul className="space-y-1">
-                    {materialesDevueltos.map((material) => (
-                      <li key={material.materialId} className="text-sm text-green-700">
-                        • {material.nombre}: {material.cantidadDevuelta} unidades
-                      </li>
-                    ))}
-                  </ul>
+                {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
+                  <FormularioDevolucionMateriales
+                    materiales={actividad.actividadMaterial.map((am: any) => ({
+                       materialId: am.material.id,
+                       nombre: am.material.nombre,
+                       cantidadAsignada: Number(am.cantidadUsada),
+                       precioUnitario: Number(am.material.precio),
+                       unidad: am.unidadMedida,
+                       tipoConsumo: am.material.tipoConsumo
+                    }))}
+                    onChange={setDatosDevolucion}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500 italic">Esta actividad no tiene materiales asignados.</p>
+                )}
+              </div>
+            ) : (
+              // Mensaje informativo para los que NO son responsables
+              <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex items-start gap-2">
+                <AlertCircle className="text-blue-500 mt-0.5" size={16} />
+                <div className="text-xs text-blue-700">
+                  <span className="font-bold">Nota:</span> Solo el responsable
+                  (<strong>{actividad.responsable?.nombre} {actividad.responsable?.apellidos}</strong>)
+                  puede realizar la devolución de materiales al inventario.
                 </div>
-              )}
               </div>
             )}
 
@@ -438,21 +390,23 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                     variant="light"
                     onClick={() => {
                       onClose();
-                      setMaterialesDevueltos([]);
+                      setDatosDevolucion([]);
                     }}
                   >
                     Cancelar
                   </Button>
                   <Button
                     type="submit"
-                    color={existingRespuesta?.estado === 'rechazado' ? 'warning' : 'primary'}
+                    color={existingRespuesta?.estado === 'rechazado' ? 'warning' : (puedeDevolverMateriales ? 'success' : 'primary')}
                     isLoading={isSubmitting}
                   >
                     {isSubmitting
                       ? 'Enviando...'
                       : existingRespuesta?.estado === 'rechazado'
                       ? 'Corregir y Reenviar'
-                      : 'Enviar Respuesta'
+                      : puedeDevolverMateriales
+                      ? 'Finalizar y Devolver Inventario'
+                      : 'Enviar Evidencia'
                     }
                   </Button>
                 </ModalFooter>

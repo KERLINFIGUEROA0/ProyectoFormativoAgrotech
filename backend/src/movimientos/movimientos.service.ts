@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movimiento } from './entities/movimiento.entity';
 import { TipoMovimiento } from '../common/enums/tipo-movimiento.enum';
+import { DateUtil } from '../common/utils/date.util';
 
 @Injectable()
 export class MovimientosService {
@@ -20,12 +21,15 @@ export class MovimientosService {
     referencia?: string,
     usuarioId?: number,
   ): Promise<Movimiento> {
+    // Generar fecha actual en zona horaria de Colombia
+    const fechaActual = DateUtil.getCurrentDate();
+
     // Crear el movimiento usando SQL directo para evitar problemas con relaciones
     const result = await this.movimientoRepository.query(`
       INSERT INTO movimientos (tipo, cantidad, descripcion, referencia, material_id, usuario_id, fecha)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING "Id_Movimiento"
-    `, [tipo, cantidad, descripcion, referencia || null, materialId, usuarioId || null]);
+    `, [tipo, cantidad, descripcion, referencia || null, materialId, usuarioId || null, fechaActual]);
 
     const movimientoId = result[0].Id_Movimiento;
 

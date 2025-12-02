@@ -16,6 +16,8 @@ import {
   SelectItem,
   Input,
 } from "@heroui/react";
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -223,7 +225,7 @@ export default function GestionTransaccionesPage(): ReactElement {
           <tbody>
             {filteredTransacciones.map((t, index) => (
               <tr key={t.id} className={`border-t transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 hover:shadow-sm`}>
-                <td className="px-4 py-3">{new Date(t.fecha).toLocaleDateString('es-ES')}</td>
+                <td className="px-4 py-3">{DateUtils.formatDateOnly(t.fecha)}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     t.tipo === 'ingreso' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

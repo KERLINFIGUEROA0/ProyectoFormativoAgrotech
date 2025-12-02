@@ -5,6 +5,7 @@ import {
   Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import websocketService from '../../../services/websocket.service';
 
 // Hero UI Imports
 import {
@@ -120,6 +121,76 @@ export default function GestionCultivosPage(): ReactElement {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // WebSocket listeners para actualizaciones en tiempo real
+  useEffect(() => {
+    // Listener para cambios de estado de lotes
+    const unsubscribeLoteEstado = websocketService.on('lote-estado-actualizado', (data) => {
+      console.log('🎯 Lote actualizado en tiempo real:', data);
+
+      // Actualizar el lote en el estado local
+      setLotes(prevLotes =>
+        prevLotes.map(lote =>
+          lote.id === data.loteId
+            ? { ...lote, estado: data.nuevoEstado }
+            : lote
+        )
+      );
+
+      // Mostrar notificación al usuario
+      toast.success(`Lote actualizado: ${data.nuevoEstado}`, {
+        description: `El lote ha cambiado su estado automáticamente.`,
+        duration: 4000,
+      });
+    });
+
+    // Listener para lotes liberados
+    const unsubscribeLoteLiberado = websocketService.on('lote-liberado', (data) => {
+      console.log('🎯 Lote liberado en tiempo real:', data);
+
+      // Actualizar el lote a "En preparación"
+      setLotes(prevLotes =>
+        prevLotes.map(lote =>
+          lote.id === data.loteId
+            ? { ...lote, estado: 'En preparación' }
+            : lote
+        )
+      );
+
+      // Mostrar notificación especial para liberación
+      toast.success('¡Lote liberado!', {
+        description: `El lote está ahora disponible para nuevos cultivos.`,
+        duration: 5000,
+      });
+    });
+
+    // Listener para cambios de estado de cultivos
+    const unsubscribeCultivoEstado = websocketService.on('cultivo-estado-actualizado', (data) => {
+      console.log('🎯 Cultivo actualizado en tiempo real:', data);
+
+      // Actualizar el cultivo en el estado local
+      setCultivos(prevCultivos =>
+        prevCultivos.map(cultivo =>
+          cultivo.id === data.cultivoId
+            ? { ...cultivo, Estado: data.nuevoEstado }
+            : cultivo
+        )
+      );
+
+      // Mostrar notificación
+      toast.info(`Cultivo actualizado: ${data.nuevoEstado}`, {
+        description: `Estado del cultivo modificado automáticamente.`,
+        duration: 4000,
+      });
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeLoteEstado();
+      unsubscribeLoteLiberado();
+      unsubscribeCultivoEstado();
+    };
   }, []);
 
   // Filtrado
@@ -264,6 +335,17 @@ export default function GestionCultivosPage(): ReactElement {
     setSelectedLote(lote);
     // Note: sublotes state was removed as it wasn't being used for rendering
     // The map uses sublotesConCultivos derived from allSublotes instead
+  };
+
+  // Callbacks para actualizaciones en tiempo real desde WebSocket
+  const handleLotesUpdate = (lotesActualizados: Lote[]) => {
+    setLotes(lotesActualizados);
+  };
+
+  const handleSublotesUpdate = (sublotesActualizados: any[]) => {
+    // Para simplificar, recargamos todos los sublotes
+    // En una implementación más avanzada, podríamos actualizar solo los cambiados
+    fetchData();
   };
 
   const handleSave = async (data: any) => {
@@ -629,11 +711,13 @@ export default function GestionCultivosPage(): ReactElement {
                   sublotesConCultivos={sublotesConCultivos}
                   selectedSubloteCultivo={selectedSubloteCultivo}
                   onSelectSubloteCultivo={setSelectedSubloteCultivo}
+                  onLotesUpdate={handleLotesUpdate}
+                  onSublotesUpdate={handleSublotesUpdate}
                   customInfo={(lote) => (
                     <div className="p-3 min-w-[180px]">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-bold text-gray-800">{lote.nombre}</h4>
-                        <Chip size="sm" color={lote.estado === 'Activo' ? 'success' : 'default'} variant="flat" className="h-5 text-[10px]">
+                        <Chip size="sm" color={lote.estado === 'En preparación' ? 'success' : lote.estado === 'En cultivación' ? 'warning' : 'default'} variant="flat" className="h-5 text-[10px]">
                           {lote.estado}
                         </Chip>
                       </div>

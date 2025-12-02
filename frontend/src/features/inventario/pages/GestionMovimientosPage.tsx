@@ -14,7 +14,9 @@ import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } fro
 import type { MovimientoData } from '../interfaces/inventario';
 import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 // ✅ IMPORTAR HELPER DE CONVERSIÓN
-import { convertirStockAUnidad, formatearCantidadInteligente } from '../../../utils/unitConversion';
+import { formatearCantidadInteligente } from '../../../utils/unitConversion';
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
@@ -96,13 +98,7 @@ const GestionMovimientosPage: React.FC = () => {
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return DateUtils.formatToTable(fecha);
   };
 
   if (loading) {
@@ -229,13 +225,26 @@ const GestionMovimientosPage: React.FC = () => {
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>
               {movimientosFiltrados.map((movimiento) => {
-                // ✅ FORMATO INTELIGENTE POR FILA
-                const unidadReferencia = (movimiento.material as any)?.medidasDeContenido || (movimiento.material as any)?.unidadBase;
-                const { cantidad, unidad } = formatearCantidadInteligente(Number(movimiento.cantidad), unidadReferencia);
+                // 🛠️ LÓGICA CORREGIDA: Separar Herramientas de Insumos
+                let cantidadVisual = 0;
+                let unidadVisual = '';
 
-                const cantidadVisual = Number.isInteger(cantidad)
-                    ? cantidad
-                    : parseFloat(cantidad.toFixed(4));
+                // CASO A: HERRAMIENTAS (No Consumibles) -> Siempre son Unidades
+                if ((movimiento.material as any)?.tipoConsumo === 'no_consumible') {
+                    cantidadVisual = Number(movimiento.cantidad);
+                    unidadVisual = 'Und';
+                }
+                // CASO B: INSUMOS (Consumibles) -> Usar formato inteligente (kg, g, L, ml)
+                else {
+                    const unidadReferencia = (movimiento.material as any)?.medidasDeContenido || (movimiento.material as any)?.unidadBase;
+                    const { cantidad, unidad } = formatearCantidadInteligente(Number(movimiento.cantidad), unidadReferencia);
+
+                    cantidadVisual = Number.isInteger(cantidad)
+                        ? cantidad
+                        : parseFloat(cantidad.toFixed(4));
+
+                    unidadVisual = unidad;
+                }
 
                 return (
                 <TableRow key={movimiento.id}>
@@ -263,7 +272,7 @@ const GestionMovimientosPage: React.FC = () => {
                   <TableCell>
                     <span className="font-semibold">{cantidadVisual}</span>
                     <span className="text-xs text-gray-600 ml-1 font-bold">
-                      {unidad}
+                      {unidadVisual}
                     </span>
                   </TableCell>
                   <TableCell>{movimiento.descripcion || 'Sin descripción'}</TableCell>

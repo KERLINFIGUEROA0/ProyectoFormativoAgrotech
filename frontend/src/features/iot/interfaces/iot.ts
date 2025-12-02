@@ -33,6 +33,9 @@ export interface Sensor {
   frecuencia_escaneo?: number;
   latestData?: LatestSensorData;
 
+  // ✅ NUEVO: Campo para mapear el JSON
+  json_key?: string | null;
+
   lote: Lote;
   surco?: Surco | null;
 }
