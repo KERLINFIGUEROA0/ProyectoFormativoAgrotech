@@ -42,9 +42,12 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
     const name = sensor.nombre.toLowerCase();
     const topic = sensor.topic?.toLowerCase() || '';
     if (name.includes('temperatura') || topic.includes('temp')) return '°C';
-    if (name.includes('humedad') || topic.includes('hum')) return '%';
-    if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad')) return 'lux';
+    if (name.includes('humedad') && name.includes('aire') || topic.includes('hum')) return '%';
+    if (name.includes('humedad') && name.includes('suelo')) return '%';
+    if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad') || topic.includes('lux')) return 'lux';
     if (name.includes('viento') || topic.includes('wind')) return 'km/h';
+    if (name.includes('ph') || topic.includes('ph')) return 'pH';
+    if (name.includes('bomba') || topic.includes('bomba')) return '';
     return '';
   };
 
@@ -73,10 +76,10 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
       })();
 
   return (
-    <Card className={`shadow-lg border-2 transition-all duration-300 ${isOffline ? 'border-gray-300 bg-gray-50' : 'border-green-100 bg-white'}`}>
+    <Card className={`shadow-lg border-2 transition-all duration-300 relative z-40 ${isOffline ? 'border-gray-300 bg-gray-50' : 'border-green-100 bg-white'}`}>
       <CardBody className="p-4">
         {/* Header: Estado y Contador */}
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center mb-3 relative z-50">
           <div className="flex items-center gap-2">
             {/* Badge Dinámico */}
             <Badge
@@ -90,7 +93,7 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
               </div>
             </Badge>
           </div>
-          <Badge variant="flat" className="text-xs text-gray-400">
+          <Badge variant="flat" className="text-xs text-gray-400 relative z-50">
             {currentIndex + 1} / {sensors.length}
           </Badge>
         </div>

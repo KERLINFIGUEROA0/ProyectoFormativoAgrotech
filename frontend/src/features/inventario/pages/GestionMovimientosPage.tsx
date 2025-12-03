@@ -14,7 +14,7 @@ import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } fro
 import type { MovimientoData } from '../interfaces/inventario';
 import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 // ✅ IMPORTAR HELPER DE CONVERSIÓN
-import { formatearCantidadInteligente, convertirStockAUnidad } from '../../../utils/unitConversion';
+import {  convertirStockAUnidad } from '../../../utils/unitConversion';
 // ✅ IMPORTAR HELPER DE FECHAS
 import { DateUtils } from '../../../utils/dateUtils';
 

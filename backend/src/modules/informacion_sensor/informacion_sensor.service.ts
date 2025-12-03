@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InformacionSensor } from './entities/informacion_sensor.entity';
 import { Sensor } from '../sensores/entities/sensore.entity';
 import { CreateInformacionSensorDto } from './dto/create-informacion_sensor.dto';
 import { UpdateInformacionSensorDto } from './dto/update-informacion_sensor.dto';
+import { MqttClientService } from '../mqtt-config/mqtt-client.service';
 
 @Injectable()
 export class InformacionSensorService {
@@ -15,6 +16,8 @@ export class InformacionSensorService {
     private readonly infoRepo: Repository<InformacionSensor>,
     @InjectRepository(Sensor)
     private readonly sensorRepo: Repository<Sensor>,
+    @Inject(forwardRef(() => MqttClientService))
+    private readonly mqttClient: MqttClientService,
   ) {}
 
 
@@ -74,10 +77,29 @@ export class InformacionSensorService {
           else if (jsonData.hasOwnProperty('valor')) valorFinal = Number(jsonData['valor']);
           else if (jsonData.hasOwnProperty('data')) valorFinal = Number(jsonData['data']);
           else {
-             // Si el JSON es simple {"25.5"}, intentamos castearlo, pero es raro.
-             // O si es estructura plana, tomamos el primer valor numérico que encontremos?
-             // Por seguridad, mejor loguear advertencia si no hay config.
-             this.logger.warn(`Sensor ${sensor.nombre} recibe JSON pero no tiene 'json_key' configurada.`);
+             // SOLUCIÓN TEMPORAL: Intentar extraer por nombre del sensor
+             const sensorName = sensor.nombre.toLowerCase();
+             if (sensorName.includes('temperatura') && jsonData.hasOwnProperty('Temperatura')) {
+               valorFinal = Number(jsonData['Temperatura']);
+               this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave 'Temperatura' por defecto`);
+             } else if (sensorName.includes('humedad') && jsonData.hasOwnProperty('Humedad')) {
+               valorFinal = Number(jsonData['Humedad']);
+               this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave 'Humedad' por defecto`);
+             } else if (sensorName.includes('luz') && jsonData.hasOwnProperty('Lux')) {
+               valorFinal = Number(jsonData['Lux']) / 100;
+               this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave 'Lux' por defecto (dividido por 100)`);
+             }
+             // 👇 AQUÍ AGREGAMOS LA LÓGICA PARA LA BOMBA
+             else if (sensorName.includes('bomba') && jsonData.hasOwnProperty('Estado')) {
+               valorFinal = Number(jsonData['Estado']); // Extrae 1 o 0
+               this.logger.log(`🔧 Sensor Bomba: Usando clave 'Estado' por defecto. Valor: ${valorFinal}`);
+             }
+             else {
+               // Si el JSON es simple {"25.5"}, intentamos castearlo, pero es raro.
+               // O si es estructura plana, tomamos el primer valor numérico que encontremos?
+               // Por seguridad, mejor loguear advertencia si no hay config.
+               this.logger.warn(`Sensor ${sensor.nombre} recibe JSON pero no tiene 'json_key' configurada.`);
+             }
           }
         }
       } else {
@@ -106,16 +128,36 @@ export class InformacionSensorService {
         });
         await this.infoRepo.save(nuevaInfo);
 
-        // D. LÓGICA DE RECONEXIÓN Y HEARTBEAT
-        // Siempre actualizamos la fecha del último mensaje
-        sensor.ultimo_mqtt_mensaje = new Date();
+        // ======================================================
+        // D. LÓGICA DE AUTOMATIZACIÓN DE BOMBA (NUEVO)
+        // ======================================================
 
-        // Si estaba desconectado (por el Watchdog), lo revivimos
-        if (sensor.estado === 'Desconectado') {
-            sensor.estado = 'Activo';
-            this.logger.log(`🟢 Sensor RECONECTADO: [${sensor.nombre}] ha vuelto a enviar datos.`);
+        // Verificamos si es un sensor de humedad de suelo
+        if (sensor.topic && sensor.topic.includes('humedad_suelo')) {
+          const HUMEDAD_MINIMA = sensor.valor_minimo_alerta || 30;
+          const HUMEDAD_OPTIMA = sensor.valor_maximo_alerta || 70;
+          const TOPIC_BOMBA = 'agrotech/actuadores/bomba/comando'; // Tópico donde escucha el ESP32
+
+          if (valorFinal < HUMEDAD_MINIMA) {
+            this.logger.warn(`💧 Humedad baja (${valorFinal}%) en ${sensor.nombre}. ENCENDIENDO BOMBA.`);
+            await this.mqttClient.publishCommand(TOPIC_BOMBA, 'ON');
+
+            // Opcional: Avisar al frontend via WebSocket
+            // this.gateway.emitBombaEstado('ON', 'Automático por baja humedad');
+
+          } else if (valorFinal >= HUMEDAD_OPTIMA) {
+            this.logger.log(`✅ Humedad óptima (${valorFinal}%) en ${sensor.nombre}. APAGANDO BOMBA.`);
+            await this.mqttClient.publishCommand(TOPIC_BOMBA, 'OFF');
+          }
         }
 
+        // E. LÓGICA DE RECONEXIÓN INDIVIDUAL (Tu código existente mejorado)
+        sensor.ultimo_mqtt_mensaje = new Date();
+        if (sensor.estado === 'Desconectado') {
+            sensor.estado = 'Activo';
+            // Esto cumple tu requisito: Solo este sensor cambia a activo, los demás no se tocan.
+            this.logger.log(`🟢 Sensor RECONECTADO: [${sensor.nombre}]`);
+        }
         await this.sensorRepo.save(sensor);
         guardados++;
 

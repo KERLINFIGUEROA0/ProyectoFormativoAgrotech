@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
   Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff,
   TrendingUp, MoreVertical, Filter, Map, Layers,
-  RefreshCw, Pause, Play, Download, X,
+  RefreshCw, Pause, Download, X,
   ChevronLeft, ChevronRight, Server
 } from 'lucide-react';
 import {
@@ -82,9 +82,16 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   const isDisconnected = latestData?.estado === 'Desconectado';
   const tieneDatos = latestData !== undefined && rawValor !== null;
 
+  // 1. Detectar si es una bomba
+  const isBomba = sensor.nombre.toLowerCase().includes('bomba') || sensor.topic?.toLowerCase().includes('bomba');
+
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
     const topic = sensor.topic?.toLowerCase() || '';
+
+    // Si es bomba, devolvemos el valor tal cual (se procesará en el render)
+    if (isBomba) return { valor, unit: '' };
+
     if (name.includes('luz') || topic.includes('luz')) return { valor: valor !== null ? valor * 100 : null, unit: 'lux' };
     if (name.includes('temperatura') || topic.includes('temperatura')) return { valor, unit: '°C' };
     if (name.includes('humedad')) return { valor, unit: '%' };
@@ -129,6 +136,15 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
       bellColor = "text-red-600";
       bellAnimation = "animate-bounce";
     }
+  }
+
+  // MODIFICACIÓN DE COLORES PARA BOMBA:
+  if (isBomba && valor !== null) {
+      if (Number(valor) === 1) {
+          valorColor = "text-blue-600"; // Color para ON
+      } else {
+          valorColor = "text-gray-500"; // Color para OFF
+      }
   }
 
   // Si el sistema NO está grabando, quitamos colores de alerta para indicar "congelado"
@@ -233,7 +249,13 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
         {valor !== null ? (
           <>
             <div className={`text-xl font-bold ${valorColor} flex items-baseline gap-1 drop-shadow-sm`}>
-              {Number(valor).toFixed(1)}
+              {isBomba ? (
+                // Lógica especial para Bomba
+                <span>{Number(valor) === 1 ? 'ON' : 'OFF'}</span>
+              ) : (
+                // Lógica normal para sensores numéricos
+                Number(valor).toFixed(1)
+              )}
               <span className="text-[11px] font-semibold text-gray-500">{unit}</span>
             </div>
 
@@ -249,6 +271,11 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
             ) : alertMessage ? (
                 <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${alertMessage === 'ALTO' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                   <AlertTriangle size={7} className="inline mr-1" /> ⚠️ {alertMessage}
+                </div>
+            ) : isBomba ? (
+                // 3. Estado "Normal" personalizado para Bomba
+                <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${Number(valor) === 1 ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                  {Number(valor) === 1 ? '⚡ Funcionando' : 'zzz Apagado'}
                 </div>
             ) : (
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 shadow-sm">
@@ -645,15 +672,7 @@ export default function GestionSensoresPage(): ReactElement {
   // Protección de permisos en tiempo real
   usePermissionGuard({ module: 'Iot' });
 
-  // MQTT Socket Hook
-  const {
-    isConnected: mqttConnected,
-    sensorStatuses,
-    connectionStatuses,
-    latestReadings: mqttLatestReadings,
-    sendPing,
-    requestCurrentStatus
-  } = useMqttSocket();
+  
 
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
@@ -851,25 +870,7 @@ export default function GestionSensoresPage(): ReactElement {
     }
   }, [sensores, sensorHistories]);
 
-  const toggleSystemRecording = async () => {
-    if (!currentLote) return;
 
-    const newState = !isSystemRecording;
-    const toastId = toast.loading(newState ? "Activando grabación de datos..." : "Pausando grabación de datos...");
-
-    try {
-      // Llamada al Backend para cambiar el estado REAL del lote
-      await actualizarLote(currentLote.id, { activo_mqtt: newState } as any);
-
-      toast.success(newState ? "✅ Lote activo: Recibiendo datos." : "⏸️ Lote pausado: Datos congelados.", { id: toastId });
-
-      // Recargamos la estructura para actualizar el objeto 'lote' localmente
-      loadStructure();
-      if (newState) setSensorHistories({}); // Reload histories when resuming
-    } catch (error) {
-      toast.error("Error al cambiar estado del lote", { id: toastId });
-    }
-  };
 
   // Handlers UI
   const handleModoChange = (modo: 'GENERAL' | 'LOTE') => {
@@ -1058,6 +1059,14 @@ export default function GestionSensoresPage(): ReactElement {
     return res;
   }, [sensores, latestData, modoVista, filtroId]);
 
+  // Filtrado de sensores para gráfica (excluir bombas)
+  const sensoresParaGrafica = useMemo(() => {
+    return sensoresFiltrados.filter(sensor => {
+      const isBomba = sensor.nombre.toLowerCase().includes('bomba') || sensor.topic?.toLowerCase().includes('bomba');
+      return !isBomba;
+    });
+  }, [sensoresFiltrados]);
+
   // Cálculo de sensores para la página actual
   const sensoresPaginaActual = useMemo(() => {
     const inicio = paginaSensores * tarjetasPorPagina;
@@ -1143,7 +1152,7 @@ export default function GestionSensoresPage(): ReactElement {
                <Button
                  onClick={() => openBrokerModal()}
                  variant="solid"
-                 color="secondary"
+                 color="primary"
                  size="sm"
                  startContent={<Server size={14} />}
                >
@@ -1247,19 +1256,21 @@ export default function GestionSensoresPage(): ReactElement {
 
               {/* Contenedor de tarjetas */}
               <div className="flex gap-2 px-10 py-4 min-h-24 w-full justify-center overflow-x-auto">
-                {sensoresPaginaActual.map(sensor => (
-                  <div key={sensor.id} className="flex-shrink-0 w-56">
-                    <SensorCard
-                      sensor={sensor}
-                      latestData={sensor.latestData}
-                      isSystemRecording={isSystemRecording}
-                      onDelete={(id) => eliminarSensor(id).then(loadStructure)}
-                      onViewHistory={setHistorySensor}
-                      onToggleEstado={(id, estado) => handleToggleEstadoSensor(id, estado)}
-                      onRemoveFromLote={handleRemoveSensorFromLote}
-                    />
-                  </div>
-                ))}
+                {sensoresPaginaActual.map(sensor => {
+                  return (
+                    <div key={sensor.id} className="flex-shrink-0 w-56">
+                      <SensorCard
+                        sensor={sensor}
+                        latestData={sensor.latestData}
+                        isSystemRecording={isSystemRecording}
+                        onDelete={(id) => eliminarSensor(id).then(loadStructure)}
+                        onViewHistory={setHistorySensor}
+                        onToggleEstado={(id, estado) => handleToggleEstadoSensor(id, estado)}
+                        onRemoveFromLote={handleRemoveSensorFromLote}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Botón siguiente */}
@@ -1309,7 +1320,7 @@ export default function GestionSensoresPage(): ReactElement {
                : modoVista === 'LOTE' && filtroId !== 'TODOS'
                ? `Lote: ${lotes.find(l => l.id === filtroId)?.nombre}`
                : sensoresGrafica.length === 1
-               ? `Sensor: ${sensoresFiltrados.find(s => s.id === sensoresGrafica[0])?.nombre}`
+               ? `Sensor: ${sensoresParaGrafica.find(s => s.id === sensoresGrafica[0])?.nombre}`
                : sensoresGrafica.length > 1
                ? `${sensoresGrafica.length} Sensores Seleccionados`
                : 'Todos los Sensores'
@@ -1355,7 +1366,7 @@ export default function GestionSensoresPage(): ReactElement {
                 className="min-w-48 max-w-64"
                 size="sm"
                 placeholder="Seleccionar sensores"
-                items={(sensoresFiltrados || []).map(sensor => {
+                items={(sensoresParaGrafica || []).map(sensor => {
                   const sensorData = latestData.find(d => d.id === sensor.id);
                   const isDisconnected = sensorData?.estado === 'Desconectado';
                   return {
@@ -1378,7 +1389,7 @@ export default function GestionSensoresPage(): ReactElement {
                 {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
               </Select>
 
-              {sensoresGrafica.length > 0 && sensoresGrafica.length < sensoresFiltrados.length && (
+              {sensoresGrafica.length > 0 && sensoresGrafica.length < sensoresParaGrafica.length && (
                 <Button
                   variant="flat"
                   size="sm"
@@ -1394,7 +1405,7 @@ export default function GestionSensoresPage(): ReactElement {
           <ResponsiveContainer width="100%" height={320} key={`chart-${sensoresGrafica.join('-')}`}>
             {(() => {
               const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-              const sensoresParaGraficar = sensoresGrafica.length > 0 ? sensoresGrafica : sensoresFiltrados.map(s => s.id);
+              const sensoresParaGraficar = sensoresGrafica.length > 0 ? sensoresGrafica : sensoresParaGrafica.map(s => s.id);
 
               if (sensoresParaGraficar.length === 0) {
                 return <div className="flex items-center justify-center h-full text-gray-500 text-sm">No hay sensores para mostrar</div>;
@@ -1414,7 +1425,7 @@ export default function GestionSensoresPage(): ReactElement {
               const chartData = Array.from({length: pointsToShow}, (_, i) => {
                 const obj: any = { time: sensorHistories[firstSensorId]?.[i]?.time || `${i+1}` };
                 sensoresParaGraficar.forEach(sensorId => {
-                  const sensor = sensoresFiltrados.find(s => s.id === sensorId);
+                  const sensor = sensoresParaGrafica.find(s => s.id === sensorId);
                   const history = sensorHistories[sensorId];
                   const valor = history?.[i]?.valor ?? null;
                   if (valor !== null && sensor) {
@@ -1480,7 +1491,7 @@ export default function GestionSensoresPage(): ReactElement {
                           fill: '#fff',
                           style: { filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' }
                         }}
-                        name={sensor?.nombre || `Sensor ${sensorId}`}
+                        name={sensoresParaGrafica.find(s => s.id === sensorId)?.nombre || `Sensor ${sensorId}`}
                         isAnimationActive={true}
                         animationDuration={800}
                         connectNulls={true} // Mejor conexión de datos

@@ -62,6 +62,16 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
     toast.info("Probando conexión con el broker MQTT...");
 
     try {
+      // Necesitamos enviar `loteId` según CreateBrokerDto
+      const surcoSeleccionado = surcos.find(s => s.id === Number(formData.surcoId));
+      const loteId = surcoSeleccionado?.lote?.id;
+
+      if (!loteId) {
+        toast.error("Debes seleccionar un surco/lote antes de probar la conexión del broker.");
+        setIsTestingConnection(false);
+        return;
+      }
+
       const brokerData = {
         nombre: brokerNombre,
         host: brokerHost,
@@ -69,6 +79,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         protocolo: brokerProtocolo,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
+        loteId,
       };
 
       const result = await probarConexionBroker(brokerData);
@@ -132,6 +143,10 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         protocolo: brokerProtocolo,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
+        loteId: (() => {
+          const s = surcos.find(x => x.id === Number(surcoId));
+          return s?.lote?.id || 0;
+        })(),
       }
     };
 

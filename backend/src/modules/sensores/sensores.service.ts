@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, LessThan } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, LessThan, MoreThan } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
@@ -476,8 +476,7 @@ export class SensoresService {
         throw new NotFoundException(`Lote no encontrado`);
       }
 
-      // 1. Obtener cultivos con todas las relaciones necesarias
-      // Buscar cultivos directamente en el lote O en sublotes del lote
+      // 1. Obtener cultivos (Esto se mantiene igual que tu código original)
       let query = this.cultivoRepo.createQueryBuilder('cultivo')
         .leftJoinAndSelect('cultivo.tipoCultivo', 'tipoCultivo')
         .leftJoinAndSelect('cultivo.producciones', 'producciones')
@@ -490,10 +489,8 @@ export class SensoresService {
         .leftJoinAndSelect('sublotes.lote', 'subloteLote')
         .where('(cultivo.loteId = :loteId OR subloteLote.id = :loteId)', { loteId })
         .andWhere('cultivo.Fecha_Plantado <= :fechaFin', { fechaFin })
-        .andWhere('(cultivo.Fecha_Fin IS NULL OR cultivo.Fecha_Fin >= :fechaInicio)', { fechaInicio })
-        .andWhere('(cultivo.Estado IS NULL OR cultivo.Estado != :estadoFinalizado)', { estadoFinalizado: 'Finalizado' });
+        .andWhere('(cultivo.Fecha_Fin IS NULL OR cultivo.Fecha_Fin >= :fechaInicio)', { fechaInicio });
 
-      // Si se especifica un cultivo específico, filtrar por ese cultivo
       if (cultivoId) {
         query = query.andWhere('cultivo.id = :cultivoId', { cultivoId });
       }
@@ -644,8 +641,11 @@ export class SensoresService {
         reporte.cultivos.push(datosCultivo);
       }
 
-      // 3. Procesar Sensores con análisis avanzado
-      // Buscar sensores directamente en el lote O en sublotes del lote
+      // =====================================================================
+      // 3. 🚨 CORRECCIÓN CRÍTICA EN SENSORES
+      // =====================================================================
+
+      // Buscar sensores del lote
       const sensores = await this.sensorRepo.find({
         where: [
           { lote: { id: loteId } },
@@ -655,100 +655,198 @@ export class SensoresService {
       });
 
       for (const s of sensores) {
-        // A. Registros Históricos (Respetan el rango de fechas para gráficas y promedios)
-        const registros = await this.infoSensorRepo.createQueryBuilder('info')
+        // A. Obtener TODOS los registros históricos (Top 10 Max/Min y Últimos 10)
+        // 🔥 IMPORTANTE: NO FILTRAMOS POR FECHA AQUÍ para asegurar que salgan tus pruebas recientes
+        // y los máximos históricos reales.
+
+        // 1. Valores que excedieron el umbral máximo (últimos 10)
+        const valoresSobreUmbralMax = s.valor_maximo_alerta ? await this.infoSensorRepo.find({
+            where: {
+                sensor: { id: s.id },
+                valor: MoreThan(s.valor_maximo_alerta)
+            },
+            order: { fechaRegistro: 'DESC' },
+            take: 10
+        }) : [];
+
+        // 2. Valores que bajaron del umbral mínimo (últimos 10)
+        const valoresBajoUmbralMin = s.valor_minimo_alerta ? await this.infoSensorRepo.find({
+            where: {
+                sensor: { id: s.id },
+                valor: LessThan(s.valor_minimo_alerta)
+            },
+            order: { fechaRegistro: 'DESC' },
+            take: 10
+        }) : [];
+
+        // 3. Últimos 10 Registros (Tiempo Real / Lo que acabas de manipular)
+        const ultimos10 = await this.infoSensorRepo.find({
+            where: { sensor: { id: s.id } },
+            order: { fechaRegistro: 'DESC' },
+            take: 10
+        });
+
+        // 4. Evolución Diaria (Solo dentro del rango solicitado por el usuario)
+        // Aquí sí usamos el filtro para que el gráfico de tendencias coincida con el reporte financiero
+        const registrosRango = await this.infoSensorRepo.createQueryBuilder('info')
           .where('info.sensorId = :sid', { sid: s.id })
-          .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: fechaInicio, fin: fechaFin })
+          .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: `${fechaInicio} 00:00:00`, fin: `${fechaFin} 23:59:59` })
           .orderBy('info.fechaRegistro', 'ASC')
           .getMany();
 
-        // B. ✅ NUEVO: Último Dato Real (Tiempo Real - Ignora fechas del reporte)
-        // Esto garantiza que si hay una alerta AHORA MISMO, salga en el PDF.
-        const ultimoDatoReal = await this.infoSensorRepo.findOne({
-            where: { sensor: { id: s.id } },
-            order: { fechaRegistro: 'DESC' }
-        });
+        // Calcular estadísticas globales (Basadas en los últimos 1000 datos para rendimiento, o rango)
+        // Usaremos 'registrosRango' para el promedio del periodo reportado.
+        const valoresRango = registrosRango.map(r => Number(r.valor));
 
-        // Si no hay registros históricos en el rango, usamos arrays vacíos para no romper el código
-        const valores = registros.map(r => Number(r.valor));
-        const stats = registros.length > 0 ? {
-            maximo: Math.max(...valores),
-            minimo: Math.min(...valores),
-            promedio: Number((valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(2)),
-            totalRegistros: registros.length
-        } : {
-            maximo: 0, minimo: 0, promedio: 0, totalRegistros: 0
+        // Obtener Mínimo y Máximo GLOBAL de toda la historia (consulta rápida)
+        const extremos = await this.infoSensorRepo.createQueryBuilder('info')
+            .select('MAX(info.valor)', 'max')
+            .addSelect('MIN(info.valor)', 'min')
+            .addSelect('COUNT(info.id)', 'count')
+            .where('info.sensorId = :sid', { sid: s.id })
+            .getRawOne();
+
+        const stats = {
+            maximo: extremos.max ? Number(extremos.max) : 0,
+            minimo: extremos.min ? Number(extremos.min) : 0,
+            // Promedio solo del periodo seleccionado para coherencia con "Evolución Diaria"
+            promedio: valoresRango.length > 0
+                ? Number((valoresRango.reduce((a, b) => a + b, 0) / valoresRango.length).toFixed(2))
+                : 0,
+            totalRegistros: Number(extremos.count) || 0
         };
 
-        // Lógica de actuadores (bomba para humedad)
-        const eventosBomba: any[] = [];
-        if (s.nombre.toLowerCase().includes('humedad')) {
-          registros.forEach(r => {
-            if (Number(r.valor) < 20) { // Umbral configurable
-              eventosBomba.push({
-                fecha: r.fechaRegistro,
-                valor: Number(r.valor),
-                accion: 'ENCENDIDO AUTOMÁTICO (Bomba de riego)',
-                duracionEstimada: '15-30 minutos' // Estimación
-              });
-            }
-          });
+        // =========================================================
+        // 🚨 NUEVA LÓGICA: DETECCIÓN DE CICLOS DE BOMBA (ON/OFF)
+        // =========================================================
+        let ciclosRiego: Array<{inicio: Date, fin: Date, duracion: string, valorPromedio: number}> = [];
+
+        // Identificamos si es una bomba buscando palabras clave en el nombre
+        const esBomba = s.nombre.toLowerCase().includes('bomba') ||
+                        s.nombre.toLowerCase().includes('riego');
+
+        if (esBomba && registrosRango.length > 0) {
+            let inicioCiclo: Date | null = null;
+
+            registrosRango.forEach((reg, index) => {
+                const valor = Number(reg.valor);
+                const esEncendido = valor >= 1; // Asumimos 1 o más es ON
+
+                // Detectar flanco de subida (0 -> 1) o inicio si ya estaba en 1
+                if (esEncendido && !inicioCiclo) {
+                    inicioCiclo = new Date(reg.fechaRegistro);
+                }
+
+                // Detectar flanco de bajada (1 -> 0) o fin de datos
+                const esUltimo = index === registrosRango.length - 1;
+                if ((!esEncendido || esUltimo) && inicioCiclo) {
+                    const finCiclo = new Date(reg.fechaRegistro);
+
+                    // Calcular duración en minutos
+                    const diffMs = finCiclo.getTime() - inicioCiclo.getTime();
+                    const duracionMin = Math.round(diffMs / 60000);
+
+                    // Solo guardamos si duró al menos 1 minuto (filtrar ruido) o si es evento real
+                    if (diffMs > 0) {
+                        ciclosRiego.push({
+                            inicio: inicioCiclo,
+                            fin: finCiclo,
+                            duracion: `${duracionMin} min`,
+                            valorPromedio: valor // Por si la bomba es variable
+                        });
+                    }
+                    inicioCiclo = null; // Reset
+                }
+            });
+
+            // Invertimos para que en el PDF salgan los más recientes primero en la tabla
+            ciclosRiego.reverse();
         }
 
-        // Muestreo diario (últimos 5 datos por día)
-        const agrupadoPorDia: any = registros.reduce((acc, curr) => {
-          const dia = new Date(curr.fechaRegistro).toISOString().split('T')[0];
-          if (!acc[dia]) acc[dia] = [];
-          acc[dia].push(curr);
+        // Procesar Evolución Diaria (Agrupar por día)
+        const agrupadoPorDia: any = registrosRango.reduce((acc, curr) => {
+          // Ajuste de zona horaria manual si es necesario, o usar string directo
+          const fechaObj = new Date(curr.fechaRegistro);
+          const dia = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+
+          if (!acc[dia]) acc[dia] = { sum: 0, count: 0, fecha: curr.fechaRegistro };
+          acc[dia].sum += Number(curr.valor);
+          acc[dia].count += 1;
           return acc;
         }, {});
 
-        const muestreoDiario: any[] = Object.keys(agrupadoPorDia).map(dia => ({
-          dia,
-          datos: agrupadoPorDia[dia].slice(-5).map((d: any) => ({
-            hora: new Date(d.fechaRegistro).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-            valor: Number(d.valor)
-          }))
-        }));
+        const muestreoDiario = Object.keys(agrupadoPorDia).map(key => ({
+            dia: key,
+            // Guardamos el promedio calculado del día
+            promedioCalculado: Number((agrupadoPorDia[key].sum / agrupadoPorDia[key].count).toFixed(2)),
+            // Guardamos un dato de referencia para la fecha
+            fecha: agrupadoPorDia[key].fecha
+        })).sort((a, b) => new Date(a.dia).getTime() - new Date(b.dia).getTime());
 
-        // Picos altos y bajos (top 5)
-        const picosAltos: any[] = [...registros]
-          .sort((a, b) => Number(b.valor) - Number(a.valor))
-          .slice(0, 5)
-          .map(p => ({
-            fecha: p.fechaRegistro,
-            valor: Number(p.valor)
-          }));
+        // Determinar la unidad de medida basada en el nombre del sensor
+        const determinarUnidad = (nombreSensor: string): string => {
+          const nombre = nombreSensor.toLowerCase();
+          if (nombre.includes('luz') || nombre.includes('radiacion')) return 'lux';
+          if (nombre.includes('temperatura')) return '°C';
+          if (nombre.includes('humedad')) return '%';
+          return 'unidad'; // Fallback para sensores desconocidos
+        };
 
-        const picosBajos: any[] = [...registros]
-          .sort((a, b) => Number(a.valor) - Number(b.valor))
-          .slice(0, 5)
-          .map(p => ({
-            fecha: p.fechaRegistro,
-            valor: Number(p.valor)
-          }));
-
+        // Mapear para el PDF
         reporte.sensores[s.nombre] = {
-          unidad: 'unidad', // Campo por defecto
+          unidad: esBomba ? 'estado' : determinarUnidad(s.nombre),
           umbralMinimo: s.valor_minimo_alerta,
           umbralMaximo: s.valor_maximo_alerta,
           stats,
-          eventosBomba,
-          muestreoDiario,
-          picosAltos,
-          picosBajos,
 
-          // ✅ ENVIAMOS EL DATO EN TIEMPO REAL AL PDF
-          ultimoRegistro: ultimoDatoReal ? {
-              valor: Number(ultimoDatoReal.valor),
-              fecha: ultimoDatoReal.fechaRegistro
+          // Enviamos los datos procesados específicamente para las tablas
+          muestreoDiario, // Para la tabla de Evolución
+
+          valoresSobreUmbralMax: valoresSobreUmbralMax.map(p => ({
+              fecha: p.fechaRegistro,
+              valor: Number(p.valor)
+          })),
+
+          valoresBajoUmbralMin: valoresBajoUmbralMin.map(p => ({
+              fecha: p.fechaRegistro,
+              valor: Number(p.valor)
+          })),
+
+          // ✅ ESTO ES LO QUE NECESITAS: El dato más reciente absoluto
+          ultimoRegistro: ultimos10.length > 0 ? {
+              valor: Number(ultimos10[0].valor),
+              fecha: ultimos10[0].fechaRegistro
           } : null,
 
+          // Lista cruda de los últimos 10 para la tabla "Últimos 10 Registros"
+          ultimos10: ultimos10.map(u => {
+              const valor = Number(u.valor);
+              let estado = 'Normal';
+
+              // Determinar estado basado en umbrales
+              if (s.valor_maximo_alerta && valor > s.valor_maximo_alerta) {
+                  estado = 'Alto';
+              } else if (s.valor_minimo_alerta && valor < s.valor_minimo_alerta) {
+                  estado = 'Bajo';
+              }
+
+              return {
+                  fecha: u.fechaRegistro,
+                  valor: valor,
+                  estado: estado
+              };
+          }),
+
+          // 🔥 NUEVO: Historial completo para la tabla grande (del periodo seleccionado)
+          historialDetallado: registrosRango.map(r => ({
+              fecha: r.fechaRegistro,
+              valor: Number(r.valor)
+          })),
+
+          esBomba: esBomba, // Flag para el PDF
+          ciclosRiego: ciclosRiego, // <--- ENVIAMOS LOS CICLOS PROCESADOS
+
           recomendaciones: this.generarRecomendaciones(s.nombre, stats),
-          alertas: registros.filter(r =>
-            Number(r.valor) > Number(s.valor_maximo_alerta || 999) ||
-            Number(r.valor) < Number(s.valor_minimo_alerta || 0)
-          ).length
         };
       }
 

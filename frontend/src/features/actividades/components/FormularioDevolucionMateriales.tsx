@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, DollarSign, PackageCheck, PackageX, Receipt, AlertCircle, Ruler } from 'lucide-react';
+import { AlertTriangle, DollarSign, PackageCheck, PackageX, Receipt, Ruler } from 'lucide-react';
 import { UNIDADES_VOLUMEN, UNIDADES_MASA, FACTORES_CONVERSION, esUnidadVolumen, esUnidadMasa } from '../../../utils/unitConversion';
 
 interface MaterialAsignado {
@@ -86,29 +86,53 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
     return items
       .map((item, index) => {
         const mat = materiales[index];
-        if (!mat || !item.reportarDano) return null;
+        if (!mat) return null;
 
-        const cantDanadaUsuario = Number(item.cantidadDanada) || 0;
-        if (cantDanadaUsuario <= 0) return null;
+        const valDevueltaUsuario = Number(item.cantidadDevuelta) || 0;
+        const valDanadaUsuario = Number(item.cantidadDanada) || 0;
 
-        // Calculamos el costo en base a la conversión
-        // Precio unitario es por la unidad ASIGNADA.
-        let cantidadParaCobro = cantDanadaUsuario;
+        let cantidadCobrar = 0;
+        let precioTotal = 0;
+        let concepto = '';
 
-        if (mat.tipoConsumo === 'consumible') {
-           const factorSeleccionado = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
-           const factorOriginal = FACTORES_CONVERSION[mat.unidad] || 1;
-           cantidadParaCobro = cantDanadaUsuario * (factorSeleccionado / factorOriginal);
+        // --- CASO A: HERRAMIENTAS (Solo cobramos si las dañan) ---
+        if (mat.tipoConsumo === 'no_consumible') {
+            if (!item.reportarDano || valDanadaUsuario <= 0) return null;
+
+            cantidadCobrar = valDanadaUsuario;
+            precioTotal = cantidadCobrar * mat.precioUnitario;
+            concepto = 'Daño/Pérdida';
+        }
+        // --- CASO B: INSUMOS (Cobramos lo que se gastó) ---
+        // Aquí aplicamos la lógica: Asignado (10) - Devuelto (5) = Cobrar (5)
+        else {
+            // 1. Convertir lo devuelto a la misma unidad que lo asignado (por si acaso)
+            let devueltoNormalizado = valDevueltaUsuario;
+            if (item.unidadSeleccionada !== mat.unidad) {
+               const fSel = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
+               const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
+               devueltoNormalizado = valDevueltaUsuario * (fSel / fOrig);
+            }
+
+            // 2. Calcular consumo real
+            const consumoReal = mat.cantidadAsignada - devueltoNormalizado;
+
+            // Si el consumo es casi 0, no cobramos nada
+            if (consumoReal <= 0.001) return null;
+
+            cantidadCobrar = consumoReal;
+            precioTotal = cantidadCobrar * mat.precioUnitario; // 5 * 1000 = 5000
+            concepto = 'Consumo Real';
         }
 
         return {
           id: mat.materialId,
           nombre: mat.nombre,
-          cantidad: cantidadParaCobro, // Cantidad en unidad original (para el precio)
-          cantidadVisual: cantDanadaUsuario, // Cantidad que escribió el usuario
-          unidadVisual: item.unidadSeleccionada,
+          concepto: concepto,
+          cantidad: cantidadCobrar,
+          unidadVisual: mat.unidad,
           precio: mat.precioUnitario,
-          total: cantidadParaCobro * mat.precioUnitario
+          total: precioTotal
         };
       })
       .filter((i): i is NonNullable<typeof i> => i !== null);
@@ -203,7 +227,7 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
               {/* COLUMNA 1: Devolución (Sobrantes o Herramientas buenas) */}
               <div>
-                <label className="block text-sm font-medium text-green-700 mb-1 flex items-center gap-1">
+                <label className="text-sm font-medium text-green-700 mb-1 flex items-center gap-1">
                   <PackageCheck size={16} />
                   {esHerramienta ? 'Devolver Buen Estado' : 'Devolver Sobrante (Resto al Stock)'}
                 </label>
@@ -263,7 +287,7 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
                   {itemState.reportarDano && (
                     <div className="animate-fadeIn">
-                      <label className="block text-sm font-medium text-red-700 mb-1 flex items-center gap-1">
+                      <label className="text-sm font-medium text-red-700 mb-1 flex items-center gap-1">
                         <PackageX size={16} />
                         Cantidad Dañada
                       </label>
@@ -321,7 +345,8 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
               <thead className="bg-slate-100">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Item</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase">Cant. Dañada</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Concepto</th> {/* Nueva Columna */}
+                  <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase">Cant. Facturada</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase">Valor Unit.</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase">Subtotal</th>
                 </tr>
@@ -330,8 +355,17 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
                 {resumenCostos.map((item) => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm text-slate-700 font-medium">{item.nombre}</td>
-                    <td className="px-4 py-2 text-sm text-right text-red-600 font-bold">
-                      {item.cantidadVisual} {item.unidadVisual}
+
+                    {/* Columna Concepto: Diferencia visualmente Consumo de Daño */}
+                    <td className="px-4 py-2 text-sm text-slate-600">
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.concepto === 'Daño/Pérdida' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {item.concepto}
+                        </span>
+                    </td>
+
+                    <td className="px-4 py-2 text-sm text-right text-slate-700 font-bold">
+                      {/* Usamos toFixed(2) para que se vean bien los decimales de insumos */}
+                      {item.cantidad.toFixed(2)} {item.unidadVisual}
                     </td>
                     <td className="px-4 py-2 text-sm text-right text-slate-500">${item.precio.toLocaleString()}</td>
                     <td className="px-4 py-2 text-sm text-right text-slate-800 font-bold">${item.total.toLocaleString()}</td>
@@ -340,8 +374,8 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
               </tbody>
               <tfoot className="bg-slate-50">
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right text-sm font-bold text-slate-700">Total a Cargo del Cultivo:</td>
-                  <td className="px-4 py-3 text-right text-lg font-black text-red-600">
+                  <td colSpan={4} className="px-4 py-3 text-right text-sm font-bold text-slate-700">Total Costo Real (Transacción):</td>
+                  <td className="px-4 py-3 text-right text-lg font-black text-blue-800">
                     ${granTotalCosto.toLocaleString()}
                   </td>
                 </tr>
