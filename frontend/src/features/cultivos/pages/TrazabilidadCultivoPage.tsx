@@ -23,7 +23,7 @@ export default function TrazabilidadCultivoPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Obtener la fecha de plantado para establecer el mínimo en los inputs de fecha
-  const fechaPlantado = data?.cultivo?.Fecha_Plantado || '';
+  const fechaPlantado = data?.cultivo?.Fecha_Plantado ? new Date(data.cultivo.Fecha_Plantado).toISOString().split('T')[0] : '';
 
   useEffect(() => {
     if (!cultivoId) return;
@@ -173,7 +173,7 @@ export default function TrazabilidadCultivoPage() {
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              min={fechaPlantado}
+              min={fechaInicio || fechaPlantado}
             />
           </ModalBody>
           <ModalFooter>

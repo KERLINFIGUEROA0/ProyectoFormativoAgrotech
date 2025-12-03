@@ -581,7 +581,7 @@ export default function GestionCultivosPage(): ReactElement {
                             <div className="flex flex-col items-end">
                               <span className="text-xs text-gray-400 font-medium uppercase">Sembrado</span>
                               <span className="text-sm font-bold text-gray-800">
-                                {new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' })}
+                                {new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
                               </span>
                             </div>
                           </div>
