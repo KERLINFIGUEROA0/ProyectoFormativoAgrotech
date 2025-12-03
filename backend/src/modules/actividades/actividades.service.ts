@@ -813,7 +813,7 @@ export class ActividadesService {
     }
   }
 
-  async asignarActividad(dto: AsignarActividadDto) {
+  async asignarActividad(dto: AsignarActividadDto, usuarioIdentificacion?: number) {
     const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
 
     // ... (Validaciones de entidades Cultivo, Lote, Sublote, Responsable igual que antes) ...
@@ -836,17 +836,27 @@ export class ActividadesService {
       });
       const nombresAsignados = usuariosAsignados.map(u => `${u.nombre} ${u.apellidos}`);
 
-      // Lógica para asignar responsable automáticamente si hay solo un aprendiz o pasante
-      if (aprendices.length === 1 && !responsable) {
-        const usuarioUnico = usuariosAsignados[0];
-        const tipoUsuario = usuarioUnico.tipoUsuario?.nombre?.toLowerCase();
-        if (tipoUsuario === 'aprendiz' || tipoUsuario === 'pasante') {
-          responsable = usuarioUnico;
+      // Lógica para asignar responsable automáticamente
+      if (!responsable) {
+        if (aprendices.length === 1) {
+          // Si hay un solo aprendiz/pasante, él es el responsable
+          const usuarioUnico = usuariosAsignados[0];
+          const tipoUsuario = usuarioUnico.tipoUsuario?.nombre?.toLowerCase();
+          if (tipoUsuario === 'aprendiz' || tipoUsuario === 'pasante') {
+            responsable = usuarioUnico;
+          } else {
+            // Si no es aprendiz/pasante, asignar al instructor
+            responsable = await this.usuarioRepository.findOneBy({ identificacion: usuarioIdentificacion });
+          }
+        } else {
+          // Si hay múltiples usuarios, el responsable es el instructor
+          responsable = await this.usuarioRepository.findOneBy({ identificacion: usuarioIdentificacion });
         }
       }
 
       const actividad = this.actividadRepository.create({
         titulo, descripcion, fecha: new Date(fecha), cultivo, lote, sublote, responsable,
+        usuario: usuarioIdentificacion ? { identificacion: usuarioIdentificacion } : undefined,
         estado: 'pendiente', asignados: JSON.stringify(nombresAsignados), archivoInicial
       });
       const saved = await queryRunner.manager.save(actividad);

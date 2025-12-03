@@ -23,6 +23,11 @@ interface Pago {
       nombre: string;
       apellidos: string;
     };
+    responsable?: {
+      identificacion: number;
+      nombre: string;
+      apellidos: string;
+    };
   };
   usuario?: {
     identificacion: number;
@@ -203,25 +208,16 @@ const PagosPasantePage: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          {isAdmin && (
-            <>
-              <div className="p-2 bg-red-100 rounded-lg">
-                <TrendingUp className="w-8 h-8 text-red-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800">Administración de Pagos</h1>
-                <p className="text-red-600 font-medium">Vista completa del sistema</p>
-              </div>
-            </>
-          )}
-          {isInstructor && (
+          {(isAdmin || isInstructor) && (
             <>
               <div className="p-2 bg-blue-100 rounded-lg">
                 <DollarSign className="w-8 h-8 text-blue-600" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
-                <p className="text-blue-600 font-medium">Actividades que has asignado</p>
+                <p className="text-blue-600 font-medium">
+                  {isAdmin ? 'Administración completa del sistema' : 'Actividades que has asignado'}
+                </p>
               </div>
             </>
           )}
@@ -238,74 +234,65 @@ const PagosPasantePage: React.FC = () => {
           )}
         </div>
         <p className="text-gray-600 mt-2">
-          {isAdmin
-            ? 'Vista completa de todos los pagos realizados en el sistema. Puedes editar cualquier pago.'
-            : isInstructor
-            ? 'Historial de pagos de actividades que has asignado. Gestiona y edita los pagos de tus aprendices.'
+          {(isAdmin || isInstructor)
+            ? 'Vista completa de pagos para gestión y edición. Puedes modificar pagos en caso de errores.'
             : 'Historial de pagos por actividades realizadas. Revisa tus compensaciones económicas.'
           }
         </p>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
-          <div className="flex items-center">
-            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
-              <FileText className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                {isAdmin ? 'Total Pagos Sistema' : isInstructor ? 'Pagos Gestionados' : 'Mis Pagos'}
-              </p>
-              <p className="text-2xl font-bold text-gray-800">{stats.totalPagos}</p>
+      {/* Estadísticas solo para pasantes */}
+      {!isAdmin && !isInstructor && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="rounded-lg shadow-md p-6 bg-green-50 border border-green-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100">
+                <FileText className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Mis Pagos</p>
+                <p className="text-2xl font-bold text-gray-800">{stats.totalPagos}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
-          <div className="flex items-center">
-            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
-              <DollarSign className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                {isAdmin ? 'Total Sistema' : isInstructor ? 'Total Gestionado' : 'Total Recibido'}
-              </p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.totalMonto)}</p>
+          <div className="rounded-lg shadow-md p-6 bg-green-50 border border-green-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Recibido</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.totalMonto)}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
-          <div className="flex items-center">
-            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
-              <Clock className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-green-600'}`} />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                {isAdmin ? 'Horas Totales Sistema' : isInstructor ? 'Horas Gestionadas' : 'Mis Horas'}
-              </p>
-              <p className="text-2xl font-bold text-gray-800">{stats.totalHoras}h</p>
+          <div className="rounded-lg shadow-md p-6 bg-green-50 border border-green-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100">
+                <Clock className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Mis Horas</p>
+                <p className="text-2xl font-bold text-gray-800">{stats.totalHoras}h</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={`rounded-lg shadow-md p-6 ${isAdmin ? 'bg-red-50 border border-red-200' : isInstructor ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}`}>
-          <div className="flex items-center">
-            <div className={`p-3 rounded-full ${isAdmin ? 'bg-red-100' : isInstructor ? 'bg-blue-100' : 'bg-green-100'}`}>
-              <TrendingUp className={`w-6 h-6 ${isAdmin ? 'text-red-600' : isInstructor ? 'text-blue-600' : 'text-orange-600'}`} />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Promedio/Hora</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.promedioHora)}</p>
-              {(isAdmin || isInstructor) && (
-                <p className="text-xs text-gray-500 mt-1">Por actividad</p>
-              )}
+          <div className="rounded-lg shadow-md p-6 bg-green-50 border border-green-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Promedio/Hora</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.promedioHora)}</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabla de pagos */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -314,14 +301,21 @@ const PagosPasantePage: React.FC = () => {
             <div>
               <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
               <p className="text-sm text-gray-600 mt-1">
-                {isAdmin
-                  ? 'Mostrando todos los pagos del sistema'
-                  : isInstructor
-                  ? 'Mostrando pagos de actividades que has asignado'
+                {(isAdmin || isInstructor)
+                  ? 'Mostrando pagos para gestión y edición'
                   : 'Mostrando tus pagos personales'
                 }
               </p>
             </div>
+            {(isAdmin || isInstructor) && (
+              <button
+                onClick={cargarPagos}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <RefreshCw size={16} />
+                Actualizar
+              </button>
+            )}
           </div>
         </div>
 
@@ -329,18 +323,14 @@ const PagosPasantePage: React.FC = () => {
           <div className="text-center py-12">
             <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-600 mb-2">
-              {isAdmin
-                ? 'No hay pagos en el sistema'
-                : isInstructor
-                ? 'No hay pagos en tus actividades'
+              {(isAdmin || isInstructor)
+                ? 'No hay pagos para gestionar'
                 : 'No hay pagos registrados'
               }
             </h3>
             <p className="text-gray-500">
-              {isAdmin
-                ? 'Los pagos aparecerán aquí cuando se registren en el sistema.'
-                : isInstructor
-                ? 'Los pagos de tus aprendices aparecerán aquí cuando completes actividades.'
+              {(isAdmin || isInstructor)
+                ? 'Los pagos aparecerán aquí cuando se registren actividades completadas.'
                 : 'Cuando completes actividades, aparecerán aquí tus pagos.'
               }
             </p>
@@ -353,13 +343,11 @@ const PagosPasantePage: React.FC = () => {
                   {(isAdmin || isInstructor) && (
                     <>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Instructor
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Pasante
                       </th>
-                      {isInstructor && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Instructor
-                        </th>
-                      )}
                     </>
                   )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -393,6 +381,11 @@ const PagosPasantePage: React.FC = () => {
                     {(isAdmin || isInstructor) && (
                       <>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {pago.actividad?.responsable ? `${pago.actividad.responsable.nombre} ${pago.actividad.responsable.apellidos}` : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
                           </div>
@@ -400,13 +393,6 @@ const PagosPasantePage: React.FC = () => {
                             {pago.usuario?.tipoUsuario.nombre}
                           </div>
                         </td>
-                        {isInstructor && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {pago.actividad?.usuario ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}` : 'N/A'}
-                            </div>
-                          </td>
-                        )}
                       </>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">

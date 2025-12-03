@@ -165,10 +165,34 @@ export class PagosService {
   async findAll(userIdentificacion?: number, userRole?: string) {
     const role = userRole?.toLowerCase();
 
-    // Si es admin o instructor, ver todos los pagos
-    if (role === 'admin' || role === 'administrador' || role === 'instructor') {
+    // Si es admin o administrador, ver todos los pagos
+    if (role === 'admin' || role === 'administrador') {
       return this.pagoRepository.find({
-        relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario'],
+        relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
+        order: { fechaPago: 'DESC' },
+      });
+    }
+
+    // Si es instructor, ver pagos de actividades que creó o asignó
+    if (role === 'instructor' && userIdentificacion) {
+      return this.pagoRepository.find({
+        where: [
+          {
+            actividad: {
+              usuario: {
+                identificacion: userIdentificacion
+              }
+            }
+          },
+          {
+            actividad: {
+              responsable: {
+                identificacion: userIdentificacion
+              }
+            }
+          }
+        ],
+        relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
     }
@@ -177,7 +201,7 @@ export class PagosService {
     if (userIdentificacion && role === 'pasante') {
       return this.pagoRepository.find({
         where: { idUsuario: userIdentificacion },
-        relations: ['usuario', 'actividad'],
+        relations: ['usuario', 'actividad', 'usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
     }

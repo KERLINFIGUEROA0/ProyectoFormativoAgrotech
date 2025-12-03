@@ -22,7 +22,7 @@ export class PagosController {
   @Get()
   findAll(@Request() req: any) {
     const user = req.user;
-    return this.pagosService.findAll(user?.identificacion, user?.tipoUsuario?.nombre);
+    return this.pagosService.findAll(user?.identificacion, user?.rolNombre);
   }
 
   @Get('usuario/:id')
@@ -38,6 +38,6 @@ export class PagosController {
   @Put(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updatePagoDto: UpdatePagoDto, @Request() req: any) {
     const user = req.user;
-    return this.pagosService.update(id, updatePagoDto, user?.tipoUsuario?.nombre);
+    return this.pagosService.update(id, updatePagoDto, user?.rolNombre);
   }
 }
