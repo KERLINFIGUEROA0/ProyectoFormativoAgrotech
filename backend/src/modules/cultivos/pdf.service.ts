@@ -121,7 +121,7 @@ export class PdfService {
       cultivo: {
         nombre: cultivo.nombre,
         tipoCultivo: cultivo.tipoCultivo?.nombre || '',
-        fechaPlantado: cultivo.Fecha_Plantado ? new Date(cultivo.Fecha_Plantado).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }) : '',
+        fechaPlantado: cultivo.Fecha_Plantado ? new Date(cultivo.Fecha_Plantado).toISOString().split('T')[0] : '',
         estado: cultivo.Estado || '',
         lote: cultivo.lote?.nombre || '',
         cantidad: cultivo.cantidad || 0,
@@ -220,9 +220,12 @@ export class PdfService {
       throw new BadRequestException('La fecha de plantado del cultivo es requerida y no puede ser null');
     }
     if (fechaInicio) {
-      const fechaInicioFormatted = new Date(fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-      const fechaPlantadoFormatted = cultivo.Fecha_Plantado.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-      if (fechaInicioFormatted < fechaPlantadoFormatted) {
+      // Comparar solo las fechas YYYY-MM-DD, ajustando a mediodía para evitar problemas de zona horaria
+      const fechaInicioDate = new Date(fechaInicio + 'T12:00:00.000Z');
+      const fechaPlantadoDate = new Date(cultivo.Fecha_Plantado);
+      const fechaInicioStr = fechaInicioDate.toISOString().split('T')[0];
+      const fechaPlantadoStr = fechaPlantadoDate.toISOString().split('T')[0];
+      if (fechaInicioStr < fechaPlantadoStr) {
         throw new BadRequestException('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
       }
     }
@@ -329,14 +332,15 @@ export class PdfService {
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.evaluate((title) => { document.title = title; }, `Reporte Cultivo - ${data.cultivo.nombre}`);
 
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: 'Letter',
       printBackground: true,
       margin: {
         top: '20px',
         right: '20px',
-        bottom: '20px',
+        bottom: '40px',
         left: '20px'
       }
     });

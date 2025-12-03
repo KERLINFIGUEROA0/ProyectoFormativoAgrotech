@@ -6,6 +6,7 @@ import { Sublote } from '../../sublotes/entities/sublote.entity';
 import { CultivoEpa } from '../../cultivos_epa/entities/cultivos_epa.entity';
 import { Gasto } from '../../gastos_produccion/entities/gastos_produccion.entity';
 import { Lote } from '../../lotes/entities/lote.entity'; // IMPORTAR LOTE
+import { dateColumnTransformer } from '../../../common/transformers/date-column.transformer';
 
 @Entity('cultivos')
 export class Cultivo {
@@ -31,10 +32,20 @@ export class Cultivo {
   @Column({ name: 'Estado', length: 50, nullable: true })
   Estado: string;
 
-  @Column({ name: 'Fecha_Plantado', type: 'date', nullable: true })
+  @Column({
+    name: 'Fecha_Plantado',
+    type: 'date',
+    nullable: true,
+    transformer: dateColumnTransformer
+  })
   Fecha_Plantado: Date;
 
-  @Column({ name: 'Fecha_Fin', type: 'date', nullable: true })
+  @Column({
+    name: 'Fecha_Fin',
+    type: 'date',
+    nullable: true,
+    transformer: dateColumnTransformer
+  })
   Fecha_Fin: Date | null;
 
   @ManyToOne(() => TipoCultivo, (tipoCultivo) => tipoCultivo.cultivos, {
