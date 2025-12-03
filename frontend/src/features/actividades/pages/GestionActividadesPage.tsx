@@ -39,6 +39,8 @@ import {
   obtenerCultivosParaActividades,
 } from '../api/actividadesapi';
 import { getEstadoTexto } from '../utils/estadoUtils';
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 // --- INICIO: Componente ModalDetalles (MODIFICADO) ---
 interface ModalDetallesProps {
@@ -98,9 +100,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   }
 
   const estadoTexto = getEstadoTexto(actividad.estado);
-  const fechaProgramada = new Date(actividad.fecha).toLocaleDateString('es-ES', {
-    timeZone: 'UTC',
-  });
+  const fechaProgramada = DateUtils.formatDateOnly(actividad.fecha);
 
   // --- INICIO DE CORRECCIÓN: Lógica de Costos y Pago ---
   const costoManoDeObra = (actividad.horas || 0) * (actividad.tarifaHora || 0);
@@ -493,7 +493,7 @@ const GestionActividadesPage: React.FC = () => {
       doc.setFontSize(20);
       doc.text('Reporte de Actividades', 20, 20);
       doc.setFontSize(12);
-      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+      doc.text(`Generado el: ${DateUtils.formatDateOnly(new Date())}`, 20, 35);
       doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
       doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
       doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
@@ -509,7 +509,7 @@ const GestionActividadesPage: React.FC = () => {
             return 'Ejecutar migraciones para ver asignados';
           }
         })(),
-        new Date(act.fecha).toLocaleDateString('es-ES', { timeZone: 'UTC' }),
+        DateUtils.formatDateOnly(act.fecha),
         getEstadoTexto(act.estado),
         act.descripcion || 'Sin descripción',
         act.horas ? `${act.horas} horas` : 'No especificado',
@@ -543,7 +543,7 @@ const GestionActividadesPage: React.FC = () => {
         }
       });
 
-      doc.save(`reporte-actividades-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`reporte-actividades-${DateUtils.formatDateOnly(new Date()).replace(/\//g, '-')}.pdf`);
       toast.success('PDF generado correctamente');
 
     } catch (error) {

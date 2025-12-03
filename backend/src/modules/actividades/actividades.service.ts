@@ -27,6 +27,7 @@ import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
 import { UnidadMedida } from '../../common/enums/unidad-medida.enum';
 import { UnitConversionUtil } from '../../common/utils/unit-conversion.util';
 import { MovimientosService } from '../../movimientos/movimientos.service';
+import { DateUtil } from '../../common/utils/date.util';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ExcelJS from 'exceljs';
@@ -613,20 +614,168 @@ export class ActividadesService {
         }
 
         if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
-          for (const devolucion of dto.materialesDevueltos) {
-            const material = await queryRunner.manager.findOne(Material, { where: { id: devolucion.materialId } });
-            if (!material) throw new NotFoundException(`Material ${devolucion.materialId} no encontrado.`);
-            this.revertirDescontarMaterial(material, devolucion.cantidadDevuelta);
+          // 🔍 DEBUG INICIAL
+          console.log('\n==================================================');
+          console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
+          console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
+          console.log('==================================================\n');
+
+          const gastoRepo = queryRunner.manager.getRepository(Gasto);
+          // Necesitamos este repositorio para saber en qué unidad se prestó
+          const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
+
+          for (const dev of dto.materialesDevueltos) {
+            const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
+            if (!material) {
+              console.error(`❌ Material ${dev.materialId} no encontrado en BD`);
+              continue;
+            }
+
+            // 🔥 PASO 1: DETERMINAR LA UNIDAD PARA CÁLCULO
+            // Prioridad: Unidad seleccionada en frontend > Unidad originalmente asignada > Default 'UNIDAD'
+            const asignacionOriginal = await actMaterialRepo.findOne({
+              where: {
+                actividad: { id: actividad.id },
+                material: { id: material.id }
+              }
+            });
+
+            const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
+
+            // LOG DE DECISIÓN DE UNIDAD
+            console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
+            console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
+            console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
+
+            // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
+            const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
+            console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
+
+            // Cantidades que el usuario escribió (Ej: 50)
+            const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
+            const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
+            console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
+
+            // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
+            // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
+            let cantBuenasBase = 0;
+            let cantMalasBase = 0;
+
+            // Detectar la unidad base del material (Gramos o Mililitros)
+            let unidadBaseMaterial = material.unidadBase;
+            if (!unidadBaseMaterial) {
+              unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+                material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+                material.medidasDeContenido
+              );
+            }
+            console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
+
+            // Lógica de conversión (Usando la unidad seleccionada por el usuario)
+            if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
+                [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
+               // Si devolvió BULTOS o SACOS
+               const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+               console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
+               cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
+               cantMalasBase = cantMalasUsuario * pesoPorUnidad;
+            } else {
+               // Conversión estándar (L -> ml, kg -> g)
+               // Aquí es donde 50 L se convierten en 50,000 ml
+               console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
+               cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
+               cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
+            }
+
+            console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
+
+            if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
+              console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
+            }
+
+            const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
+
+            // =========================================================
+            // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+            // =========================================================
+            if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+                // Para herramientas, generalmente la unidad es UNIDAD, así que base y usuario son iguales.
+                // Restamos de "En Uso" para liberarlas
+                material.usosActuales = Number(material.usosActuales) - (cantBuenasUsuario + cantMalasUsuario);
+                if (material.usosActuales < 0) material.usosActuales = 0;
+
+                // Registro historial (lo bueno)
+                if (cantBuenasUsuario > 0) {
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.INGRESO,
+                        cantBuenasUsuario, // Guardamos el valor numérico base para cálculos
+                        material.id,
+                        `Devolución: ${cantBuenasUsuario} ${unidadParaCalculo} (Buen Estado) - ${actividad.titulo}`,
+                        `dev-ok-${actividad.id}`
+                    );
+                }
+
+                // Registro historial y cobro (lo dañado)
+                if (cantMalasUsuario > 0) {
+                    material.cantidad = Number(material.cantidad) - cantMalasUsuario; // Baja de inventario físico
+                    if (material.cantidad < 0) material.cantidad = 0;
+
+                    const precioUnitario = Number(material.precio) || 0;
+                    const costoDano = cantMalasUsuario * precioUnitario;
+
+                    // A. TRANSACCIÓN FINANCIERA (GASTO)
+                    const cobroPorDano = gastoRepo.create({
+                        descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
+                        monto: parseFloat(costoDano.toFixed(2)),
+                        fecha: new Date(),
+                        tipo: TipoMovimiento.EGRESO,
+                        cultivo: actividad.cultivo,
+                        cantidad: cantMalasUsuario,
+                        unidad: unidadParaCalculo,
+                        precioUnitario: precioUnitario
+                    });
+                    await queryRunner.manager.save(cobroPorDano);
+
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.EGRESO,
+                        cantMalasUsuario,
+                        material.id,
+                        `BAJA POR DAÑO: ${cantMalasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                        `baja-dano-${actividad.id}`
+                    );
+                }
+            }
+
+            // =========================================================
+            // 🧪 CASO B: CONSUMIBLES (INSUMOS: Abono, Veneno, etc.)
+            // =========================================================
+            else {
+                // Solo devolvemos al stock lo que sobró (lo bueno)
+                if (cantBuenasBase > 0) {
+                     // 🔥 AQUÍ ESTÁ EL ARREGLO:
+                     // Sumamos al stock la cantidad CONVERTIDA (50,000 ml), no la del usuario (50).
+                     // Usamos la función revertir (o suma directa)
+                     this.revertirDescontarMaterial(material, cantBuenasBase);
+
+                     // Registramos el movimiento
+                     await this.movimientosService.registrarMovimiento(
+                       TipoMovimiento.INGRESO,
+                       cantBuenasBase, // Guardamos el valor numérico base para cálculos
+                       material.id,
+                       // 🔥 PERO en la descripción ponemos lo que el usuario entiende: "50 Litros"
+                       `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                       `dev-cons-${actividad.id}`
+                     );
+
+                     console.log(`   ✅ Material ${material.id} procesado. Stock se aumentará en: ${cantBuenasBase}`);
+                }
+                // Los insumos dañados/gastados ya se descontaron al asignar, no se hace nada extra.
+            }
+
             await queryRunner.manager.save(material);
-            
-            await this.movimientosService.registrarMovimiento(
-              TipoMovimiento.INGRESO,
-              devolucion.cantidadDevuelta,
-              material.id,
-              `Devolución por respuesta: ${actividad.titulo}`,
-              `dev-act-${actividad.id}`
-            );
           }
+        } else {
+          console.log('ℹ️ No hay materiales devueltos para procesar');
         }
 
       await queryRunner.commitTransaction();
@@ -777,34 +926,184 @@ export class ActividadesService {
   async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
     const actividad = await this.findOne(id);
     if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
+
+    // Validaciones de seguridad
     if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
       throw new BadRequestException('Solo el responsable puede devolver materiales.');
     }
-
-    // Verificar que la actividad esté finalizada
-     if (actividad.estado !== 'completado') {
-       throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
-     }
+    if (actividad.estado !== 'completado') {
+      throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
+    }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
     try {
+      // 🔍 DEBUG INICIAL
+      console.log('\n==================================================');
+      console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
+      console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
+      console.log('==================================================\n');
+
+      const gastoRepo = queryRunner.manager.getRepository(Gasto);
+      // Necesitamos este repositorio para saber en qué unidad se prestó
+      const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
+
       for (const dev of dto.materialesDevueltos) {
         const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
-        if (!material) throw new NotFoundException(`Material ${dev.materialId} no encontrado.`);
-        this.revertirDescontarMaterial(material, dev.cantidadDevuelta);
+        if (!material) {
+          console.error(`❌ Material ${dev.materialId} no encontrado en BD`);
+          continue;
+        }
+
+        // 🔥 PASO 1: DETERMINAR LA UNIDAD PARA CÁLCULO
+        // Prioridad: Unidad seleccionada en frontend > Unidad originalmente asignada > Default 'UNIDAD'
+        const asignacionOriginal = await actMaterialRepo.findOne({
+          where: {
+            actividad: { id: actividad.id },
+            material: { id: material.id }
+          }
+        });
+
+        const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
+
+        // LOG DE DECISIÓN DE UNIDAD
+        console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
+        console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
+        console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
+
+        // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
+        const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
+        console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
+
+        // Cantidades que el usuario escribió (Ej: 50)
+        const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
+        const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
+        console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
+
+        // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
+        // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
+        let cantBuenasBase = 0;
+        let cantMalasBase = 0;
+
+        // Detectar la unidad base del material (Gramos o Mililitros)
+        let unidadBaseMaterial = material.unidadBase;
+        if (!unidadBaseMaterial) {
+          unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+            material.medidasDeContenido
+          );
+        }
+        console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
+
+        // Lógica de conversión (Usando la unidad seleccionada por el usuario)
+        if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
+            [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
+           // Si devolvió BULTOS o SACOS
+           const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+           console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
+           cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
+           cantMalasBase = cantMalasUsuario * pesoPorUnidad;
+        } else {
+           // Conversión estándar (L -> ml, kg -> g)
+           // Aquí es donde 50 L se convierten en 50,000 ml
+           console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
+           cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
+           cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
+        }
+
+        console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
+
+        if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
+          console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
+        }
+
+        const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
+
+        // =========================================================
+        // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+        // =========================================================
+        if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+            // Para herramientas, generalmente la unidad es UNIDAD, así que base y usuario son iguales.
+            // Restamos de "En Uso" para liberarlas
+            material.usosActuales = Number(material.usosActuales) - (cantBuenasUsuario + cantMalasUsuario);
+            if (material.usosActuales < 0) material.usosActuales = 0;
+
+            // Registro historial (lo bueno)
+            if (cantBuenasUsuario > 0) {
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.INGRESO,
+                    cantBuenasUsuario, // Guardamos el valor numérico base para cálculos
+                    material.id,
+                    `Devolución: ${cantBuenasUsuario} ${unidadParaCalculo} (Buen Estado) - ${actividad.titulo}`,
+                    `dev-ok-${actividad.id}`
+                );
+            }
+
+            // Registro historial y cobro (lo dañado)
+            if (cantMalasUsuario > 0) {
+                material.cantidad = Number(material.cantidad) - cantMalasUsuario; // Baja de inventario físico
+                if (material.cantidad < 0) material.cantidad = 0;
+
+                const precioUnitario = Number(material.precio) || 0;
+                const costoDano = cantMalasUsuario * precioUnitario;
+
+                // A. TRANSACCIÓN FINANCIERA (GASTO)
+                const cobroPorDano = gastoRepo.create({
+                    descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
+                    monto: parseFloat(costoDano.toFixed(2)),
+                    fecha: new Date(),
+                    tipo: TipoMovimiento.EGRESO,
+                    cultivo: actividad.cultivo,
+                    cantidad: cantMalasUsuario,
+                    unidad: unidadParaCalculo,
+                    precioUnitario: precioUnitario
+                });
+                await queryRunner.manager.save(cobroPorDano);
+
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.EGRESO,
+                    cantMalasUsuario,
+                    material.id,
+                    `BAJA POR DAÑO: ${cantMalasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                    `baja-dano-${actividad.id}`
+                );
+            }
+        }
+
+        // =========================================================
+        // 🧪 CASO B: CONSUMIBLES (INSUMOS: Abono, Veneno, etc.)
+        // =========================================================
+        else {
+            // Solo devolvemos al stock lo que sobró (lo bueno)
+            if (cantBuenasBase > 0) {
+                 // 🔥 AQUÍ ESTÁ EL ARREGLO:
+                 // Sumamos al stock la cantidad CONVERTIDA (50,000 ml), no la del usuario (50).
+                 // Usamos la función revertir (o suma directa)
+                 this.revertirDescontarMaterial(material, cantBuenasBase);
+
+                 // Registramos el movimiento
+                 await this.movimientosService.registrarMovimiento(
+                   TipoMovimiento.INGRESO,
+                   cantBuenasBase, // Guardamos el valor numérico base para cálculos
+                   material.id,
+                   // 🔥 PERO en la descripción ponemos lo que el usuario entiende: "50 Litros"
+                   `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                   `dev-cons-${actividad.id}`
+                 );
+
+                 console.log(`   ✅ Material ${material.id} procesado. Stock se aumentará en: ${cantBuenasBase}`);
+            }
+            // Los insumos dañados/gastados ya se descontaron al asignar, no se hace nada extra.
+        }
+
         await queryRunner.manager.save(material);
-        await this.movimientosService.registrarMovimiento(
-          TipoMovimiento.INGRESO,
-          dev.cantidadDevuelta,
-          material.id,
-          `Devolución final: ${actividad.titulo}`,
-          `dev-fin-act-${actividad.id}`
-        );
       }
+
       await queryRunner.commitTransaction();
-      return { message: 'Materiales devueltos.' };
+      return { message: 'Devolución procesada correctamente. Stock actualizado.' };
+
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;

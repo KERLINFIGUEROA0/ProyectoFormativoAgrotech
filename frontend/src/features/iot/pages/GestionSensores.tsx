@@ -34,8 +34,11 @@ import ModalDescargarTrazabilidad from '../components/ModalDescargarTrazabilidad
   
 // --- INTERFACES ---
 import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
-import type { Sublote, Lote } from '../../cultivos/interfaces/cultivos';
+import type { Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
+
+// --- HOOKS ---
+import { useMqttSocket } from '../hooks/useMqttSocket';
 
 // --- TIPOS GLOBALES ---
 declare global {
@@ -77,6 +80,7 @@ interface SensorCardProps {
 function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, onRemoveFromLote }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
   const isDisconnected = latestData?.estado === 'Desconectado';
+  const tieneDatos = latestData !== undefined && rawValor !== null;
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
@@ -97,13 +101,20 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   let bellAnimation = "";
   let bellColor = "text-gray-500";
 
-  // Si está desconectado, mostrar 0 y estilo especial
+  // Determinar estado visual
   if (isDisconnected) {
     valorColor = "text-red-600";
     alertMessage = "DESCONECTADO";
     cardBorderColor = "border-red-500";
     bellColor = "text-red-600";
     bellAnimation = "animate-pulse";
+  } else if (!tieneDatos) {
+    // Estado de sincronización: esperando datos
+    valorColor = "text-gray-400";
+    alertMessage = null;
+    cardBorderColor = "border-gray-300";
+    bellColor = "text-gray-400";
+    bellAnimation = "";
   } else if (valor !== null) {
     if (valor < Number(min)) {
       valorColor = "text-blue-600 animate-pulse";
@@ -121,7 +132,7 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   }
 
   // Si el sistema NO está grabando, quitamos colores de alerta para indicar "congelado"
-  if (!isSystemRecording && valor !== null && !isDisconnected) {
+  if (!isSystemRecording && valor !== null && !isDisconnected && tieneDatos) {
     valorColor = "text-gray-500";
     bellAnimation = "";
     alertMessage = null;
@@ -145,10 +156,11 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
             <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
             <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${
               isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
+              !tieneDatos ? 'bg-gray-100 text-gray-700 border border-gray-200' :
               isActive ? 'bg-green-100 text-green-700 border border-green-200' :
               'bg-gray-100 text-gray-700 border border-gray-200'
             }`}>
-              {isDisconnected ? '● DESCONECTADO' : isActive ? '● ACTIVO' : '● INACTIVO'}
+              {isDisconnected ? '● DESCONECTADO' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
             </span>
           </div>
         </div>
@@ -230,6 +242,10 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">
                   <Pause size={7} className="inline mr-1" /> ⏸️ Congelado
                 </div>
+            ) : !tieneDatos ? (
+                <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 shadow-sm">
+                  <RefreshCw size={7} className="inline mr-1 animate-spin" /> Sincronizando...
+                </div>
             ) : alertMessage ? (
                 <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${alertMessage === 'ALTO' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                   <AlertTriangle size={7} className="inline mr-1" /> ⚠️ {alertMessage}
@@ -242,8 +258,8 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
           </>
         ) : (
           <div className="text-center">
-            <span className="text-base font-bold text-gray-300">--</span>
-            <p className="text-[8px] text-gray-400">Sin datos</p>
+            <span className="text-base font-bold text-gray-300">N/A</span>
+            <p className="text-[8px] text-gray-400">Esperando datos </p>
           </div>
         )}
       </div>
@@ -629,16 +645,24 @@ export default function GestionSensoresPage(): ReactElement {
   // Protección de permisos en tiempo real
   usePermissionGuard({ module: 'Iot' });
 
+  // MQTT Socket Hook
+  const {
+    isConnected: mqttConnected,
+    sensorStatuses,
+    connectionStatuses,
+    latestReadings: mqttLatestReadings,
+    sendPing,
+    requestCurrentStatus
+  } = useMqttSocket();
+
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
   
   // Estados de Filtros
   const [modoVista, setModoVista] = useState<'GENERAL' | 'LOTE'>('GENERAL');
-  const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [filtroId, setFiltroId] = useState<number | 'TODOS'>('TODOS');
-  const [surcoSeleccionado, setSurcoSeleccionado] = useState<number | 'TODOS'>('TODOS');
 
   // Modales y UI
   const [historySensor, setHistorySensor] = useState<Sensor | null>(null);
@@ -673,9 +697,6 @@ export default function GestionSensoresPage(): ReactElement {
       setBrokers(brokersRes || []);
       const lotesData = lotesRes.data || [];
       setLotes(lotesData);
-      // Extraer todos los sublotes de todos los lotes
-      const allSublotes = lotesData.flatMap((lote: Lote) => (lote.sublotes || []).filter((s: any) => s.lote && s.lote.id));
-      setSublotes(allSublotes);
 
       // Si no hay brokers, abrir automáticamente el modal para crear uno
       if (!brokersRes || brokersRes.length === 0) {
@@ -770,7 +791,7 @@ export default function GestionSensoresPage(): ReactElement {
 
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, [filtroId, surcoSeleccionado, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
+  }, [filtroId, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
 
 
   // Cargar historiales para sensores seleccionados en gráfica
@@ -854,7 +875,6 @@ export default function GestionSensoresPage(): ReactElement {
   const handleModoChange = (modo: 'GENERAL' | 'LOTE') => {
     setModoVista(modo);
     setFiltroId('TODOS');
-    setSurcoSeleccionado('TODOS');
     setSensoresGrafica([]);
     setLatestData([]);
     setSensorHistories({});
@@ -1025,7 +1045,7 @@ export default function GestionSensoresPage(): ReactElement {
     if (modoVista === 'GENERAL') {
       // En modo general, permitir filtrar por lote
       if (filtroId !== 'TODOS') {
-        res = res.filter(s => s.lote?.id === filtroId || s.surco?.lote?.id === filtroId);
+        res = res.filter(s => s.lote?.id === filtroId);
       }
       return res;
     }
@@ -1033,13 +1053,10 @@ export default function GestionSensoresPage(): ReactElement {
     if (modoVista === 'LOTE') {
       // Mostrar solo sensores asociados directamente al lote (creados por sincronización)
       res = res.filter(s => s.lote?.id === filtroId);
-      if (surcoSeleccionado !== 'TODOS') {
-        res = res.filter(s => s.surco?.id === surcoSeleccionado);
-      }
     }
 
     return res;
-  }, [sensores, latestData, modoVista, filtroId, surcoSeleccionado, sublotes]);
+  }, [sensores, latestData, modoVista, filtroId]);
 
   // Cálculo de sensores para la página actual
   const sensoresPaginaActual = useMemo(() => {
@@ -1101,7 +1118,6 @@ export default function GestionSensoresPage(): ReactElement {
                       const selected = Array.from(keys);
                       const value = selected.length > 0 ? selected[0] : 'TODOS';
                       setFiltroId(value === 'TODOS' ? 'TODOS' : Number(value));
-                      setSurcoSeleccionado('TODOS');
                       setLatestData([]);
                       setSensorHistories({});
                       setPaginaSensores(0);
@@ -1116,87 +1132,45 @@ export default function GestionSensoresPage(): ReactElement {
                 >
                   {(item) => <SelectItem className="truncate">{item.label}</SelectItem>}
                 </Select>
-
-                {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                  <select
-                    value={surcoSeleccionado}
-                    onChange={(e) => {
-                        setSurcoSeleccionado(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value));
-                        setLatestData([]);
-                        setSensorHistories({});
-                        setPaginaSensores(0);
-                    }}
-                    className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 min-w-32 shadow-sm transition-all duration-200 hover:shadow-md"
-                  >
-                    <option value="TODOS">Todos los Surcos</option>
-                    {sublotes.filter(s => s.lote.id === filtroId).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
-                )}
               </div>
             )}
           </div>
 
           {/* ACCIONES */}
           <div className="flex items-center gap-2">
-            {/* BOTÓN DE CONTROL MAESTRO */}
-            {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-              <Button
-                onClick={toggleSystemRecording}
-                variant="solid"
-                color={isSystemRecording ? "success" : "warning"}
-                size="sm"
-                className="text-xs font-semibold"
-                startContent={isSystemRecording ? <Pause size={14} /> : <Play size={14} />}
-              >
-                {isSystemRecording ? "Pausar" : "Activar"}
-              </Button>
-            )}
-
             {/* BOTONES DE ACCIÓN */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
                <Button
                  onClick={() => openBrokerModal()}
-                 variant="light"
+                 variant="solid"
                  color="secondary"
                  size="sm"
-                 className="min-w-0 px-2"
                  startContent={<Server size={14} />}
-                 title="Gestionar Brokers"
-               />
+               >
+                 Crear Broker
+               </Button>
 
                {/* BOTÓN DE DESCARGA DE TRAZABILIDAD - DISPONIBLE EN AMBOS MODOS */}
                <Button
                  onClick={() => setIsTrazabilidadModalOpen(true)}
-                 variant="light"
+                 variant="solid"
                  color="success"
                  size="sm"
-                 className="min-w-0 px-2"
                  startContent={<Download size={14} />}
-                 title="Descargar Reporte de Trazabilidad"
-               />
+               >
+                 Descargar Reporte
+               </Button>
 
                {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                 <>
-                   <Button
-                     onClick={() => openBrokerLoteModal()}
-                     variant="light"
-                     color="warning"
-                     size="sm"
-                     className="min-w-0 px-2"
-                     startContent={<Layers size={14} />}
-                     title="Configurar Sensores por Lote"
-                   />
-
-                   <Button
-                     onClick={() => handleSincronizar(filtroId as number)}
-                     variant="light"
-                     color="primary"
-                     size="sm"
-                     className="min-w-0 px-2"
-                     startContent={<RefreshCw size={14} />}
-                     title="Sincronizar Sensores"
-                   />
-                 </>
+                 <Button
+                   onClick={() => openBrokerLoteModal()}
+                   variant="solid"
+                   color="warning"
+                   size="sm"
+                   startContent={<Layers size={14} />}
+                 >
+                   Configurar Lote
+                 </Button>
                )}
              </div>
           </div>
@@ -1212,12 +1186,6 @@ export default function GestionSensoresPage(): ReactElement {
                 {modoVista === 'GENERAL' ? 'Todos los Sensores' :
                  `Lote: ${lotes.find(l=>l.id===filtroId)?.nombre || 'Seleccionar'}`}
               </h2>
-
-              {modoVista === 'LOTE' && surcoSeleccionado !== 'TODOS' && (
-                <span className="px-2 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-700">
-                  Sublote: {sublotes.find(s=>s.id===surcoSeleccionado)?.nombre}
-                </span>
-              )}
 
               {/* Estado del sistema */}
               {modoVista === 'LOTE' && filtroId !== 'TODOS' && (

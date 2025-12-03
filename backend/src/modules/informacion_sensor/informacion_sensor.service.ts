@@ -18,74 +18,114 @@ export class InformacionSensorService {
   ) {}
 
 
+  /**
+   * Procesa cualquier mensaje MQTT entrante.
+   * Soporta JSON complejo y valores escalares simples.
+   * Maneja la lógica de reconexión automática.
+   */
   async createFromMqtt(topic: string, payload: string): Promise<void> {
-    const valor = parseFloat(payload);
-    if (isNaN(valor)) {
-      this.logger.warn(`Payload no numérico [${payload}] en topic [${topic}]. Descartado.`);
-      return;
+    // 1. Intentar parsear el payload (puede ser JSON o un número string)
+    let jsonData: any = null;
+    let isJson = false;
+
+    try {
+      jsonData = JSON.parse(payload);
+      isJson = typeof jsonData === 'object' && jsonData !== null;
+    } catch (e) {
+      // No es JSON, es un valor primitivo (string/numero)
+      isJson = false;
     }
 
-    // Buscar TODOS los sensores que coincidan con este 'topic', incluyendo el lote, sublote y brokers del lote
-    // ✅ Ahora incluye sensores desconectados para reactivarlos
+    // 2. Buscar TODOS los sensores que escuchen este tópico
+    // Incluimos sensores desconectados para poder reactivarlos ("Reconexión automática")
     const sensores = await this.sensorRepo.find({
       where: [
         { topic: topic, estado: 'Activo' },
-        { topic: topic, estado: 'Desconectado' }
+        { topic: topic, estado: 'Desconectado' }, // 👈 Clave para reconexión
+        { topic: topic, estado: 'Inactivo' }      // Opcional: si quieres reactivar inactivos manuales
       ],
       relations: ['lote', 'sublote', 'lote.brokerLotes', 'lote.brokerLotes.broker'],
     });
 
     if (sensores.length === 0) {
-      this.logger.warn(`Mensaje en [${topic}], pero no hay sensores activos registrados en la DB para ese topic.`);
+      // Ruido de logs reducido, descomentar si necesitas depurar
+      // this.logger.debug(`Mensaje en [${topic}] ignorado: No hay sensores configurados.`);
       return;
     }
 
-    // Guardar el dato en cada sensor que cumpla las condiciones
     let guardados = 0;
+
+    // 3. Iterar sobre cada sensor configurado para este tópico
     for (const sensor of sensores) {
-      // Verificar que el lote tenga brokers configurados
-      const brokersDelLote = sensor.lote.brokerLotes?.map(bl => bl.broker) || [];
-      if (!brokersDelLote || brokersDelLote.length === 0) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en lote [${sensor.lote.nombre}] no tiene brokers configurados. Mensaje descartado para este sensor.`);
-        continue;
+      let valorFinal: number | null = null;
+
+      // A. ESTRATEGIA DE EXTRACCIÓN DE DATOS
+      if (isJson) {
+        if (sensor.json_key) {
+          // Caso 1: El sensor espera una clave específica (ej: "temp")
+          // Payload: {"temp": 25, "hum": 60} -> Extrae 25
+          if (jsonData.hasOwnProperty(sensor.json_key)) {
+            valorFinal = Number(jsonData[sensor.json_key]);
+          }
+        } else {
+          // Caso 2: El sensor NO tiene clave configurada, pero llega un JSON.
+          // Intentamos buscar propiedades comunes o "value"
+          if (jsonData.hasOwnProperty('value')) valorFinal = Number(jsonData['value']);
+          else if (jsonData.hasOwnProperty('valor')) valorFinal = Number(jsonData['valor']);
+          else if (jsonData.hasOwnProperty('data')) valorFinal = Number(jsonData['data']);
+          else {
+             // Si el JSON es simple {"25.5"}, intentamos castearlo, pero es raro.
+             // O si es estructura plana, tomamos el primer valor numérico que encontremos?
+             // Por seguridad, mejor loguear advertencia si no hay config.
+             this.logger.warn(`Sensor ${sensor.nombre} recibe JSON pero no tiene 'json_key' configurada.`);
+          }
+        }
+      } else {
+        // Caso 3: Payload plano (ej: "25.5")
+        valorFinal = parseFloat(payload);
       }
 
-      // Verificar que el sublote esté activo para recibir datos MQTT (si tiene sublote asignado)
-      if (sensor.sublote && !sensor.sublote.activo_mqtt) {
-        this.logger.warn(`Sensor ID [${sensor.id}] en sublote [${sensor.sublote.nombre}] tiene MQTT desactivado. Mensaje descartado para este sensor.`);
-        continue;
+      // Validar si tenemos un número válido
+      if (valorFinal === null || isNaN(valorFinal)) {
+        continue; // Saltamos este sensor, el dato no era para él
       }
+
+      // B. VALIDACIÓN DE PERMISOS (Broker/Lote/Sublote)
+      // Verificar configuración de brokers (igual que antes)
+      const brokersDelLote = sensor.lote.brokerLotes?.map(bl => bl.broker) || [];
+      if (!brokersDelLote || brokersDelLote.length === 0) continue;
+
+      // Verificar sublote activo
+      if (sensor.sublote && !sensor.sublote.activo_mqtt) continue;
 
       try {
+        // C. GUARDAR DATO
         const nuevaInfo = this.infoRepo.create({
-          valor,
-          sensor, // Asocia la entidad Sensor completa
+          valor: valorFinal,
+          sensor,
         });
-
         await this.infoRepo.save(nuevaInfo);
 
-        // Actualizar timestamp del último mensaje MQTT
+        // D. LÓGICA DE RECONEXIÓN Y HEARTBEAT
+        // Siempre actualizamos la fecha del último mensaje
         sensor.ultimo_mqtt_mensaje = new Date();
 
-        // 🧠 LÓGICA DE REACTIVACIÓN INDIVIDUAL
-        // Si estaba marcado como desconectado, lo volvemos a activar
-        if (sensor.estado === 'Desconectado' || sensor.estado === 'Inactivo') {
+        // Si estaba desconectado (por el Watchdog), lo revivimos
+        if (sensor.estado === 'Desconectado') {
             sensor.estado = 'Activo';
-            this.logger.log(`⚡ Sensor [${sensor.nombre}] CONECTADO nuevamente.`);
+            this.logger.log(`🟢 Sensor RECONECTADO: [${sensor.nombre}] ha vuelto a enviar datos.`);
         }
 
         await this.sensorRepo.save(sensor);
-
         guardados++;
-        const brokerNames = brokersDelLote.map(b => b.nombre).join(', ');
-        this.logger.log(`Dato [${valor}] guardado para Sensor ID [${sensor.id}] (Sublote: ${sensor.sublote?.nombre || 'N/A'}, Lote: ${sensor.lote.nombre}, Brokers: ${brokerNames}) desde topic [${topic}].`);
+
       } catch (error) {
-        this.logger.error(`Error guardando dato para Sensor ID [${sensor.id}]: ${error.message}`);
+        this.logger.error(`Error guardando dato sensor ${sensor.id}: ${error.message}`);
       }
     }
 
     if (guardados > 0) {
-      this.logger.log(`✅ Dato [${valor}] guardado en ${guardados} sensor(es) desde topic [${topic}].`);
+      this.logger.log(`📥 Procesado [${topic}]: ${guardados} actualizaciones.`);
     }
   }
 
@@ -165,15 +205,15 @@ export class InformacionSensorService {
       sensores.map(async (sensor) => {
         this.logger.debug(`🔎 Buscando último dato para sensor ID: ${sensor.id}, Nombre: ${sensor.nombre}`);
 
-        let valor: number = 0; // Por defecto 0
+        let valor: number | null = null; // Por defecto null
         let fechaRegistro: string | null = null;
         let estadoLogico = sensor.estado;
 
-        // 🛑 Si el Watchdog lo marcó como desconectado, forzamos el 0
+        // 🛑 Si el Watchdog lo marcó como desconectado, forzamos el null (N/A)
         if (sensor.estado === 'Desconectado') {
-             valor = 0;
+             valor = null;
              estadoLogico = 'Desconectado'; // Para pintar rojo en el frontend
-             this.logger.warn(`❌ Sensor ${sensor.id} (${sensor.nombre}): DESCONECTADO - mostrando 0`);
+             this.logger.warn(`❌ Sensor ${sensor.id} (${sensor.nombre}): DESCONECTADO - mostrando N/A`);
         } else {
              // ✅ Si está activo, buscamos su último dato real
              const ultimoDato = await this.infoRepo.findOne({
@@ -186,7 +226,7 @@ export class InformacionSensorService {
                  fechaRegistro = ultimoDato.fechaRegistro.toISOString();
                  this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${valor} (ACTIVO)`);
              } else {
-                 this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): ACTIVO pero sin datos en BD`);
+                 this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): ACTIVO pero sin datos en BD - mostrando N/A`);
              }
         }
 

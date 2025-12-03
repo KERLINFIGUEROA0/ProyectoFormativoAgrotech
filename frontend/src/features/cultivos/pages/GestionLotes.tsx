@@ -52,6 +52,19 @@ export default function GestionLotesPage(): ReactElement {
     setCurrentPage(1);
   }, [filterStatus]);
 
+  // 🔥 NUEVA FUNCIÓN: Maneja la actualización en tiempo real desde el mapa
+  const handleLotesUpdate = (updatedLotes: Lote[]) => {
+    // 1. Actualizar la lista visual de lotes (Tabla y Mapa)
+    setLotes(updatedLotes);
+
+    // 2. Refrescar las estadísticas para que los contadores coincidan
+    obtenerEstadisticasLotes()
+      .then((res) => setStats(res.data))
+      .catch((err) => console.error("Error actualizando stats:", err));
+
+    toast.success("Estado del lote actualizado en tiempo real");
+  };
+
 const handleSave = async (data: LoteData) => {
     const toastId = toast.loading("Guardando lote...");
     try {
@@ -347,7 +360,13 @@ const handleViewLocation = (lote: Lote) => {
         <div className="w-full lg:w-2/5 xl:w-1/3 flex flex-col gap-2">
           <h2 className="text-lg font-semibold text-gray-600 flex-shrink-0">Ubicación: <span className="text-green-700">{selectedLote ? selectedLote.nombre : 'General'}</span></h2>
           <div className="shadow-xl rounded-2xl flex-grow"> 
-            <LotesMap lotes={lotes} selectedLote={selectedLote} onSelectLote={setSelectedLote} />
+            <LotesMap
+              lotes={lotes}
+              selectedLote={selectedLote}
+              onSelectLote={setSelectedLote}
+              // 🔥 AQUÍ CONECTAMOS EL LISTENER
+              onLotesUpdate={handleLotesUpdate}
+            />
           </div>
         </div>
       </div>

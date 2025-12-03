@@ -60,6 +60,10 @@ export class CreateSensoreDto {
   @IsNotEmpty()
   topic: string;
 
+  @IsString()
+  @IsOptional()
+  json_key?: string; // ✅ Añadir esto
+
   @IsObject()
   @ValidateNested()
   @Type(() => BrokerDto)

@@ -14,7 +14,9 @@ import { listarMovimientos, listarMovimientosPorMaterial, listarMateriales } fro
 import type { MovimientoData } from '../interfaces/inventario';
 import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 // ✅ IMPORTAR HELPER DE CONVERSIÓN
-import { convertirStockAUnidad, formatearCantidadInteligente } from '../../../utils/unitConversion';
+import { formatearCantidadInteligente, convertirStockAUnidad } from '../../../utils/unitConversion';
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
@@ -96,13 +98,7 @@ const GestionMovimientosPage: React.FC = () => {
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return DateUtils.formatToTable(fecha);
   };
 
   if (loading) {
@@ -229,13 +225,53 @@ const GestionMovimientosPage: React.FC = () => {
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>
               {movimientosFiltrados.map((movimiento) => {
-                // ✅ FORMATO INTELIGENTE POR FILA
-                const unidadReferencia = (movimiento.material as any)?.medidasDeContenido || (movimiento.material as any)?.unidadBase;
-                const { cantidad, unidad } = formatearCantidadInteligente(Number(movimiento.cantidad), unidadReferencia);
 
-                const cantidadVisual = Number.isInteger(cantidad)
-                    ? cantidad
-                    : parseFloat(cantidad.toFixed(4));
+                // 1️⃣ INTENTAR EXTRAER LA UNIDAD DE LA DESCRIPCIÓN (Ej: "Devolución sobrante: 200 cm3 - ...")
+                let unidadExtraida = null;
+                const descripcion = movimiento.descripcion || '';
+                const matchUnidad = descripcion.match(/Devolución.*?:\s*(\d+(?:\.\d+)?)\s*([a-zA-Z0-9³]+)(?:\s*-)?/);
+                if (matchUnidad) {
+                  unidadExtraida = matchUnidad[2]; // Ej: "cm3", "kg", "L"
+                  console.log('🎯 UNIDAD EXTRAIDA de descripción:', descripcion, '->', unidadExtraida);
+                } else {
+                  console.log('❌ No se pudo extraer unidad de:', descripcion);
+                }
+
+                // 2️⃣ SI NO SE EXTRAJO, USAR LA UNIDAD PREFERIDA DEL MATERIAL
+                const unidadPreferidaRaw = unidadExtraida
+                  || (movimiento.material as any)?.medidasDeContenido
+                  || (movimiento.material as any)?.unidadBase
+                  || 'Unidad';
+
+                // 3️⃣ NORMALIZAR PARA CÁLCULOS (l minúscula para que la función entienda)
+                const unidadCalculo = unidadPreferidaRaw.toLowerCase() === 'l' ? 'l' : unidadPreferidaRaw.toLowerCase();
+
+                // 4️⃣ ETIQUETA VISUAL (L mayúscula para que se vea bonito)
+                const unidadVisualLabel = unidadPreferidaRaw.toLowerCase() === 'l' ? 'L' : unidadPreferidaRaw;
+
+                // 5️⃣ CÁLCULO DE LA CANTIDAD VISUAL
+                let cantidadVisual = 0;
+
+                // Si extrajimos la unidad de la descripción, significa que la cantidad ya está en la unidad correcta
+                if (unidadExtraida) {
+                  cantidadVisual = Number(movimiento.cantidad);
+                }
+                // Si no, convertimos la cantidad base a la unidad visual
+                else {
+                  // Si es una herramienta (no consumible), la cantidad es directa
+                  if ((movimiento.material as any)?.tipoConsumo === 'no_consumible') {
+                      cantidadVisual = Number(movimiento.cantidad);
+                  }
+                  // Si es insumo (consumible), hacemos la conversión
+                  else {
+                      cantidadVisual = convertirStockAUnidad(Number(movimiento.cantidad), unidadCalculo);
+                  }
+                }
+
+                // Formateo para quitar decimales innecesarios (ej: 50.00 -> 50, pero 0.5 -> 0.5)
+                const cantidadFinal = Number.isInteger(cantidadVisual)
+                    ? cantidadVisual
+                    : parseFloat(cantidadVisual.toFixed(4)); // Máximo 4 decimales
 
                 return (
                 <TableRow key={movimiento.id}>
@@ -261,9 +297,9 @@ const GestionMovimientosPage: React.FC = () => {
                   </TableCell>
                   {/* ✅ CELDA DE CANTIDAD ACTUALIZADA */}
                   <TableCell>
-                    <span className="font-semibold">{cantidadVisual}</span>
+                    <span className="font-semibold">{cantidadFinal}</span>
                     <span className="text-xs text-gray-600 ml-1 font-bold">
-                      {unidad}
+                      {unidadVisualLabel}
                     </span>
                   </TableCell>
                   <TableCell>{movimiento.descripcion || 'Sin descripción'}</TableCell>

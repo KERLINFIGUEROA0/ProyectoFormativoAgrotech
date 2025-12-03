@@ -181,7 +181,7 @@ export const descargarArchivoActividad = async (filename: string, nombreOriginal
 /**
  * Devuelve materiales al finalizar la actividad (solo para el responsable).
  */
-export const devolverMaterialesFinal = async (id: number, materialesDevueltos: { materialId: number; cantidadDevuelta: number }[]) => {
+export const devolverMaterialesFinal = async (id: number, materialesDevueltos: { materialId: number; cantidadDevuelta: number; cantidadDanada?: number; unidadSeleccionada?: string }[]) => {
   const response = await api.post(`/actividades/${id}/devolver-materiales-final`, {
     materialesDevueltos,
   });

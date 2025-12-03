@@ -13,6 +13,8 @@ type SensorFormData = Partial<Omit<Sensor, 'surco'>> & {
   brokerProtocolo?: string;
   brokerUsuario?: string;
   brokerPassword?: string;
+  // Campo para configuración JSON
+  json_key?: string;
 };
 
 interface SensorFormProps {
@@ -35,14 +37,11 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       valor_minimo_alerta: initialData.valor_minimo_alerta,
       valor_maximo_alerta: initialData.valor_maximo_alerta,
       topic: initialData.topic,
+      json_key: initialData.json_key || '', // Cargar valor inicial
       surcoId: initialData.surco?.id,
       // Datos del broker del surco (si existe)
-      brokerNombre: initialData.surco?.broker?.nombre || '',
-      brokerHost: initialData.surco?.broker?.host || '',
-      brokerPuerto: initialData.surco?.broker?.puerto || 1883,
-      brokerProtocolo: initialData.surco?.broker?.protocolo || 'mqtt://',
     };
-    
+
     setFormData(flatData);
   }, [initialData]);
 
@@ -123,6 +122,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       valor_minimo_alerta: parseFloat(String(valor_minimo_alerta)),
       valor_maximo_alerta: parseFloat(String(valor_maximo_alerta)),
       topic: topic || null,
+      json_key: formData.json_key || null, // Enviar al backend
       estado: formData.estado || 'Activo',
       // Información del broker
       broker: {
@@ -168,20 +168,38 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
 
       {/* Configuración MQTT */}
       <div className="border-b pb-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración MQTT</h3>
-        <div>
-          <Input
-            label="Tópico MQTT *"
-            name="topic"
-            value={formData.topic || ''}
-            onChange={handleChange}
-            placeholder="Ej: agrotech/sensores/lote1/temp"
-            fullWidth
-            required
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            El tópico MQTT donde se recibirán los datos del sensor. Puede ser compartido con otros sensores, pero cada sensor guardará los datos en su propio surco/lote.
-          </p>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración de Lectura</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Input
+              label="Tópico MQTT *"
+              name="topic"
+              value={formData.topic || ''}
+              onChange={handleChange}
+              placeholder="Ej: agrotech/sensores/lote1/temp"
+              fullWidth
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Ruta donde el dispositivo publica los datos.
+            </p>
+          </div>
+
+          {/* ✅ NUEVO INPUT: CLAVE JSON */}
+          <div>
+            <Input
+              label="Clave JSON (Opcional)"
+              name="json_key"
+              value={formData.json_key || ''}
+              onChange={handleChange}
+              placeholder="Ej: temperatura"
+              fullWidth
+            />
+            <p className="text-xs text-blue-500 mt-1">
+              Si el dispositivo envía <code>{`{"temp": 24}`}</code>, escribe <b>temp</b> aquí.
+              Déjalo vacío si envía solo el número.
+            </p>
+          </div>
         </div>
       </div>
 

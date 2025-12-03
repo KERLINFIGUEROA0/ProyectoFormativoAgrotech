@@ -9,6 +9,7 @@ import {
   Marker,
 } from "@react-google-maps/api";
 import type { Coordenada, Lote } from '../interfaces/cultivos';
+import websocketService from '../../../services/websocket.service';
 
 
 interface SubloteConCultivo {
@@ -32,6 +33,8 @@ interface LotesMapProps {
   sublotesConCultivos?: SubloteConCultivo[];
   selectedSubloteCultivo?: SubloteConCultivo | null;
   onSelectSubloteCultivo?: (sublote: SubloteConCultivo | null) => void;
+  onLotesUpdate?: (lotes: Lote[]) => void; // Callback para actualizar lotes en tiempo real
+  onSublotesUpdate?: (sublotes: SubloteConCultivo[]) => void; // Callback para actualizar sublotes en tiempo real
 }
 
 const containerStyle = {
@@ -65,6 +68,8 @@ export default function LotesMap({
   sublotesConCultivos = [],
   selectedSubloteCultivo,
   onSelectSubloteCultivo,
+  onLotesUpdate,
+  onSublotesUpdate,
 }: LotesMapProps): ReactElement {
   // Parse coordenadas if they are strings
   const parsedLotes = lotes.map(lote => ({
@@ -89,6 +94,56 @@ export default function LotesMap({
       mapRef.current.setZoom(18);
     }
   }, [selectedLote, isLoaded]); // Añadimos isLoaded a las dependencias
+
+  // WebSocket listeners para actualizaciones en tiempo real
+  useEffect(() => {
+    // Listener para cambios de estado de lotes
+    const unsubscribeLoteEstado = websocketService.on('lote-estado-actualizado', (data) => {
+      console.log('🎯 Lote actualizado en tiempo real:', data);
+      // Actualizar el lote específico en la lista
+      const updatedLotes = lotes.map(lote =>
+        lote.id === data.loteId
+          ? { ...lote, estado: data.nuevoEstado }
+          : lote
+      );
+      onLotesUpdate?.(updatedLotes);
+    });
+
+    // Listener para lotes liberados
+    const unsubscribeLoteLiberado = websocketService.on('lote-liberado', (data) => {
+      console.log('🎯 Lote liberado en tiempo real:', data);
+      // Actualizar el lote específico a "En preparación"
+      const updatedLotes = lotes.map(lote =>
+        lote.id === data.loteId
+          ? { ...lote, estado: 'En preparación' }
+          : lote
+      );
+      onLotesUpdate?.(updatedLotes);
+    });
+
+    // Listener para cambios de estado de sublotes
+    const unsubscribeSubloteEstado = websocketService.on('sublote-estado-actualizado', (data) => {
+      console.log('🎯 Sublote actualizado en tiempo real:', data);
+      // Los sublotes se actualizan desde el componente padre
+      // Aquí solo notificamos que hubo un cambio
+      onSublotesUpdate?.(sublotesConCultivos);
+    });
+
+    // Listener para sublotes liberados
+    const unsubscribeSubloteLiberado = websocketService.on('sublote-liberado', (data) => {
+      console.log('🎯 Sublote liberado en tiempo real:', data);
+      // Los sublotes se actualizan desde el componente padre
+      onSublotesUpdate?.(sublotesConCultivos);
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeLoteEstado();
+      unsubscribeLoteLiberado();
+      unsubscribeSubloteEstado();
+      unsubscribeSubloteLiberado();
+    };
+  }, [sublotesConCultivos, onLotesUpdate, onSublotesUpdate]);
 
   // CORRECCIÓN 2: También condicionamos este cálculo
   const centerForInfoWindow = isLoaded && selectedLote?.coordenadas && selectedLote.coordenadas.type === 'polygon'
