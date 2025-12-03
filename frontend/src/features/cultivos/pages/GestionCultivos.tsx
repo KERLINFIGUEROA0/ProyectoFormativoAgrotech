@@ -1,31 +1,21 @@
-import { useState, useEffect, type ReactElement } from 'react';
+import { useState, useEffect, useMemo, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
-  Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin, RefreshCw
+  Plus, Edit, DollarSign, BookCheck, Leaf,
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
+import { FaLeaf, FaThList, FaTools } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 // Hero UI Imports
 import {
   Card, CardBody, Button, Tabs, Tab, Input,
   Select, SelectItem, Chip, ScrollShadow, Divider,
-  CardHeader, Tooltip, Switch
+  CardHeader, Tooltip, Switch, Progress
 } from '@heroui/react';
 
-// Custom StatCard component since Stat is not available in HeroUI
-const StatCard = ({ startContent, title, value }: any) => (
-  <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
-    <div className="text-green-500">{startContent}</div>
-    <div>
-      <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-    </div>
-  </div>
-);
-
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, registrarCosecha, actualizarEstadosLotes } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, registrarCosecha } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
@@ -229,6 +219,22 @@ export default function GestionCultivosPage(): ReactElement {
     // The map uses sublotesConCultivos derived from allSublotes instead
   };
 
+  // Memoizar initialData para evitar re-renders innecesarios
+  const initialData = useMemo(() => {
+    if (editingCultivo) {
+      return {
+        ...editingCultivo,
+        tipoCultivoId: editingCultivo.tipoCultivo?.id,
+        loteId: (editingCultivo as any).lote?.id,
+        subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
+        Fecha_Plantado: editingCultivo.Fecha_Plantado
+          ? new Date(editingCultivo.Fecha_Plantado).toISOString().split('T')[0]
+          : ''
+      };
+    }
+    return {};
+  }, [editingCultivo]);
+
   const handleSave = async (data: any) => {
     const { imageFile, newTipoCultivoName, ...cultivoData } = data;
     const toastId = toast.loading("Guardando cultivo...");
@@ -298,45 +304,110 @@ export default function GestionCultivosPage(): ReactElement {
               })}
             </span>
           </div>
-          <div className="flex gap-3">
-            <Button
-              onPress={async () => {
-                try {
-                  const result = await actualizarEstadosLotes();
-                  toast.success(`Estados actualizados: ${result.data.lotesActualizados} lotes corregidos`);
-                  await fetchData(); // Recargar datos
-                } catch (error: any) {
-                  toast.error(error.response?.data?.message || "Error al actualizar estados");
-                }
-              }}
-              color="secondary"
-              variant="flat"
-              className="font-semibold"
-              size="lg"
-              startContent={<RefreshCw size={20} strokeWidth={2.5} />}
-            >
-              Actualizar Estados
-            </Button>
-            <Button
-              onPress={() => openModal()}
-              color="primary"
-              className="font-semibold shadow-md shadow-blue-500/30"
-              size="lg"
-              startContent={<Plus size={20} strokeWidth={2.5} />}
-            >
-              Nuevo Cultivo
-            </Button>
-          </div>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard startContent={<Sprout size={24} />} title="Total Cultivos" value={stats.total} />
-          <StatCard startContent={<CheckCircle size={24} />} title="Activos" value={stats.activos} />
-          <StatCard startContent={<Leaf size={24} />} title="Variedades" value={stats.tipos} />
-          <StatCard startContent={<Clock size={24} />} title="Total Plantas" value={new Intl.NumberFormat('es-CO').format(stats.totalPlantas)} />
+        <div className="mt-4 flex justify-end">
+          <Button
+            onPress={() => openModal()}
+            color="success"
+            className="font-semibold shadow-md shadow-green-500/30"
+            size="md"
+            startContent={<Plus size={20} strokeWidth={2.5} />}
+          >
+            Nuevo Cultivo
+          </Button>
         </div>
       </div>
 
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Cultivos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">registrados</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaThList className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.total * 10, 100)}
+              className="mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de cultivos totales: ${stats.total}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Activos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activos}</p>
+                <p className="text-xs text-gray-500">en crecimiento</p>
+              </div>
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.activos / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="warning"
+              size="sm"
+              aria-label={`Progreso de cultivos activos: ${stats.activos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Variedades</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.tipos}</p>
+                <p className="text-xs text-gray-500">tipos diferentes</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.tipos * 20, 100)}
+              className="mt-3"
+              color="primary"
+              size="sm"
+              aria-label={`Progreso de variedades: ${stats.tipos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Plantas</p>
+                <p className="text-2xl font-bold text-gray-900">{new Intl.NumberFormat('es-CO').format(stats.totalPlantas)}</p>
+                <p className="text-xs text-gray-500">plantadas</p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <FaTools className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.totalPlantas / 10, 100)}
+              className="mt-3"
+              color="danger"
+              size="sm"
+              aria-label={`Progreso de plantas totales: ${stats.totalPlantas}`}
+            />
+          </CardBody>
+        </Card>
+      </div>
 
       {/* --- CONTENEDOR PRINCIPAL TIPO "TARJETA FLOTANTE" --- */}
       {/* Esta es la Card grande blanca que contiene todo lo demás */}
@@ -663,19 +734,7 @@ export default function GestionCultivosPage(): ReactElement {
           </ModalHeader>
           <ModalBody>
             <CultivoForm
-              initialData={editingCultivo ? {
-                ...editingCultivo,
-                // Extraemos el ID del tipo de cultivo
-                tipoCultivoId: editingCultivo.tipoCultivo?.id,
-                // Extraemos el ID del lote (usando casting a any si TS se queja, o accediendo directo si la interfaz lo permite)
-                loteId: (editingCultivo as any).lote?.id,
-                // Extraemos el ID del sublote (asumiendo que puede estar en 'sublotes' array o 'sublote' objeto)
-                subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
-                // Formateamos la fecha a YYYY-MM-DD para el input type="date"
-                Fecha_Plantado: editingCultivo.Fecha_Plantado
-                  ? new Date(editingCultivo.Fecha_Plantado).toISOString().split('T')[0]
-                  : ''
-              } : {}}
+              initialData={initialData}
               tiposCultivo={tiposCultivo}
               cultivos={cultivos}
               onSave={handleSave}
