@@ -20,7 +20,7 @@ class WebSocketService {
 
     this.currentToken = token;
 
-    const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const API_URL = import.meta.env.VITE_BACKEND_URL;
 
     const options: any = {
       // 🚀 CLAVE: Forzar websocket evita el handshake lento HTTP y reduce desconexiones

@@ -207,23 +207,13 @@ export class SensoresService {
 
     // Crear el sensor
     const { broker, loteId, subloteId, ...sensorData } = createSensoreDto; // Excluir broker, loteId, subloteId del DTO
-    const nuevoSensor = this.sensorRepo.create({ ...sensorData, lote, sublote });
+    const nuevoSensor = this.sensorRepo.create({
+      ...sensorData,
+      lote,
+      sublote,
+      ultimo_mqtt_mensaje: null // Aseguramos que arranque en null
+    });
     const sensorGuardado = await this.sensorRepo.save(nuevoSensor);
-
-    // Insertar un dato inicial en informacion_sensor
-    // Usamos un valor promedio entre el mínimo y máximo de alerta como valor inicial
-    const valorInicial = (Number(sensorGuardado.valor_minimo_alerta) + Number(sensorGuardado.valor_maximo_alerta)) / 2;
-    
-    try {
-      await this.infoSensorService.create({
-        sensorId: sensorGuardado.id,
-        valor: Number(valorInicial.toFixed(2)),
-      });
-    } catch (error) {
-      // Si falla la inserción del dato inicial, no falla la creación del sensor
-      // Solo logueamos el error
-      console.error(`Error al insertar dato inicial para sensor ${sensorGuardado.id}:`, error);
-    }
 
     // Suscribirse al tópico MQTT del nuevo sensor
     try {

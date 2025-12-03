@@ -77,6 +77,7 @@ interface SensorCardProps {
 function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, onRemoveFromLote }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
   const isDisconnected = latestData?.estado === 'Desconectado';
+  const tieneDatos = latestData !== undefined && rawValor !== null;
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
@@ -97,13 +98,20 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   let bellAnimation = "";
   let bellColor = "text-gray-500";
 
-  // Si está desconectado, mostrar 0 y estilo especial
+  // Determinar estado visual
   if (isDisconnected) {
     valorColor = "text-red-600";
     alertMessage = "DESCONECTADO";
     cardBorderColor = "border-red-500";
     bellColor = "text-red-600";
     bellAnimation = "animate-pulse";
+  } else if (!tieneDatos) {
+    // Estado de sincronización: esperando datos
+    valorColor = "text-gray-400";
+    alertMessage = null;
+    cardBorderColor = "border-gray-300";
+    bellColor = "text-gray-400";
+    bellAnimation = "";
   } else if (valor !== null) {
     if (valor < Number(min)) {
       valorColor = "text-blue-600 animate-pulse";
@@ -121,7 +129,7 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   }
 
   // Si el sistema NO está grabando, quitamos colores de alerta para indicar "congelado"
-  if (!isSystemRecording && valor !== null && !isDisconnected) {
+  if (!isSystemRecording && valor !== null && !isDisconnected && tieneDatos) {
     valorColor = "text-gray-500";
     bellAnimation = "";
     alertMessage = null;
@@ -145,10 +153,11 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
             <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
             <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${
               isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
+              !tieneDatos ? 'bg-gray-100 text-gray-700 border border-gray-200' :
               isActive ? 'bg-green-100 text-green-700 border border-green-200' :
               'bg-gray-100 text-gray-700 border border-gray-200'
             }`}>
-              {isDisconnected ? '● DESCONECTADO' : isActive ? '● ACTIVO' : '● INACTIVO'}
+              {isDisconnected ? '● DESCONECTADO' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
             </span>
           </div>
         </div>
@@ -230,6 +239,10 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">
                   <Pause size={7} className="inline mr-1" /> ⏸️ Congelado
                 </div>
+            ) : !tieneDatos ? (
+                <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 shadow-sm">
+                  <RefreshCw size={7} className="inline mr-1 animate-spin" /> Sincronizando...
+                </div>
             ) : alertMessage ? (
                 <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${alertMessage === 'ALTO' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                   <AlertTriangle size={7} className="inline mr-1" /> ⚠️ {alertMessage}
@@ -242,8 +255,8 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
           </>
         ) : (
           <div className="text-center">
-            <span className="text-base font-bold text-gray-300">--</span>
-            <p className="text-[8px] text-gray-400">Sin datos</p>
+            <span className="text-base font-bold text-gray-300">N/A</span>
+            <p className="text-[8px] text-gray-400">Esperando datos </p>
           </div>
         )}
       </div>
@@ -1112,65 +1125,39 @@ export default function GestionSensoresPage(): ReactElement {
 
           {/* ACCIONES */}
           <div className="flex items-center gap-2">
-            {/* BOTÓN DE CONTROL MAESTRO */}
-            {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-              <Button
-                onClick={toggleSystemRecording}
-                variant="solid"
-                color={isSystemRecording ? "success" : "warning"}
-                size="sm"
-                className="text-xs font-semibold"
-                startContent={isSystemRecording ? <Pause size={14} /> : <Play size={14} />}
-              >
-                {isSystemRecording ? "Pausar" : "Activar"}
-              </Button>
-            )}
-
             {/* BOTONES DE ACCIÓN */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
                <Button
                  onClick={() => openBrokerModal()}
-                 variant="light"
+                 variant="solid"
                  color="secondary"
                  size="sm"
-                 className="min-w-0 px-2"
                  startContent={<Server size={14} />}
-                 title="Gestionar Brokers"
-               />
+               >
+                 Crear Broker
+               </Button>
 
                {/* BOTÓN DE DESCARGA DE TRAZABILIDAD - DISPONIBLE EN AMBOS MODOS */}
                <Button
                  onClick={() => setIsTrazabilidadModalOpen(true)}
-                 variant="light"
+                 variant="solid"
                  color="success"
                  size="sm"
-                 className="min-w-0 px-2"
                  startContent={<Download size={14} />}
-                 title="Descargar Reporte de Trazabilidad"
-               />
+               >
+                 Descargar Reporte
+               </Button>
 
                {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                 <>
-                   <Button
-                     onClick={() => openBrokerLoteModal()}
-                     variant="light"
-                     color="warning"
-                     size="sm"
-                     className="min-w-0 px-2"
-                     startContent={<Layers size={14} />}
-                     title="Configurar Sensores por Lote"
-                   />
-
-                   <Button
-                     onClick={() => handleSincronizar(filtroId as number)}
-                     variant="light"
-                     color="primary"
-                     size="sm"
-                     className="min-w-0 px-2"
-                     startContent={<RefreshCw size={14} />}
-                     title="Sincronizar Sensores"
-                   />
-                 </>
+                 <Button
+                   onClick={() => openBrokerLoteModal()}
+                   variant="solid"
+                   color="warning"
+                   size="sm"
+                   startContent={<Layers size={14} />}
+                 >
+                   Configurar Lote
+                 </Button>
                )}
              </div>
           </div>

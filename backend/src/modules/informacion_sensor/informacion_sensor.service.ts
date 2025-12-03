@@ -205,15 +205,15 @@ export class InformacionSensorService {
       sensores.map(async (sensor) => {
         this.logger.debug(`🔎 Buscando último dato para sensor ID: ${sensor.id}, Nombre: ${sensor.nombre}`);
 
-        let valor: number = 0; // Por defecto 0
+        let valor: number | null = null; // Por defecto null
         let fechaRegistro: string | null = null;
         let estadoLogico = sensor.estado;
 
-        // 🛑 Si el Watchdog lo marcó como desconectado, forzamos el 0
+        // 🛑 Si el Watchdog lo marcó como desconectado, forzamos el null (N/A)
         if (sensor.estado === 'Desconectado') {
-             valor = 0;
+             valor = null;
              estadoLogico = 'Desconectado'; // Para pintar rojo en el frontend
-             this.logger.warn(`❌ Sensor ${sensor.id} (${sensor.nombre}): DESCONECTADO - mostrando 0`);
+             this.logger.warn(`❌ Sensor ${sensor.id} (${sensor.nombre}): DESCONECTADO - mostrando N/A`);
         } else {
              // ✅ Si está activo, buscamos su último dato real
              const ultimoDato = await this.infoRepo.findOne({
@@ -226,7 +226,7 @@ export class InformacionSensorService {
                  fechaRegistro = ultimoDato.fechaRegistro.toISOString();
                  this.logger.log(`✅ Sensor ${sensor.id} (${sensor.nombre}): Valor=${valor} (ACTIVO)`);
              } else {
-                 this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): ACTIVO pero sin datos en BD`);
+                 this.logger.warn(`⚠️ Sensor ${sensor.id} (${sensor.nombre}): ACTIVO pero sin datos en BD - mostrando N/A`);
              }
         }
 
