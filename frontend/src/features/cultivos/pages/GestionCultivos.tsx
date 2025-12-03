@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
+  Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
 import { FaLeaf, FaThList, FaTools } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -284,38 +284,17 @@ export default function GestionCultivosPage(): ReactElement {
 
   return (
     <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
-      {/* Welcome Banner */}
-      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-1">
-              Gestión de Cultivos
-            </h2>
-            <p className="text-green-100">Administra tu producción agrícola de forma eficiente</p>
-          </div>
-          <div className="hidden md:flex items-center gap-2 text-green-100">
-            <Clock size={20} />
-            <span className="text-sm">
-              {new Date().toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </span>
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            onPress={() => openModal()}
-            color="success"
-            className="font-semibold shadow-md shadow-green-500/30"
-            size="md"
-            startContent={<Plus size={20} strokeWidth={2.5} />}
-          >
-            Nuevo Cultivo
-          </Button>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Gestión Cultivos</h1>
+        <Button
+          onPress={() => openModal()}
+          color="success"
+          className="font-semibold shadow-md shadow-green-500/30"
+          size="md"
+          startContent={<Plus size={20} strokeWidth={2.5} />}
+        >
+          Nuevo Cultivo
+        </Button>
       </div>
 
       {/* Main Stats Grid */}

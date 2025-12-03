@@ -110,27 +110,8 @@ export default function DashboardProduccion() {
 
   return (
     <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
-      {/* Welcome Banner */}
-      <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-1">
-              Dashboard de Producción
-            </h2>
-            <p className="text-green-100">{cultivoNombre} - Monitoreo detallado de cosechas y rendimiento</p>
-          </div>
-          <div className="hidden md:flex items-center gap-2 text-green-100">
-            <BarChart size={20} />
-            <span className="text-sm">
-              {new Date().toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </span>
-          </div>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Producción del Cultivo</h1>
       </div>
 
       {/* Navigation and Actions */}
