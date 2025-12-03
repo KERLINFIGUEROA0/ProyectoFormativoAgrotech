@@ -121,7 +121,11 @@ export class PdfService {
       cultivo: {
         nombre: cultivo.nombre,
         tipoCultivo: cultivo.tipoCultivo?.nombre || '',
-        fechaPlantado: cultivo.Fecha_Plantado ? new Date(cultivo.Fecha_Plantado).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }) : '',
+        fechaPlantado: cultivo.Fecha_Plantado ? (() => {
+          const [year, month, day] = cultivo.Fecha_Plantado.split('-');
+          const date = new Date(Number(year), Number(month) - 1, Number(day));
+          return date.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
+        })() : '',
         estado: cultivo.Estado || '',
         lote: cultivo.lote?.nombre || '',
         cantidad: cultivo.cantidad || 0,
@@ -201,13 +205,12 @@ export class PdfService {
     if (!cultivo) {
       throw new NotFoundException(`Cultivo con ID ${id} no encontrado`);
     }
-    cultivo.Fecha_Plantado = new Date(cultivo.Fecha_Plantado);
     if (!cultivo.Fecha_Plantado) {
       throw new BadRequestException('La fecha de plantado del cultivo es requerida y no puede ser null');
     }
     if (fechaInicio) {
       const fechaInicioFormatted = new Date(fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-      const fechaPlantadoFormatted = cultivo.Fecha_Plantado.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
+      const fechaPlantadoFormatted = new Date(cultivo.Fecha_Plantado).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
       if (fechaInicioFormatted < fechaPlantadoFormatted) {
         throw new BadRequestException('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
       }

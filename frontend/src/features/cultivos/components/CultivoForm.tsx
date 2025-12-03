@@ -59,7 +59,21 @@ export default function CultivoForm({
   const [editTipoName, setEditTipoName] = useState("");
 
   useEffect(() => {
-    setFormData({ Estado: "Activo", ...initialData });
+    // Función auxiliar segura para extraer YYYY-MM-DD
+    const formatearFechaSegura = (fecha: any) => {
+      if (!fecha) return "";
+      // Si ya es string, tomamos los primeros 10 caracteres (YYYY-MM-DD)
+      if (typeof fecha === 'string') return fecha.substring(0, 10);
+      // Si por error llega como objeto Date, lo convertimos a ISO y cortamos
+      return new Date(fecha).toISOString().split('T')[0];
+    };
+
+    setFormData({
+      Estado: "Activo",
+      ...initialData,
+      // Forzamos que la fecha sea solo el string limpio
+      Fecha_Plantado: formatearFechaSegura(initialData.Fecha_Plantado)
+    });
     setShowNewTipoInput(false);
     setNewTipoCultivoName("");
     setImageFile(null);

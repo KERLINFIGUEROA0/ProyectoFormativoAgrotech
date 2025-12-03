@@ -67,20 +67,6 @@ export class CultivosService {
       const lote = await this.loteRepository.findOne({ where: { id: dto.loteId } });
       if (!lote) throw new NotFoundException(`El lote con ID ${dto.loteId} no existe`);
 
-      // 1.1 VALIDACIÓN DE CONCURRENCIA: Verificar que el lote no esté ocupado
-      const cultivosActivosEnLote = await this.cultivoRepository.count({
-        where: {
-          lote: { id: lote.id },
-          Estado: In(['Activo', 'En Cosecha']) // Solo cuentan cultivos activos
-        }
-      });
-
-      if (cultivosActivosEnLote > 0) {
-        throw new BadRequestException(
-          `No se puede crear el cultivo. El lote "${lote.nombre}" ya tiene ${cultivosActivosEnLote} cultivo(s) activo(s). ` +
-          `Finalice los cultivos existentes antes de crear uno nuevo.`
-        );
-      }
 
       // 2. Crear el cultivo (solo un registro)
       const cultivo = new Cultivo();
@@ -88,7 +74,7 @@ export class CultivosService {
       cultivo.cantidad = dto.cantidad;
       cultivo.tipoCultivo = tipoCultivo;
       cultivo.lote = lote;
-      cultivo.Fecha_Plantado = new Date(dto.Fecha_Plantado + 'T00:00:00-05:00');
+      cultivo.Fecha_Plantado = dto.Fecha_Plantado || null;
       cultivo.descripcion = dto.descripcion || '';
       cultivo.Estado = dto.Estado || 'Activo';
       cultivo.img = dto.img || ''; // Asegurar que nunca sea null
@@ -259,7 +245,7 @@ export class CultivosService {
       if (esFinal) {
         // A. Finalizar Cultivo PRIMERO para que la lógica de estado lo detecte como inactivo
         cultivo.Estado = 'Finalizado';
-        cultivo.Fecha_Fin = new Date(fecha);
+        cultivo.Fecha_Fin = fecha;
         await queryRunner.manager.save(Cultivo, cultivo); // Guardamos estado finalizado
 
         // B. Liberar Sublotes (Usando queryRunner para ver los cambios en la transacción)

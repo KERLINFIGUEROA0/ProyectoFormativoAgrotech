@@ -12,6 +12,10 @@ export class MaterialDevueltoDto {
   @IsNumber()
   @IsOptional()
   cantidadDanada?: number; // Cantidad dañada (Se cobra al cultivo y se da de baja)
+
+  @IsString()
+  @IsOptional()
+  unidadSeleccionada?: string; // Unidad seleccionada por el usuario en el frontend
 }
 
 export class CreateRespuestaDto {

@@ -32,10 +32,10 @@ export class Cultivo {
   Estado: string;
 
   @Column({ name: 'Fecha_Plantado', type: 'date', nullable: true })
-  Fecha_Plantado: Date;
+  Fecha_Plantado: string | null;
 
   @Column({ name: 'Fecha_Fin', type: 'date', nullable: true })
-  Fecha_Fin: Date | null;
+  Fecha_Fin: string | null;
 
   @ManyToOne(() => TipoCultivo, (tipoCultivo) => tipoCultivo.cultivos, {
     onDelete: 'SET NULL',

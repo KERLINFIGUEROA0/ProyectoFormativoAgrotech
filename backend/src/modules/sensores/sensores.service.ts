@@ -513,7 +513,7 @@ export class SensoresService {
         const datosCultivo: any = {
           nombre: c.nombre,
           tipo: c.tipoCultivo?.nombre || 'Sin tipo',
-          diasSembrado: Math.floor((new Date().getTime() - new Date(c.Fecha_Plantado).getTime()) / (1000 * 3600 * 24)),
+          diasSembrado: c.Fecha_Plantado ? Math.floor((new Date().getTime() - new Date(c.Fecha_Plantado).getTime()) / (1000 * 3600 * 24)) : 0,
           fechaSiembra: c.Fecha_Plantado,
           resumenFinanciero: {
             totalInversion: 0,

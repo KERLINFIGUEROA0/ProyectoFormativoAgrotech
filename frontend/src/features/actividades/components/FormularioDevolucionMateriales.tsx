@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, DollarSign, PackageCheck, PackageX, Receipt, AlertCircle } from 'lucide-react';
+import { AlertTriangle, DollarSign, PackageCheck, PackageX, Receipt, AlertCircle, Ruler } from 'lucide-react';
+import { UNIDADES_VOLUMEN, UNIDADES_MASA, FACTORES_CONVERSION, esUnidadVolumen, esUnidadMasa } from '../../../utils/unitConversion';
 
 interface MaterialAsignado {
   materialId: number;
@@ -16,6 +17,7 @@ interface DevolucionItem {
   cantidadDevuelta: number | string; // Permitimos string para escritura fluida
   cantidadDanada: number | string;
   reportarDano: boolean;
+  unidadSeleccionada: string; // Nueva: La unidad que el usuario elige en el form
 }
 
 interface Props {
@@ -41,6 +43,7 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
           cantidadDevuelta: '', // Empezar vacío es más limpio para el usuario
           cantidadDanada: '',
           reportarDano: false,
+          unidadSeleccionada: m.unidad || 'Unidad', // Por defecto seleccionamos la unidad original de la asignación
         }));
       });
     } else {
@@ -48,14 +51,32 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
     }
   }, [materiales]); // Dependencia correcta
 
-  // 2. NOTIFICAR AL PADRE
+  // 2. NOTIFICAR AL PADRE (CORREGIDO: Sin conversión, enviamos datos puros)
   useEffect(() => {
     if (items.length > 0) {
-      const payload = items.map(item => ({
-        materialId: item.materialId,
-        cantidadDevuelta: Number(item.cantidadDevuelta) || 0,
-        cantidadDanada: item.reportarDano ? Number(item.cantidadDanada) || 0 : 0
-      }));
+      const payload = items.map((item) => {
+        const valDevueltaUsuario = Number(item.cantidadDevuelta) || 0;
+        const valDanadaUsuario = item.reportarDano ? (Number(item.cantidadDanada) || 0) : 0;
+
+        // 🔍 DEBUG FRONTEND: ¿Qué estamos enviando realmente?
+        console.group(`📦 [FRONT] Item Material ID: ${item.materialId}`);
+        console.log(`   Valor escrito por usuario: ${item.cantidadDevuelta}`);
+        console.log(`   Valor numérico procesado: ${valDevueltaUsuario}`);
+        console.log(`   Unidad Seleccionada (Estado): "${item.unidadSeleccionada}"`);
+        console.groupEnd();
+
+        // 🔥 CAMBIO CRÍTICO:
+        // Ya no convertimos aquí. Enviamos exactamente lo que escribió el usuario
+        // y la unidad que seleccionó. El backend se encarga del resto.
+        return {
+          materialId: item.materialId,
+          cantidadDevuelta: valDevueltaUsuario,
+          cantidadDanada: valDanadaUsuario,
+          unidadSeleccionada: item.unidadSeleccionada // Importante para que el backend sepa qué cálculo hacer
+        };
+      });
+
+      console.log('🚀 [FRONT] Payload completo enviado al padre:', payload);
       onChange(payload);
     }
   }, [items, onChange]);
@@ -63,19 +84,31 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
   // 3. CALCULAR RESUMEN DE TRANSACCIÓN (COSTOS)
   const resumenCostos = useMemo(() => {
     return items
-      .map(item => {
-        const mat = materiales.find(m => m.materialId === item.materialId);
+      .map((item, index) => {
+        const mat = materiales[index];
         if (!mat || !item.reportarDano) return null;
 
-        const cantDanada = Number(item.cantidadDanada) || 0;
-        if (cantDanada <= 0) return null;
+        const cantDanadaUsuario = Number(item.cantidadDanada) || 0;
+        if (cantDanadaUsuario <= 0) return null;
+
+        // Calculamos el costo en base a la conversión
+        // Precio unitario es por la unidad ASIGNADA.
+        let cantidadParaCobro = cantDanadaUsuario;
+
+        if (mat.tipoConsumo === 'consumible') {
+           const factorSeleccionado = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
+           const factorOriginal = FACTORES_CONVERSION[mat.unidad] || 1;
+           cantidadParaCobro = cantDanadaUsuario * (factorSeleccionado / factorOriginal);
+        }
 
         return {
           id: mat.materialId,
           nombre: mat.nombre,
-          cantidad: cantDanada,
+          cantidad: cantidadParaCobro, // Cantidad en unidad original (para el precio)
+          cantidadVisual: cantDanadaUsuario, // Cantidad que escribió el usuario
+          unidadVisual: item.unidadSeleccionada,
           precio: mat.precioUnitario,
-          total: cantDanada * mat.precioUnitario
+          total: cantidadParaCobro * mat.precioUnitario
         };
       })
       .filter((i): i is NonNullable<typeof i> => i !== null);
@@ -91,6 +124,12 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
       }
       return newItems;
     });
+  };
+
+  const getOpcionesUnidad = (unidadOriginal: string) => {
+    if (esUnidadVolumen(unidadOriginal)) return UNIDADES_VOLUMEN;
+    if (esUnidadMasa(unidadOriginal)) return UNIDADES_MASA;
+    return [unidadOriginal]; // Si es unidad/paquete, no mostramos conversión
   };
 
   // No renderizar hasta que el estado esté inicializado
@@ -112,34 +151,50 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
         </h3>
 
         {materiales.map((mat, index) => {
-        const itemState = items[index];
-        if (!itemState) return null; // Safety check
-        // Cálculos seguros convirtiendo a número para la vista
-        const valDevuelta = Number(itemState.cantidadDevuelta) || 0;
-        const valDanada = Number(itemState.cantidadDanada) || 0;
+          const itemState = items[index];
+          if (!itemState) return null; // Safety check
 
-        // Validación: Consumibles solo validan lo devuelto. Herramientas validan la suma.
-        const totalIngresado = valDevuelta + (itemState.reportarDano ? valDanada : 0);
-        const esExceso = totalIngresado > mat.cantidadAsignada;
-        const costoEstimado = valDanada * mat.precioUnitario;
+          const esHerramienta = mat.tipoConsumo === 'no_consumible';
+          const opcionesUnidad = esHerramienta ? [] : getOpcionesUnidad(mat.unidad);
+          const permiteConversion = opcionesUnidad.length > 1;
 
-        // ¿Es herramienta/equipo? (No consumible)
-        const esHerramienta = mat.tipoConsumo === 'no_consumible';
+          // Cálculos para validación visual
+          const valDevuelta = Number(itemState.cantidadDevuelta) || 0;
+          const valDanada = Number(itemState.cantidadDanada) || 0;
+
+          // Normalizamos a la unidad asignada para comparar con el límite
+          let totalIngresadoEnAsignada = valDevuelta + (itemState.reportarDano ? valDanada : 0);
+          if (permiteConversion) {
+             const fSel = FACTORES_CONVERSION[itemState.unidadSeleccionada] || 1;
+             const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
+             totalIngresadoEnAsignada = totalIngresadoEnAsignada * (fSel / fOrig);
+          }
+
+          // Permitimos un margen de error mínimo por decimales (0.0001)
+          const esExceso = totalIngresadoEnAsignada > (mat.cantidadAsignada + 0.0001);
+
+          // Calcular costo estimado para daños
+          const costoEstimado = itemState.reportarDano ? (valDanada * mat.precioUnitario) : 0;
 
         return (
           <div key={mat.materialId} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             {/* Encabezado del Material */}
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h4 className="font-bold text-gray-800">{mat.nombre}</h4>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  mat.tipoConsumo === 'no_consumible' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                }`}>
-                  {mat.tipoConsumo === 'no_consumible' ? 'Herramienta / Equipo' : 'Insumo Consumible'}
+                <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                  {mat.nombre}
+                  {permiteConversion && (
+                    <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <Ruler size={12}/> {mat.unidad} (Asignado)
+                    </span>
+                  )}
+                </h4>
+                <span className={`text-xs px-2 py-1 rounded-full ${esHerramienta ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {esHerramienta ? 'Herramienta' : 'Insumo'}
                 </span>
               </div>
               <div className="text-right">
-                <span className="block text-sm text-gray-500">Asignado:</span>
+                <span className="block text-sm text-gray-500">Total Asignado</span>
                 <span className="font-mono font-bold text-lg">{mat.cantidadAsignada} {mat.unidad}</span>
               </div>
             </div>
@@ -152,19 +207,37 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
                   <PackageCheck size={16} />
                   {esHerramienta ? 'Devolver Buen Estado' : 'Devolver Sobrante (Resto al Stock)'}
                 </label>
-                <input
-                  type="text" // Usamos text temporalmente para permitir "1." mientras escribes
-                  inputMode="decimal"
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2"
-                  value={itemState.cantidadDevuelta}
-                  onChange={(e) => {
-                    // Validamos que sea un número o vacío para no romper el input
-                    if (/^\d*\.?\d*$/.test(e.target.value)) {
-                      handleUpdate(index, 'cantidadDevuelta', e.target.value);
-                    }
-                  }}
-                  placeholder="0"
-                />
+
+                <div className="flex gap-2">
+                  <input
+                    type="text" // Usamos text temporalmente para permitir "1." mientras escribes
+                    inputMode="decimal"
+                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2"
+                    value={itemState.cantidadDevuelta}
+                    onChange={(e) => {
+                      // Validamos que sea un número o vacío para no romper el input
+                      if (/^\d*\.?\d*$/.test(e.target.value)) {
+                        handleUpdate(index, 'cantidadDevuelta', e.target.value);
+                      }
+                    }}
+                    placeholder="0"
+                  />
+
+                  {/* SELECTOR DE UNIDAD */}
+                  {permiteConversion ? (
+                    <select
+                      className="w-24 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-gray-50 text-sm"
+                      value={itemState.unidadSeleccionada}
+                      onChange={(e) => handleUpdate(index, 'unidadSeleccionada', e.target.value)}
+                    >
+                      {opcionesUnidad.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  ) : (
+                    <div className="px-3 py-2 bg-gray-100 text-gray-500 rounded-md border border-gray-200 text-sm font-medium">
+                      {mat.unidad}
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {esHerramienta
                     ? 'Cantidad que regresa al inventario funcional.'
@@ -225,14 +298,9 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
             {/* Validaciones Visuales */}
             {esExceso && (
-              <div className="mt-2 flex items-center gap-2 text-red-600 text-sm font-medium bg-red-50 p-2 rounded">
+              <div className="mt-2 flex items-center gap-2 text-red-600 text-sm font-medium bg-red-50 p-2 rounded animate-pulse">
                 <AlertTriangle size={16} />
-                ¡Error! La suma de devueltos y dañados ({totalIngresado}) supera lo asignado ({mat.cantidadAsignada}).
-              </div>
-            )}
-             {!esExceso && totalIngresado < mat.cantidadAsignada && (
-              <div className="mt-2 text-amber-600 text-sm bg-amber-50 p-2 rounded">
-                Nota: Faltan {mat.cantidadAsignada - totalIngresado} unidades por justificar.
+                Estás devolviendo {totalIngresadoEnAsignada.toFixed(2)} {mat.unidad}, pero solo se asignaron {mat.cantidadAsignada}.
               </div>
             )}
           </div>
@@ -262,7 +330,9 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
                 {resumenCostos.map((item) => (
                   <tr key={item.id}>
                     <td className="px-4 py-2 text-sm text-slate-700 font-medium">{item.nombre}</td>
-                    <td className="px-4 py-2 text-sm text-right text-red-600 font-bold">{item.cantidad}</td>
+                    <td className="px-4 py-2 text-sm text-right text-red-600 font-bold">
+                      {item.cantidadVisual} {item.unidadVisual}
+                    </td>
                     <td className="px-4 py-2 text-sm text-right text-slate-500">${item.precio.toLocaleString()}</td>
                     <td className="px-4 py-2 text-sm text-right text-slate-800 font-bold">${item.total.toLocaleString()}</td>
                   </tr>

@@ -1,5 +1,5 @@
-import { IsString, IsInt, IsOptional, IsNotEmpty, IsDateString } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsInt, IsOptional, IsNotEmpty, Matches } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateCultivoDto {
   @IsString()
@@ -39,7 +39,9 @@ export class CreateCultivoDto {
   @IsOptional()
   Estado?: string;
 
-  @IsDateString()
+  @IsString()
   @IsOptional()
+  @Type(() => String)
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe tener el formato YYYY-MM-DD' })
   Fecha_Plantado?: string;
 }

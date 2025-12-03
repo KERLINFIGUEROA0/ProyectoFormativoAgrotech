@@ -598,7 +598,11 @@ export default function GestionCultivosPage(): ReactElement {
                             <div className="flex flex-col items-end">
                               <span className="text-xs text-gray-400 font-medium uppercase">Sembrado</span>
                               <span className="text-sm font-bold text-gray-800">
-                                {new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO', { month: 'short', day: 'numeric', timeZone: 'America/Bogota' })}
+                                {(() => {
+                                  const [year, month, day] = cultivo.Fecha_Plantado.split('-');
+                                  const date = new Date(Number(year), Number(month) - 1, Number(day));
+                                  return date.toLocaleDateString('es-CO', { month: 'short', day: 'numeric' });
+                                })()}
                               </span>
                             </div>
                           </div>
@@ -779,8 +783,6 @@ export default function GestionCultivosPage(): ReactElement {
                 subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
                 // Formateamos la fecha a YYYY-MM-DD para el input type="date"
                 Fecha_Plantado: editingCultivo.Fecha_Plantado
-                  ? new Date(editingCultivo.Fecha_Plantado).toISOString().split('T')[0]
-                  : ''
               } : {}}
               tiposCultivo={tiposCultivo}
               cultivos={cultivos}

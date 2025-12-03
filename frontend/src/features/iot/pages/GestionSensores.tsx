@@ -37,6 +37,9 @@ import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto 
 import type { Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
+// --- HOOKS ---
+import { useMqttSocket } from '../hooks/useMqttSocket';
+
 // --- TIPOS GLOBALES ---
 declare global {
   namespace JSX {
@@ -641,6 +644,16 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
 export default function GestionSensoresPage(): ReactElement {
   // Protección de permisos en tiempo real
   usePermissionGuard({ module: 'Iot' });
+
+  // MQTT Socket Hook
+  const {
+    isConnected: mqttConnected,
+    sensorStatuses,
+    connectionStatuses,
+    latestReadings: mqttLatestReadings,
+    sendPing,
+    requestCurrentStatus
+  } = useMqttSocket();
 
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);

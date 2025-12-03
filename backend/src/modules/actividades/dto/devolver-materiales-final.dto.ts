@@ -1,4 +1,4 @@
-import { IsArray, ValidateNested, IsNumber, IsOptional } from 'class-validator';
+import { IsArray, ValidateNested, IsNumber, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MaterialDevueltoDto {
@@ -12,6 +12,10 @@ export class MaterialDevueltoDto {
   @IsNumber()
   @IsOptional()
   cantidadDanada?: number; // Cantidad dañada (Se cobra al cultivo y se da de baja)
+
+  @IsString()
+  @IsOptional()
+  unidadSeleccionada?: string; // Unidad seleccionada por el usuario en el frontend
 }
 
 export class DevolverMaterialesFinalDto {

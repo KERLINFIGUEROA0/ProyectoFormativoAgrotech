@@ -44,7 +44,8 @@ const formatarContenido = (
 
   // Si la DB ya tiene la unidad exacta (ej: 'g', 'ml', 'kg'), convertimos para mostrar
   if (tipoMedida) {
-    const pesoVisual = convertirStockAUnidad(pesoNumerico, tipoMedida);
+    const tipoMedidaNormalizado = normalizarUnidad(tipoMedida);
+    const pesoVisual = convertirStockAUnidad(pesoNumerico, tipoMedidaNormalizado);
     // Usamos parseFloat y toFixed para evitar decimales innecesarios (ej: 50.00 -> 50)
     return `${parseFloat(pesoVisual.toFixed(2))} ${tipoMedida} por ${tipoEmpaque}`;
   }
@@ -338,18 +339,22 @@ export default function DetalleMaterialPage() {
                     cantidadVisual = Number(mov.cantidad);
                     unidadVisual = 'Und';
                 }
-                // CASO B: INSUMOS (Consumibles) -> Usar formato inteligente (kg, g, L, ml)
+                // CASO B: INSUMOS (Consumibles) -> Mostrar en la unidad del material
                 else {
-                    const res = formatearCantidadInteligente(
-                        Number(mov.cantidad),
-                        material.medidasDeContenido || material.unidadBase
-                    );
+                    // 1. Detectar unidad (Usamos la del material que ya tienes cargado en el estado)
+                    const unidadPreferidaRaw = material.medidasDeContenido || material.unidadBase || 'Unidad';
+                    const unidadCalculo = normalizarUnidad(unidadPreferidaRaw); // Usa tu helper existente
+                    const unidadVisualLabel = mostrarUnidad(unidadPreferidaRaw); // Usa tu helper existente
 
-                    cantidadVisual = Number.isInteger(res.cantidad)
-                        ? res.cantidad
-                        : parseFloat(res.cantidad.toFixed(4));
+                    // 2. Calcular cantidad
+                    // Aquí está la clave: convertirStockAUnidad transforma 50000 -> 50
+                    const cantidadConvertida = convertirStockAUnidad(Number(mov.cantidad), unidadCalculo);
 
-                    unidadVisual = res.unidad;
+                    cantidadVisual = Number.isInteger(cantidadConvertida)
+                        ? cantidadConvertida
+                        : parseFloat(cantidadConvertida.toFixed(4));
+
+                    unidadVisual = unidadVisualLabel;
                 }
 
                 return (
