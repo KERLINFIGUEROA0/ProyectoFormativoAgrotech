@@ -167,86 +167,65 @@ const GestionPagosPage: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  {/* Columna explícita para el Beneficiario */}
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <Users size={14} />
-                      Beneficiario (Aprendiz)
-                    </div>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Instructor
                   </th>
-
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pasante
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actividad
                   </th>
-
-                  {/* Columna explícita para el Instructor */}
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <UserCheck size={14} />
-                      Instructor Responsable
-                    </div>
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fecha
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Horas
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Tarifa
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tarifa/Hora
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Total
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Monto
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Descripción
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {pagos.map((pago) => {
-                  // El instructor es quien creó/asignó la actividad (usuario)
-                  const nombreInstructor = pago.actividad.usuario
+                  // El instructor es siempre quien creó/asignó la actividad (usuario)
+                  const instructorDisplay = pago.actividad?.usuario
                     ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}`
                     : 'No asignado';
 
                   return (
-                    <tr key={pago.id} className="hover:bg-gray-50 transition-colors">
-
-                      {/* 1. BENEFICIARIO (El que recibe el pago - pago.usuario) */}
+                    <tr key={pago.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-gray-900">
-                            {pago.usuario.nombre} {pago.usuario.apellidos}
-                          </span>
-                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit mt-1">
-                            {pago.usuario.tipoUsuario.nombre}
-                          </span>
+                        <div className="text-sm text-gray-900">
+                          {instructorDisplay}
                         </div>
                       </td>
-
-                      {/* 2. ACTIVIDAD */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {pago.usuario?.tipoUsuario.nombre}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {pago.actividad.titulo}
                         </div>
-                        <div className="text-xs text-gray-500 truncate max-w-[150px]" title={pago.descripcion}>
-                          {pago.descripcion}
+                        <div className="text-sm text-gray-500">
+                          ID: {pago.actividad.id}
                         </div>
                       </td>
-
-                      {/* 3. INSTRUCTOR (El que gestiona la actividad) */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-800 font-medium">
-                          {nombreInstructor}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Responsable
-                        </div>
-                      </td>
-
-                      {/* OTROS DATOS */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 text-gray-400 mr-2" />
@@ -258,26 +237,31 @@ const GestionPagosPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900 font-medium bg-gray-100 px-2 py-1 rounded">
+                          <span className="text-sm text-gray-900">
                             {pago.horasTrabajadas}h
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(pago.tarifaHora)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                        <span className="text-sm font-medium text-green-600">
                           {formatCurrency(pago.monto)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900">
+                          {pago.descripcion}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEditarPago(pago)}
-                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full p-2 transition-all"
+                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded p-1 transition-colors"
                           title="Editar pago"
                         >
-                          <Edit size={18} />
+                          <Edit size={16} />
                         </button>
                       </td>
                     </tr>

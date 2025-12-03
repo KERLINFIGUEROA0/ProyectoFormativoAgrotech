@@ -382,7 +382,7 @@ const PagosPasantePage: React.FC = () => {
                       <>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {pago.actividad?.responsable ? `${pago.actividad.responsable.nombre} ${pago.actividad.responsable.apellidos}` : 'N/A'}
+                            {pago.actividad?.usuario ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}` : 'N/A'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
