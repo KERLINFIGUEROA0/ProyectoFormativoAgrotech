@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not, In, EntityManager } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { Cultivo } from './entities/cultivo.entity';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
 import { UpdateCultivoDto } from './dto/update-cultivo.dto';
@@ -406,6 +406,45 @@ export class CultivosService {
     };
   }
 
+  // Función auxiliar para aplicar estilos a una hoja
+  private applyWorksheetStyles(worksheet: ExcelJS.Worksheet, columnWidths: number[]) {
+    // Estilos para encabezados (fila 1)
+    worksheet.getRow(1).eachCell(cell => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF008000' } // Verde
+      };
+      cell.font = {
+        color: { argb: 'FFFFFFFF' }, // Blanco
+        bold: true
+      };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Bordes para todas las celdas
+    worksheet.eachRow(row => {
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Anchos de columna
+    columnWidths.forEach((width, index) => {
+      worksheet.getColumn(index + 1).width = width;
+    });
+  }
+
   async exportarExcelGeneral(): Promise<Buffer> {
     const cultivos = await this.cultivoRepository.find({
       relations: [
@@ -416,10 +455,17 @@ export class CultivosService {
       ]
     });
 
-  // Crear libro de Excel con múltiples hojas
-  const workbook = XLSX.utils.book_new();
+    // Obtener gastos directos para cada cultivo
+    const directGastosMap = new Map<number, Gasto[]>();
+    for (const cultivo of cultivos) {
+      const directGastos = await this.getGastosDirectos(cultivo.id);
+      directGastosMap.set(cultivo.id, directGastos);
+    }
 
-  
+  // Crear libro de Excel con múltiples hojas
+  const workbook = new ExcelJS.Workbook();
+
+
 
     // 1. Hoja de Resumen General
     const resumenGeneral = cultivos.map(cultivo => {
@@ -427,9 +473,11 @@ export class CultivosService {
         .flatMap(p => p.ventas)
         .reduce((sum, v) => sum + (Number(v.valorTotalVenta) || 0), 0);
 
+      const directGastos = directGastosMap.get(cultivo.id) || [];
+      const totalDirectGastos = directGastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
       const totalGastos = cultivo.producciones
         .flatMap(p => p.gastos)
-        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos;
 
       const cantidadTotalVendida = cultivo.producciones
         .flatMap(p => p.ventas)
@@ -453,8 +501,12 @@ export class CultivosService {
       };
     });
 
-    const resumenSheet = XLSX.utils.json_to_sheet(resumenGeneral);
-    XLSX.utils.book_append_sheet(workbook, resumenSheet, 'Resumen General');
+    const resumenSheet = workbook.addWorksheet('Resumen General');
+    if (resumenGeneral.length > 0) {
+      resumenSheet.addRow(Object.keys(resumenGeneral[0]));
+      resumenGeneral.forEach(item => resumenSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(resumenSheet, [10, 25, 20, 15, 12, 20, 18, 18, 15, 15, 15]);
 
     // 2. Hoja de Producciones
     const produccionesData = cultivos.flatMap(cultivo =>
@@ -463,7 +515,7 @@ export class CultivosService {
         const cantidadVendida = p.ventas.reduce((sum, v) => sum + (Number(v.cantidadVenta) || 0), 0);
         const gastosProduccion = p.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
         const cantidadOriginal = Number(p.cantidadOriginal) || Number(p.cantidad) || 0;
-        
+
         return {
           'ID Cultivo': cultivo.id,
           'Nombre Cultivo': cultivo.nombre,
@@ -480,12 +532,16 @@ export class CultivosService {
       })
     ).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
 
-    const produccionesSheet = XLSX.utils.json_to_sheet(produccionesData);
-    XLSX.utils.book_append_sheet(workbook, produccionesSheet, 'Producciones');
+    const produccionesSheet = workbook.addWorksheet('Producciones');
+    if (produccionesData.length > 0) {
+      produccionesSheet.addRow(Object.keys(produccionesData[0]));
+      produccionesData.forEach(item => produccionesSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(produccionesSheet, [10, 20, 15, 12, 18, 18, 18, 15, 15, 15, 12]);
 
     // 3. Hoja de Ventas
     const ventasData = cultivos.flatMap(cultivo =>
-      cultivo.producciones.flatMap(p => 
+      cultivo.producciones.flatMap(p =>
         p.ventas.map(v => ({
           'ID Cultivo': cultivo.id,
           'Nombre Cultivo': cultivo.nombre,
@@ -501,31 +557,51 @@ export class CultivosService {
       )
     ).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
 
-    const ventasSheet = XLSX.utils.json_to_sheet(ventasData);
-    XLSX.utils.book_append_sheet(workbook, ventasSheet, 'Ventas');
+    const ventasSheet = workbook.addWorksheet('Ventas');
+    if (ventasData.length > 0) {
+      ventasSheet.addRow(Object.keys(ventasData[0]));
+      ventasData.forEach(item => ventasSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(ventasSheet, [10, 20, 15, 10, 12, 35, 12, 18, 15, 18]);
 
     // 4. Hoja de Gastos
-    const gastosData = cultivos.flatMap(cultivo =>
-      cultivo.producciones.flatMap(p =>
+    const gastosData: any[] = cultivos.flatMap(cultivo => {
+      const directGastos = directGastosMap.get(cultivo.id) || [];
+      const prodGastos = cultivo.producciones.flatMap(p =>
         p.gastos.map(g => ({
           'ID Cultivo': cultivo.id,
           'Nombre Cultivo': cultivo.nombre,
-          'ID Producción': p.id,
+          'ID Producción': p.id.toString(),
           'ID Gasto': g.id,
           'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
           'Descripción': g.descripcion,
           'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
           'Estado Producción': p.estado
         }))
-      )
-    ).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
+      );
+      const dirGastos = directGastos.map(g => ({
+        'ID Cultivo': cultivo.id,
+        'Nombre Cultivo': cultivo.nombre,
+        'ID Producción': 'Directo',
+        'ID Gasto': g.id,
+        'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+        'Descripción': g.descripcion,
+        'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
+        'Estado Producción': 'Directo'
+      }));
+      return [...prodGastos, ...dirGastos];
+    }).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
 
-    const gastosSheet = XLSX.utils.json_to_sheet(gastosData);
-    XLSX.utils.book_append_sheet(workbook, gastosSheet, 'Gastos');
+    const gastosSheet = workbook.addWorksheet('Gastos');
+    if (gastosData.length > 0) {
+      gastosSheet.addRow(Object.keys(gastosData[0]));
+      gastosData.forEach(item => gastosSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(gastosSheet, [10, 20, 15, 10, 12, 35, 15, 18]);
 
     // Generar el archivo Excel
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    return excelBuffer;
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(excelBuffer);
   }
 
   async generarExcelCultivo(id: number): Promise<Buffer> {
@@ -543,8 +619,11 @@ export class CultivosService {
       throw new NotFoundException(`Cultivo con ID ${id} no encontrado`);
     }
 
+    // Obtener gastos directos
+    const directGastos = await this.getGastosDirectos(id);
+
   // Crear libro de Excel con múltiples hojas
-  const workbook = XLSX.utils.book_new();
+  const workbook = new ExcelJS.Workbook();
 
 
     // Calcular totales y estadísticas
@@ -552,9 +631,10 @@ export class CultivosService {
       .flatMap(p => p.ventas)
       .reduce((sum, v) => sum + (Number(v.valorTotalVenta) || 0), 0);
 
+    const totalDirectGastos = directGastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
     const totalGastos = cultivo.producciones
       .flatMap(p => p.gastos)
-      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos;
 
     const cantidadTotalVendida = cultivo.producciones
       .flatMap(p => p.ventas)
@@ -577,8 +657,10 @@ export class CultivosService {
       'Ganancia Neta ($)': (totalVentas - totalGastos).toLocaleString('es-CO'),
       'Descripción': cultivo.descripcion
     }];
-    const cultivoSheet = XLSX.utils.json_to_sheet(cultivoInfo);
-    XLSX.utils.book_append_sheet(workbook, cultivoSheet, 'Información General');
+    const cultivoSheet = workbook.addWorksheet('Información General');
+    cultivoSheet.addRow(Object.keys(cultivoInfo[0]));
+    cultivoInfo.forEach(item => cultivoSheet.addRow(Object.values(item)));
+    this.applyWorksheetStyles(cultivoSheet, [25, 20, 15, 12, 20, 18, 18, 15, 15, 15, 40]);
 
     // 2. Hoja de Producciones
     const produccionesData = cultivo.producciones.map(p => {
@@ -586,7 +668,7 @@ export class CultivosService {
       const cantidadVendida = p.ventas.reduce((sum, v) => sum + (Number(v.cantidadVenta) || 0), 0);
       const gastosProduccion = p.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
       const cantidadOriginal = Number(p.cantidadOriginal) || Number(p.cantidad) || 0;
-      
+
       return {
         'ID Producción': p.id,
         'Fecha': new Date(p.fecha).toLocaleDateString('es-CO'),
@@ -599,8 +681,12 @@ export class CultivosService {
         'Estado': p.estado
       };
     }).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
-    const produccionesSheet = XLSX.utils.json_to_sheet(produccionesData);
-    XLSX.utils.book_append_sheet(workbook, produccionesSheet, 'Producciones');
+    const produccionesSheet = workbook.addWorksheet('Producciones');
+    if (produccionesData.length > 0) {
+      produccionesSheet.addRow(Object.keys(produccionesData[0]));
+      produccionesData.forEach(item => produccionesSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(produccionesSheet, [15, 12, 18, 18, 18, 15, 15, 15, 12]);
 
     // 3. Hoja de Ventas
     const ventasData = cultivo.producciones
@@ -615,26 +701,42 @@ export class CultivosService {
         'Estado Producción': p.estado
       })))
       .sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
-    const ventasSheet = XLSX.utils.json_to_sheet(ventasData);
-    XLSX.utils.book_append_sheet(workbook, ventasSheet, 'Ventas');
+    const ventasSheet = workbook.addWorksheet('Ventas');
+    if (ventasData.length > 0) {
+      ventasSheet.addRow(Object.keys(ventasData[0]));
+      ventasData.forEach(item => ventasSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(ventasSheet, [10, 15, 12, 35, 12, 18, 15, 18]);
 
     // 4. Hoja de Gastos
-    const gastosData = cultivo.producciones
+    const gastosData: any[] = cultivo.producciones
       .flatMap(p => p.gastos.map(g => ({
         'ID Gasto': g.id,
-        'ID Producción': p.id,
+        'ID Producción': p.id.toString(),
         'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
         'Descripción': g.descripcion,
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': p.estado
       })))
+      .concat(directGastos.map(g => ({
+        'ID Gasto': g.id,
+        'ID Producción': 'Directo',
+        'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+        'Descripción': g.descripcion,
+        'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
+        'Estado Producción': 'Directo'
+      })))
       .sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
-    const gastosSheet = XLSX.utils.json_to_sheet(gastosData);
-    XLSX.utils.book_append_sheet(workbook, gastosSheet, 'Gastos');
+    const gastosSheet = workbook.addWorksheet('Gastos');
+    if (gastosData.length > 0) {
+      gastosSheet.addRow(Object.keys(gastosData[0]));
+      gastosData.forEach(item => gastosSheet.addRow(Object.values(item)));
+    }
+    this.applyWorksheetStyles(gastosSheet, [10, 15, 12, 35, 15, 18]);
 
     // Generar el archivo Excel
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    return excelBuffer;
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(excelBuffer);
   }
 
   // --- MÉTODOS AUXILIARES PARA CONSULTAS EFICIENTES ---
