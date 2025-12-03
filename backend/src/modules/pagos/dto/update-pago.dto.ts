@@ -20,7 +20,6 @@ export class UpdatePagoDto {
   @IsOptional()
   descripcion?: string;
 
-  @IsDateString()
   @IsOptional()
   fechaPago?: string;
 }

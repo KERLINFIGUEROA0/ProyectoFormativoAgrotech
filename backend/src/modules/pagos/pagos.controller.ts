@@ -3,11 +3,15 @@ import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { UsuariosService } from '../usuarios/usuarios.service';
 
 @Controller('pagos')
 @UseGuards(JwtAuthGuard)
 export class PagosController {
-  constructor(private readonly pagosService: PagosService) {}
+  constructor(
+    private readonly pagosService: PagosService,
+    private readonly usuariosService: UsuariosService,
+  ) {}
 
   @Post()
   create(@Body() createPagoDto: CreatePagoDto | CreatePagoDto[]) {
@@ -20,9 +24,11 @@ export class PagosController {
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    const user = req.user;
-    return this.pagosService.findAll(user?.identificacion, user?.rolNombre);
+  async findAll(@Request() req: any) {
+    const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
+    let userRole = user?.tipoUsuario?.nombre;
+    if (!userRole) userRole = req.user.rolNombre;
+    return this.pagosService.findAll(user?.identificacion, userRole);
   }
 
   @Get('usuario/:id')
@@ -36,8 +42,10 @@ export class PagosController {
   }
 
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updatePagoDto: UpdatePagoDto, @Request() req: any) {
-    const user = req.user;
-    return this.pagosService.update(id, updatePagoDto, user?.rolNombre);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updatePagoDto: UpdatePagoDto, @Request() req: any) {
+    const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
+    let userRole = user?.tipoUsuario?.nombre;
+    if (!userRole) userRole = req.user.rolNombre;
+    return this.pagosService.update(id, updatePagoDto, userRole);
   }
 }

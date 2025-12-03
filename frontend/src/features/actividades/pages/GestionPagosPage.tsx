@@ -3,6 +3,7 @@ import { DollarSign, Calendar, Clock, FileText, Edit, RefreshCw, UserCheck, User
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
 import { obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from '@heroui/react';
 
 // Actualizamos la interfaz para incluir 'responsable' en la actividad
 interface Pago {
@@ -91,8 +92,8 @@ const GestionPagosPage: React.FC = () => {
 
     try {
       const updateData: any = {};
-      if (updatedPago.horasTrabajadas !== undefined) updateData.horasTrabajadas = updatedPago.horasTrabajadas;
-      if (updatedPago.tarifaHora !== undefined) updateData.tarifaHora = updatedPago.tarifaHora;
+      if (updatedPago.horasTrabajadas !== undefined) updateData.horasTrabajadas = Number(updatedPago.horasTrabajadas);
+      if (updatedPago.tarifaHora !== undefined) updateData.tarifaHora = Number(updatedPago.tarifaHora);
       if (updatedPago.descripcion !== undefined) updateData.descripcion = updatedPago.descripcion;
       if (updatedPago.fechaPago !== undefined) updateData.fechaPago = updatedPago.fechaPago;
 
@@ -274,96 +275,84 @@ const GestionPagosPage: React.FC = () => {
 
         {/* Modal de edición de pago */}
         {showEditModal && editingPago && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all">
-              <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">Editar Información de Pago</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Horas Trabajadas
-                  </label>
-                  <input
+          <Modal isOpen={showEditModal} onOpenChange={() => {
+            setShowEditModal(false);
+            setEditingPago(null);
+          }} size="md">
+            <ModalContent>
+              <ModalHeader>
+                <h3 className="text-xl font-bold text-gray-800">Editar Información de Pago</h3>
+              </ModalHeader>
+
+              <ModalBody>
+                <div className="space-y-4">
+                  <Input
+                    label="Horas Trabajadas"
                     type="number"
                     min="0"
                     step="0.5"
-                    defaultValue={editingPago.horasTrabajadas}
+                    defaultValue={editingPago.horasTrabajadas.toString()}
                     onChange={(e) => {
                       const newHoras = parseFloat(e.target.value) || 0;
                       setEditingPago(prev => prev ? { ...prev, horasTrabajadas: newHoras } : null);
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tarifa por Hora
-                  </label>
-                  <input
+                  <Input
+                    label="Tarifa por Hora"
                     type="number"
                     min="0"
                     step="100"
-                    defaultValue={editingPago.tarifaHora}
+                    defaultValue={editingPago.tarifaHora.toString()}
                     onChange={(e) => {
                       const newTarifa = parseFloat(e.target.value) || 0;
                       setEditingPago(prev => prev ? { ...prev, tarifaHora: newTarifa } : null);
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción
-                  </label>
-                  <input
-                    type="text"
+                  <Textarea
+                    label="Descripción"
                     defaultValue={editingPago.descripcion}
                     onChange={(e) => {
                       const newDesc = e.target.value;
                       setEditingPago(prev => prev ? { ...prev, descripcion: newDesc } : null);
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha de Pago
-                  </label>
-                  <input
+                  <Input
+                    label="Fecha de Pago"
                     type="date"
                     defaultValue={editingPago.fechaPago.split('T')[0]}
                     onChange={(e) => {
                       const newFecha = e.target.value;
                       setEditingPago(prev => prev ? { ...prev, fechaPago: newFecha } : null);
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <span className="text-sm text-gray-600 block">Nuevo Monto Total:</span>
+                    <span className="text-xl font-bold text-green-600 block mt-1">
+                      {formatCurrency((editingPago.horasTrabajadas || 0) * (editingPago.tarifaHora || 0))}
+                    </span>
+                  </div>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <span className="text-sm text-gray-600 block">Nuevo Monto Total:</span>
-                  <span className="text-xl font-bold text-green-600 block mt-1">
-                    {formatCurrency((editingPago.horasTrabajadas || 0) * (editingPago.tarifaHora || 0))}
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-8">
-                <button
-                  onClick={() => {
+              </ModalBody>
+
+              <ModalFooter>
+                <Button
+                  variant="light"
+                  onPress={() => {
                     setShowEditModal(false);
                     setEditingPago(null);
                   }}
-                  className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
                 >
                   Cancelar
-                </button>
-                <button
-                  onClick={() => handleSaveEdit(editingPago)}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md transition-colors"
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => handleSaveEdit(editingPago)}
                 >
                   Guardar Cambios
-                </button>
-              </div>
-            </div>
-          </div>
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         )}
       </div>
     </div>
