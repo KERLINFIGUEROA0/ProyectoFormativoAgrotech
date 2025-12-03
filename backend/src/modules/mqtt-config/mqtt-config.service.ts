@@ -315,22 +315,24 @@ export class MqttConfigService {
     }
   }
 
-  // --- Método auxiliar para crear sensores ---
+  // --- ✅ MÉTODO ACTUALIZADO: RECONOCIMIENTO DE BOMBA ---
   public async crearSensoresParaTopicos(
     broker: Broker,
     loteId: number,
     topicos: (string | TopicoConfig)[]
   ): Promise<void> {
-    // Tus defaults actuales (NO LOS BORRES, son para los 4 primeros sensores)
+
     const topicDefaults = {
       'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 },
       'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },
       'humedad': { nombre: 'Sensor de Humedad', min: 30, max: 85 },
       'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 20, max: 90 },
+      // 👇 AÑADIDO: Configuración para la bomba
+      'bomba': { nombre: 'Actuador Bomba Riego', min: 0, max: 1 },
+      'riego': { nombre: 'Sistema de Riego', min: 0, max: 1 },
     };
 
     for (const item of topicos) {
-      // Normalizamos la entrada: extraemos el string del tópico y los posibles valores custom
       let topicStr: string;
       let customMin: number | undefined;
       let customMax: number | undefined;
@@ -343,26 +345,33 @@ export class MqttConfigService {
         customMax = item.max;
       }
 
+      // Buscar coincidencia parcial (ej: "agrotech/bomba1" detecta "bomba")
+      let matchKey = Object.keys(topicDefaults).find(key => topicStr.includes(key));
       const topicName = topicStr.split('/').pop() || topicStr;
-      const defaults = topicDefaults[topicName];
 
-      // Lógica de Prioridad:
-      // 1. Valores personalizados (si vienen en el objeto)
-      // 2. Valores predeterminados (si el nombre coincide con luz, temperatura, etc.)
-      // 3. Fallback genérico (0 - 100)
+      const defaults = matchKey ? topicDefaults[matchKey] : null;
+
+      // Si es bomba, forzamos min 0 y max 1
+      const isBomba = topicStr.includes('bomba') || topicStr.includes('riego');
 
       const minFinal = customMin ?? defaults?.min ?? 0;
-      const maxFinal = customMax ?? defaults?.max ?? 100;
-      const nombreFinal = defaults?.nombre ?? `Sensor ${topicName}`;
+      const maxFinal = customMax ?? defaults?.max ?? (isBomba ? 1 : 100);
+      const nombreFinal = defaults?.nombre ?? (isBomba ? 'Bomba de Riego' : `Sensor ${topicName}`);
+
+      // Verificar si ya existe
+      const existe = await this.sensorRepo.findOne({ where: { topic: topicStr, lote: { id: loteId } }});
+      if(existe) continue;
 
       const sensorDto: CreateSensoreDto = {
         nombre: nombreFinal,
         loteId: loteId,
         fecha_instalacion: new Date().toISOString().split('T')[0],
-        valor_minimo_alerta: minFinal, // Usamos el valor calculado
-        valor_maximo_alerta: maxFinal, // Usamos el valor calculado
+        valor_minimo_alerta: minFinal,
+        valor_maximo_alerta: maxFinal,
         estado: 'Activo',
         topic: topicStr,
+        // Si es bomba, sugerimos que la clave json sea 'valor' o 'estado', o null para lectura directa
+        json_key: isBomba ? null : undefined,
         broker: {
           nombre: broker.nombre,
           protocolo: broker.protocolo,
@@ -375,9 +384,9 @@ export class MqttConfigService {
 
       try {
         await this.sensoresService.create(sensorDto);
-        this.logger.log(`Sensor creado para tópico: ${topicStr} con rango [${minFinal} - ${maxFinal}]`);
+        this.logger.log(`Sensor creado: ${nombreFinal} [${minFinal}-${maxFinal}]`);
       } catch (error) {
-        this.logger.error(`Error creando sensor para tópico ${topicStr}:`, error);
+        this.logger.error(`Error creando sensor ${topicStr}:`, error);
       }
     }
   }

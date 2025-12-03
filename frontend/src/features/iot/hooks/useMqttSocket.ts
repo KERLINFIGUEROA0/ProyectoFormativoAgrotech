@@ -139,6 +139,16 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
     }
   };
 
+  // Agregar función para enviar comandos al backend
+  const sendCommand = (topic: string, message: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('enviar-comando-mqtt', { topic, message });
+      console.log(`📤 Enviando comando: ${topic} -> ${message}`);
+    } else {
+      console.warn('⚠️ No se puede enviar comando: Socket desconectado');
+    }
+  };
+
   return {
     isConnected,
     sensorStatuses,
@@ -146,5 +156,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
     latestReadings,
     sendPing,
     requestCurrentStatus,
+    sendCommand, // <--- Exportar esto
   };
 };

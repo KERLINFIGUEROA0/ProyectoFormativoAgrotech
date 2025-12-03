@@ -362,7 +362,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                        materialId: am.material.id,
                        nombre: am.material.nombre,
                        cantidadAsignada: Number(am.cantidadUsada),
-                       precioUnitario: Number(am.material.precio),
+                       precioUnitario: Number(am.cantidadUsada) > 0 ? Number(am.costo) / Number(am.cantidadUsada) : 0,
                        unidad: am.unidadMedida,
                        tipoConsumo: am.material.tipoConsumo
                     }))}

@@ -62,7 +62,7 @@ export class CreateSensoreDto {
 
   @IsString()
   @IsOptional()
-  json_key?: string; // ✅ Añadir esto
+  json_key?: string | null; // ✅ Añadir esto
 
   @IsObject()
   @ValidateNested()

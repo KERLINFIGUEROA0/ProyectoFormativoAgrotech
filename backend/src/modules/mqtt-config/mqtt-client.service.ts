@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import * as mqtt from 'mqtt';
@@ -19,6 +19,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
     private readonly brokerLoteRepo: Repository<BrokerLote>,
     @InjectRepository(Sensor)
     private readonly sensorRepo: Repository<Sensor>,
+    @Inject(forwardRef(() => InformacionSensorService))
     private readonly infoSensorService: InformacionSensorService,
   ) { }
   
@@ -49,6 +50,18 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
         }
       });
     });
+  }
+
+  async publishCommand(topic: string, message: string) {
+    // Busca el cliente asociado (asumiendo que manejas brokerId o usas el default)
+    // Si tienes un mapa de clientes, úsalo. Si es uno solo:
+    const client = this.clients.get(1); // O el ID de broker correspondiente
+    if (client && client.connected) {
+      client.publish(topic, message);
+      this.logger.log(`🚀 Comando enviado a ${topic}: ${message}`);
+    } else {
+      this.logger.warn(`❌ No se pudo enviar comando a ${topic}: Broker desconectado`);
+    }
   }
 
   async onModuleInit() {

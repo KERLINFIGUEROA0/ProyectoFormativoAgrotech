@@ -4,6 +4,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Venta } from '../ventas/entities/venta.entity';
 
+// Función helper para convertir imagen a base64
+const getImageAsBase64 = (imagePath: string): string => {
+  try {
+    const imageBuffer = fs.readFileSync(imagePath);
+    const mimeType = path.extname(imagePath).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+    return `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error.message);
+    return '';
+  }
+};
+
 @Injectable()
 export class PdfService {
   async generarFacturaPdf(venta: Venta): Promise<string> {
@@ -88,7 +100,7 @@ export class PdfService {
     // Reemplazamos los datos
     const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
     html = html.replace('{{facturaId}}', String(venta.id).padStart(4, '0'));
-    html = html.replace('{{fecha}}', new Date(venta.fecha).toLocaleDateString('es-ES'));
+    html = html.replace('{{fecha}}', new Date(venta.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }));
     html = html.replace('{{descripcion}}', venta.descripcion);
     html = html.replace('{{cantidad}}', String(venta.cantidadVenta));
     html = html.replace('{{precioUnitario}}', currencyFormatter.format(Number(venta.precioUnitario)));
@@ -115,7 +127,7 @@ export class PdfService {
   }
 
   /**
-   * Genera una URL de imagen para el gráfico usando QuickChart.io
+   * Genera gráficos usando Chart.js embebido en el HTML
    */
   private generateChartUrl(label: string, labels: string[], data: number[], color: string): string {
     // Simplificamos los datos para que la URL no sea gigante (tomamos máximo 50 puntos distribuidos)
@@ -156,7 +168,24 @@ export class PdfService {
 
   async generarReporteTrazabilidad(data: any): Promise<Buffer> {
 
-    // --- 🧠 FUNCIÓN DE DIAGNÓSTICO INTELIGENTE (PRIORIDAD: ÚLTIMO VALOR + UMBRALES PERSONALIZADOS) ---
+    // ==========================================
+    // ESTRUCTURA DEL PDF GENERADO:
+    // ==========================================
+    // PÁGINA 1:
+    //    - Header Grande (contenido HTML): Logo + Info completa del reporte
+    //    - Body: Resumen Ejecutivo del Lote
+    //    - Footer: Info sistema + paginación
+    // PÁGINAS 2+:
+    //    - Sin header (maximiza espacio)
+    //    - Body 90%: Detalle de cultivos + sensores IoT
+    //    - Footer 10%: Info sistema + paginación
+    // ==========================================
+
+    // --- LOGO PARA PRIMERA PÁGINA ---
+    const logoPath = path.join(process.cwd(), 'uploads', 'logos', 'logo.png');
+    const logoBase64 = getImageAsBase64(logoPath);
+
+    // --- 🧠 FUNCIÓN DE DIAGNÓSTICO INTELIGENTE ---
     const generarDiagnostico = (sensor: string, promedio: number, maximo: number, minimo: number, ultimoValor: number, unidad: string, umbralMin?: number, umbralMax?: number) => {
         let mensaje = "";
         let accion = "";
@@ -292,7 +321,7 @@ export class PdfService {
         return { mensaje, accion, nivel };
     };
 
-    // --- ✅ FUNCIÓN HELPER PARA PRECIOS PEQUEÑOS ---
+    // --- ✅ FUNCIÓN HELPER PARA MONEDA ---
     // Si el precio es menor a $50, mostramos hasta 6 decimales para ver el costo de los gramos/mililitros
     const formatCurrency = (valor: number) => {
         const num = Number(valor);
@@ -322,52 +351,38 @@ export class PdfService {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
+
             body {
                 font-family: 'Arial', sans-serif;
                 color: #333;
                 font-size: 11px;
-                margin: 20px;
-                line-height: 1.4;
-            }
-            .header {
-                text-align: center;
-                border-bottom: 3px solid #2E7D32;
-                margin-bottom: 30px;
-                padding-bottom: 20px;
-            }
-            .header h1 {
                 margin: 0;
-                color: #1B5E20;
-                font-size: 24px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            .header p {
-                margin: 5px 0;
-                font-size: 14px;
-                color: #555;
+                padding: 5px 0 0 0;
+                line-height: 1.4;
             }
 
             .card {
                 border: 1px solid #ddd;
-                border-radius: 8px;
-                padding: 20px;
-                margin-bottom: 25px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border-radius: 6px;
+                padding: 15px;
+                margin-bottom: 15px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
                 page-break-inside: avoid;
+                background-color: #fff;
             }
 
             .card-title {
-                font-size: 18px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #2E7D32;
                 border-bottom: 2px solid #2E7D32;
-                padding-bottom: 8px;
-                margin-bottom: 15px;
+                padding-bottom: 6px;
+                margin-bottom: 10px;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
             }
 
             .badge {
@@ -392,22 +407,22 @@ export class PdfService {
             table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 10px;
-                margin-top: 8px;
+                font-size: 8px;
+                margin-top: 6px;
             }
 
             th {
                 background-color: #f8f9fa;
                 color: #495057;
                 font-weight: bold;
-                padding: 8px 6px;
+                padding: 5px 4px;
                 border-bottom: 2px solid #dee2e6;
                 text-align: left;
-                font-size: 9px;
+                font-size: 7px;
             }
 
             td {
-                padding: 6px;
+                padding: 4px;
                 border-bottom: 1px solid #dee2e6;
                 vertical-align: top;
             }
@@ -472,21 +487,71 @@ export class PdfService {
 
             .kpi-card {
                 background: #f8f9fa;
-                padding: 15px;
-                border-radius: 8px;
+                padding: 10px;
+                border-radius: 6px;
                 text-align: center;
                 border: 1px solid #dee2e6;
             }
 
             .kpi-value {
-                font-size: 18px;
+                font-size: 14px;
                 font-weight: bold;
                 display: block;
-                margin-top: 5px;
+                margin-top: 3px;
             }
 
             .section-break {
                 page-break-before: always;
+            }
+
+            .page-break-inside-avoid {
+                page-break-inside: avoid;
+            }
+
+            .section-title {
+                color: #1B5E20;
+                font-size: 16px;
+                font-weight: bold;
+                margin: 20px 0 10px 0;
+                padding-bottom: 5px;
+                border-bottom: 2px solid #2E7D32;
+            }
+
+            /* Contenedor de la Gráfica */
+            .chart-container {
+                position: relative;
+                height: 200px;
+                width: 100%;
+                margin: 15px 0;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                background-color: #fff;
+            }
+
+            .diagnosis-box {
+                padding: 12px;
+                border-radius: 6px;
+                margin: 15px 0;
+                border-left: 4px solid;
+                font-size: 11px;
+            }
+
+            .diagnosis-critico {
+                background-color: #ffebee;
+                color: #c62828;
+                border-left-color: #d32f2f;
+            }
+
+            .diagnosis-alerta {
+                background-color: #fff3cd;
+                color: #856404;
+                border-left-color: #ffc107;
+            }
+
+            .diagnosis-normal {
+                background-color: #d4edda;
+                color: #155724;
+                border-left-color: #28a745;
             }
 
             .footer {
@@ -500,13 +565,25 @@ export class PdfService {
         </style>
     </head>
     <body>
-        <div class="header">
-            <h1>Reporte de Trazabilidad y Gestión - AgroTech</h1>
-            <p><strong>Lote:</strong> ${data.lote} | <strong>Cultivos incluidos:</strong> ${data.cultivos.length} | <strong>Periodo:</strong> ${data.rango}</p>
-            <p><strong>Generado el:</strong> ${new Date(data.fechaGeneracion).toLocaleString('es-ES')}</p>
+
+        <!-- HEADER GRANDE SOLO EN PRIMERA PÁGINA -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; border: 2px solid #2E7D32;">
+           <div style="flex: 1;">
+             <h1 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 28px; font-weight: bold;">REPORTE DE TRAZABILIDAD - AGROTECH</h1>
+             <p style="margin: 0 0 8px 0; color: #2E7D32; font-size: 16px; font-weight: 600;">Lote: ${data.lote} | Rango: ${data.rango}</p>
+             <p style="margin: 0; color: #666; font-size: 12px;">Cultivos: ${data.cultivos.length} | Generado: ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</p>
+           </div>
+           ${logoBase64 ? `
+           <div style="flex-shrink: 0; margin-left: 20px;">
+             <img src="${logoBase64}" alt="Logo AgroTech" style="height: 60px; width: auto;" />
+           </div>
+           ` : ''}
         </div>
 
-        <div class="card" style="margin-bottom: 20px; background-color: #f8f9fa;">
+        <!-- ==========================================
+             SECCIÓN 1: RESUMEN EJECUTIVO DEL LOTE
+             ========================================== -->
+        <div class="card" style="margin-bottom: 20px; background-color: #f8f9fa; page-break-inside: avoid;">
             <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">📊 Resumen Ejecutivo del Lote</h2>
             <div class="kpi-grid" style="margin-bottom: 15px;">
                 <div class="kpi-card">
@@ -541,8 +618,12 @@ export class PdfService {
             </div>
         </div>
 
+        <!-- ==========================================
+             SECCIÓN 2: DETALLE DE CULTIVOS INDIVIDUALES
+             ========================================== -->
         ${data.cultivos.map(c => `
-            <div class="card">
+            <!-- === CULTIVO: ${c.nombre} === -->
+            <div class="card" style="page-break-inside: avoid;">
                 <div class="card-title">
                     🌱 ${c.nombre} (${c.tipo})
                     <span class="badge">${c.diasSembrado} días</span>
@@ -582,7 +663,7 @@ export class PdfService {
                     <tbody>
                         ${c.cosechas && c.cosechas.length > 0 ? c.cosechas.map(co => `
                             <tr>
-                                <td>${new Date(co.fecha).toLocaleDateString('es-ES')}</td>
+                                <td>${new Date(co.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
                                 <td class="text-right ${co.cantidadRestante > 0 ? 'warning' : ''}">${co.cantidadRestante.toLocaleString()} Kg</td>
                                 <td class="text-center">
                                     <span class="${co.estado === 'Pendiente' ? 'status-pending' : 'status-completed'}">
@@ -625,7 +706,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleMateriales.map(m => `
                                     <tr>
-                                        <td>${new Date(m.fecha).toLocaleDateString('es-ES')}</td>
+                                        <td>${new Date(m.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
                                         <td>${m.nombre}</td>
                                         <td class="text-right">${m.cantidad} ${m.unidad || 'unidad'}</td>
                                         <td class="text-right">${formatCurrency(m.precioUnitario)} <span style="font-size:8px; color:#888;">/${m.unidad || 'ud'}</span></td>
@@ -667,7 +748,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleVentas.map(v => `
                                     <tr>
-                                        <td>${new Date(v.fecha).toLocaleDateString('es-ES')}</td>
+                                        <td>${new Date(v.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
                                         <td>${v.descripcion}</td>
                                         <td class="text-right">${v.cantidadVendida} Kg</td>
                                         <td class="text-right">${formatCurrency(Number(v.precioUnitario))}</td>
@@ -744,7 +825,7 @@ export class PdfService {
                     <tbody>
                         ${c.actividadesLog.map(a => `
                             <tr>
-                                <td>${new Date(a.fecha).toLocaleDateString('es-ES')}</td>
+                                <td>${new Date(a.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
                                 <td>${a.tarea}</td>
                                 <td>${a.responsable}</td>
                                 <td class="text-center">${a.horasTrabajadas}h</td>
@@ -761,16 +842,19 @@ export class PdfService {
             </div>
         `).join('')}
 
+        <!-- ==========================================
+             SECCIÓN 3: MONITOREO Y ANÁLISIS DE SENSORES IoT
+             ========================================== -->
         <div class="section-break"></div>
 
         <h2 style="color: #1B5E20; margin-top: 30px; text-align: center; border-bottom: 2px solid #2E7D32; padding-bottom: 10px;">
-            📡 Análisis Profundo de Sensores y Clima
+            📊 Monitoreo y Análisis de Sensores IoT
         </h2>
         <p style="font-size: 10px; color: #666; margin-bottom: 15px; text-align: center;">
-            Este análisis permite identificar eventos extremos y tendencias para la toma de decisiones preventivas.
+            Sistema de monitoreo continuo para la toma de decisiones preventivas y gestión agrícola.
         </p>
 
-        ${Object.entries(data.sensores).map(([sensor, info]: [string, any]) => {
+        ${Object.entries(data.sensores).map(([sensor, info]: [string, any], sensorIndex) => {
             // 1. OBTENER EL ÚLTIMO VALOR REAL (TIEMPO REAL - Inyectado desde backend)
             let ultimoRegistro = null;
             let ultimoValor = 0;
@@ -780,7 +864,7 @@ export class PdfService {
             if (info.ultimoRegistro) {
                 ultimoRegistro = info.ultimoRegistro;
                 ultimoValor = Number(info.ultimoRegistro.valor);
-                fechaUltimo = new Date(info.ultimoRegistro.fecha).toLocaleString('es-ES');
+                fechaUltimo = new Date(info.ultimoRegistro.fecha).toLocaleString('es-ES', { timeZone: 'America/Bogota' });
             } else {
                 // Fallback: Intentar extraer de arrays históricos (solo si no hay dato real)
                 if (info.muestreoDiario && info.muestreoDiario.length > 0) {
@@ -792,7 +876,7 @@ export class PdfService {
                         );
                         ultimoRegistro = datosOrdenados[0];
                         ultimoValor = ultimoRegistro ? Number((ultimoRegistro as any).valor) : 0;
-                        fechaUltimo = ultimoRegistro ? new Date((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha).toLocaleString('es-ES') : 'N/A';
+                        fechaUltimo = ultimoRegistro ? new Date((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha).toLocaleString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A';
                     }
                 }
 
@@ -806,42 +890,74 @@ export class PdfService {
             // 2. DIAGNÓSTICO BASADO EN ÚLTIMO VALOR Y UMBRALES CONFIGURADOS
             const diagnosis = generarDiagnostico(sensor, info.stats.promedio, info.stats.maximo, info.stats.minimo, ultimoValor, info.unidad, info.umbralMinimo, info.umbralMaximo);
 
-            // Simulación de "Top 10" combinando lo que tenemos si no viene crudo
-            const top10Max = info.picosAltos ? info.picosAltos.slice(0, 10) : [];
-            const top10Min = info.picosBajos ? info.picosBajos.slice(0, 10) : [];
+            // 3. PREPARAR DATOS PARA LA GRÁFICA DE DATOS CRUDOS
+            const datosGrafica = (info.historialDetallado || [])
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+            const etiquetasFechas = datosGrafica.map(d => new Date(d.fecha).toLocaleString('es-ES', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'America/Bogota'
+            }));
+            const valoresDatos = datosGrafica.map(d => Number(d.valor));
+
+            // ID único para el canvas de este sensor
+            const chartId = `chart_${sensorIndex}`;
+
+            // Valores que excedieron umbrales
+            const valoresSobreUmbralMax = info.valoresSobreUmbralMax ? info.valoresSobreUmbralMax.slice(0, 10) : [];
+            const valoresBajoUmbralMin = info.valoresBajoUmbralMin ? info.valoresBajoUmbralMin.slice(0, 10) : [];
 
             return `
             <div class="card">
                 <div class="card-title">
-                    <span>📊 ${sensor} (${info.unidad})</span>
+                    ${info.esBomba ? '💧' : '📡'} ${sensor} ${info.esBomba ? '<span style="font-size:12px; color:#666;">(Actuador de Riego)</span>' : ''}
                     <span style="font-size: 12px; color: #555;">${info.stats.totalRegistros} registros</span>
                 </div>
 
                 <div class="kpi-grid">
-                    <div class="kpi-card" style="border: 2px solid ${diagnosis.nivel === 'critico' ? '#d32f2f' : (diagnosis.nivel === 'alerta' ? '#f57c00' : '#2E7D32')}; background-color: #fff;">
-                        <span class="kpi-label" style="font-weight:bold; color:#333;">LECTURA ACTUAL</span>
-                        <span class="kpi-value" style="font-size: 22px; color: ${diagnosis.nivel === 'critico' ? '#d32f2f' : '#333'};">
-                            ${ultimoValor} ${info.unidad}
-                        </span>
-                        <span style="font-size: 10px; color: #666;">
-                            ${fechaUltimo}
-                        </span>
-                    </div>
+                    ${info.esBomba ? `
+                        <div class="kpi-box">
+                            <span class="kpi-value">${info.ciclosRiego ? info.ciclosRiego.length : 0}</span>
+                            <span class="kpi-label">Veces Encendida</span>
+                        </div>
+                        <div class="kpi-box">
+                            <span class="kpi-value">${info.stats.totalRegistros}</span>
+                            <span class="kpi-label">Puntos de Datos</span>
+                        </div>
+                        <div class="kpi-box" style="background-color: ${info.stats.promedio > 0 ? '#e3f2fd' : '#f8f9fa'}">
+                            <span class="kpi-value">${info.stats.promedio > 0 ? 'ACTIVA' : 'INACTIVA'}</span>
+                            <span class="kpi-label">Estado Promedio</span>
+                        </div>
+                    ` : `
+                        <div class="kpi-card" style="border: 2px solid ${diagnosis.nivel === 'critico' ? '#d32f2f' : (diagnosis.nivel === 'alerta' ? '#f57c00' : '#2E7D32')}; background-color: #fff;">
+                            <span class="kpi-label" style="font-weight:bold; color:#333;">LECTURA ACTUAL</span>
+                            <span class="kpi-value" style="font-size: 22px; color: ${diagnosis.nivel === 'critico' ? '#d32f2f' : '#333'};">
+                                ${info.esBomba ? (ultimoValor == 1 ? 'Encendido' : 'Apagado') : ultimoValor + ' ' + info.unidad}
+                            </span>
+                            <span style="font-size: 10px; color: #666;">
+                                ${fechaUltimo}
+                            </span>
+                        </div>
 
-                    <div class="kpi-card">
-                        <span class="kpi-label">Mínimo Histórico</span>
-                        <span class="kpi-value" style="color: #1976d2;">${info.stats.minimo} ${info.unidad}</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span class="kpi-label">Promedio Global</span>
-                        <span class="kpi-value">${info.stats.promedio} ${info.unidad}</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span class="kpi-label">Máximo Histórico</span>
-                        <span class="kpi-value" style="color: #d32f2f;">${info.stats.maximo} ${info.unidad}</span>
-                    </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Mínimo Histórico</span>
+                            <span class="kpi-value" style="color: #1976d2;">${info.stats.minimo} ${info.unidad}</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Promedio Global</span>
+                            <span class="kpi-value">${info.stats.promedio} ${info.unidad}</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Máximo Histórico</span>
+                            <span class="kpi-value" style="color: #d32f2f;">${info.stats.maximo} ${info.unidad}</span>
+                        </div>
+                    `}
                 </div>
 
+                ${!info.esBomba ? `
                 <div class="diagnosis-box diagnosis-${diagnosis.nivel}">
                     <div style="display: flex; gap: 10px; align-items: start;">
                         <div style="font-size: 20px;">${diagnosis.nivel === 'critico' ? '🚨' : (diagnosis.nivel === 'alerta' ? '⚠️' : '✅')}</div>
@@ -851,33 +967,42 @@ export class PdfService {
                             <strong>Acción Inmediata:</strong> ${diagnosis.accion}
                         </div>
                     </div>
+                </div>` : ''}
+
+                <!-- GRÁFICA DE DATOS CRUDOS -->
+                <div style="margin-top: 15px; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px; background-color: #f8f9fa;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 11px; color: #2E7D32;">📈 Evolución de Datos Crudos (Historial Completo)</h4>
+                    <p style="font-size: 8px; color: #666; margin: 0 0 10px 0;">Visualización de todos los registros del sensor para análisis detallado.</p>
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
                 </div>
 
                 <div class="grid-2" style="margin-top: 15px;">
                     <div class="col">
-                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #d32f2f;">🔥 Top 10 Valores Máximos</h4>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #d32f2f;">⚠️ Valores sobre Umbral Máximo ${info.umbralMaximo ? `(${info.umbralMaximo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
                         <table>
                             <thead><tr><th>Fecha</th><th class="text-right">Valor</th></tr></thead>
                             <tbody>
-                                ${top10Max.length > 0 ? top10Max.map(d => `
+                                ${valoresSobreUmbralMax.length > 0 ? valoresSobreUmbralMax.map(d => `
                                     <tr>
-                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</td>
+                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit', timeZone: 'America/Bogota' })}</td>
                                         <td class="text-right"><span style="background: #ffebee; color: #c62828; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${d.valor}</span></td>
                                     </tr>
-                                `).join('') : '<tr><td colspan="2">Datos insuficientes</td></tr>'}
+                                `).join('') : '<tr><td colspan="2" style="text-align: center; color: #6c757d;">Sin valores sobre umbral</td></tr>'}
                             </tbody>
                         </table>
 
-                        <h4 style="margin: 10px 0 5px 0; font-size: 11px; color: #1976d2;">❄️ Top 10 Valores Mínimos</h4>
+                        <h4 style="margin: 10px 0 5px 0; font-size: 11px; color: #1976d2;">⚠️ Valores bajo Umbral Mínimo ${info.umbralMinimo ? `(${info.umbralMinimo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
                         <table>
                             <thead><tr><th>Fecha</th><th class="text-right">Valor</th></tr></thead>
                             <tbody>
-                                ${top10Min.length > 0 ? top10Min.map(d => `
+                                ${valoresBajoUmbralMin.length > 0 ? valoresBajoUmbralMin.map(d => `
                                     <tr>
-                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</td>
+                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit', timeZone: 'America/Bogota' })}</td>
                                         <td class="text-right"><span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${d.valor}</span></td>
                                     </tr>
-                                `).join('') : '<tr><td colspan="2">Datos insuficientes</td></tr>'}
+                                `).join('') : '<tr><td colspan="2" style="text-align: center; color: #6c757d;">Sin valores bajo umbral</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -890,59 +1015,47 @@ export class PdfService {
                                 <tr>
                                     <th>Fecha y Hora</th>
                                     <th class="text-center">Valor</th>
+                                    <th class="text-center">Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${(() => {
-                                    // Obtener los últimos 10 registros de cualquier fuente disponible
-                                    let ultimosRegistros: Array<{fecha: string | Date, valor: number}> = [];
+                                     // 🔥 USAR LA NUEVA LISTA DIRECTA
+                                     let listaRegistros = info.ultimos10 || [];
 
-                                    // Intentar obtener de muestreoDiario primero (datos más recientes)
-                                    if (info.muestreoDiario && info.muestreoDiario.length > 0) {
-                                        // Tomar los datos más recientes de los últimos días
-                                        const datosRecientes = info.muestreoDiario
-                                            .sort((a, b) => new Date(b.dia).getTime() - new Date(a.dia).getTime())
-                                            .slice(0, 3) // Últimos 3 días
-                                            .flatMap(d => d.datos || [])
-                                            .sort((a, b) => new Date(b.hora || b.fecha || 0).getTime() - new Date(a.hora || a.fecha || 0).getTime())
-                                            .slice(0, 10);
+                                     if (listaRegistros.length === 0) {
+                                         return '<tr><td colspan="3" style="text-align: center; color: #6c757d;">No hay registros recientes</td></tr>';
+                                     }
 
-                                        ultimosRegistros = datosRecientes.map(d => ({
-                                            fecha: d.fecha || `${d.dia} ${d.hora}`,
-                                            valor: Number(d.valor)
-                                        }));
-                                    }
+                                     return listaRegistros.map(r => {
+                                         let estadoColor = '#28a745'; // Verde para Normal
+                                         let estadoTexto = r.estado || 'Normal';
 
-                                    // Si no hay datos en muestreoDiario, intentar con picosAltos/picosBajos
-                                    if (ultimosRegistros.length === 0) {
-                                        const todosLosDatos: Array<{fecha: string | Date, valor: number}> = [
-                                            ...(info.picosAltos || []).map(d => ({ fecha: d.fecha, valor: d.valor })),
-                                            ...(info.picosBajos || []).map(d => ({ fecha: d.fecha, valor: d.valor }))
-                                        ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-                                        .slice(0, 10);
+                                         if (estadoTexto === 'Alto') estadoColor = '#dc3545'; // Rojo
+                                         if (estadoTexto === 'Bajo') estadoColor = '#ffc107'; // Amarillo
 
-                                        ultimosRegistros = todosLosDatos;
-                                    }
-
-                                    // Si aún no hay datos, mostrar mensaje
-                                    if (ultimosRegistros.length === 0) {
-                                        return '<tr><td colspan="2" style="text-align: center; color: #6c757d;">No hay registros recientes</td></tr>';
-                                    }
-
-                                    return ultimosRegistros.map(r => `
-                                        <tr>
-                                            <td>${new Date(r.fecha).toLocaleString('es-ES', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}</td>
-                                            <td class="text-center"><strong>${r.valor} ${info.unidad}</strong></td>
-                                        </tr>
-                                    `).join('');
-                                })()}
-                            </tbody>
-                        </table>
+                                         return `
+                                             <tr>
+                                                 <td>${new Date(r.fecha).toLocaleString('es-ES', {
+                                                     month: 'short',
+                                                     day: 'numeric',
+                                                     hour: '2-digit',
+                                                     minute: '2-digit',
+                                                     second: '2-digit',
+                                                     timeZone: 'America/Bogota'
+                                                 })}</td>
+                                                 <td class="text-center"><strong>${info.esBomba ? (r.valor == 1 ? 'Encendido' : 'Apagado') : r.valor + ' ' + info.unidad}</strong></td>
+                                                 <td class="text-center">
+                                                     <span style="background-color: ${estadoColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">
+                                                         ${estadoTexto}
+                                                     </span>
+                                                 </td>
+                                             </tr>
+                                         `;
+                                     }).join('');
+                                 })()}
+                             </tbody>
+                         </table>
                     </div>
                 </div>
 
@@ -954,7 +1067,6 @@ export class PdfService {
                             <tr>
                                 <th>Fecha</th>
                                 <th class="text-center">Promedio</th>
-                                <th class="text-center">Tendencia</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -967,32 +1079,161 @@ export class PdfService {
                                     prom = d.datos.reduce((acc, curr) => acc + Number(curr.valor), 0) / d.datos.length;
                                 }
 
-                                // Flecha de tendencia vs día anterior
-                                let icon = "➖";
-                                if (index > 0) {
-                                    const prevProm = arr[index-1].promedioCalculado || 0;
-                                    if (prom > prevProm) icon = "↗️";
-                                    if (prom < prevProm) icon = "↘️";
-                                }
-
                                 return `
                                 <tr>
-                                    <td>${new Date(d.dia).toLocaleDateString('es-ES')}</td>
+                                    <td>${new Date(d.dia).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
                                     <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad}</strong></td>
-                                    <td class="text-center">${icon}</td>
                                 </tr>
                                 `;
                             }).join('')}
                         </tbody>
                     </table>
                 </div>
+
+                <div style="margin-top: 25px; border-top: 1px solid #dee2e6; padding-top: 15px;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #455a64; text-transform: uppercase;">
+                        📋 Historial Detallado de Mediciones (${info.stats.totalRegistros} registros)
+                    </h4>
+
+                    <table style="width: 100%; font-size: 9px;">
+                        <thead>
+                            <tr style="background-color: #eceff1;">
+                                <th style="padding: 4px;">Fecha</th>
+                                <th style="padding: 4px;">Hora</th>
+                                <th style="padding: 4px; text-align: right;">Valor Registrado</th>
+                                <th style="padding: 4px; text-align: center;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(() => {
+                                const historial = info.historialDetallado || [];
+
+                                if (historial.length === 0) {
+                                    return '<tr><td colspan="4" style="text-align: center; padding: 10px;">No hay datos en este periodo</td></tr>';
+                                }
+
+                                // Limitamos a 500 registros por seguridad de renderizado PDF,
+                                // pero mostramos los más recientes primero (ya vienen ordenados DESC)
+                                const limiteVisualizacion = historial.slice(0, 500);
+
+                                return limiteVisualizacion.map((r, idx) => {
+                                    const fechaObj = new Date(r.fecha);
+                                    const fechaStr = fechaObj.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+                                    const horaStr = fechaObj.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                                    // Determinar si el valor es anómalo para colorearlo
+                                    let colorStyle = "";
+                                    if (info.umbralMaximo && r.valor > info.umbralMaximo) colorStyle = "color: #d32f2f; font-weight: bold;";
+                                    if (info.umbralMinimo && r.valor < info.umbralMinimo) colorStyle = "color: #1976d2; font-weight: bold;";
+
+                                    return `
+                                    <tr style="background-color: ${idx % 2 === 0 ? '#fff' : '#f9f9f9'};">
+                                        <td style="padding: 3px; border-bottom: 1px solid #eee;">${fechaStr}</td>
+                                        <td style="padding: 3px; border-bottom: 1px solid #eee;">${horaStr}</td>
+                                        <td style="padding: 3px; text-align: right; border-bottom: 1px solid #eee; ${colorStyle}">
+                                            ${info.esBomba ? (r.valor == 1 ? 'Encendido' : 'Apagado') : r.valor + ' ' + info.unidad}
+                                        </td>
+                                        <td style="padding: 3px; text-align: center; border-bottom: 1px solid #eee;">
+                                            ${colorStyle ? '⚠️' : 'OK'}
+                                        </td>
+                                    </tr>
+                                    `;
+                                }).join('');
+                            })()}
+                        </tbody>
+                    </table>
+                    ${(info.historialDetallado && info.historialDetallado.length > 500)
+                        ? `<p style="text-align: center; font-style: italic; color: #777;">... mostrando los primeros 500 registros de ${info.historialDetallado.length} ...</p>`
+                        : ''}
+                </div>
+
+                <script>
+                  (function() {
+                    const ctx = document.getElementById('${chartId}').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ${JSON.stringify(etiquetasFechas)},
+                            datasets: [{
+                                label: '${info.esBomba ? 'Estado de la Bomba' : 'Medición (${info.unidad})'}',
+                                data: ${JSON.stringify(valoresDatos)},
+                                borderColor: '${info.esBomba ? '#0288d1' : '#2E7D32'}',
+                                backgroundColor: '${info.esBomba ? 'rgba(2, 136, 209, 0.2)' : 'rgba(46, 125, 50, 0.1)'}',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: true,
+                                stepper: ${info.esBomba ? 'true' : 'false'},
+                                tension: ${info.esBomba ? 0 : 0.1}
+                            }]
+                        },
+                        options: {
+                            animation: false,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            elements: {
+                                line: {
+                                    tension: 0,
+                                    stepped: ${info.esBomba}
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                title: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    display: false,
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    ${info.esBomba ? 'max: 1.5, ticks: { stepSize: 1, callback: function(value) { return value === 1 ? "Encendido" : "Apagado"; } }' : ''}
+                                    grid: { color: '#f0f0f0' }
+                                }
+                            }
+                        }
+                    });
+                  })();
+                </script>
+
+                ${info.esBomba && info.ciclosRiego && info.ciclosRiego.length > 0 ? `
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; color: #0277bd; text-transform: uppercase;">
+                            🚿 Bitácora de Riego (Encendidos detectados)
+                        </h4>
+                        <table style="width: 100%; border: 1px solid #b3e5fc;">
+                            <thead>
+                                <tr style="background-color: #e1f5fe;">
+                                    <th style="color: #01579b;">Inicio Riego</th>
+                                    <th style="color: #01579b;">Fin Riego</th>
+                                    <th style="color: #01579b;">Duración</th>
+                                    <th style="color: #01579b;">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${info.ciclosRiego.slice(0, 15).map(ciclo => `
+                                    <tr>
+                                        <td>${new Date(ciclo.inicio).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</td>
+                                        <td>${new Date(ciclo.fin).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })}</td>
+                                        <td style="font-weight:bold;">${ciclo.duracion}</td>
+                                        <td style="color: green;">✅ Completado</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${info.ciclosRiego.length > 15 ? '<p style="font-size:9px; text-align:center;">... más registros omitidos ...</p>' : ''}
+                    </div>
+                ` : ''}
             </div>
             `;
-        }).join('')}
+       }).join('')}
 
+        <!-- ==========================================
+             PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
+             ========================================== -->
         <div class="footer">
             <p>⚠️ Este reporte es una herramienta de apoyo. Verifique siempre las condiciones en campo antes de aplicar correctivos mayores.</p>
-            <p>AgroTech System - Generado el ${new Date().toLocaleString()}</p>
+            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</p>
         </div>
     </body>
     </html>
@@ -1001,13 +1242,38 @@ export class PdfService {
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
 
-    // Aumentamos el timeout porque cargar las imágenes de QuickChart requiere internet y unos segundos
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
 
+    // ==========================================
+    // CONFIGURACIÓN DE PROPORCIONES DEL PDF:
+    // ==========================================
+    // PÁGINA 1: Header grande (contenido) + Body + Footer
+    // PÁGINAS 2+: Body 90% + Footer 10% (sin header)
+    // ==========================================
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: 'Letter',
       printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+      displayHeaderFooter: true,
+      margin: {
+        top: '10px',    // Margen mínimo para maximizar espacio del body en páginas 2+
+        right: '20px',
+        bottom: '40px', // 5% para footer en todas las páginas
+        left: '20px'
+      },
+      headerTemplate: `<div></div>`, // Header vacío para páginas siguientes (2+)
+      footerTemplate: `
+        <div style="width: 100%; height: 40px; padding: 4px 15px; font-family: Arial, sans-serif; display: flex; justify-content: space-between; align-items: flex-start; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 2px solid #2E7D32;">
+          <div style="flex: 1; text-align: left; font-size: 8px; color: #666;">
+            <div style="margin-bottom: 2px;"><strong>AgroTech - Sistema de Gestión y Monitoreo</strong></div>
+            <div style="margin-bottom: 1px;">Reporte General de Lote: ${data.lote}</div>
+            <div style="font-size: 7px; color: #888;">Generado: ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</div>
+          </div>
+          <div style="flex-shrink: 0; text-align: center; font-size: 10px; color: #2E7D32; font-weight: bold;">
+            <div style="font-size: 12px; margin-bottom: 2px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
+            <div style="font-size: 8px; color: #666;">Sistema IoT Agrícola</div>
+          </div>
+        </div>
+      `
     });
 
     await browser.close();

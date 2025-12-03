@@ -7,6 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { MqttClientService } from '../mqtt-config/mqtt-client.service';
 
 @WebSocketGatewayDecorator({
   cors: {
@@ -27,6 +28,8 @@ export class MqttGateway {
   server: Server;
 
   private logger: Logger = new Logger('MqttGateway');
+
+  constructor(private readonly mqttClientService: MqttClientService) {}
 
   handleConnection(client: Socket) {
     this.logger.log(`✅ Cliente MQTT conectado: ${client.id}`);
@@ -71,5 +74,11 @@ export class MqttGateway {
     // Podríamos emitir el estado actual de todos los sensores
     client.emit('estado-actual-solicitado');
     this.logger.log(`Cliente ${client.id} solicitó estado de sensores`);
+  }
+
+  @SubscribeMessage('enviar-comando-mqtt')
+  handleMqttCommand(@MessageBody() payload: { topic: string, message: string }) {
+    this.mqttClientService.publishCommand(payload.topic, payload.message);
+    this.logger.log(`Websocket -> MQTT: ${payload.topic} = ${payload.message}`);
   }
 }
