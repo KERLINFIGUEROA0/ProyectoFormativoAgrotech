@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 
 // Hero UI Components
-import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection } from "@heroui/react";
+import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Input } from "@heroui/react";
 
 // --- APIS ---
 import {
@@ -85,6 +85,11 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   // 1. Detectar si es una bomba
   const isBomba = sensor.nombre.toLowerCase().includes('bomba') || sensor.topic?.toLowerCase().includes('bomba');
 
+  // DEBUG: Log para verificar el nombre del sensor bomba
+  if (isBomba) {
+    console.log('DEBUG SensorCard - Nombre del sensor bomba:', sensor.nombre);
+  }
+
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
     const topic = sensor.topic?.toLowerCase() || '';
@@ -141,9 +146,9 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   // MODIFICACIÓN DE COLORES PARA BOMBA:
   if (isBomba && valor !== null) {
       if (Number(valor) === 1) {
-          valorColor = "text-blue-600"; // Color para ON
+          valorColor = "text-green-600"; // Color para ON
       } else {
-          valorColor = "text-gray-500"; // Color para OFF
+          valorColor = "text-red-500"; // Color para OFF
       }
   }
 
@@ -157,7 +162,7 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   const isActive = sensor.estado === 'Activo';
 
   return (
-    <div className={`bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-xl p-2 relative transition-all duration-300 border-2 ${cardBorderColor} flex flex-col hover:shadow-xl hover:scale-[1.02] h-[88px] overflow-hidden`}>
+    <div className={`bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-xl p-2 relative transition-all duration-300 border-2 ${cardBorderColor} flex flex-col hover:shadow-xl hover:scale-[1.02] hover:translate-z-10 hover:rotate-y-3 hover:rotate-x-2 h-[88px] overflow-hidden`}>
       {/* Decorative background pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-transparent via-blue-50/20 to-transparent opacity-50"></div>
 
@@ -459,34 +464,36 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
               Tópicos MQTT
             </label>
             <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={nuevoTopico}
-                onChange={(e) => setNuevoTopico(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
-                placeholder="Ej: temperatura/lote1"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <Button
-                onClick={handleAddTopico}
-                color="primary"
-                size="sm"
-                disabled={!nuevoTopico.trim()}
-              >
-                Agregar
-              </Button>
-            </div>
+               <Input
+                 value={nuevoTopico}
+                 onChange={(e) => setNuevoTopico(e.target.value)}
+                 onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
+                 placeholder="Ej: temperatura/lote1"
+                 fullWidth
+               />
+               <Button
+                 onClick={handleAddTopico}
+                 color="primary"
+                 size="sm"
+                 disabled={!nuevoTopico.trim()}
+               >
+                 Agregar
+               </Button>
+             </div>
 
             <div className="flex flex-wrap gap-2">
               {topicos.map(topico => (
                 <div key={topico} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                   {topico}
-                  <button
+                  <Button
                     onClick={() => handleRemoveTopico(topico)}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
+                    color="danger"
+                    size="sm"
+                    variant="light"
+                    className="ml-1"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -703,6 +710,9 @@ export default function GestionSensoresPage(): ReactElement {
 
   // Estado para modal de descarga de trazabilidad
   const [isTrazabilidadModalOpen, setIsTrazabilidadModalOpen] = useState(false);
+
+  // Estado para auto-play del carrusel
+  const [autoPlay, setAutoPlay] = useState(true);
 
   // 1. CARGA DE ESTRUCTURA
   const loadStructure = async () => {
@@ -1077,6 +1087,16 @@ export default function GestionSensoresPage(): ReactElement {
   // Total de páginas
   const totalPaginas = Math.ceil(sensoresFiltrados.length / tarjetasPorPagina);
 
+  // AUTO-PLAY DEL CARRUSEL (Cada 5s cambia de página automáticamente)
+  useEffect(() => {
+    if (!autoPlay || totalPaginas <= 1) return;
+
+    const interval = setInterval(() => {
+      setPaginaSensores(prev => (prev + 1) % totalPaginas);
+    }, 5000); // 5 segundos
+
+    return () => clearInterval(interval);
+  }, [autoPlay, totalPaginas]);
 
   // Funciones de navegación
   const paginaAnterior = () => {
@@ -1244,18 +1264,20 @@ export default function GestionSensoresPage(): ReactElement {
           {sensoresFiltrados.length > 0 ? (
             <div className="relative flex items-center">
               {/* Botón anterior */}
-              {paginaSensores > 0 && (
-                <button
-                  onClick={paginaAnterior}
-                  className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-105"
-                  title="Ver sensores anteriores"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-              )}
+              <Button
+                onClick={paginaAnterior}
+                isIconOnly
+                color="primary"
+                size="sm"
+                className="absolute left-1 top-1/2 -translate-y-1/2 z-10 shadow-lg"
+                title="Ver sensores anteriores"
+                disabled={paginaSensores === 0}
+              >
+                <ChevronLeft size={20} />
+              </Button>
 
               {/* Contenedor de tarjetas */}
-              <div className="flex gap-2 px-10 py-4 min-h-24 w-full justify-center overflow-x-auto">
+              <div className="flex gap-2 px-10 py-4 min-h-24 w-full justify-center overflow-x-auto" style={{ perspective: '1000px' }}>
                 {sensoresPaginaActual.map(sensor => {
                   return (
                     <div key={sensor.id} className="flex-shrink-0 w-56">
@@ -1274,29 +1296,29 @@ export default function GestionSensoresPage(): ReactElement {
               </div>
 
               {/* Botón siguiente */}
-              {paginaSensores < totalPaginas - 1 && (
-                <button
-                  onClick={paginaSiguiente}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 z-10 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-105"
-                  title="Ver más sensores"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              )}
+              <Button
+                onClick={paginaSiguiente}
+                isIconOnly
+                color="primary"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 z-10 shadow-lg"
+                title="Ver más sensores"
+                disabled={paginaSensores >= totalPaginas - 1}
+              >
+                <ChevronRight size={20} />
+              </Button>
 
               {/* Indicador de página */}
-              {totalPaginas > 1 && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 bg-white/80 px-2 py-1 rounded-full shadow-sm">
-                  {Array.from({ length: totalPaginas }, (_, i) => (
-                    <div
-                      key={i}
-                      className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
-                        i === paginaSensores ? 'bg-blue-500 scale-125' : 'bg-gray-300 hover:bg-gray-400'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 bg-white/80 px-2 py-1 rounded-full shadow-sm z-20">
+                {Array.from({ length: Math.max(totalPaginas, 1) }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                      i === paginaSensores ? 'bg-blue-500 scale-125' : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="h-24 flex items-center justify-center">

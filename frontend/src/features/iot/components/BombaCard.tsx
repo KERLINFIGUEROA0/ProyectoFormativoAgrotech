@@ -21,6 +21,13 @@ export const BombaCard = ({ topicCommand }: BombaCardProps) => {
     );
   }, [latestReadings, topicCommand]);
 
+  // DEBUG: Log para verificar el nombre del sensor bomba en BombaCard
+  useEffect(() => {
+    if (bombaData) {
+      console.log('DEBUG BombaCard - Nombre del sensor bomba:', bombaData.nombre);
+    }
+  }, [bombaData]);
+
   // 2. Verificar si hay sensores de humedad desconectados
   const humedadDesconectada = useMemo(() => {
     return latestReadings.some((s: LatestSensorData) =>

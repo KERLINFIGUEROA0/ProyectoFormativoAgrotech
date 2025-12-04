@@ -326,10 +326,8 @@ export class MqttConfigService {
       'luz': { nombre: 'Sensor de Luz', min: 15, max: 500 },
       'temperatura': { nombre: 'Sensor de Temperatura', min: 10, max: 35 },
       'humedad': { nombre: 'Sensor de Humedad', min: 30, max: 85 },
-      'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 20, max: 90 },
-      // 👇 AÑADIDO: Configuración para la bomba
-      'bomba': { nombre: 'Actuador Bomba Riego', min: 0, max: 1 },
-      'riego': { nombre: 'Sistema de Riego', min: 0, max: 1 },
+      'humedad_suelo': { nombre: 'Sensor de Humedad del Suelo', min: 20, max: 80 },
+      'bomba': { nombre: 'Bomba de Riego', min: 0, max: 1 },
     };
 
     for (const item of topicos) {
@@ -357,6 +355,11 @@ export class MqttConfigService {
       const minFinal = customMin ?? defaults?.min ?? 0;
       const maxFinal = customMax ?? defaults?.max ?? (isBomba ? 1 : 100);
       const nombreFinal = defaults?.nombre ?? (isBomba ? 'Bomba de Riego' : `Sensor ${topicName}`);
+
+      // DEBUG: Log cuando se crea un sensor bomba
+      if (isBomba) {
+        this.logger.log(`DEBUG Creando sensor bomba con nombre: ${nombreFinal}`);
+      }
 
       // Verificar si ya existe
       const existe = await this.sensorRepo.findOne({ where: { topic: topicStr, lote: { id: loteId } }});

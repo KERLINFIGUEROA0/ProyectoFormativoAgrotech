@@ -73,7 +73,7 @@ export class PdfService {
       fecha: (() => {
         let fecha = actividad.fecha;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
       })(),
       titulo: actividad.titulo || '',
       estado: actividad.estado || '',
@@ -89,7 +89,7 @@ export class PdfService {
       fecha: (() => {
         let fecha = act.fecha;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
       })(),
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada ?? 0,
@@ -106,7 +106,7 @@ export class PdfService {
       const precioUnitario = cantidadVendida > 0 ? totalVentas / cantidadVendida : 0;
 
       return {
-        fecha: produccion.fecha ? produccion.fecha.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) : '',
+        fecha: produccion.fecha ? produccion.fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '',
         cantidadProducida,
         cantidadVendida,
         precioUnitario: precioUnitario.toFixed(2),
@@ -232,7 +232,7 @@ export class PdfService {
       'cultivo.cantidad': data.cultivo.cantidad.toString(),
       'cultivo.cantidadCosechada': data.cultivo.cantidadCosechada.toString(),
       'cultivo.descripcion': data.cultivo.descripcion,
-      'fechaGeneracion': new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }),
+      'fechaGeneracion': new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
       'periodo': (() => {
         if (fechaInicio && fechaFin) {
           return `Período del Reporte: desde ${fechaInicio} hasta ${fechaFin}`;
