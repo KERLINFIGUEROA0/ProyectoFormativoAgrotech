@@ -9,6 +9,7 @@ import { Actividad } from '../actividades/entities/actividade.entity';
 import { Produccion } from '../producciones/entities/produccione.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { Venta } from '../../common/enums/ventas/entities/venta.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 import { CultivosService } from './cultivos.service';
 
 @Injectable()
@@ -24,6 +25,8 @@ export class PdfService {
     private readonly gastoRepository: Repository<Gasto>,
     @InjectRepository(Venta)
     private readonly ventaRepository: Repository<Venta>,
+    @InjectRepository(Pago)
+    private readonly pagoRepository: Repository<Pago>,
     private readonly cultivosService: CultivosService,
   ) {}
 
@@ -44,6 +47,7 @@ export class PdfService {
     let actividades: Actividad[] = [];
     let producciones: Produccion[] = [];
     let gastos: Gasto[] = [];
+    let pagos: Pago[] = [];
 
     try {
       actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
@@ -66,23 +70,44 @@ export class PdfService {
         console.error('Error obteniendo gastos directos:', error);
         gastos = [];
       }
+
+      try {
+        pagos = await this.pagoRepository.find({
+          where: {
+            actividad: { cultivo: { id } },
+            fechaPago: Between(new Date(fechaInicio), new Date(fechaFin + 'T23:59:59.999'))
+          },
+          relations: ['usuario', 'actividad']
+        });
+      } catch (error) {
+        console.error('Error obteniendo pagos:', error);
+        pagos = [];
+      }
     }
 
     // Procesar actividades con materiales
-    const actividadesData = actividades.map(actividad => ({
-      fecha: (() => {
-        let fecha = actividad.fecha;
-        if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
-      })(),
-      titulo: actividad.titulo || '',
-      estado: actividad.estado || '',
-      materiales: actividad.actividadMaterial?.map(am => ({
-        nombre: am.material.nombre,
-        cantidad: am.cantidadUsada,
-        unidad: am.material.medidasDeContenido || 'unidades'
-      })) || []
-    }));
+    const actividadesData = actividades.map(actividad => {
+      // Calcular costo de mano de obra para esta actividad
+      const costoManoObra = gastos
+        .filter(g => g.descripcion.includes(`actividad: ${actividad.titulo}`))
+        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+
+      return {
+        fecha: (() => {
+          let fecha = actividad.fecha;
+          if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
+          return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        })(),
+        titulo: actividad.titulo || '',
+        estado: actividad.estado || '',
+        costoManoObra: costoManoObra.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
+        materiales: actividad.actividadMaterial?.map(am => ({
+          nombre: am.material.nombre,
+          cantidad: am.cantidadUsada,
+          unidad: am.material.medidasDeContenido || 'unidades'
+        })) || []
+      };
+    });
 
     // Procesar recursos utilizados (materiales agregados de actividades)
     const recursosData = actividades.flatMap(act => act.actividadMaterial?.map(am => ({
@@ -132,7 +157,8 @@ export class PdfService {
       actividades: actividadesData, // processed for template
       recursos: recursosData,
       producciones: produccionesData,
-      gastos: gastos
+      gastos: gastos,
+      pagos: pagos
     };
   }
 
@@ -141,7 +167,10 @@ export class PdfService {
     const ingresos = data.producciones.reduce((sum, p) => sum + parseFloat(p.totalVentas), 0);
 
     // Calcular costos de mano de obra
-    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((Number(act.horas) || 0) * (Number(act.tarifaHora) || 0)), 0);
+    // Calcular costos de mano de obra desde los gastos de pagos
+    const laborCost = data.gastos
+      .filter(g => g.descripcion.startsWith('Pago a'))
+      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
 
     // Calcular costos de materiales
     const materialesCost = data.fullActividades.reduce((sum, act) => {
@@ -273,6 +302,7 @@ export class PdfService {
     data.actividades = data.actividades || [];
     data.recursos = data.recursos || [];
     data.producciones = data.producciones || [];
+    data.pagos = data.pagos || [];
     analisis.gastosPorCategoria = analisis.gastosPorCategoria || [];
 
     // Para actividades
@@ -281,10 +311,24 @@ export class PdfService {
         <td>${act.fecha}</td>
         <td>${act.titulo}</td>
         <td>${act.estado}</td>
+        <td>${act.costoManoObra}</td>
         <td>${act.materiales.map(m => `${m.nombre} (${Number(m.cantidad).toFixed(0)} ${m.unidad})`).join(', ')}</td>
       </tr>
     `).join('');
     html = html.replace('{{#each actividades}}{{/each}}', actividadesHtml);
+
+    // Para pagos a pasantes
+    const pagosHtml = data.pagos.map(pago => `
+      <tr>
+        <td>${pago.fechaPago ? pago.fechaPago.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : ''}</td>
+        <td>${pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : ''}</td>
+        <td>${pago.actividad ? pago.actividad.titulo : ''}</td>
+        <td>${pago.horasTrabajadas}</td>
+        <td>${pago.tarifaHora.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+        <td>${pago.monto.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+      </tr>
+    `).join('');
+    html = html.replace('{{#each pagos}}{{/each}}', pagosHtml);
 
     // Para recursos
     const recursosHtml = data.recursos.map(rec => {

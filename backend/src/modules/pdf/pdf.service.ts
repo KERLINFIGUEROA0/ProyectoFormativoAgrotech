@@ -177,6 +177,106 @@ export class PdfService {
     return `https://quickchart.io/chart?c=${encodedConfig}&w=500&h=300`;
   }
 
+  async generarReporteTrazabilidadCSV(data: any): Promise<string> {
+    const csvLines: string[] = [];
+
+    // Header
+    csvLines.push('REPORTE DE TRAZABILIDAD - AGROTECH');
+    csvLines.push(`Lote: ${data.lote}`);
+    csvLines.push(`Rango: ${data.rango}`);
+    csvLines.push(`Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}`);
+    csvLines.push('');
+
+    // Resumen Ejecutivo
+    csvLines.push('RESUMEN EJECUTIVO DEL LOTE');
+    csvLines.push('Total Cultivos,Producción Total,Inversión Total,Ventas Totales,Mano de Obra (Pasantes),Rentabilidad Neta,Inventario Pendiente');
+    csvLines.push(`${data.cultivos.length},"${data.cultivos.reduce((sum, c) => sum + (c.produccionTotalKg + c.resumenFinanciero.detalleVentas.reduce((sumV, v) => sumV + v.cantidadVendida, 0)), 0).toLocaleString()} Kg","$${(
+      data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
+      (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0)
+    ).toLocaleString()}","$${data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0).toLocaleString()}","$${data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0).toLocaleString() : '0'}","$${(
+      data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0) -
+      (data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
+       (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0))
+    ).toLocaleString()}","${data.cultivos.reduce((sum, c) => sum + (c.cosechas ? c.cosechas.reduce((sumCo, co) => sumCo + co.cantidadRestante, 0) : 0), 0).toLocaleString()} Kg"`);
+    csvLines.push('');
+
+    // Pagos a Pasantes
+    if (data.pagos && data.pagos.length > 0) {
+      csvLines.push('PAGOS A PASANTES');
+      csvLines.push('Fecha,Pasante,Actividad,Cultivo,Horas,Tarifa por Hora,Monto Total');
+      data.pagos.forEach(p => {
+        csvLines.push(`"${this.formatDateForDisplay(this.transformDateForDisplay(p.fecha))}","${p.pasante}","${p.actividad}","${p.cultivo}","${p.horasTrabajadas}","$${p.tarifaHora}","$${p.monto}"`);
+      });
+      csvLines.push(`"TOTAL PAGOS A PASANTES","","","","","","$${data.pagos.reduce((sum, p) => sum + Number(p.monto), 0)}"`);
+      csvLines.push('');
+    }
+
+    // Detalle de Cultivos
+    data.cultivos.forEach(c => {
+      csvLines.push(`CULTIVO: ${c.nombre} (${c.tipo})`);
+      csvLines.push(`Dias Sembrado: ${c.diasSembrado}, Estado: ${c.estadoActual}`);
+      csvLines.push('');
+
+      // Inventario de Cosechas
+      if (c.cosechas && c.cosechas.length > 0) {
+        csvLines.push('INVENTARIO DE COSECHAS');
+        csvLines.push('Fecha de Cosecha,Inventario Restante,Estado');
+        c.cosechas.forEach(co => {
+          csvLines.push(`"${this.formatDateForDisplay(this.transformDateForDisplay(co.fecha))}","${co.cantidadRestante.toLocaleString()} Kg","${co.estado}"`);
+        });
+        csvLines.push(`"INVENTARIO TOTAL PENDIENTE","${c.cosechas.reduce((sum, co) => sum + co.cantidadRestante, 0).toLocaleString()} Kg",""`);
+        csvLines.push('');
+      }
+
+      // Insumos Aplicados
+      if (c.resumenFinanciero.detalleMateriales.length > 0) {
+        csvLines.push('INSUMOS APLICADOS (EGRESOS)');
+        csvLines.push('Fecha,Material,Cantidad,Precio Unitario,Costo Total');
+        c.resumenFinanciero.detalleMateriales.forEach(m => {
+          csvLines.push(`"${this.formatDateForDisplay(this.transformDateForDisplay(m.fecha))}","${m.nombre}","${m.cantidad} ${m.unidad || 'unidad'}","$${m.precioUnitario}","$${m.costoTotal}"`);
+        });
+        csvLines.push(`"TOTAL INSUMOS (EGRESOS)","","","","$${c.resumenFinanciero.detalleMateriales.reduce((sum, m) => sum + m.costoTotal, 0)}"`);
+        csvLines.push('');
+      }
+
+      // Ventas Realizadas
+      if (c.resumenFinanciero.detalleVentas.length > 0) {
+        csvLines.push('VENTAS REALIZADAS');
+        csvLines.push('Fecha,Descripción,Cantidad Vendida,Precio Unitario,Total');
+        c.resumenFinanciero.detalleVentas.forEach(v => {
+          csvLines.push(`"${this.formatDateForDisplay(this.transformDateForDisplay(v.fecha))}","${v.descripcion}","${v.cantidadVendida} Kg","$${Number(v.precioUnitario)}","$${v.valorTotal}"`);
+        });
+        csvLines.push(`"TOTAL VENTAS","","${c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.cantidadVendida, 0)} Kg","","$${c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.valorTotal, 0)}"`);
+        csvLines.push('');
+      }
+
+      // Balance Financiero
+      csvLines.push('BALANCE FINANCIERO');
+      csvLines.push('Categoría,Monto');
+      csvLines.push(`"Ingresos (Ventas)","$${c.resumenFinanciero.totalVentas}"`);
+      csvLines.push(`"Egresos (Inversión)","$${c.resumenFinanciero.totalInversion}"`);
+      csvLines.push(`"Ganancia Neta","$${c.resumenFinanciero.gananciaNeta}"`);
+      csvLines.push('');
+    });
+
+    // Sensores IoT
+    if (Object.keys(data.sensores).length > 0) {
+      csvLines.push('SENSORES IoT');
+      Object.entries(data.sensores).forEach(([sensor, info]: [string, any]) => {
+        csvLines.push(`Sensor: ${sensor}`);
+        csvLines.push(`Unidad: ${info.unidad}, Total Registros: ${info.stats.totalRegistros}`);
+        csvLines.push('Métrica,Valor');
+        csvLines.push(`Mínimo Histórico,"${info.stats.minimo} ${info.unidad}"`);
+        csvLines.push(`Promedio Global,"${info.stats.promedio} ${info.unidad}"`);
+        csvLines.push(`Máximo Histórico,"${info.stats.maximo} ${info.unidad}"`);
+        csvLines.push(`Último Valor,"${info.ultimoRegistro ? info.ultimoRegistro.valor + ' ' + info.unidad : 'N/A'}"`);
+        csvLines.push('');
+      });
+    }
+
+    return csvLines.join('\n');
+  }
+
   async generarReporteTrazabilidad(data: any): Promise<Buffer> {
 
     // ==========================================
@@ -607,16 +707,31 @@ export class PdfService {
                 </div>
                 <div class="kpi-card">
                     Inversión Total
-                    <span class="kpi-value" style="color: #dc3545">${formatCurrency(data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0))}</span>
+                    <span class="kpi-value" style="color: #dc3545">${formatCurrency(
+                        data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
+                        (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0)
+                    )}</span>
                 </div>
                 <div class="kpi-card">
                     Ventas Totales
                     <span class="kpi-value" style="color: #28a745">${formatCurrency(data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0))}</span>
                 </div>
                 <div class="kpi-card">
+                    Mano de Obra (Pasantes)
+                    <span class="kpi-value" style="color: #dc3545">${formatCurrency(data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0)}</span>
+                </div>
+                <div class="kpi-card">
                     Rentabilidad Neta
-                    <span class="kpi-value ${data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.gananciaNeta, 0) >= 0 ? 'profit' : 'loss'}">
-                        ${formatCurrency(data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.gananciaNeta, 0))}
+                    <span class="kpi-value ${(
+                        data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0) -
+                        (data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
+                         (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0))
+                    ) >= 0 ? 'profit' : 'loss'}">
+                        ${formatCurrency(
+                            data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0) -
+                            (data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
+                             (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0))
+                        )}
                     </span>
                 </div>
                 <div class="kpi-card">
@@ -626,11 +741,53 @@ export class PdfService {
             </div>
             <div style="text-align: center; font-size: 12px; color: #6c757d;">
                 <strong>Este reporte incluye todos los cultivos del lote, tanto los cultivados directamente como los de sublotes asociados.</strong>
+                <br><small>Los pagos a pasantes están incluidos en la inversión total y afectan el cálculo de rentabilidad neta.</small>
             </div>
         </div>
 
         <!-- ==========================================
-             SECCIÓN 2: DETALLE DE CULTIVOS INDIVIDUALES
+             SECCIÓN 2: PAGOS A PASANTES
+             ========================================== -->
+        <div class="card" style="margin-bottom: 20px; page-break-inside: avoid;">
+            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">💰 Pagos a Pasantes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Pasante</th>
+                        <th>Actividad</th>
+                        <th>Cultivo</th>
+                        <th>Horas</th>
+                        <th>Tarifa/Hora</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.pagos && data.pagos.length > 0 ? data.pagos.map(p => `
+                        <tr>
+                            <td>${this.formatDateForDisplay(this.transformDateForDisplay(p.fecha))}</td>
+                            <td>${p.pasante}</td>
+                            <td>${p.actividad}</td>
+                            <td>${p.cultivo}</td>
+                            <td class="text-center">${p.horasTrabajadas}</td>
+                            <td class="text-right">${formatCurrency(p.tarifaHora)}</td>
+                            <td class="text-right">${formatCurrency(p.monto)}</td>
+                        </tr>
+                    `).join('') : '<tr><td colspan="7" style="text-align: center; color: #6c757d;">No hay pagos registrados en este período</td></tr>'}
+                </tbody>
+                ${data.pagos && data.pagos.length > 0 ? `
+                <tfoot>
+                    <tr style="border-top: 2px solid #2E7D32; background-color: #E8F5E9;">
+                        <td colspan="6" style="text-align: center; font-weight: bold; color: #2E7D32;">TOTAL PAGOS A PASANTES</td>
+                        <td class="text-right" style="font-weight: bold; color: #2E7D32;">${formatCurrency(data.pagos.reduce((sum, p) => sum + Number(p.monto), 0))}</td>
+                    </tr>
+                </tfoot>
+                ` : ''}
+            </table>
+        </div>
+
+        <!-- ==========================================
+             SECCIÓN 3: DETALLE DE CULTIVOS INDIVIDUALES
              ========================================== -->
         ${data.cultivos.map(c => `
             <!-- === CULTIVO: ${c.nombre} === -->
@@ -854,7 +1011,7 @@ export class PdfService {
         `).join('')}
 
         <!-- ==========================================
-             SECCIÓN 3: MONITOREO Y ANÁLISIS DE SENSORES IoT
+             SECCIÓN 4: MONITOREO Y ANÁLISIS DE SENSORES IoT
              ========================================== -->
         <div class="section-break"></div>
 
@@ -887,7 +1044,7 @@ export class PdfService {
                         );
                         ultimoRegistro = datosOrdenados[0];
                         ultimoValor = ultimoRegistro ? Number((ultimoRegistro as any).valor) : 0;
-                        fechaUltimo = ultimoRegistro ? (this.transformDateForDisplay((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha)?.toLocaleString('es-ES') || 'N/A') : 'N/A';
+                        fechaUltimo = ultimoRegistro ? (this.formatDateForDisplay(this.transformDateForDisplay((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha)) || 'N/A') : 'N/A';
                     }
                 }
 
@@ -1268,7 +1425,7 @@ export class PdfService {
           </div>
           <div style="flex-shrink: 0; text-align: center; font-size: 10px; color: #2E7D32; font-weight: bold;">
             <div style="font-size: 12px; margin-bottom: 2px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
-            <div style="font-size: 8px; color: #666;">Sistema IoT Agrícola</div>
+            <div style="font-size: 8px; color: #666;">Agrotech</div>
           </div>
         </div>
       `

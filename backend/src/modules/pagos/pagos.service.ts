@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Pago } from './entities/pago.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Actividad } from '../actividades/entities/actividade.entity';
+import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
 
@@ -16,6 +18,8 @@ export class PagosService {
     private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(Actividad)
     private readonly actividadRepository: Repository<Actividad>,
+    @InjectRepository(Gasto)
+    private readonly gastoRepository: Repository<Gasto>,
   ) {}
 
   async create(createPagoDto: CreatePagoDto) {
@@ -36,6 +40,7 @@ export class PagosService {
     // Verificar que la actividad existe
     const actividad = await this.actividadRepository.findOne({
       where: { id: createPagoDto.idActividad },
+      relations: ['cultivo'],
     });
 
     if (!actividad) {
@@ -73,7 +78,23 @@ export class PagosService {
       fechaPago: new Date(createPagoDto.fechaPago),
     });
 
-    return this.pagoRepository.save(pago);
+    const pagoGuardado = await this.pagoRepository.save(pago);
+
+    // Crear el gasto correspondiente para el cultivo
+    const gasto = this.gastoRepository.create({
+      descripcion: `Pago a ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
+      monto: pagoGuardado.monto,
+      fecha: pagoGuardado.fechaPago,
+      tipo: TipoMovimiento.EGRESO,
+      cantidad: pagoGuardado.horasTrabajadas,
+      unidad: 'horas',
+      precioUnitario: pagoGuardado.tarifaHora,
+      cultivo: actividad.cultivo,
+    });
+
+    await this.gastoRepository.save(gasto);
+
+    return pagoGuardado;
   }
 
   async createMultiple(createPagoDtos: CreatePagoDto[]) {
@@ -96,6 +117,7 @@ export class PagosService {
 
       const actividad = await this.actividadRepository.findOne({
         where: { id: createPagoDto.idActividad },
+        relations: ['cultivo'],
       });
 
       if (!actividad) {
@@ -133,11 +155,28 @@ export class PagosService {
         fechaPago: new Date(createPagoDto.fechaPago),
       });
 
-      pagos.push(pago);
+      // Guardar el pago
+      const pagoGuardado = await this.pagoRepository.save(pago);
+
+      // Crear el gasto correspondiente
+      const gasto = this.gastoRepository.create({
+        descripcion: `Pago a ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
+        monto: pagoGuardado.monto,
+        fecha: pagoGuardado.fechaPago,
+        tipo: TipoMovimiento.EGRESO,
+        cantidad: pagoGuardado.horasTrabajadas,
+        unidad: 'horas',
+        precioUnitario: pagoGuardado.tarifaHora,
+        cultivo: actividad.cultivo,
+      });
+
+      await this.gastoRepository.save(gasto);
+
+      pagos.push(pagoGuardado);
     }
 
-    // Guardar todos los pagos
-    return this.pagoRepository.save(pagos);
+    // Retornar todos los pagos guardados
+    return pagos;
   }
 
   async findByUsuario(idUsuario: number) {

@@ -53,7 +53,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     try {
       // Preparar datos para enviar
       const payload = {
-        formato: selectedFormato as "pdf" | "excel" | "json",
+        formato: selectedFormato as "pdf"  | "json",
         loteId: selectedLoteId!,
         subloteId: selectedSubloteId || undefined,
         cultivoId: selectedCultivoId || undefined,
@@ -110,7 +110,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
             fullWidth
           >
             <SelectItem key="pdf">PDF (Reporte Completo)</SelectItem>
-            <SelectItem key="excel">Excel (Datos Crudos)</SelectItem>
           </Select>
         </div>
 

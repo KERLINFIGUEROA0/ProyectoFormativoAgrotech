@@ -85,11 +85,32 @@
                         <th>Fecha</th>
                         <th>Actividad</th>
                         <th>Estado</th>
+                        <th>Costo Mano de Obra</th>
                         <th>Materiales Utilizados</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{#each actividades}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagos a Pasantes -->
+        <div class="section">
+            <h2>Pagos a Pasantes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Pasante</th>
+                        <th>Actividad</th>
+                        <th>Horas</th>
+                        <th>Tarifa por Hora</th>
+                        <th>Total Pagado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each pagos}}{{/each}}
                 </tbody>
             </table>
         </div>

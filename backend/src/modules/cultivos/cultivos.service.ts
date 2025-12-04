@@ -16,6 +16,7 @@ import { ActividadMaterial } from '../actividades_materiales/entities/actividade
 import { Venta } from '../../common/enums/ventas/entities/venta.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { Material } from '../materiales/entities/materiale.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 import { AppWebSocketGateway } from '../../websocket/websocket.gateway';
 
 @Injectable()
@@ -35,6 +36,8 @@ export class CultivosService {
     private readonly produccionRepository: Repository<Produccion>,
     @InjectRepository(Gasto)
     private readonly gastoRepository: Repository<Gasto>,
+    @InjectRepository(Pago)
+    private readonly pagoRepository: Repository<Pago>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly webSocketGateway: AppWebSocketGateway,
   ) {}

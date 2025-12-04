@@ -23,6 +23,7 @@ import { ActividadMaterial } from '../actividades_materiales/entities/actividade
 import { Material } from '../materiales/entities/materiale.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { TipoUsuario } from '../tipo_usuario/entities/tipo_usuario.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 
 @Injectable()
 export class SensoresService {
@@ -60,6 +61,8 @@ export class SensoresService {
     private readonly usuarioRepo: Repository<Usuario>,
     @InjectRepository(TipoUsuario)
     private readonly tipoUsuarioRepo: Repository<TipoUsuario>,
+    @InjectRepository(Pago)
+    private readonly pagoRepo: Repository<Pago>,
 
     @Inject(forwardRef(() => InformacionSensorService))
     private readonly infoSensorService: InformacionSensorService,
@@ -502,7 +505,8 @@ export class SensoresService {
         rango: `${fechaInicio} al ${fechaFin}`,
         fechaGeneracion: new Date().toISOString(),
         cultivos: [],
-        sensores: {}
+        sensores: {},
+        pagos: []
       };
 
       // 2. Procesar Cultivos (Finanzas y Actividades)
@@ -642,7 +646,34 @@ export class SensoresService {
       }
 
       // =====================================================================
-      // 3. 🚨 CORRECCIÓN CRÍTICA EN SENSORES
+      // 3. PAGOS A PASANTES
+      // =====================================================================
+      console.log('🔍 Buscando pagos para el lote:', loteId, 'en rango:', fechaInicio, 'a', fechaFin);
+      const pagos = await this.pagoRepo.find({
+        where: {
+          actividad: {
+            cultivo: {
+              lote: { id: loteId }
+            }
+          },
+          fechaPago: Between(new Date(fechaInicio), new Date(fechaFin + 'T23:59:59.999'))
+        },
+        relations: ['usuario', 'actividad', 'actividad.cultivo']
+      });
+      console.log('📊 Pagos encontrados:', pagos.length);
+
+      reporte.pagos = pagos.map(pago => ({
+        fecha: pago.fechaPago,
+        pasante: pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos || ''}`.trim() : 'Desconocido',
+        actividad: pago.actividad ? pago.actividad.titulo : 'Sin actividad',
+        cultivo: pago.actividad?.cultivo ? pago.actividad.cultivo.nombre : 'Sin cultivo',
+        horasTrabajadas: pago.horasTrabajadas,
+        tarifaHora: pago.tarifaHora,
+        monto: pago.monto
+      }));
+
+      // =====================================================================
+      // 5. 🚨 CORRECCIÓN CRÍTICA EN SENSORES
       // =====================================================================
 
       // Buscar sensores del lote

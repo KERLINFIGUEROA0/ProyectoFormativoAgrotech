@@ -2,7 +2,7 @@ import { IsDateString, IsEnum, IsNumber, IsOptional, IsString } from 'class-vali
 
 export enum FormatoReporte {
   PDF = 'pdf',
-  EXCEL = 'excel',
+  CSV = 'csv',
 }
 
 export class GenerarReporteTrazabilidadDto {

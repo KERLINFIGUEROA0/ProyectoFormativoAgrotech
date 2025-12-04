@@ -113,7 +113,7 @@ export class SensoresController {
     console.log('Recibiendo solicitud de reporte:', dto);
     try {
       const datos = await this.sensoresService.getFullTraceabilityData(dto);
-      console.log('Datos obtenidos, generando PDF...');
+      console.log('Datos obtenidos, generando reporte...');
 
       if (dto.formato === 'pdf') {
         console.log('Intentando generar PDF...');
@@ -134,6 +134,25 @@ export class SensoresController {
             error: 'Error generando PDF',
             datos: datos,
             pdfError: pdfError.message
+          });
+        }
+      } else if (dto.formato === 'csv') {
+        console.log('Generando CSV...');
+        try {
+          const csvContent = await this.pdfService.generarReporteTrazabilidadCSV(datos);
+          console.log('CSV generado exitosamente, tamaño:', csvContent.length);
+
+          res.set({
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.csv`,
+          });
+          res.send('\uFEFF' + csvContent); // BOM for Excel compatibility
+        } catch (csvError) {
+          console.error('Error generando CSV:', csvError);
+          res.json({
+            error: 'Error generando CSV',
+            datos: datos,
+            csvError: csvError.message
           });
         }
       } else {
