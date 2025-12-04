@@ -140,31 +140,52 @@ export class ActividadesService {
     }
 
   // --- LÓGICA DE STOCK UNIFICADO ---
-  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean } {
+  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean, debeGenerarGastoDepreciacion: boolean } {
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
       if (!material.usosTotales) {
-        return { success: true, debeRegistrarEgreso: false };
+        return { success: true, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
       }
-      material.usosActuales = Number(material.usosActuales) + cantidadUsada;
-      return { success: true, debeRegistrarEgreso: true };
+      const usosAntes = Number(material.usosActuales) || 0;
+      material.usosActuales = usosAntes + cantidadUsada;
+
+      // Verificar si alcanzó el límite de usos
+      const alcanzoLimite = material.usosActuales >= material.usosTotales;
+
+      if (alcanzoLimite) {
+        // Si alcanzó el límite, reducir cantidad física y resetear usos
+        material.cantidad = Number(material.cantidad) - 1;
+        if (material.cantidad < 0) material.cantidad = 0;
+        material.usosActuales = 0; // Resetear usos para la siguiente unidad
+        return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: true };
+      }
+
+      return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
     }
 
     if (Number(material.cantidad) < cantidadUsada) {
-      return { success: false, debeRegistrarEgreso: false };
+      return { success: false, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
     }
 
     material.cantidad = Number(material.cantidad) - cantidadUsada;
-    return { success: true, debeRegistrarEgreso: true };
+    return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
   }
 
   private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
       if (!material.usosTotales) return;
-      material.usosActuales -= cantidadDevuelta;
-      while (material.usosActuales < 0 && material.cantidad > 0) {
+
+      // Lógica inversa: reducir usos actuales
+      material.usosActuales = Number(material.usosActuales) - cantidadDevuelta;
+
+      // Si los usos quedan negativos, significa que se debe devolver una unidad física
+      while (material.usosActuales < 0 && material.cantidad >= 0) {
         material.usosActuales += material.usosTotales;
-        material.cantidad += 1;
+        material.cantidad = Number(material.cantidad) + 1;
       }
+
+      // Asegurar que no queden usos negativos
+      if (material.usosActuales < 0) material.usosActuales = 0;
+
       return;
     }
     material.cantidad = Number(material.cantidad) + cantidadDevuelta;
@@ -240,6 +261,24 @@ export class ActividadesService {
             throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           }
           await queryRunner.manager.save(material);
+
+          // 3.1. Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario; // Costo completo del material depreciado
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
 
           // 4. Calcular COSTO EXACTO (Fórmula del PDF)
           let costoTotal = 0;
@@ -441,6 +480,24 @@ export class ActividadesService {
           const resultado = this.descontarMaterial(material, cantidadEnUnidadBase);
           if (!resultado.success) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           await queryRunner.manager.save(material);
+
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
 
           // CÁLCULO DE COSTO EXACTO
           let costoTotal = 0;
@@ -1354,6 +1411,24 @@ export class ActividadesService {
           const res = this.descontarMaterial(material, cantidadBase);
           if (!res.success) throw new BadRequestException(`Stock insuficiente: ${material.nombre}`);
           await queryRunner.manager.save(material);
+
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (res.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: new Date(fecha),
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivo ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
 
           // CÁLCULO DE COSTO Y GASTO
           let costoTotal = 0;

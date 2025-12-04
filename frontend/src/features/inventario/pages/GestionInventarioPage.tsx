@@ -203,7 +203,13 @@ export default function GestionInventarioPage() {
   };
 
   const itemsCriticos = useMemo(() => {
-    return materiales.filter(mat => mat.estado && mat.cantidad <= 10);
+    return materiales.filter(mat => {
+      if (!mat.estado) return false;
+      const cantidadParaEvaluar = mat.pesoPorUnidad && mat.pesoPorUnidad > 0
+        ? mat.cantidad / mat.pesoPorUnidad
+        : mat.cantidad;
+      return cantidadParaEvaluar <= 15; // Incluye tanto stock crítico (<=5) como bajo stock (<=15)
+    });
   }, [materiales]);
 
   const materialesFiltrados = useMemo(() => {
@@ -218,7 +224,9 @@ export default function GestionInventarioPage() {
       const coincideProveedor = filtroProveedor === 'Todos' || mat.proveedor === filtroProveedor;
 
       const estadoStock = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
-      const coincideEstadoStock = filtroEstadoStock === 'Todos' || estadoStock === filtroEstadoStock;
+      const coincideEstadoStock = filtroEstadoStock === 'Todos' ||
+        (filtroEstadoStock === 'Crítico' && (estadoStock === 'Crítico' || estadoStock === 'Stock Bajo')) ||
+        estadoStock === filtroEstadoStock;
 
       const coincideEstadoMaterial = filtroEstadoMaterial === 'Todos' ||
         (filtroEstadoMaterial === 'Activo' && mat.estado) ||
@@ -302,7 +310,7 @@ export default function GestionInventarioPage() {
             <div>
               <h4 className="font-bold text-red-800">Stock Crítico</h4>
               <p className="text-sm text-red-700">
-                Tienes {itemsCriticos.length} material(es) que necesitan reabastecimiento urgente.
+                Tienes {itemsCriticos.length} material(es) con stock crítico o bajo que necesitan atención.
               </p>
             </div>
           </div>
@@ -311,7 +319,7 @@ export default function GestionInventarioPage() {
             color="danger"
             className="flex-shrink-0"
           >
-            {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Críticos'}
+            {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Stock Bajo'}
           </Button>
         </div>
       )}
