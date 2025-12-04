@@ -1,21 +1,21 @@
-import { useState, useEffect, type ReactElement } from 'react';
+import { useState, useEffect, useMemo, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
-  Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
+  Plus, Edit, DollarSign, BookCheck, Leaf,
+  Search, Filter, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
+import { FaLeaf, FaThList, FaTools } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import websocketService from '../../../services/websocket.service';
 
 // Hero UI Imports
 import {
   Card, CardBody, Button, Tabs, Tab, Input,
   Select, SelectItem, Chip, ScrollShadow, Divider,
-  CardHeader, Tooltip, Switch
+  CardHeader, Tooltip, Switch, Progress
 } from '@heroui/react';
 
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, registrarCosecha } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
@@ -24,37 +24,6 @@ import LotesMap from '../components/LotesMap';
 import ModalUbicacionCultivo from '../components/ModalUbicacionCultivo';
 import type { Cultivo, TipoCultivo, Lote, Sublote } from '../interfaces/cultivos';
 
-// --- Componente StatCard Más Compacto (Menos altura) ---
-const CompactStat = ({ icon, title, value, color }: { icon: ReactElement; title: string; value: number | string; color: 'primary' | 'danger' | 'success' | 'warning' }) => {
-  const colorStyles = {
-    primary: "bg-blue-100 text-blue-600",
-    danger: "bg-red-100 text-red-600",
-    success: "bg-green-100 text-green-600",
-    warning: "bg-yellow-100 text-yellow-600",
-  };
-
-  return (
-    <Card shadow="sm" className="border border-gray-100">
-      {/* Reducimos el padding a p-3 y el gap a gap-3 */}
-      <CardBody className="flex flex-row items-center gap-3 p-3">
-        {/* Contenedor del icono más pequeño (p-2) y bordes un poco menos redondeados (rounded-lg) */}
-        <div className={`p-2 rounded-lg ${colorStyles[color]}`}>
-          {icon}
-        </div>
-        <div>
-          {/* Texto más pequeño y en mayúsculas para mejor lectura en espacio reducido */}
-          <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">
-            {title}
-          </p>
-          {/* Value con leading-none para quitar altura de línea extra */}
-          <p className="text-lg sm:text-xl font-extrabold text-gray-900 leading-none">
-            {value}
-          </p>
-        </div>
-      </CardBody>
-    </Card>
-  );
-};
 
 export default function GestionCultivosPage(): ReactElement {
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
@@ -71,10 +40,6 @@ export default function GestionCultivosPage(): ReactElement {
   const [estadoFilter, setEstadoFilter] = useState<string>('todos');
   const [subloteEstadoFilter, setSubloteEstadoFilter] = useState<string>('todos');
 
-  // Estados para finalizar cultivo
-  const [showFinalizarModal, setShowFinalizarModal] = useState(false);
-  const [cultivoAFinalizar, setCultivoAFinalizar] = useState<Cultivo | null>(null);
-  const [fechaFin, setFechaFin] = useState(new Date().toISOString().split('T')[0]);
 
   // Estados para registrar cosecha
   const [showCosechaModal, setShowCosechaModal] = useState(false);
@@ -114,7 +79,7 @@ export default function GestionCultivosPage(): ReactElement {
       const allSublotesArrays = await Promise.all(allSublotesPromises);
       const flattenedSublotes = allSublotesArrays.flat();
       setAllSublotes(flattenedSublotes);
-    } catch (error) {
+    } catch {
       toast.error("Error al cargar los datos de cultivos.");
     }
   };
@@ -123,74 +88,12 @@ export default function GestionCultivosPage(): ReactElement {
     fetchData();
   }, []);
 
-  // WebSocket listeners para actualizaciones en tiempo real
+  // Automatic refresh every 30 seconds
   useEffect(() => {
-    // Listener para cambios de estado de lotes
-    const unsubscribeLoteEstado = websocketService.on('lote-estado-actualizado', (data) => {
-      console.log('🎯 Lote actualizado en tiempo real:', data);
-
-      // Actualizar el lote en el estado local
-      setLotes(prevLotes =>
-        prevLotes.map(lote =>
-          lote.id === data.loteId
-            ? { ...lote, estado: data.nuevoEstado }
-            : lote
-        )
-      );
-
-      // Mostrar notificación al usuario
-      toast.success(`Lote actualizado: ${data.nuevoEstado}`, {
-        description: `El lote ha cambiado su estado automáticamente.`,
-        duration: 4000,
-      });
-    });
-
-    // Listener para lotes liberados
-    const unsubscribeLoteLiberado = websocketService.on('lote-liberado', (data) => {
-      console.log('🎯 Lote liberado en tiempo real:', data);
-
-      // Actualizar el lote a "En preparación"
-      setLotes(prevLotes =>
-        prevLotes.map(lote =>
-          lote.id === data.loteId
-            ? { ...lote, estado: 'En preparación' }
-            : lote
-        )
-      );
-
-      // Mostrar notificación especial para liberación
-      toast.success('¡Lote liberado!', {
-        description: `El lote está ahora disponible para nuevos cultivos.`,
-        duration: 5000,
-      });
-    });
-
-    // Listener para cambios de estado de cultivos
-    const unsubscribeCultivoEstado = websocketService.on('cultivo-estado-actualizado', (data) => {
-      console.log('🎯 Cultivo actualizado en tiempo real:', data);
-
-      // Actualizar el cultivo en el estado local
-      setCultivos(prevCultivos =>
-        prevCultivos.map(cultivo =>
-          cultivo.id === data.cultivoId
-            ? { ...cultivo, Estado: data.nuevoEstado }
-            : cultivo
-        )
-      );
-
-      // Mostrar notificación
-      toast.info(`Cultivo actualizado: ${data.nuevoEstado}`, {
-        description: `Estado del cultivo modificado automáticamente.`,
-        duration: 4000,
-      });
-    });
-
-    // Cleanup function
-    return () => {
-      unsubscribeLoteEstado();
-      unsubscribeLoteLiberado();
-      unsubscribeCultivoEstado();
-    };
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Filtrado
@@ -269,27 +172,6 @@ export default function GestionCultivosPage(): ReactElement {
     setEditingCultivo(null);
   };
 
-  // Funciones para finalizar cultivo
-  const handleClickFinalizar = (cultivo: Cultivo) => {
-    setCultivoAFinalizar(cultivo);
-    setFechaFin(new Date().toISOString().split('T')[0]);
-    setShowFinalizarModal(true);
-  };
-
-  const handleConfirmarFinalizar = async () => {
-    if (!cultivoAFinalizar) return;
-
-    try {
-      await finalizarCultivo(cultivoAFinalizar.id, fechaFin);
-      toast.success(`Cultivo "${cultivoAFinalizar.nombre}" finalizado correctamente. Los terrenos han sido liberados.`);
-      setShowFinalizarModal(false);
-      setCultivoAFinalizar(null);
-      await fetchData(); // Recargar datos para ver cambios
-    } catch (error: any) {
-      console.error('Error al finalizar cultivo:', error);
-      toast.error(error.response?.data?.message || "Error al finalizar el cultivo.");
-    }
-  };
 
   // Funciones para registrar cosecha
   const handleClickCosecha = (cultivo: Cultivo) => {
@@ -337,23 +219,28 @@ export default function GestionCultivosPage(): ReactElement {
     // The map uses sublotesConCultivos derived from allSublotes instead
   };
 
-  // Callbacks para actualizaciones en tiempo real desde WebSocket
-  const handleLotesUpdate = (lotesActualizados: Lote[]) => {
-    setLotes(lotesActualizados);
-  };
-
-  const handleSublotesUpdate = (sublotesActualizados: any[]) => {
-    // Para simplificar, recargamos todos los sublotes
-    // En una implementación más avanzada, podríamos actualizar solo los cambiados
-    fetchData();
-  };
+  // Memoizar initialData para evitar re-renders innecesarios
+  const initialData = useMemo(() => {
+    if (editingCultivo) {
+      return {
+        ...editingCultivo,
+        tipoCultivoId: editingCultivo.tipoCultivo?.id,
+        loteId: (editingCultivo as any).lote?.id,
+        subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
+        Fecha_Plantado: editingCultivo.Fecha_Plantado
+          ? new Date(editingCultivo.Fecha_Plantado).toISOString().split('T')[0]
+          : ''
+      };
+    }
+    return {};
+  }, [editingCultivo]);
 
   const handleSave = async (data: any) => {
     const { imageFile, newTipoCultivoName, ...cultivoData } = data;
     const toastId = toast.loading("Guardando cultivo...");
 
     try {
-      let finalCultivoData = { ...cultivoData };
+      const finalCultivoData = { ...cultivoData };
       let cultivoId: number;
 
       if (newTipoCultivoName) {
@@ -396,34 +283,109 @@ export default function GestionCultivosPage(): ReactElement {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-gray-50/30 gap-6 p-6">
-      
-      {/* --- CABECERA Y ESTADÍSTICAS --- */}
-      <div className="flex flex-col gap-6 flex-shrink-0">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Cultivos</h1>
-            <p className="text-gray-500 mt-1">Administra tu producción agrícola de forma eficiente.</p>
-          </div>
-          <div className="flex gap-3">
-             <Button
-               onPress={() => openModal()}
-               color="primary"
-               className="font-semibold shadow-md shadow-blue-500/30"
-               size="lg"
-               startContent={<Plus size={20} strokeWidth={2.5} />}
-             >
-               Nuevo Cultivo
-             </Button>
-           </div>
-        </div>
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Gestión Cultivos</h1>
+        <Button
+          onPress={() => openModal()}
+          color="success"
+          className="font-semibold shadow-md shadow-green-500/30"
+          size="md"
+          startContent={<Plus size={20} strokeWidth={2.5} />}
+        >
+          Nuevo Cultivo
+        </Button>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <CompactStat icon={<Sprout size={24} />} title="Total Cultivos" value={stats.total} color="success" />
-          <CompactStat icon={<CheckCircle size={24} />} title="En crecimiento" value={stats.activos} color="primary" />
-          <CompactStat icon={<Leaf size={24} />} title="Variedades" value={stats.tipos} color="warning" />
-          <CompactStat icon={<Clock size={24} />} title="Total Plantas" value={new Intl.NumberFormat('es-CO').format(stats.totalPlantas)} color="danger" />
-        </div>
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Cultivos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">registrados</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaThList className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.total * 10, 100)}
+              className="mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de cultivos totales: ${stats.total}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Activos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activos}</p>
+                <p className="text-xs text-gray-500">en crecimiento</p>
+              </div>
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.activos / Math.max(stats.total, 1)) * 100}
+              className="mt-3"
+              color="warning"
+              size="sm"
+              aria-label={`Progreso de cultivos activos: ${stats.activos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Variedades</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.tipos}</p>
+                <p className="text-xs text-gray-500">tipos diferentes</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <FaLeaf className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.tipos * 20, 100)}
+              className="mt-3"
+              color="primary"
+              size="sm"
+              aria-label={`Progreso de variedades: ${stats.tipos}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Plantas</p>
+                <p className="text-2xl font-bold text-gray-900">{new Intl.NumberFormat('es-CO').format(stats.totalPlantas)}</p>
+                <p className="text-xs text-gray-500">plantadas</p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <FaTools className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.totalPlantas / 10, 100)}
+              className="mt-3"
+              color="danger"
+              size="sm"
+              aria-label={`Progreso de plantas totales: ${stats.totalPlantas}`}
+            />
+          </CardBody>
+        </Card>
       </div>
 
       {/* --- CONTENEDOR PRINCIPAL TIPO "TARJETA FLOTANTE" --- */}
@@ -598,11 +560,7 @@ export default function GestionCultivosPage(): ReactElement {
                             <div className="flex flex-col items-end">
                               <span className="text-xs text-gray-400 font-medium uppercase">Sembrado</span>
                               <span className="text-sm font-bold text-gray-800">
-                                {(() => {
-                                  const [year, month, day] = cultivo.Fecha_Plantado.split('-');
-                                  const date = new Date(Number(year), Number(month) - 1, Number(day));
-                                  return date.toLocaleDateString('es-CO', { month: 'short', day: 'numeric' });
-                                })()}
+                                {new Date(cultivo.Fecha_Plantado).toLocaleDateString('es-CO', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
                               </span>
                             </div>
                           </div>
@@ -636,22 +594,6 @@ export default function GestionCultivosPage(): ReactElement {
                             Trazabilidad
                           </Button>
 
-                          {/* Botón Finalizar Cultivo (Solo si no está finalizado) */}
-                          {cultivo.Estado !== 'Finalizado' && (
-                            <Tooltip content="Finalizar cultivo (liberar terreno)">
-                              <Button
-                                isIconOnly
-                                className="bg-orange-100 text-orange-600 hover:bg-orange-200 min-w-9 w-9 h-9"
-                                size="sm"
-                                variant="solid"
-                                radius="md"
-                                onPress={() => handleClickFinalizar(cultivo)}
-                                aria-label="Finalizar cultivo"
-                              >
-                                <CheckCircle size={16} />
-                              </Button>
-                            </Tooltip>
-                          )}
   
                           {/* Botón Registrar Cosecha (Solo si no está finalizado) */}
                           {cultivo.Estado !== 'Finalizado' && (
@@ -715,13 +657,11 @@ export default function GestionCultivosPage(): ReactElement {
                   sublotesConCultivos={sublotesConCultivos}
                   selectedSubloteCultivo={selectedSubloteCultivo}
                   onSelectSubloteCultivo={setSelectedSubloteCultivo}
-                  onLotesUpdate={handleLotesUpdate}
-                  onSublotesUpdate={handleSublotesUpdate}
                   customInfo={(lote) => (
                     <div className="p-3 min-w-[180px]">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-bold text-gray-800">{lote.nombre}</h4>
-                        <Chip size="sm" color={lote.estado === 'En preparación' ? 'success' : lote.estado === 'En cultivación' ? 'warning' : 'default'} variant="flat" className="h-5 text-[10px]">
+                        <Chip size="sm" color={lote.estado === 'Activo' ? 'success' : 'default'} variant="flat" className="h-5 text-[10px]">
                           {lote.estado}
                         </Chip>
                       </div>
@@ -773,17 +713,7 @@ export default function GestionCultivosPage(): ReactElement {
           </ModalHeader>
           <ModalBody>
             <CultivoForm
-              initialData={editingCultivo ? {
-                ...editingCultivo,
-                // Extraemos el ID del tipo de cultivo
-                tipoCultivoId: editingCultivo.tipoCultivo?.id,
-                // Extraemos el ID del lote (usando casting a any si TS se queja, o accediendo directo si la interfaz lo permite)
-                loteId: (editingCultivo as any).lote?.id,
-                // Extraemos el ID del sublote (asumiendo que puede estar en 'sublotes' array o 'sublote' objeto)
-                subloteId: (editingCultivo as any).sublotes?.[0]?.id || (editingCultivo as any).sublote?.id,
-                // Formateamos la fecha a YYYY-MM-DD para el input type="date"
-                Fecha_Plantado: editingCultivo.Fecha_Plantado
-              } : {}}
+              initialData={initialData}
               tiposCultivo={tiposCultivo}
               cultivos={cultivos}
               onSave={handleSave}
@@ -793,57 +723,6 @@ export default function GestionCultivosPage(): ReactElement {
         </ModalContent>
       </Modal>
 
-      {/* Modal de Finalizar Cultivo */}
-      <Modal
-        isOpen={showFinalizarModal}
-        onOpenChange={setShowFinalizarModal}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">Finalizar Cultivo</h3>
-              <p className="text-sm text-gray-600">Cosecha terminada - Liberar terrenos</p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <p className="text-sm text-gray-600 mb-4">
-              Vas a finalizar el cultivo <strong>"{cultivoAFinalizar?.nombre}"</strong>.
-              Esto liberará automáticamente los lotes y sublotes asociados para que puedan ser reutilizados.
-            </p>
-            <Input
-              type="date"
-              label="Fecha de Finalización"
-              value={fechaFin}
-              onValueChange={setFechaFin}
-              isRequired
-              className="mb-2"
-            />
-            <p className="text-xs text-gray-500">
-              Los terrenos quedarán disponibles para nuevos cultivos después de la finalización.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => setShowFinalizarModal(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              color="success"
-              className="text-white"
-              onPress={handleConfirmarFinalizar}
-            >
-              Confirmar y Liberar Lotes
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
 
       {/* Modal de Registrar Cosecha */}
       <Modal

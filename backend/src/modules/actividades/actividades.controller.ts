@@ -333,11 +333,13 @@ export class ActividadesController {
   }
 
   // ✅ Asignar actividad a aprendices
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   @Post('asignar')
   asignarActividad(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: any, // Recibir como any para procesar FormData
+    @Req() req,
   ) {
     // Convertir manualmente los tipos desde FormData
     const dto = new AsignarActividadDto();
@@ -386,7 +388,8 @@ export class ActividadesController {
     const archivoInicial = archivos.length > 0 ? JSON.stringify(archivos) : undefined;
     dto.archivoInicial = archivoInicial;
 
-    return this.actividadesService.asignarActividad(dto);
+    const usuarioIdentificacion = req.user?.identificacion;
+    return this.actividadesService.asignarActividad(dto, usuarioIdentificacion);
   }
 
 

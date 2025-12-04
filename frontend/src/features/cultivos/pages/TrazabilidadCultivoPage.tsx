@@ -23,7 +23,7 @@ export default function TrazabilidadCultivoPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Obtener la fecha de plantado para establecer el mínimo en los inputs de fecha
-  const fechaPlantado = data?.cultivo?.Fecha_Plantado || '';
+  const fechaPlantado = data?.cultivo?.Fecha_Plantado ? new Date(data.cultivo.Fecha_Plantado).toISOString().split('T')[0] : '';
 
   useEffect(() => {
     if (!cultivoId) return;
@@ -99,26 +99,24 @@ export default function TrazabilidadCultivoPage() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline mb-4">
-        <ArrowLeft size={18} />
-        Volver a Gestión de Cultivos
-      </Link>
-      
-      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Trazabilidad del Cultivo</h1>
-            <p className="text-xl font-semibold text-green-700">{data.cultivo.nombre}</p>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FileText size={18} />
-            Generar PDF de Trazabilidad
-          </button>
-        </div>
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Trazabilidad del Cultivo</h1>
+      </div>
+
+      {/* Navigation and Actions */}
+      <div className="flex justify-between items-center">
+        <Link to="/gestion-cultivos" className="flex items-center gap-2 text-green-600 hover:underline font-semibold">
+          <ArrowLeft size={18} />
+          Volver a Gestión de Cultivos
+        </Link>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+        >
+          <FileText size={18} />
+          Generar PDF de Trazabilidad
+        </button>
       </div>
 
       <div className="relative pl-8">
@@ -156,7 +154,7 @@ export default function TrazabilidadCultivoPage() {
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              min={fechaPlantado}
+              min={fechaInicio || fechaPlantado}
             />
           </ModalBody>
           <ModalFooter>

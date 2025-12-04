@@ -233,14 +233,15 @@ export default function GestionProduccion(): ReactElement {
   // (Removed unused handler for estado changes on sublotes)
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
+    <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Gestión Sublotes</h1>
+      </div>
+
       {!loteSeleccionado ? (
         // Vista de Lotes
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Lotes y SubLotes</h1>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {lotes.map((lote) => (
               <Card
                 key={lote.id}

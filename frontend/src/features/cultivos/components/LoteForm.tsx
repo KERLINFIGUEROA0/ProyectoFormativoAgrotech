@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement, useState } from 'react';
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Textarea } from "@heroui/react";
 import { toast } from "sonner";
 import type { Lote, LoteData, Coordenada, CoordenadasGeo } from '../interfaces/cultivos';
 import DrawMapModal from '../../../components/DrawMapModal';
@@ -138,11 +138,12 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
             Dibujar en Mapa
           </Button>
         </div>
-        <textarea
+        <Textarea
           value={formData.coordenadasTexto}
           onChange={(e) => setFormData(prev => ({ ...prev, coordenadasTexto: e.target.value }))}
           placeholder="Pega aquí las coordenadas, una por línea. Formato: longitud, latitud&#10;Ej: -76.091171, 1.8928609"
-          className="w-full h-32 border border-gray-300 rounded-md p-2 mt-1 text-sm"
+          minRows={6}
+          maxRows={10}
         />
         <p className="text-xs text-gray-500 mt-1">
           Usa las herramienta de Dibujar en mi Mapa para crear tu lote.
@@ -150,18 +151,19 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <button
+        <Button
           onClick={onCancel}
-          className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+          color="default"
+          variant="light"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSubmit}
-          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+          color="primary"
         >
           {initialData?.id ? 'Actualizar Lote' : 'Registrar Lote'}
-        </button>
+        </Button>
       </div>
 
       <DrawMapModal

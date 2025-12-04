@@ -94,7 +94,7 @@ export class PdfService {
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada ?? 0,
       unidad: am.material.medidasDeContenido || 'unidades',
-      costo: am.material.precio ? (am.cantidadUsada ?? 0) * am.material.precio : 0
+      costo: Number(am.costo) || 0
     })) || []);
 
     // Procesar producciones y ventas
@@ -121,11 +121,7 @@ export class PdfService {
       cultivo: {
         nombre: cultivo.nombre,
         tipoCultivo: cultivo.tipoCultivo?.nombre || '',
-        fechaPlantado: cultivo.Fecha_Plantado ? (() => {
-          const [year, month, day] = cultivo.Fecha_Plantado.split('-');
-          const date = new Date(Number(year), Number(month) - 1, Number(day));
-          return date.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-        })() : '',
+        fechaPlantado: cultivo.Fecha_Plantado ? new Date(cultivo.Fecha_Plantado).toISOString().split('T')[0] : '',
         estado: cultivo.Estado || '',
         lote: cultivo.lote?.nombre || '',
         cantidad: cultivo.cantidad || 0,
@@ -145,15 +141,15 @@ export class PdfService {
     const ingresos = data.producciones.reduce((sum, p) => sum + parseFloat(p.totalVentas), 0);
 
     // Calcular costos de mano de obra
-    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((act.horas || 0) * (act.tarifaHora || 0)), 0);
+    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((Number(act.horas) || 0) * (Number(act.tarifaHora) || 0)), 0);
 
     // Calcular costos de materiales
     const materialesCost = data.fullActividades.reduce((sum, act) => {
-      return sum + (act.actividadMaterial?.reduce((subSum, am) => subSum + (am.cantidadUsada * (am.material?.precio || 0)), 0) || 0);
+      return sum + (act.actividadMaterial?.reduce((subSum, am) => subSum + (Number(am.costo) || 0), 0) || 0);
     }, 0);
 
     // Calcular costos de gastos directos
-    const directGastosCost = data.gastos.reduce((sum, g) => sum + (g.monto || 0), 0);
+    const directGastosCost = data.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
 
     // Calcular costos totales
     const costos = laborCost + materialesCost + directGastosCost;
@@ -171,24 +167,38 @@ export class PdfService {
 
     // Agregar gastos de materiales
     data.recursos.forEach(recurso => {
-      const categoria = recurso.descripcion.split(' ')[0] || 'Otros'; // Primera palabra como categoría
+      const categoria = 'Materiales'; // Agrupar todos los materiales bajo una categoría común
       if (!gastosPorCategoriaMap.has(categoria)) {
         gastosPorCategoriaMap.set(categoria, 0);
       }
-      gastosPorCategoriaMap.set(categoria, gastosPorCategoriaMap.get(categoria) + recurso.costo);
+      const current = gastosPorCategoriaMap.get(categoria);
+      gastosPorCategoriaMap.set(categoria, current + recurso.costo);
     });
 
-    // Agregar gastos directos
-    if (directGastosCost > 0) {
-      gastosPorCategoriaMap.set('Gastos Directos', directGastosCost);
-    }
+    // Agregar gastos directos categorizados por descripción
+    data.gastos.forEach(gasto => {
+      let categoria = 'Otros Gastos';
+      const desc = gasto.descripcion.toLowerCase();
+      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador')) {
+        categoria = 'Mano de obra';
+      } else {
+        categoria = gasto.descripcion.split(' ')[0] || 'Otros Gastos';
+      }
+      if (!gastosPorCategoriaMap.has(categoria)) {
+        gastosPorCategoriaMap.set(categoria, 0);
+      }
+      const current = gastosPorCategoriaMap.get(categoria);
+      gastosPorCategoriaMap.set(categoria, current + Number(gasto.monto));
+    });
 
     const totalGastos = costos;
-    const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => ({
-      categoria,
-      total: total.toFixed(2),
-      porcentaje: totalGastos > 0 ? ((total / totalGastos) * 100).toFixed(1) : '0'
-    }));
+    const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => {
+      return {
+        categoria,
+        total: total.toFixed(2),
+        porcentaje: totalGastos > 0 ? ((total / totalGastos) * 100).toFixed(1) : '0'
+      };
+    });
 
     return {
       costos,
@@ -209,9 +219,12 @@ export class PdfService {
       throw new BadRequestException('La fecha de plantado del cultivo es requerida y no puede ser null');
     }
     if (fechaInicio) {
-      const fechaInicioFormatted = new Date(fechaInicio).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-      const fechaPlantadoFormatted = new Date(cultivo.Fecha_Plantado).toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' });
-      if (fechaInicioFormatted < fechaPlantadoFormatted) {
+      // Comparar solo las fechas YYYY-MM-DD, ajustando a mediodía para evitar problemas de zona horaria
+      const fechaInicioDate = new Date(fechaInicio + 'T12:00:00.000Z');
+      const fechaPlantadoDate = new Date(cultivo.Fecha_Plantado);
+      const fechaInicioStr = fechaInicioDate.toISOString().split('T')[0];
+      const fechaPlantadoStr = fechaPlantadoDate.toISOString().split('T')[0];
+      if (fechaInicioStr < fechaPlantadoStr) {
         throw new BadRequestException('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
       }
     }
@@ -268,21 +281,24 @@ export class PdfService {
         <td>${act.fecha}</td>
         <td>${act.titulo}</td>
         <td>${act.estado}</td>
-        <td>${act.materiales.map(m => `${m.nombre} (${m.cantidad} ${m.unidad})`).join(', ')}</td>
+        <td>${act.materiales.map(m => `${m.nombre} (${Number(m.cantidad).toFixed(0)} ${m.unidad})`).join(', ')}</td>
       </tr>
     `).join('');
     html = html.replace('{{#each actividades}}{{/each}}', actividadesHtml);
 
     // Para recursos
-    const recursosHtml = data.recursos.map(rec => `
+    const recursosHtml = data.recursos.map(rec => {
+      const cantidadNum = parseFloat(rec.cantidad);
+      const formattedCantidad = Number.isInteger(cantidadNum) ? cantidadNum.toString() : cantidadNum.toFixed(2);
+      return `
       <tr>
         <td>${rec.fecha}</td>
         <td>${rec.descripcion}</td>
-        <td>${rec.cantidad}</td>
-        <td>${rec.unidad}</td>
+        <td>${formattedCantidad} ${rec.unidad}</td>
         <td>${Number(rec.costo).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
     html = html.replace('{{#each recursos}}{{/each}}', recursosHtml);
 
     // Para producciones
@@ -315,14 +331,15 @@ export class PdfService {
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.evaluate((title) => { document.title = title; }, `Reporte Cultivo - ${data.cultivo.nombre}`);
 
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: 'Letter',
       printBackground: true,
       margin: {
         top: '20px',
         right: '20px',
-        bottom: '20px',
+        bottom: '40px',
         left: '20px'
       }
     });

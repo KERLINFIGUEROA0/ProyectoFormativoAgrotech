@@ -211,3 +211,25 @@ export const obtenerPagosUsuario = async (userId: number) => {
   const response = await api.get(`/pagos/usuario/${userId}`);
   return response.data;
 };
+
+/**
+ * Obtiene todos los pagos (para instructores y administradores).
+ */
+export const obtenerTodosPagos = async () => {
+  const response = await api.get('/pagos');
+  return response.data;
+};
+
+/**
+ * Actualiza un pago (solo para instructores y administradores).
+ */
+export const actualizarPago = async (id: number, updateData: {
+  monto?: number;
+  horasTrabajadas?: number;
+  tarifaHora?: number;
+  descripcion?: string;
+  fechaPago?: string;
+}) => {
+  const response = await api.put(`/pagos/${id}`, updateData);
+  return response.data;
+};
