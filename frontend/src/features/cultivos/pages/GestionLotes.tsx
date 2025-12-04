@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
 import { Plus } from 'lucide-react';
 import { obtenerLotes, crearLote, actualizarLote, obtenerEstadisticasLotes } from '../api/lotesApi';
-import FormModal from '../../../components/FormModal';
+import { Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
 import type { Lote, LoteData } from '../interfaces/cultivos';
@@ -353,14 +353,29 @@ const handleViewLocation = (lote: Lote) => {
         </div>
       </div>
 
-      <FormModal
+      <Modal
         isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editingLote ? 'Editar Lote' : 'Registrar Lote'}
-        icon={<FaLeaf className="h-6 w-6 text-green-600" />}
+        onOpenChange={closeModal}
+        size="3xl"
+        scrollBehavior="inside"
       >
-        <LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} />
-      </FormModal>
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <FaLeaf className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {editingLote ? 'Editar Lote' : 'Registrar Lote'}
+              </h3>
+              <p className="text-sm text-gray-600">Complete la información requerida</p>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

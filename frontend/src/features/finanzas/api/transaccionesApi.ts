@@ -14,7 +14,7 @@ export const obtenerTransacciones = async () => {
     id: v.id,
     tipo: 'ingreso',
     cantidad: v.cantidad || 1,
-    unidad: v.unidadMedida || 'Unid', // Mapeo de ventas si aplica
+    unidad: v.unidadMedida || 'kg', // Las cosechas se miden en kg
     precioUnitario: v.precioUnitario || v.monto,
   }));
 
