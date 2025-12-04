@@ -189,27 +189,14 @@ export class PdfService {
     // Agrupar gastos por categoría
     const gastosPorCategoriaMap = new Map();
 
-    // Agregar mano de obra
-    if (laborCost > 0) {
-      gastosPorCategoriaMap.set('Mano de obra', laborCost);
-    }
-
-    // Agregar gastos de materiales
-    data.recursos.forEach(recurso => {
-      const categoria = 'Materiales'; // Agrupar todos los materiales bajo una categoría común
-      if (!gastosPorCategoriaMap.has(categoria)) {
-        gastosPorCategoriaMap.set(categoria, 0);
-      }
-      const current = gastosPorCategoriaMap.get(categoria);
-      gastosPorCategoriaMap.set(categoria, current + recurso.costo);
-    });
-
-    // Agregar gastos directos categorizados por descripción
+    // Agregar todos los gastos directos categorizados por descripción
     data.gastos.forEach(gasto => {
       let categoria = 'Otros Gastos';
       const desc = gasto.descripcion.toLowerCase();
-      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador')) {
+      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador') || desc.startsWith('pago a')) {
         categoria = 'Mano de obra';
+      } else if (desc.startsWith('consumo')) {
+        categoria = 'Materiales';
       } else {
         categoria = gasto.descripcion.split(' ')[0] || 'Otros Gastos';
       }
@@ -220,7 +207,7 @@ export class PdfService {
       gastosPorCategoriaMap.set(categoria, current + Number(gasto.monto));
     });
 
-    const totalGastos = costos;
+    const totalGastos = Array.from(gastosPorCategoriaMap.values()).reduce((sum, val) => sum + val, 0);
     const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => {
       return {
         categoria,
@@ -230,11 +217,11 @@ export class PdfService {
     });
 
     return {
-      costos,
+      costos: totalGastos,
       ingresos,
-      rentabilidad,
+      rentabilidad: ingresos - totalGastos,
       gastosPorCategoria,
-      rentabilidadClass: rentabilidad >= 0 ? 'positive' : 'negative'
+      rentabilidadClass: (ingresos - totalGastos) >= 0 ? 'positive' : 'negative'
     };
   }
 
