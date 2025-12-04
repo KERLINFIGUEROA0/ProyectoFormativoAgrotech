@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Server, X, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
+import { Input, Button, Select, SelectItem, Textarea } from "@heroui/react";
 import type { Broker, Lote } from '../interfaces/iot';
 import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
@@ -16,8 +17,9 @@ interface BrokerFormModalProps {
 const defaultTopicsConfig = [
   { key: 'sensores/temperatura', label: 'Temperatura' },
   { key: 'sensores/humedad', label: 'Humedad Aire' },
-  { key: 'sensores/luz', label: 'Luminosidad (Lux)' },
-  { key: 'sensores/humedad_suelo', label: 'Humedad Suelo' }
+  { key: 'sensores/luz', label: 'Luminosidad' },
+  { key: 'sensores/humedad_suelo', label: 'Humedad Suelo' },
+  { key: 'sensores/bomba', label: 'Bomba' }
 ];
 
 export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers }: BrokerFormModalProps) {
@@ -29,7 +31,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     'sensores/temperatura': true,
     'sensores/humedad': true,
     'sensores/luz': true,
-    'sensores/humedad_suelo': true
+    'sensores/humedad_suelo': true,
+    'sensores/bomba': true
   });
 
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -276,92 +279,83 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                   Información del Broker
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
-                    <input
-                      type="text"
-                      value={formData.nombre}
-                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                      placeholder="Nombre del broker"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Protocolo</label>
-                    <select
-                      value={formData.protocolo}
-                      onChange={(e) => setFormData({ ...formData, protocolo: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                    >
-                      <option value="mqtt://">mqtt://</option>
-                      <option value="mqtts://">mqtts://</option>
-                      <option value="ws://">ws://</option>
-                      <option value="wss://">wss://</option>
-                    </select>
-                  </div>
+                  <Input
+                    label="Nombre"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    placeholder="Nombre del broker"
+                    fullWidth
+                    required
+                  />
+                  <Select
+                    label="Protocolo"
+                    selectedKeys={[formData.protocolo]}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys);
+                      setFormData({ ...formData, protocolo: String(selected[0]) });
+                    }}
+                    fullWidth
+                  >
+                    <SelectItem key="mqtt://">mqtt://</SelectItem>
+                    <SelectItem key="mqtts://">mqtts://</SelectItem>
+                    <SelectItem key="ws://">ws://</SelectItem>
+                    <SelectItem key="wss://">wss://</SelectItem>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Host</label>
-                    <input
-                      type="text"
-                      value={formData.host}
-                      onChange={(e) => setFormData({ ...formData, host: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                      placeholder="ej: test.mosquitto.org"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Puerto</label>
-                    <input
-                      type="number"
-                      value={formData.puerto}
-                      onChange={(e) => setFormData({ ...formData, puerto: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                      placeholder="1883"
-                      required
-                    />
-                  </div>
+                  <Input
+                    label="Host"
+                    value={formData.host}
+                    onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                    placeholder="ej: test.mosquitto.org"
+                    fullWidth
+                    required
+                  />
+                  <Input
+                    label="Puerto"
+                    type="number"
+                    value={formData.puerto}
+                    onChange={(e) => setFormData({ ...formData, puerto: e.target.value })}
+                    placeholder="1883"
+                    fullWidth
+                    required
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Lote *</label>
-                    <select
-                      value={formData.loteId}
-                      onChange={(e) => setFormData({ ...formData, loteId: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                      required
-                    >
-                      <option value="">Seleccionar lote</option>
-                      {lotes.map((lote) => (
-                        <option key={lote.id} value={lote.id}>{lote.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Prefijo Global</label>
-                    <input
-                      type="text"
-                      value={formData.prefijoTopicos}
-                      onChange={(e) => setFormData({ ...formData, prefijoTopicos: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                      placeholder="ej: agrotech"
-                    />
-                  </div>
+                  <Select
+                    label="Lote *"
+                    selectedKeys={formData.loteId ? [formData.loteId] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys);
+                      setFormData({ ...formData, loteId: String(selected[0]) });
+                    }}
+                    placeholder="Seleccionar lote"
+                    fullWidth
+                    required
+                  >
+                    {lotes.map((lote) => (
+                      <SelectItem key={String(lote.id)}>{lote.nombre}</SelectItem>
+                    ))}
+                  </Select>
+                  <Input
+                    label="Prefijo Global"
+                    value={formData.prefijoTopicos}
+                    onChange={(e) => setFormData({ ...formData, prefijoTopicos: e.target.value })}
+                    placeholder="ej: agrotech"
+                    fullWidth
+                  />
                   <div className="flex items-end">
-                    <button
-                      type="button"
+                    <Button
                       onClick={handleTestConnection}
                       disabled={isTestingConnection || !formData.host || !formData.puerto || !formData.loteId}
-                      className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md text-sm transition-colors flex items-center justify-center gap-1"
+                      color="primary"
+                      fullWidth
+                      startContent={<Wifi size={14} />}
                     >
-                      <Wifi size={14} />
                       {isTestingConnection ? 'Probando...' : 'Probar Conexión'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -381,7 +375,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                         const isPump = dt.key.includes('bomba');
 
                         return (
-                          <label key={dt.key} className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${defaultTopicsEnabled[dt.key] ? (isPump ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200') : 'hover:bg-gray-50'}`}>
+                          <label key={dt.key} className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${defaultTopicsEnabled[dt.key] ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'}`}>
                             <input
                               type="checkbox"
                               checked={defaultTopicsEnabled[dt.key]}
@@ -389,8 +383,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                               className="mr-3 h-4 w-4 text-green-600 rounded focus:ring-green-500"
                             />
                             <div className="flex flex-col">
-                              <span className={`text-sm font-medium ${isPump ? 'text-blue-800' : 'text-gray-800'}`}>
-                                {dt.label} {isPump && '💧'}
+                              <span className="text-sm font-medium text-gray-800">
+                                {dt.label}
                               </span>
                               <span className="text-xs text-gray-400 break-all">{fullTopic}</span>
                             </div>
@@ -409,70 +403,85 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                           <div className="md:col-span-2">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Tópico (se añade al prefijo global)</label>
-                            <div className="flex">
-                              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-500 text-sm">
-                                {normalizedPrefix ? `${normalizedPrefix}/` : ''}
-                              </span>
-                              <input
-                                type="text"
-                                value={topico.topic}
-                                onChange={(e) => {
-                                  const newTopicos = [...topicosAdicionales];
-                                  newTopicos[index] = { ...topico, topic: e.target.value };
-                                  setTopicosAdicionales(newTopicos);
-                                }}
-                                className="flex-1 w-full border border-gray-300 rounded-r-md px-2 py-1.5 text-sm"
-                                placeholder="ej: mi_sensor_extra"
-                              />
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 relative">
+                                <input
+                                  type="text"
+                                  value={topico.topic}
+                                  onChange={(e) => {
+                                    const newTopicos = [...topicosAdicionales];
+                                    newTopicos[index] = { ...topico, topic: e.target.value };
+                                    setTopicosAdicionales(newTopicos);
+                                  }}
+                                  placeholder="ej: mi_sensor_extra"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  style={{
+                                    paddingLeft: normalizedPrefix ? `${(normalizedPrefix.length * 8) + 24}px` : '12px'
+                                  }}
+                                />
+                                {normalizedPrefix && (
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
+                                    {normalizedPrefix}/
+                                  </span>
+                                )}
+                              </div>
                               {topicosAdicionales.length > 1 && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => setTopicosAdicionales(topicosAdicionales.filter((_, i) => i !== index))}
-                                  className="ml-2 px-2 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                                  color="danger"
+                                  size="sm"
+                                  variant="solid"
                                 >
                                   ×
-                                </button>
+                                </Button>
                               )}
                             </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Tópico completo: <code className="bg-gray-100 px-1 rounded text-xs">
+                                {normalizedPrefix ? `${normalizedPrefix}/${topico.topic || 'mi_sensor_extra'}` : topico.topic || 'mi_sensor_extra'}
+                              </code>
+                            </p>
                           </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Valor Mínimo</label>
-                            <input
-                              type="number"
-                              value={topico.min || ''}
-                              onChange={(e) => {
-                                const newTopicos = [...topicosAdicionales];
-                                newTopicos[index] = { ...topico, min: e.target.value ? Number(e.target.value) : undefined };
-                                setTopicosAdicionales(newTopicos);
-                              }}
-                              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-                              placeholder="ej: 0"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Valor Máximo</label>
-                            <input
-                              type="number"
-                              value={topico.max || ''}
-                              onChange={(e) => {
-                                const newTopicos = [...topicosAdicionales];
-                                newTopicos[index] = { ...topico, max: e.target.value ? Number(e.target.value) : undefined };
-                                setTopicosAdicionales(newTopicos);
-                              }}
-                              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-                              placeholder="ej: 100"
-                            />
-                          </div>
+                          <Input
+                            label="Valor Mínimo"
+                            type="number"
+                            value={String(topico.min || '')}
+                            onChange={(e) => {
+                              const newTopicos = [...topicosAdicionales];
+                              newTopicos[index] = { ...topico, min: e.target.value ? Number(e.target.value) : undefined };
+                              setTopicosAdicionales(newTopicos);
+                            }}
+                            placeholder="ej: 0"
+                            fullWidth
+                            size="sm"
+                          />
+                          <Input
+                            label="Valor Máximo"
+                            type="number"
+                            value={String(topico.max || '')}
+                            onChange={(e) => {
+                              const newTopicos = [...topicosAdicionales];
+                              newTopicos[index] = { ...topico, max: e.target.value ? Number(e.target.value) : undefined };
+                              setTopicosAdicionales(newTopicos);
+                            }}
+                            placeholder="ej: 100"
+                            fullWidth
+                            size="sm"
+                          />
                         </div>
                       </div>
                     ))}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setTopicosAdicionales([...topicosAdicionales, {topic: '', min: undefined, max: undefined}])}
-                      className="text-sm text-green-700 hover:text-green-900 font-medium flex items-center gap-1"
+                      color="success"
+                      variant="light"
+                      size="sm"
+                      startContent="+"
                     >
-                      + Añadir otro tópico
-                    </button>
+                      Añadir otro tópico
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -484,37 +493,38 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                   Autenticación (Opcional)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
+                  <Input
+                    label="Usuario"
                     value={formData.usuario}
                     onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
                     placeholder="Usuario"
+                    fullWidth
                   />
-                  <input
+                  <Input
+                    label="Contraseña"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
                     placeholder="Contraseña"
+                    fullWidth
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
+                <Button
                   onClick={onClose}
-                  className="px-6 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"
+                  color="default"
+                  variant="light"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm"
+                  color="primary"
                 >
                   {broker ? 'Actualizar' : 'Guardar y Configurar'}
-                </button>
+                </Button>
               </div>
             </div>
           </form>

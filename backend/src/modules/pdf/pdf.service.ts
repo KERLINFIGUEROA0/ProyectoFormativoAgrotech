@@ -3,6 +3,7 @@ import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Venta } from '../ventas/entities/venta.entity';
+import { dateColumnTransformer } from '../../common/utils/date-column.transformer';
 
 // Función helper para convertir imagen a base64
 const getImageAsBase64 = (imagePath: string): string => {
@@ -18,6 +19,16 @@ const getImageAsBase64 = (imagePath: string): string => {
 
 @Injectable()
 export class PdfService {
+  // Helper function to handle dates consistently using the transformer logic
+  private transformDateForDisplay(date: string | Date | null): Date | null {
+    return dateColumnTransformer.from(date);
+  }
+
+  // Helper function to format dates for display in Bogota time zone
+  private formatDateForDisplay(date: Date | null): string {
+    if (!date) return '';
+    return date.toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+  }
   async generarFacturaPdf(venta: Venta): Promise<string> {
     
     // --- INICIO DE LA CORRECCIÓN ---
@@ -269,21 +280,21 @@ export class PdfService {
         }
         else if (s.includes('luz') || s.includes('radiacion')) {
             // Usar umbrales configurados o valores por defecto
-            const umbralCriticoBajo = umbralMin || 200;
-            const umbralAlertaAlto = umbralMax || 800;
+            const umbralCriticoBajo = umbralMin || 15000;
+            const umbralAlertaAlto = umbralMax || 75000;
 
             if (valorEvaluar === 0) {
                  mensaje = `⚠️ Aviso: Sensor marca 0.0${unidad} (Oscuridad total o fallo).`;
                  accion = "Verificar si es de noche o revisar sensor.";
                  nivel = "alerta";
             } else if (valorEvaluar < umbralCriticoBajo) {
-                mensaje = `⚠️ Baja luminosidad actual (${valorEvaluar}${unidad}).`;
-                accion = "Revisar sombras u obstrucciones.";
+                mensaje = `⚠️ ALERTA: Insuficiente luz (${Math.floor(valorEvaluar)}${unidad} < ${Math.floor(umbralCriticoBajo)}${unidad}). Riesgo de crecimiento deficiente.`;
+                accion = "URGENTE: Mejorar iluminación o revisar ubicación del cultivo.";
                 nivel = "alerta";
             } else if (valorEvaluar > umbralAlertaAlto) {
-                mensaje = `⚠️ Exceso de radiación (${valorEvaluar}${unidad}).`;
-                accion = "Evaluar protección solar.";
-                nivel = "alerta";
+                mensaje = `🔴 PELIGRO: Exceso de radiación solar (${Math.floor(valorEvaluar)}${unidad} > ${Math.floor(umbralAlertaAlto)}${unidad}). Estrés térmico y quemaduras.`;
+                accion = "INMEDIATO: Aplicar protección solar o sombreo urgente.";
+                nivel = "critico";
             } else {
                 mensaje = "✅ Estado actual: Niveles de luz adecuados.";
                 accion = "Sin acciones.";
@@ -571,7 +582,7 @@ export class PdfService {
            <div style="flex: 1;">
              <h1 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 28px; font-weight: bold;">REPORTE DE TRAZABILIDAD - AGROTECH</h1>
              <p style="margin: 0 0 8px 0; color: #2E7D32; font-size: 16px; font-weight: 600;">Lote: ${data.lote} | Rango: ${data.rango}</p>
-             <p style="margin: 0; color: #666; font-size: 12px;">Cultivos: ${data.cultivos.length} | Generado: ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</p>
+             <p style="margin: 0; color: #666; font-size: 12px;">Cultivos: ${data.cultivos.length} | Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
            </div>
            ${logoBase64 ? `
            <div style="flex-shrink: 0; margin-left: 20px;">
@@ -663,7 +674,7 @@ export class PdfService {
                     <tbody>
                         ${c.cosechas && c.cosechas.length > 0 ? c.cosechas.map(co => `
                             <tr>
-                                <td>${new Date(co.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
+                                <td>${this.formatDateForDisplay(this.transformDateForDisplay(co.fecha))}</td>
                                 <td class="text-right ${co.cantidadRestante > 0 ? 'warning' : ''}">${co.cantidadRestante.toLocaleString()} Kg</td>
                                 <td class="text-center">
                                     <span class="${co.estado === 'Pendiente' ? 'status-pending' : 'status-completed'}">
@@ -706,7 +717,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleMateriales.map(m => `
                                     <tr>
-                                        <td>${new Date(m.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(m.fecha))}</td>
                                         <td>${m.nombre}</td>
                                         <td class="text-right">${m.cantidad} ${m.unidad || 'unidad'}</td>
                                         <td class="text-right">${formatCurrency(m.precioUnitario)} <span style="font-size:8px; color:#888;">/${m.unidad || 'ud'}</span></td>
@@ -748,7 +759,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleVentas.map(v => `
                                     <tr>
-                                        <td>${new Date(v.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(v.fecha))}</td>
                                         <td>${v.descripcion}</td>
                                         <td class="text-right">${v.cantidadVendida} Kg</td>
                                         <td class="text-right">${formatCurrency(Number(v.precioUnitario))}</td>
@@ -825,7 +836,7 @@ export class PdfService {
                     <tbody>
                         ${c.actividadesLog.map(a => `
                             <tr>
-                                <td>${new Date(a.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
+                                <td>${this.formatDateForDisplay(this.transformDateForDisplay(a.fecha))}</td>
                                 <td>${a.tarea}</td>
                                 <td>${a.responsable}</td>
                                 <td class="text-center">${a.horasTrabajadas}h</td>
@@ -864,7 +875,7 @@ export class PdfService {
             if (info.ultimoRegistro) {
                 ultimoRegistro = info.ultimoRegistro;
                 ultimoValor = Number(info.ultimoRegistro.valor);
-                fechaUltimo = new Date(info.ultimoRegistro.fecha).toLocaleString('es-ES', { timeZone: 'America/Bogota' });
+                fechaUltimo = this.formatDateForDisplay(this.transformDateForDisplay(info.ultimoRegistro.fecha)) || 'Sin fecha';
             } else {
                 // Fallback: Intentar extraer de arrays históricos (solo si no hay dato real)
                 if (info.muestreoDiario && info.muestreoDiario.length > 0) {
@@ -876,7 +887,7 @@ export class PdfService {
                         );
                         ultimoRegistro = datosOrdenados[0];
                         ultimoValor = ultimoRegistro ? Number((ultimoRegistro as any).valor) : 0;
-                        fechaUltimo = ultimoRegistro ? new Date((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha).toLocaleString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A';
+                        fechaUltimo = ultimoRegistro ? (this.transformDateForDisplay((ultimoRegistro as any).hora || (ultimoRegistro as any).fecha)?.toLocaleString('es-ES') || 'N/A') : 'N/A';
                     }
                 }
 
@@ -894,13 +905,7 @@ export class PdfService {
             const datosGrafica = (info.historialDetallado || [])
                 .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
-            const etiquetasFechas = datosGrafica.map(d => new Date(d.fecha).toLocaleString('es-ES', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'America/Bogota'
-            }));
+            const etiquetasFechas = datosGrafica.map(d => this.formatDateForDisplay(this.transformDateForDisplay(d.fecha)) || '');
             const valoresDatos = datosGrafica.map(d => Number(d.valor));
 
             // ID único para el canvas de este sensor
@@ -935,7 +940,7 @@ export class PdfService {
                         <div class="kpi-card" style="border: 2px solid ${diagnosis.nivel === 'critico' ? '#d32f2f' : (diagnosis.nivel === 'alerta' ? '#f57c00' : '#2E7D32')}; background-color: #fff;">
                             <span class="kpi-label" style="font-weight:bold; color:#333;">LECTURA ACTUAL</span>
                             <span class="kpi-value" style="font-size: 22px; color: ${diagnosis.nivel === 'critico' ? '#d32f2f' : '#333'};">
-                                ${info.esBomba ? (ultimoValor == 1 ? 'Encendido' : 'Apagado') : ultimoValor + ' ' + info.unidad}
+                                ${info.esBomba ? (ultimoValor == 1 ? 'Encendido' : 'Apagado') : (sensor.toLowerCase().includes('luz') || sensor.toLowerCase().includes('radiacion') ? Math.floor(ultimoValor) : ultimoValor) + ' ' + info.unidad}
                             </span>
                             <span style="font-size: 10px; color: #666;">
                                 ${fechaUltimo}
@@ -944,15 +949,15 @@ export class PdfService {
 
                         <div class="kpi-card">
                             <span class="kpi-label">Mínimo Histórico</span>
-                            <span class="kpi-value" style="color: #1976d2;">${info.stats.minimo} ${info.unidad}</span>
+                            <span class="kpi-value" style="color: #1976d2;">${(sensor.toLowerCase().includes('luz') || sensor.toLowerCase().includes('radiacion')) ? Math.floor(info.stats.minimo) : info.stats.minimo} ${info.unidad}</span>
                         </div>
                         <div class="kpi-card">
                             <span class="kpi-label">Promedio Global</span>
-                            <span class="kpi-value">${info.stats.promedio} ${info.unidad}</span>
+                            <span class="kpi-value">${(sensor.toLowerCase().includes('luz') || sensor.toLowerCase().includes('radiacion')) ? Math.floor(info.stats.promedio) : info.stats.promedio} ${info.unidad}</span>
                         </div>
                         <div class="kpi-card">
                             <span class="kpi-label">Máximo Histórico</span>
-                            <span class="kpi-value" style="color: #d32f2f;">${info.stats.maximo} ${info.unidad}</span>
+                            <span class="kpi-value" style="color: #d32f2f;">${(sensor.toLowerCase().includes('luz') || sensor.toLowerCase().includes('radiacion')) ? Math.floor(info.stats.maximo) : info.stats.maximo} ${info.unidad}</span>
                         </div>
                     `}
                 </div>
@@ -986,7 +991,7 @@ export class PdfService {
                             <tbody>
                                 ${valoresSobreUmbralMax.length > 0 ? valoresSobreUmbralMax.map(d => `
                                     <tr>
-                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit', timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.fecha)) || ''}</td>
                                         <td class="text-right"><span style="background: #ffebee; color: #c62828; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${d.valor}</span></td>
                                     </tr>
                                 `).join('') : '<tr><td colspan="2" style="text-align: center; color: #6c757d;">Sin valores sobre umbral</td></tr>'}
@@ -999,7 +1004,7 @@ export class PdfService {
                             <tbody>
                                 ${valoresBajoUmbralMin.length > 0 ? valoresBajoUmbralMin.map(d => `
                                     <tr>
-                                        <td>${new Date(d.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit', timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.fecha)) || ''}</td>
                                         <td class="text-right"><span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${d.valor}</span></td>
                                     </tr>
                                 `).join('') : '<tr><td colspan="2" style="text-align: center; color: #6c757d;">Sin valores bajo umbral</td></tr>'}
@@ -1036,14 +1041,7 @@ export class PdfService {
 
                                          return `
                                              <tr>
-                                                 <td>${new Date(r.fecha).toLocaleString('es-ES', {
-                                                     month: 'short',
-                                                     day: 'numeric',
-                                                     hour: '2-digit',
-                                                     minute: '2-digit',
-                                                     second: '2-digit',
-                                                     timeZone: 'America/Bogota'
-                                                 })}</td>
+                                                 <td>${this.formatDateForDisplay(this.transformDateForDisplay(r.fecha)) || ''}</td>
                                                  <td class="text-center"><strong>${info.esBomba ? (r.valor == 1 ? 'Encendido' : 'Apagado') : r.valor + ' ' + info.unidad}</strong></td>
                                                  <td class="text-center">
                                                      <span style="background-color: ${estadoColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">
@@ -1081,9 +1079,9 @@ export class PdfService {
 
                                 return `
                                 <tr>
-                                    <td>${new Date(d.dia).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' })}</td>
-                                    <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad}</strong></td>
-                                </tr>
+                                     <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.dia))}</td>
+                                     <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad}</strong></td>
+                                 </tr>
                                 `;
                             }).join('')}
                         </tbody>
@@ -1117,9 +1115,9 @@ export class PdfService {
                                 const limiteVisualizacion = historial.slice(0, 500);
 
                                 return limiteVisualizacion.map((r, idx) => {
-                                    const fechaObj = new Date(r.fecha);
-                                    const fechaStr = fechaObj.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
-                                    const horaStr = fechaObj.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                    const fechaObj = this.transformDateForDisplay(r.fecha);
+                                    const fechaStr = fechaObj?.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) || '';
+                                    const horaStr = fechaObj?.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', second: '2-digit' }) || '';
 
                                     // Determinar si el valor es anómalo para colorearlo
                                     let colorStyle = "";
@@ -1213,8 +1211,8 @@ export class PdfService {
                             <tbody>
                                 ${info.ciclosRiego.slice(0, 15).map(ciclo => `
                                     <tr>
-                                        <td>${new Date(ciclo.inicio).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</td>
-                                        <td>${new Date(ciclo.fin).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.transformDateForDisplay(ciclo.inicio)?.toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</td>
+                                        <td>${this.transformDateForDisplay(ciclo.fin)?.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })}</td>
                                         <td style="font-weight:bold;">${ciclo.duracion}</td>
                                         <td style="color: green;">✅ Completado</td>
                                     </tr>
@@ -1233,7 +1231,7 @@ export class PdfService {
              ========================================== -->
         <div class="footer">
             <p>⚠️ Este reporte es una herramienta de apoyo. Verifique siempre las condiciones en campo antes de aplicar correctivos mayores.</p>
-            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</p>
+            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
         </div>
     </body>
     </html>
@@ -1266,7 +1264,7 @@ export class PdfService {
           <div style="flex: 1; text-align: left; font-size: 8px; color: #666;">
             <div style="margin-bottom: 2px;"><strong>AgroTech - Sistema de Gestión y Monitoreo</strong></div>
             <div style="margin-bottom: 1px;">Reporte General de Lote: ${data.lote}</div>
-            <div style="font-size: 7px; color: #888;">Generado: ${new Date(data.fechaGeneracion).toLocaleString('es-ES', { timeZone: 'America/Bogota' })}</div>
+            <div style="font-size: 7px; color: #888;">Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</div>
           </div>
           <div style="flex-shrink: 0; text-align: center; font-size: 10px; color: #2E7D32; font-weight: bold;">
             <div style="font-size: 12px; margin-bottom: 2px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>

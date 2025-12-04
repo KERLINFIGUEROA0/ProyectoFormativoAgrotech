@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactElement } from 'react';
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Select, SelectItem } from "@heroui/react";
 import { toast } from "sonner";
 import type { CreateBrokerDto } from '../interfaces/iot';
 
@@ -53,20 +53,21 @@ export default function BrokerForm({ initialData = {}, onSave, onCancel }: Broke
                 fullWidth
             />
             <div className="grid grid-cols-3 gap-4">
-                <label className="flex flex-col gap-1 col-span-1">
-                    <span className="text-sm font-medium text-gray-700">Protocolo *</span>
-                    <select
-                        name="protocolo"
-                        value={formData.protocolo || 'mqtt://'}
-                        onChange={handleChange}
-                        className="border border-gray-300 rounded-md p-2 bg-white"
-                    >
-                        <option value="mqtt://">mqtt://</option>
-                        <option value="mqtts://">mqtts://</option>
-                        <option value="ws://">ws:// (WebSocket)</option>
-                        <option value="wss://">wss:// (WebSocket Seguro)</option>
-                    </select>
-                </label>
+                <Select
+                    label="Protocolo *"
+                    name="protocolo"
+                    selectedKeys={[formData.protocolo || 'mqtt://']}
+                    onSelectionChange={(keys) => {
+                        const selected = Array.from(keys);
+                        setFormData(prev => ({ ...prev, protocolo: String(selected[0]) || 'mqtt://' }));
+                    }}
+                    className="col-span-1"
+                >
+                    <SelectItem key="mqtt://">mqtt://</SelectItem>
+                    <SelectItem key="mqtts://">mqtts://</SelectItem>
+                    <SelectItem key="ws://">ws:// (WebSocket)</SelectItem>
+                    <SelectItem key="wss://">wss:// (WebSocket Seguro)</SelectItem>
+                </Select>
                 <Input
                     label="Host (Dirección) *"
                     name="host"
