@@ -88,6 +88,7 @@ export class VentasService {
       monto: parseFloat(v.valorTotalVenta as any),
       fecha: v.fecha,
       cantidad: v.cantidadVenta,
+      unidadMedida: 'kg', // Las cosechas se venden por kilogramos
       precioUnitario: parseFloat(v.precioUnitario as any),
       tipo: v.tipo,
       rutaFacturaPdf: v.rutaFacturaPdf,

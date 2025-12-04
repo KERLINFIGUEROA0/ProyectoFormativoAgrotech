@@ -41,6 +41,8 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
   const getSensorUnit = (sensor: LatestSensorData) => {
     const name = sensor.nombre.toLowerCase();
     const topic = sensor.topic?.toLowerCase() || '';
+    // Detectar si es bomba
+    if (name.includes('bomba') || topic.includes('bomba')) return '';
     if (name.includes('temperatura') || topic.includes('temp')) return '°C';
     if (name.includes('humedad') || topic.includes('hum')) return '%';
     if (name.includes('luz') || topic.includes('luz') || name.includes('luminosidad')) return 'lux';
@@ -66,6 +68,16 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
     ? 'text-gray-400 border-gray-300 bg-gray-100' // Estilo apagado
     : (() => { // Estilo normal (tu lógica original)
         const name = currentSensor.nombre.toLowerCase();
+        const topic = currentSensor.topic?.toLowerCase() || '';
+        const isBomba = name.includes('bomba') || topic.includes('bomba');
+
+        if (isBomba) {
+          // Para bombas, color basado en el estado ON/OFF
+          const valor = Number(currentSensor.valor);
+          if (valor === 1) return 'text-blue-600 bg-blue-50 border-blue-200'; // ON
+          return 'text-gray-500 bg-gray-50 border-gray-200'; // OFF
+        }
+
         if (name.includes('temp')) return 'text-orange-500 bg-orange-50 border-orange-100';
         if (name.includes('hum')) return 'text-blue-500 bg-blue-50 border-blue-100';
         if (name.includes('luz')) return 'text-yellow-500 bg-yellow-50 border-yellow-100';
@@ -119,8 +131,28 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
             {/* Valor Grande */}
             <div className={`rounded-lg p-3 mb-3 border ${isOffline ? 'bg-gray-100 border-gray-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100'}`}>
               <div className="flex items-baseline justify-center gap-1">
-                <span className={`text-2xl font-bold ${isOffline ? 'text-gray-400' : 'text-gray-900'}`}>
-                  {isOffline ? '0' : (currentSensor.valor ?? '--')}
+                <span className={`text-2xl font-bold ${
+                  isOffline ? 'text-gray-400' :
+                  (() => {
+                    const name = currentSensor.nombre.toLowerCase();
+                    const topic = currentSensor.topic?.toLowerCase() || '';
+                    const isBomba = name.includes('bomba') || topic.includes('bomba');
+                    if (isBomba) {
+                      return Number(currentSensor.valor) === 1 ? 'text-blue-600' : 'text-gray-500';
+                    }
+                    return 'text-gray-900';
+                  })()
+                }`}>
+                  {(() => {
+                    if (isOffline) return '0';
+                    const name = currentSensor.nombre.toLowerCase();
+                    const topic = currentSensor.topic?.toLowerCase() || '';
+                    const isBomba = name.includes('bomba') || topic.includes('bomba');
+                    if (isBomba) {
+                      return Number(currentSensor.valor) === 1 ? 'ON' : 'OFF';
+                    }
+                    return currentSensor.valor ?? '--';
+                  })()}
                 </span>
                 <span className="text-sm font-medium text-gray-500">
                   {unit}
