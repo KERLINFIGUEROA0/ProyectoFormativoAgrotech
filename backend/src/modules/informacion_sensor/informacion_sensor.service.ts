@@ -61,8 +61,99 @@ export class InformacionSensorService {
     // 3. Iterar sobre cada sensor configurado para este tópico
     for (const sensor of sensores) {
       let valorFinal: number | null = null;
+      let sensorDesconectado = false;
 
-      // A. ESTRATEGIA DE EXTRACCIÓN DE DATOS
+      // A. DETECCIÓN DE ESTADO DE CONEXIÓN INDIVIDUAL (Configurable)
+      if (isJson) {
+        // Usar configuración personalizada del sensor si existe
+        if (sensor.connectionField) {
+          // El sensor tiene configuración específica de campo de conexión
+          if (jsonData.hasOwnProperty(sensor.connectionField)) {
+            const valorEstado = jsonData[sensor.connectionField];
+
+            // Verificar si el valor indica desconexión
+            if (sensor.disconnectionValues && sensor.disconnectionValues.includes(valorEstado)) {
+              sensorDesconectado = true;
+              this.logger.warn(`🔴 Sensor ${sensor.nombre} DESCONECTADO - campo '${sensor.connectionField}': ${valorEstado}`);
+            }
+            // Verificar si el valor indica conexión
+            else if (sensor.connectionValues && sensor.connectionValues.includes(valorEstado)) {
+              if (sensor.estado === 'Desconectado') {
+                this.logger.log(`🟢 Sensor ${sensor.nombre} RECONECTADO - campo '${sensor.connectionField}': ${valorEstado}`);
+              }
+              sensorDesconectado = false;
+            }
+            // Si el campo existe pero el valor no está en ninguna lista, verificar si es requerido
+            else if (sensor.connectionRequired) {
+              sensorDesconectado = true;
+              this.logger.warn(`🔴 Sensor ${sensor.nombre} DESCONECTADO - campo '${sensor.connectionField}' tiene valor desconocido: ${valorEstado}`);
+            }
+          } else if (sensor.connectionRequired) {
+            // El campo requerido no está presente
+            sensorDesconectado = true;
+            this.logger.warn(`🔴 Sensor ${sensor.nombre} DESCONECTADO - campo requerido '${sensor.connectionField}' no encontrado en JSON`);
+          }
+        } else {
+          // Sin configuración específica, usar lógica genérica
+          const indicadoresEstado = ['estado', 'status', 'connected', 'online', 'connection', 'state'];
+          for (const indicador of indicadoresEstado) {
+            if (jsonData.hasOwnProperty(indicador)) {
+              const valorEstado = jsonData[indicador];
+              // Verificar si indica desconexión
+              if (valorEstado === 0 || valorEstado === false || valorEstado === 'offline' ||
+                  valorEstado === 'disconnected' || valorEstado === 'inactive' ||
+                  valorEstado === 'desconectado' || valorEstado === 'fuera_de_linea') {
+                sensorDesconectado = true;
+                this.logger.warn(`🔴 Sensor ${sensor.nombre} reportó DESCONEXIÓN via ${indicador}: ${valorEstado}`);
+                break;
+              }
+              // Verificar si indica conexión (para reconexión)
+              else if (valorEstado === 1 || valorEstado === true || valorEstado === 'online' ||
+                       valorEstado === 'connected' || valorEstado === 'active' ||
+                       valorEstado === 'conectado' || valorEstado === 'en_linea') {
+                if (sensor.estado === 'Desconectado') {
+                  this.logger.log(`🟢 Sensor ${sensor.nombre} reportó RECONEXIÓN via ${indicador}: ${valorEstado}`);
+                }
+                sensorDesconectado = false;
+                break;
+              }
+            }
+          }
+        }
+
+        // Verificar valores nulos o indefinidos que indiquen desconexión
+        if (jsonData === null || jsonData === undefined ||
+            (typeof jsonData === 'object' && Object.keys(jsonData).length === 0)) {
+          sensorDesconectado = true;
+          this.logger.warn(`🔴 Sensor ${sensor.nombre} envió JSON vacío/null - interpretado como desconexión`);
+        }
+      } else {
+        // Para mensajes no JSON, verificar valores especiales
+        const payloadLower = payload.toLowerCase().trim();
+        if (payloadLower === 'null' || payloadLower === 'undefined' ||
+            payloadLower === 'offline' || payloadLower === 'disconnected' ||
+            payloadLower === 'desconectado' || payloadLower === 'fuera_de_linea') {
+          sensorDesconectado = true;
+          this.logger.warn(`🔴 Sensor ${sensor.nombre} reportó DESCONEXIÓN via payload: ${payload}`);
+        } else if (payloadLower === 'online' || payloadLower === 'connected' ||
+                   payloadLower === 'conectado' || payloadLower === 'en_linea') {
+          if (sensor.estado === 'Desconectado') {
+            this.logger.log(`🟢 Sensor ${sensor.nombre} reportó RECONEXIÓN via payload: ${payload}`);
+          }
+          sensorDesconectado = false;
+        }
+      }
+
+      // Si se detectó desconexión, marcar el sensor inmediatamente
+      if (sensorDesconectado) {
+        sensor.estado = 'Desconectado';
+        sensor.ultimo_mqtt_mensaje = new Date(); // Actualizar timestamp para evitar watchdog falso
+        await this.sensorRepo.save(sensor);
+        this.logger.warn(`❌ Sensor ${sensor.nombre} marcado como DESCONECTADO por reporte del dispositivo`);
+        continue; // No procesar más datos para este sensor
+      }
+
+      // B. ESTRATEGIA DE EXTRACCIÓN DE DATOS
       if (isJson) {
         if (sensor.json_key) {
           // Caso 1: El sensor espera una clave específica (ej: "temp")
@@ -77,9 +168,12 @@ export class InformacionSensorService {
           else if (jsonData.hasOwnProperty('valor')) valorFinal = Number(jsonData['valor']);
           else if (jsonData.hasOwnProperty('data')) valorFinal = Number(jsonData['data']);
           else {
-             // SOLUCIÓN TEMPORAL: Intentar extraer por nombre del sensor
+             // SOLUCIÓN MEJORADA: Extracción inteligente de datos por tipo de sensor
              const sensorName = sensor.nombre.toLowerCase();
-             if (sensorName.includes('temperatura') && jsonData.hasOwnProperty('Temperatura')) {
+             let claveEncontrada = false;
+
+             // Búsqueda inteligente de claves basada en el tipo de sensor
+             if (sensorName.includes('temperatura')) {
                valorFinal = Number(jsonData['Temperatura']);
                this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave 'Temperatura' por defecto`);
              } else if (sensorName.includes('humedad') && jsonData.hasOwnProperty('Humedad')) {
@@ -95,10 +189,74 @@ export class InformacionSensorService {
                this.logger.log(`🔧 Sensor Bomba: Usando clave 'Estado' por defecto. Valor: ${valorFinal}`);
              }
              else {
-               // Si el JSON es simple {"25.5"}, intentamos castearlo, pero es raro.
-               // O si es estructura plana, tomamos el primer valor numérico que encontremos?
-               // Por seguridad, mejor loguear advertencia si no hay config.
-               this.logger.warn(`Sensor ${sensor.nombre} recibe JSON pero no tiene 'json_key' configurada.`);
+               // 🔍 BÚSQUEDA INTELIGENTE PARA SENSORES DE HUMEDAD DEL SUELO
+               if (sensorName.includes('humedad') && sensorName.includes('suelo')) {
+                 // Buscar claves relacionadas con suelo/humedad
+                 const clavesSuelo = ['suelo', 'soil', 'ground', 'tierra', 'moisture', 'agua', 'water', 'humedad_suelo'];
+                 for (const clave of clavesSuelo) {
+                   if (jsonData.hasOwnProperty(clave)) {
+                     valorFinal = Number(jsonData[clave]);
+                     this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave '${clave}' para humedad del suelo: ${valorFinal}`);
+                     claveEncontrada = true;
+                     break;
+                   }
+                 }
+
+                 // Si no encontró clave específica, buscar patrones como "sensorX"
+                 if (!claveEncontrada) {
+                   for (const [key, value] of Object.entries(jsonData)) {
+                     if (key.toLowerCase().includes('sensor') && typeof value === 'number') {
+                       valorFinal = value;
+                       this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando clave '${key}' (contiene 'sensor') para humedad del suelo: ${value}`);
+                       claveEncontrada = true;
+                       break;
+                     }
+                     // También buscar valores string que puedan convertirse a número
+                     if (key.toLowerCase().includes('sensor') && typeof value === 'string' && !isNaN(Number(value))) {
+                       valorFinal = Number(value);
+                       this.logger.log(`🔧 Sensor ${sensor.nombre}: Convirtiendo string '${key}' a número para humedad del suelo: ${value}`);
+                       claveEncontrada = true;
+                       break;
+                     }
+                   }
+                 }
+
+                 // Último recurso: buscar cualquier valor numérico en el JSON
+                 if (!claveEncontrada) {
+                   for (const [key, value] of Object.entries(jsonData)) {
+                     if (typeof value === 'number' && !isNaN(value) && value >= 0 && value <= 100) {
+                       // Para humedad, esperamos valores entre 0-100%
+                       valorFinal = value;
+                       this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando primer valor numérico válido '${key}' para humedad del suelo: ${value}`);
+                       claveEncontrada = true;
+                       break;
+                     }
+                   }
+                 }
+               }
+
+               // Para otros tipos de sensores, búsqueda genérica
+               if (!claveEncontrada) {
+                 // Buscar el primer valor numérico en el JSON
+                 for (const [key, value] of Object.entries(jsonData)) {
+                   if (typeof value === 'number' && !isNaN(value)) {
+                     valorFinal = value;
+                     this.logger.log(`🔧 Sensor ${sensor.nombre}: Usando primer valor numérico encontrado '${key}': ${value}`);
+                     claveEncontrada = true;
+                     break;
+                   } else if (typeof value === 'string' && !isNaN(Number(value))) {
+                     valorFinal = Number(value);
+                     this.logger.log(`🔧 Sensor ${sensor.nombre}: Convirtiendo string a número '${key}': ${value}`);
+                     claveEncontrada = true;
+                     break;
+                   }
+                 }
+               }
+
+               // Si aún no se encontró, loguear el JSON completo para debug
+               if (!claveEncontrada) {
+                 this.logger.warn(`Sensor ${sensor.nombre} recibe JSON pero no se pudo extraer valor numérico. JSON: ${JSON.stringify(jsonData)}`);
+               }
              }
           }
         }
@@ -109,7 +267,11 @@ export class InformacionSensorService {
 
       // Validar si tenemos un número válido
       if (valorFinal === null || isNaN(valorFinal)) {
-        continue; // Saltamos este sensor, el dato no era para él
+        // 🔥 CORRECCIÓN: Si el JSON llega pero NO tiene la clave de este sensor
+        // (ej: desconectaste el sensor de Temperatura pero llega Humedad),
+        // hacemos 'continue'. NO actualizamos su fecha, por lo que el Watchdog lo matará en 60s.
+        // NO lo marcamos desconectado aquí manualmente para dar margen de error.
+        continue;
       }
 
       // B. VALIDACIÓN DE PERMISOS (Broker/Lote/Sublote)
@@ -151,13 +313,16 @@ export class InformacionSensorService {
           }
         }
 
-        // E. LÓGICA DE RECONEXIÓN INDIVIDUAL (Tu código existente mejorado)
+        // E. 🔥 LÓGICA DE RECONEXIÓN INDIVIDUAL
+        // Actualizamos la fecha SOLO para este sensor específico que sí envió datos
         sensor.ultimo_mqtt_mensaje = new Date();
+
+        // Si estaba muerto, lo revivimos
         if (sensor.estado === 'Desconectado') {
             sensor.estado = 'Activo';
-            // Esto cumple tu requisito: Solo este sensor cambia a activo, los demás no se tocan.
-            this.logger.log(`🟢 Sensor RECONECTADO: [${sensor.nombre}]`);
+            this.logger.log(`🟢 Sensor RECONECTADO autom: [${sensor.nombre}]`);
         }
+
         await this.sensorRepo.save(sensor);
         guardados++;
 

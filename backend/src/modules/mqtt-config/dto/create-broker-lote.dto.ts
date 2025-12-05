@@ -1,4 +1,19 @@
-import { IsNotEmpty, IsArray, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsArray, IsNumber, IsOptional, IsString, ValidateNested, IsObject } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class TopicoConfigDto {
+  @IsString()
+  @IsNotEmpty()
+  topic: string;
+
+  @IsOptional()
+  @IsNumber()
+  min?: number;
+
+  @IsOptional()
+  @IsNumber()
+  max?: number;
+}
 
 export class CreateBrokerLoteDto {
   @IsNotEmpty()
@@ -11,5 +26,15 @@ export class CreateBrokerLoteDto {
 
   @IsArray()
   @IsNotEmpty()
-  topicos: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TopicoConfigDto)
+  topicos: (string | TopicoConfigDto)[];
+
+  @IsOptional()
+  @IsNumber()
+  puerto?: number;
+
+  @IsOptional()
+  @IsString()
+  topicPrueba?: string;
 }

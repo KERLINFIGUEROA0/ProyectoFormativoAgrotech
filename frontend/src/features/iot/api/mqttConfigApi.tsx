@@ -78,8 +78,8 @@ export const listarBrokerLotesPorBroker = async (brokerId: number): Promise<Brok
   return response.data.data;
 };
 
-export const actualizarBrokerLote = async (id: number, topicos: string[]): Promise<BrokerLote> => {
-  const response = await api.put(`/mqtt-config/broker-lotes/${id}`, { topicos });
+export const actualizarBrokerLote = async (id: number, data: { topicos: (string | { topic: string; min?: number; max?: number })[]; puerto?: number; topicPrueba?: string }): Promise<BrokerLote> => {
+  const response = await api.put(`/mqtt-config/broker-lotes/${id}`, data);
   return response.data.data;
 };
 

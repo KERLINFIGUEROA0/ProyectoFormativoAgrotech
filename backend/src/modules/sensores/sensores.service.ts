@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, LessThan, MoreThan } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, LessThan, MoreThan, Like } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Sensor } from './entities/sensore.entity';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
@@ -73,31 +73,33 @@ export class SensoresService {
   ) {}
 
   /**
-   * 🕒 WATCHDOG: Se ejecuta cada 5 segundos.
-   * Busca INDIVIDUALMENTE sensores que no hayan hablado en los últimos 10 segundos.
+   * 🕒 WATCHDOG: Detecta sensores muertos.
+   * Se ejecuta cada 10 segundos.
+   * Marca como 'Desconectado' si no ha recibido datos en 60 segundos (ajustable).
    */
-  @Cron('*/5 * * * * *')
+  @Cron('*/10 * * * * *') // Ejecutar cada 10 segundos
   async detectarDesconexiones() {
-    // Definimos el límite: "Hace 10 segundos"
-    // Usamos 10s en lugar de 5s exactos para dar un margen a la red wifi y evitar parpadeos falsos.
-    const tiempoLimite = new Date(Date.now() - 10000);
+    // Definimos el límite: "Hace 60 segundos" (Ajusta este valor según la frecuencia de tu Arduino)
+    // Si tu Arduino envía cada 10s, pon 30s o 60s aquí para dar margen.
+    const SEGUNDOS_LIMITE = 60;
+    const tiempoLimite = new Date(Date.now() - (SEGUNDOS_LIMITE * 1000));
 
-    // 1. Buscar SOLO los sensores que están 'Activo' pero su fecha es vieja
+    // 1. Buscar sensores ACTIVOS cuya última señal sea vieja
     const sensoresCaidos = await this.sensorRepo.find({
       where: {
         estado: 'Activo',
-        ultimo_mqtt_mensaje: LessThan(tiempoLimite), // ¿El último mensaje es más viejo que el límite?
+        ultimo_mqtt_mensaje: LessThan(tiempoLimite),
       }
     });
 
-    // 2. Apagar INDIVIDUALMENTE cada sensor caído
+    // 2. Desconectar INDIVIDUALMENTE
     if (sensoresCaidos.length > 0) {
       for (const sensor of sensoresCaidos) {
-        // Solo si es un sensor MQTT (tiene tópico)
+        // Solo si tiene tópico configurado (es un sensor IoT real)
         if (sensor.topic) {
             sensor.estado = 'Desconectado';
             await this.sensorRepo.save(sensor);
-            this.logger.warn(`❌ Sensor [${sensor.nombre}] ha sido marcado como DESCONECTADO (Inactividad).`);
+            this.logger.warn(`❌ Sensor [${sensor.nombre}] marcado DESCONECTADO (Inactividad > ${SEGUNDOS_LIMITE}s).`);
         }
       }
     }
@@ -190,7 +192,7 @@ export class SensoresService {
         // Si existe, actualizarlo con los nuevos datos
         existingBroker.host = dtoBroker.host;
         existingBroker.puerto = dtoBroker.puerto;
-        existingBroker.protocolo = dtoBroker.protocolo;
+        existingBroker.protocolo = dtoBroker.protocolo as 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
         if (dtoBroker.usuario !== undefined) existingBroker.usuario = dtoBroker.usuario;
         if (dtoBroker.password !== undefined) existingBroker.password = dtoBroker.password;
         brokerEntity = await this.brokerRepo.save(existingBroker);
@@ -200,7 +202,7 @@ export class SensoresService {
           nombre: dtoBroker.nombre,
           host: dtoBroker.host,
           puerto: dtoBroker.puerto,
-          protocolo: dtoBroker.protocolo,
+          protocolo: dtoBroker.protocolo as 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss',
           usuario: dtoBroker.usuario,
           password: dtoBroker.password,
         });
@@ -210,8 +212,17 @@ export class SensoresService {
 
     // Crear el sensor
     const { broker, loteId, subloteId, ...sensorData } = createSensoreDto; // Excluir broker, loteId, subloteId del DTO
-    const nuevoSensor = this.sensorRepo.create({
+
+    // Establecer valores por defecto para configuración de conexión si no se proporcionan
+    const sensorDataWithDefaults = {
       ...sensorData,
+      disconnectionValues: sensorData.disconnectionValues || [0, false, "offline", "disconnected", "desconectado"],
+      connectionValues: sensorData.connectionValues || [1, true, "online", "connected", "conectado"],
+      connectionRequired: sensorData.connectionRequired ?? false
+    };
+
+    const nuevoSensor = this.sensorRepo.create({
+      ...sensorDataWithDefaults,
       lote,
       sublote,
       ultimo_mqtt_mensaje: null // Aseguramos que arranque en null
@@ -288,6 +299,42 @@ export class SensoresService {
   async remove(id: number): Promise<void> {
     const sensor = await this.findOne(id);
     await this.sensorRepo.remove(sensor);
+  }
+
+  /**
+   * 🧹 ELIMINAR TODOS LOS SENSORES AUTOMÁTICAMENTE CREADOS
+   * Elimina sensores que fueron creados automáticamente por el sistema MQTT
+   * (útil para limpiar sensores creados antes de deshabilitar la creación automática)
+   */
+  async eliminarSensoresAutomaticos(): Promise<{ eliminados: number, mensaje: string }> {
+    // Buscar sensores que tienen nombres que coinciden con el patrón de creación automática
+    // Estos sensores tienen nombres como "Sensor Estado", "Sensor Lux", etc.
+    const sensoresAutomaticos = await this.sensorRepo.find({
+      where: [
+        { nombre: 'Sensor Estado' },
+        { nombre: 'Sensor Lux' },
+        { nombre: 'Sensor Humedad' },
+        { nombre: 'Sensor Temperatura' },
+        // También buscar patrones más generales
+        { nombre: Like('Sensor %') } // Sensores que empiecen con "Sensor "
+      ]
+    });
+
+    if (sensoresAutomaticos.length === 0) {
+      return { eliminados: 0, mensaje: 'No se encontraron sensores automáticamente creados para eliminar.' };
+    }
+
+    // Eliminar los sensores encontrados
+    await this.sensorRepo.remove(sensoresAutomaticos);
+
+    // Log de lo que se eliminó
+    const nombresEliminados = sensoresAutomaticos.map(s => s.nombre);
+    this.logger.log(`🧹 Eliminados ${sensoresAutomaticos.length} sensores automáticamente creados: ${nombresEliminados.join(', ')}`);
+
+    return {
+      eliminados: sensoresAutomaticos.length,
+      mensaje: `Se eliminaron ${sensoresAutomaticos.length} sensores automáticamente creados: ${nombresEliminados.join(', ')}`
+    };
   }
 
   /**

@@ -1,236 +1,180 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import * as mqtt from 'mqtt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as mqtt from 'mqtt';
 import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
-import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
+import { InformacionSensor } from '../informacion_sensor/entities/informacion_sensor.entity';
+import { Sensor } from '../sensores/entities/sensore.entity';
 import { MqttGateway } from './mqtt.gateway';
 
-interface MqttConnection {
-  client: mqtt.MqttClient;
-  connected: boolean;
-  config: {
-    id: string;
-    host: string;
-    port: number;
-    protocol: string;
-    username?: string;
-    password?: string;
-    topics: string[];
-  };
-}
-
 @Injectable()
-export class MqttService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(MqttService.name);
-  private connections = new Map<string, MqttConnection>();
-  private readonly SAVE_INTERVAL = 30 * 60 * 1000; // 30 minutos
-  private readingBuffers = new Map<string, any[]>();
+export class MqttService implements OnModuleInit {
+  // ✅ CORRECCIÓN: Map usa 'number' como clave (ID del BrokerLote)
+  private activeConnections = new Map<number, mqtt.MqttClient>();
+  private logger = new Logger('MqttEngine');
 
   constructor(
     @InjectRepository(BrokerLote)
-    private readonly brokerLoteRepo: Repository<BrokerLote>,
-    private readonly infoSensorService: InformacionSensorService,
-    private readonly gateway: MqttGateway,
+    private brokerLoteRepo: Repository<BrokerLote>,
+    @InjectRepository(InformacionSensor)
+    private infoSensorRepo: Repository<InformacionSensor>,
+    private mqttGateway: MqttGateway,
   ) {}
 
   async onModuleInit() {
-    this.logger.log('Inicializando servicio MQTT...');
-    await this.initializeAllConnections();
+    this.logger.log('🚀 Iniciando servicio MQTT Multi-Contexto...');
+    await this.refreshConnections();
   }
 
-  async onModuleDestroy() {
-    this.logger.log('Cerrando conexiones MQTT...');
-    for (const [configId, connection] of this.connections.entries()) {
-      connection.client.end();
-      this.logger.log(`Conexión MQTT cerrada para config ID: ${configId}`);
-    }
-    this.connections.clear();
-  }
+  async refreshConnections() {
+    this.activeConnections.forEach(client => client.end());
+    this.activeConnections.clear();
 
-  private async initializeAllConnections() {
-    const brokerLotes = await this.brokerLoteRepo.find({
-      where: { broker: { estado: 'Activo' } },
-      relations: ['broker', 'lote']
+    const configs = await this.brokerLoteRepo.find({
+      relations: ['broker', 'lote'],
     });
 
-    for (const bl of brokerLotes) {
-      await this.createConnection(bl);
+    this.logger.log(`📡 Configuraciones encontradas: ${configs.length}`);
+
+    for (const config of configs) {
+      if (config.broker && config.broker.estado === 'Activo') {
+        this.connectToBrokerContext(config);
+      }
     }
   }
 
-  private async createConnection(brokerLote: BrokerLote) {
-    const configId = `broker-${brokerLote.broker.id}-lote-${brokerLote.lote.id}`;
+  private connectToBrokerContext(config: BrokerLote) {
+    const { broker, lote } = config;
 
-    // Si ya existe, cerrar primero
-    if (this.connections.has(configId)) {
-      const existing = this.connections.get(configId);
-      existing?.client.end();
-    }
+    // ✅ CORRECCIÓN: Usamos 'protocolo' y 'puerto' (del config o del broker)
+    const protocol = broker.protocolo || 'mqtt';
+    const cleanProtocol = protocol.replace('://', '');
+    const puerto = config.puerto || broker.puerto; // Usar puerto del config si existe
+    const url = `${cleanProtocol}://${broker.host}:${puerto}`;
 
-    const brokerUrl = `${brokerLote.broker.protocolo}${brokerLote.broker.host}:${brokerLote.broker.puerto}`;
+    const clientId = `agrotech_lote_${lote.id}_conn_${config.id}_${Date.now()}`;
 
-    this.logger.log(`Conectando a broker: ${brokerUrl} para lote ${brokerLote.lote.nombre}`);
+    this.logger.log(`🔌 Conectando Lote #${lote.id} a ${url}`);
 
     const options: mqtt.IClientOptions = {
-      clientId: `agrotech-client-${configId}-${Date.now()}`,
-      clean: true,
+      clientId,
+      username: broker.usuario,
+      password: broker.password,
       reconnectPeriod: 5000,
-      connectTimeout: 30000,
     };
 
-    if (brokerLote.broker.usuario) options.username = brokerLote.broker.usuario;
-    if (brokerLote.broker.password) options.password = brokerLote.broker.password;
+    const client = mqtt.connect(url, options);
 
-    const client = mqtt.connect(brokerUrl, options);
-
-    const connection: MqttConnection = {
-      client,
-      connected: false,
-      config: {
-        id: configId,
-        host: brokerLote.broker.host,
-        port: brokerLote.broker.puerto,
-        protocol: brokerLote.broker.protocolo,
-        username: brokerLote.broker.usuario,
-        password: brokerLote.broker.password,
-        topics: brokerLote.topicos || []
-      }
-    };
-
-    // Eventos del cliente
     client.on('connect', () => {
-      this.logger.log(`✅ Conectado al broker para ${configId}`);
-      connection.connected = true;
-      this.emitConnectionStatus(brokerLote.lote.id, true, 'Conectado al broker MQTT');
+      this.logger.log(`✅ Lote #${lote.id} CONECTADO`);
 
-      // Suscribirse a tópicos
-      for (const topic of connection.config.topics) {
-        client.subscribe(topic, { qos: 0 }, (err) => {
-          if (err) {
-            this.logger.error(`Error suscribiéndose a [${topic}]: ${err.message}`);
-          } else {
-            this.logger.log(`✅ Suscrito a tópico: [${topic}]`);
-          }
+      // CORRECCIÓN: Agregamos el tipo explícito : string[]
+      let topicsToSubscribe: string[] = [];
+      if (config.topicos && Array.isArray(config.topicos) && config.topicos.length > 0) {
+        topicsToSubscribe = config.topicos;
+      } else if (broker.prefijoTopicos) {
+        topicsToSubscribe = [`${broker.prefijoTopicos}/#`];
+      }
+
+      if (topicsToSubscribe.length > 0) {
+        client.subscribe(topicsToSubscribe, (err) => {
+          if (!err) this.logger.log(`👂 Lote #${lote.id} escuchando: ${topicsToSubscribe.join(', ')}`);
         });
       }
     });
 
-    client.on('disconnect', () => {
-      this.logger.warn(`⚠️ Desconectado del broker para ${configId}`);
-      connection.connected = false;
-      this.emitConnectionStatus(brokerLote.lote.id, false, 'Desconectado del broker MQTT');
+    client.on('message', (topic, message) => {
+      this.processMessage(topic, message, config);
     });
 
-    client.on('offline', () => {
-      this.logger.warn(`⚠️ Broker offline para ${configId}`);
-      connection.connected = false;
-      this.emitConnectionStatus(brokerLote.lote.id, false, 'Sin conexión a internet - modo offline');
+    client.on('error', (err) => {
+      this.logger.error(`❌ Error Lote #${lote.id}: ${err.message}`);
     });
 
-    client.on('error', (error) => {
-      this.logger.error(`❌ Error en broker ${configId}: ${error.message}`);
-      connection.connected = false;
-      this.emitConnectionStatus(brokerLote.lote.id, false, `Error: ${error.message}`);
-    });
-
-    // Manejar mensajes
-    client.on('message', async (topic, message) => {
-      await this.handleMessage(topic, message.toString(), brokerLote.lote.id);
-    });
-
-    this.connections.set(configId, connection);
+    // ✅ CORRECCIÓN: config.id es number, coincide con el Map<number, ...>
+    this.activeConnections.set(config.id, client);
   }
 
-  private async handleMessage(topic: string, payload: string, loteId: number) {
-    this.logger.log(`📨 Mensaje recibido en [${topic}]: ${payload}`);
-
+  private async processMessage(topic: string, message: Buffer, config: BrokerLote) {
     try {
-      // Parsear y procesar
-      const parsedData = this.parseSensorData(payload);
-      if (!parsedData) return;
+      const payloadStr = message.toString();
+      const payload = JSON.parse(payloadStr);
+      const { broker, lote } = config;
 
-      // Verificar alertas
-      const alertTriggered = this.checkThresholdBreach(parsedData, topic);
+      const lecturasParaGuardar: InformacionSensor[] = [];
 
-      // Buffer o guardar directamente
-      if (alertTriggered) {
-        // Guardar inmediatamente si es alerta
-        await this.saveSensorData(topic, parsedData);
-      } else {
-        // Buffer para guardar cada 30 minutos
-        this.bufferReading(topic, parsedData);
+      for (const [key, rawValue] of Object.entries(payload)) {
+        if (['timestamp', 'dev_id', 'token', 'wifi'].includes(key)) continue;
+
+        const { valor, unidad } = this.parseValue(rawValue);
+        if (isNaN(valor)) continue;
+
+        // 🔒 DESHABILITADO: Creación automática de sensores
+        // Solo procesar datos para sensores que YA EXISTEN y están configurados manualmente
+        let sensor = await this.infoSensorRepo.manager.findOne(Sensor, {
+          where: { lote: { id: lote.id }, sensorKey: key }
+        });
+
+        if (!sensor) {
+          // ❌ NO crear sensor automáticamente - solo loguear y continuar
+          this.logger.debug(`Mensaje MQTT ignorado para clave '${key}' - no existe sensor configurado para este lote`);
+          continue; // Saltar este dato, no procesar
+        } else {
+          // ✅ Actualizar último mensaje para sensores existentes
+          sensor.ultimo_mqtt_mensaje = new Date();
+          await this.infoSensorRepo.manager.save(Sensor, sensor);
+        }
+
+        const isAlerta = this.checkThreshold(key, valor, broker.umbrales);
+
+        // ✅ CORRECCIÓN: Usamos 'fechaRegistro' y asignamos propiedades correctas
+        const nuevaLectura = this.infoSensorRepo.create({
+          sensorKey: key,
+          valor,
+          unidad,
+          lote: lote,
+          sensor: sensor,
+          tipo: isAlerta ? 'alerta' : 'regular',
+          fechaRegistro: new Date() // Nombre correcto
+        });
+
+        lecturasParaGuardar.push(nuevaLectura);
       }
 
-      // Emitir a frontend en tiempo real
-      this.gateway.emitLecturaNueva({
-        topic,
-        data: parsedData,
-        loteId,
-        timestamp: new Date().toISOString()
-      });
+      if (lecturasParaGuardar.length > 0) {
+        const guardados = await this.infoSensorRepo.save(lecturasParaGuardar);
 
+        this.mqttGateway.emitMeasurement({
+          loteId: lote.id,
+          loteNombre: lote.nombre,
+          datos: guardados.map(g => ({
+            id: g.id,
+            sensorKey: g.sensorKey,
+            valor: g.valor,
+            unidad: g.unidad,
+            fechaRegistro: g.fechaRegistro,
+            sensorId: g.sensor?.id || null
+          }))
+        });
+      }
     } catch (error) {
-      this.logger.error(`Error procesando mensaje de [${topic}]: ${error.message}`);
+      // Ignorar errores de parsing
     }
   }
 
-  private parseSensorData(payload: string): any {
-    try {
-      return JSON.parse(payload);
-    } catch {
-      // Si no es JSON, intentar como número
-      const num = parseFloat(payload);
-      return isNaN(num) ? null : { value: num };
+  private parseValue(raw: any): { valor: number, unidad: string } {
+    if (typeof raw === 'number') return { valor: raw, unidad: '' };
+    const str = String(raw).trim();
+    const match = str.match(/^(-?\d+(?:\.\d+)?)\s*(.*)$/);
+    if (match) {
+      return { valor: parseFloat(match[1]), unidad: match[2] ? match[2].trim() : '' };
     }
+    return { valor: NaN, unidad: '' };
   }
 
-  private checkThresholdBreach(data: any, topic: string): boolean {
-    // Lógica simplificada - en producción buscaría los umbrales del sensor
-    // Por ahora, asumir que si el valor es extremo, es alerta
-    const value = data.value || data.temperature || data.humidity || Object.values(data)[0];
-    if (typeof value === 'number') {
-      return value < 0 || value > 100; // Umbrales dummy
-    }
-    return false;
-  }
-
-  private bufferReading(topic: string, data: any) {
-    if (!this.readingBuffers.has(topic)) {
-      this.readingBuffers.set(topic, []);
-    }
-    this.readingBuffers.get(topic)!.push({
-      ...data,
-      timestamp: new Date()
-    });
-  }
-
-  private async saveSensorData(topic: string, data: any) {
-    // Lógica para guardar en BD usando el servicio existente
-    await this.infoSensorService.createFromMqtt(topic, JSON.stringify(data));
-  }
-
-  private emitConnectionStatus(loteId: number, connected: boolean, message: string) {
-    this.gateway.emitEstadoConexion({
-      loteId,
-      connected,
-      message,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  // Método público para conectar manualmente
-  async connectSensor(configId: string, config: any) {
-    // Implementar si es necesario
-  }
-
-  // Método para desconectar una configuración específica
-  async disconnectConfig(configId: string) {
-    const connection = this.connections.get(configId);
-    if (connection) {
-      connection.client.end();
-      this.connections.delete(configId);
-      this.logger.log(`Desconectado config ID: ${configId}`);
-    }
+  private checkThreshold(key: string, val: number, umbrales: any): boolean {
+    if (!umbrales || !umbrales[key]) return false;
+    const { minimo, maximo } = umbrales[key];
+    return val < minimo || val > maximo;
   }
 }

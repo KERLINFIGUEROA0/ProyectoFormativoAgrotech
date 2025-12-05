@@ -76,14 +76,43 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
       });
     });
 
-    // Evento de nueva lectura
-    socket.on('lecturaNueva', (data: LecturaNueva) => {
-      console.log(`Nueva lectura en ${data.topic}:`, data.data);
-      // Aquí podrías actualizar el estado de lecturas más recientes
-      // Por ahora solo logueamos
+    // Evento de nueva lectura del backend (lectura-sensor)
+    socket.on('lectura-sensor', (payload: { loteId: number; loteNombre: string; datos: any[] }) => {
+      console.log(`Nueva lectura para lote ${payload.loteId}:`, payload.datos);
+      // Actualizar lecturas más recientes con datos dinámicos
+      setLatestReadings(prev => {
+        const updated = [...prev];
+        payload.datos.forEach((lectura: any) => {
+          // Buscar por sensorKey (clave dinámica del JSON)
+          const existingIndex = updated.findIndex(r => r.sensorKey === lectura.sensorKey);
+          if (existingIndex >= 0) {
+            // Actualizar existente
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              valor: parseFloat(lectura.valor),
+              fechaRegistro: new Date(lectura.fechaRegistro).toISOString(),
+              estado: 'Activo' as const
+            };
+          } else {
+            // Agregar nuevo sensor dinámico
+            updated.push({
+              id: Date.now() + Math.random(), // ID temporal para frontend
+              nombre: `Sensor ${lectura.sensorKey}`,
+              sensorKey: lectura.sensorKey,
+              topic: '',
+              valorMinimo: 0,
+              valorMaximo: 100,
+              valor: parseFloat(lectura.valor),
+              fechaRegistro: new Date(lectura.fechaRegistro).toISOString(),
+              estado: 'Activo' as const
+            });
+          }
+        });
+        return updated;
+      });
     });
 
-    // Evento de datos del sensor
+    // Evento de datos del sensor (mantener por compatibilidad)
     socket.on('sensorData', (data: SensorData) => {
       console.log(`Datos del sensor ${data.id}:`, data.data);
       // Actualizar lecturas más recientes

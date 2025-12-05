@@ -39,7 +39,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
   const [showBrokerList, setShowBrokerList] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
-    protocolo: 'mqtt://',
+    protocolo: 'mqtt',
     host: '',
     puerto: '',
     loteId: '',
@@ -119,7 +119,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
       } else {
         setFormData({
           nombre: '',
-          protocolo: 'mqtt://',
+          protocolo: 'mqtt',
           host: '',
           puerto: '',
           loteId: '',
@@ -296,10 +296,12 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                     }}
                     fullWidth
                   >
-                    <SelectItem key="mqtt://">mqtt://</SelectItem>
-                    <SelectItem key="mqtts://">mqtts://</SelectItem>
-                    <SelectItem key="ws://">ws://</SelectItem>
-                    <SelectItem key="wss://">wss://</SelectItem>
+                    <SelectItem key="mqtt">MQTT (mqtt://)</SelectItem>
+                    <SelectItem key="mqtts">MQTT SSL (mqtts://)</SelectItem>
+                    <SelectItem key="http">HTTP (http://)</SelectItem>
+                    <SelectItem key="https">HTTPS (https://)</SelectItem>
+                    <SelectItem key="ws">WebSocket (ws://)</SelectItem>
+                    <SelectItem key="wss">WebSocket SSL (wss://)</SelectItem>
                   </Select>
                 </div>
 

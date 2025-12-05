@@ -4,7 +4,7 @@ import {
   Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff,
   TrendingUp, MoreVertical, Filter, Map, Layers,
   RefreshCw, Pause, Download, X,
-  ChevronLeft, ChevronRight, Server
+  ChevronLeft, ChevronRight, Server, Activity
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -79,6 +79,7 @@ interface SensorCardProps {
 
 function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onToggleEstado, onRemoveFromLote }: SensorCardProps) {
   const rawValor = latestData ? latestData.valor : null;
+  // 🔥 CORRECCIÓN: Confiar solo en el estado que viene del Backend
   const isDisconnected = latestData?.estado === 'Desconectado';
   const tieneDatos = latestData !== undefined && rawValor !== null;
 
@@ -160,6 +161,7 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   }
 
   const isActive = sensor.estado === 'Activo';
+  const isOnline = sensor.ultimo_mqtt_mensaje && new Date().getTime() - new Date(sensor.ultimo_mqtt_mensaje).getTime() < 10000;
 
   return (
     <div className={`bg-gradient-to-br from-white to-gray-50 shadow-lg rounded-xl p-2 relative transition-all duration-300 border-2 ${cardBorderColor} flex flex-col hover:shadow-xl hover:scale-[1.02] hover:translate-z-10 hover:rotate-y-3 hover:rotate-x-2 h-[88px] overflow-hidden`}>
@@ -177,11 +179,12 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
             <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
             <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${
               isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
+              isOnline ? 'bg-green-100 text-green-700 border border-green-200' :
               !tieneDatos ? 'bg-gray-100 text-gray-700 border border-gray-200' :
               isActive ? 'bg-green-100 text-green-700 border border-green-200' :
               'bg-gray-100 text-gray-700 border border-gray-200'
             }`}>
-              {isDisconnected ? '● DESCONECTADO' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
+              {isDisconnected ? '● DESCONECTADO' : isOnline ? '● EN LÍNEA' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
             </span>
           </div>
         </div>
@@ -269,7 +272,7 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">
                   <Pause size={7} className="inline mr-1" /> ⏸️ Congelado
                 </div>
-            ) : !tieneDatos ? (
+            ) : !tieneDatos && !isOnline ? (
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 shadow-sm">
                   <RefreshCw size={7} className="inline mr-1 animate-spin" /> Sincronizando...
                 </div>
@@ -311,7 +314,7 @@ interface BrokerLoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (data: CreateBrokerLoteDto) => void;
-  onUpdate: (id: number, topicos: string[]) => void;
+  onUpdate: (id: number, topicos: (string | { topic: string; min?: number; max?: number })[], puerto?: number, topicPrueba?: string) => void;
   onDelete: (id: number) => void;
   onEdit: (brokerLote: BrokerLote) => void;
   onCreateBroker: () => void;
@@ -324,29 +327,117 @@ interface BrokerLoteModalProps {
 
 function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdit, onCreateBroker, brokerLote, brokerLotes, loteId, brokers, lotes }: BrokerLoteModalProps) {
   const [selectedBrokerId, setSelectedBrokerId] = useState<number | null>(null);
-  const [topicos, setTopicos] = useState<string[]>([]);
+  const [topicos, setTopicos] = useState<{ topic: string; min?: number; max?: number }[]>([]);
   const [nuevoTopico, setNuevoTopico] = useState('');
+  const [nuevoMin, setNuevoMin] = useState<number | undefined>(undefined);
+  const [nuevoMax, setNuevoMax] = useState<number | undefined>(undefined);
+  const [puerto, setPuerto] = useState<number | undefined>(undefined);
+  const [topicPrueba, setTopicPrueba] = useState<string>('');
+  const [testResult, setTestResult] = useState<{ connected: boolean; message: string; topicsAvailable?: string[]; jsonReceived?: string[]; activeTopicsCount?: number; topicPruebaReceived?: boolean } | null>(null);
 
   useEffect(() => {
-    if (brokerLote) {
-      setSelectedBrokerId(brokerLote.broker.id);
-      setTopicos([...brokerLote.topicos]);
-    } else {
-      setSelectedBrokerId(null);
-      setTopicos([]);
-    }
-    setNuevoTopico('');
-  }, [brokerLote]);
+    const loadExistingConfiguration = async () => {
+      if (brokerLote && loteId) {
+        setSelectedBrokerId(brokerLote.broker.id);
+        setPuerto(brokerLote.puerto);
+        setTopicPrueba(brokerLote.topicPrueba || '');
+
+        // Cargar sensores existentes para obtener sus umbrales actuales
+        try {
+          const sensoresResponse = await fetch(`http://localhost:3000/sensores?loteId=${loteId}`);
+          const sensoresData = await sensoresResponse.json();
+
+          // Filtrar sensores que corresponden a los tópicos de esta configuración
+          const sensoresConfiguracion = sensoresData.data.filter((sensor: any) =>
+            brokerLote.topicos.some(topic => sensor.topic === topic)
+          );
+
+          // Crear el array de tópicos con sus umbrales actuales
+          const topicosConUmbrales = brokerLote.topicos.map(topic => {
+            const sensorExistente = sensoresConfiguracion.find((sensor: any) => sensor.topic === topic);
+            return {
+              topic,
+              min: sensorExistente?.valor_minimo_alerta || undefined,
+              max: sensorExistente?.valor_maximo_alerta || undefined,
+            };
+          });
+
+          setTopicos(topicosConUmbrales);
+        } catch (error) {
+          console.error('Error cargando sensores existentes:', error);
+          // Fallback: solo cargar los tópicos sin umbrales
+          setTopicos(brokerLote.topicos.map(topic => ({ topic })));
+        }
+      } else {
+        setSelectedBrokerId(null);
+        setTopicos([]);
+        setPuerto(undefined);
+        setTopicPrueba('');
+      }
+      setNuevoTopico('');
+      setNuevoMin(undefined);
+      setNuevoMax(undefined);
+      setTestResult(null); // Limpiar resultado de test al cambiar configuración
+    };
+
+    loadExistingConfiguration();
+  }, [brokerLote, loteId]);
+
+  // Limpiar resultado de test cuando cambie broker, puerto o topicPrueba
+  useEffect(() => {
+    setTestResult(null);
+  }, [selectedBrokerId, puerto, topicPrueba]);
 
   const handleAddTopico = () => {
-    if (nuevoTopico.trim() && !topicos.includes(nuevoTopico.trim())) {
-      setTopicos([...topicos, nuevoTopico.trim()]);
+    if (nuevoTopico.trim() && !topicos.some(t => t.topic === nuevoTopico.trim())) {
+      setTopicos([...topicos, { topic: nuevoTopico.trim(), min: nuevoMin, max: nuevoMax }]);
       setNuevoTopico('');
+      setNuevoMin(undefined);
+      setNuevoMax(undefined);
     }
   };
 
-  const handleRemoveTopico = (topico: string) => {
-    setTopicos(topicos.filter(t => t !== topico));
+  const handleRemoveTopico = (topic: string) => {
+    setTopicos(topicos.filter(t => t.topic !== topic));
+  };
+
+  const handleUpdateTopico = (index: number, field: 'min' | 'max', value: number | undefined) => {
+    const updatedTopicos = [...topicos];
+    updatedTopicos[index] = { ...updatedTopicos[index], [field]: value };
+    setTopicos(updatedTopicos);
+  };
+
+  const handleTestConnection = async () => {
+    if (!selectedBrokerId) return;
+
+    const toastId = toast.loading("Probando conexión...");
+    try {
+      const response = await fetch('http://localhost:3000/mqtt-config/broker-lotes/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          brokerId: selectedBrokerId,
+          puerto: puerto,
+          topicos: topicos.map(t => t.topic),
+          topicPrueba: topicPrueba || undefined
+        })
+      });
+
+      const result = await response.json();
+      setTestResult(result);
+
+      if (result.connected) {
+        toast.success(result.message, { id: toastId });
+      } else {
+        toast.error(result.message, { id: toastId });
+      }
+    } catch (error) {
+      toast.error("Error al probar conexión", { id: toastId });
+      setTestResult({ connected: false, message: "Error de red", topicsAvailable: [] });
+    }
   };
 
   const handleSubmit = () => {
@@ -354,13 +445,15 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
     if (brokerLote) {
       // Actualizar
-      onUpdate(brokerLote.id, topicos);
+      onUpdate(brokerLote.id, topicos, puerto, topicPrueba);
     } else {
       // Crear
       onSuccess({
         brokerId: selectedBrokerId,
         loteId: loteId,
-        topicos: topicos
+        topicos: topicos,
+        puerto: puerto,
+        topicPrueba: topicPrueba || undefined
       });
     }
   };
@@ -369,16 +462,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`${brokerLote ? 'Editar' : 'Crear'} Configuración Broker-Lote`} size="3xl">
-      <div className="p-6">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            Lote: {loteNombre}
-          </h3>
-          <p className="text-sm text-gray-600">
-            Configura qué broker usar y qué tópicos MQTT escuchar para este lote.
-          </p>
-        </div>
-
+      <div className="p-6 space-y-6">
         {/* Lista de configuraciones existentes */}
         {brokerLotes.length > 0 && (
           <div className="mb-6">
@@ -388,6 +472,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
                 <div key={bl.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                   <div>
                     <span className="font-medium text-gray-800">{bl.broker.nombre}</span>
+                    {bl.puerto && <span className="text-sm text-gray-600 ml-2">(Puerto: {bl.puerto})</span>}
                     <div className="flex flex-wrap gap-1 mt-1">
                       {bl.topicos.map(topico => (
                         <span key={topico} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
@@ -420,87 +505,195 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
           </div>
         )}
 
-        {/* Formulario */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Broker MQTT
-            </label>
-            <Select
-              selectedKeys={selectedBrokerId ? new Set([selectedBrokerId.toString()]) : new Set()}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys);
-                setSelectedBrokerId(selected.length > 0 ? Number(selected[0]) : null);
-              }}
-              className="w-full"
-              placeholder={brokers.length === 0 ? "No hay brokers disponibles" : "Seleccionar broker"}
-              disabled={brokers.length === 0}
-            >
-              {brokers.map(broker => (
-                <SelectItem key={broker.id.toString()}>
-                  {broker.nombre} ({broker.host}:{broker.puerto})
-                </SelectItem>
-              ))}
-            </Select>
-            {brokers.length === 0 && (
-              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-700 mb-2">
-                  ⚠️ No hay brokers configurados.
-                </p>
-                <Button
-                  size="sm"
-                  color="primary"
-                  variant="light"
-                  onClick={onCreateBroker}
-                >
-                  Crear Broker Primero
-                </Button>
-              </div>
-            )}
+        {/* Formulario principal con fondo degradado */}
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 rounded-xl border border-gray-200/50 shadow-sm p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Lote: {loteNombre}
+            </h3>
+            <p className="text-sm text-gray-600">
+              Configura qué broker usar y qué tópicos MQTT escuchar para este lote.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tópicos MQTT
-            </label>
-            <div className="flex gap-2 mb-3">
-               <Input
-                 value={nuevoTopico}
-                 onChange={(e) => setNuevoTopico(e.target.value)}
-                 onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
-                 placeholder="Ej: temperatura/lote1"
-                 fullWidth
-               />
-               <Button
-                 onClick={handleAddTopico}
-                 color="primary"
-                 size="sm"
-                 disabled={!nuevoTopico.trim()}
-               >
-                 Agregar
-               </Button>
-             </div>
+          {/* Sección 1: Configuración del Broker */}
+          <div className="mb-6">
+            <h4 className="text-md font-semibold text-gray-700 mb-4 flex items-center gap-2">
+              <Server size={16} className="text-blue-600" />
+              Configuración del Broker
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Broker MQTT
+                </label>
+                <Select
+                  key={`broker-select-${selectedBrokerId || 'none'}`}
+                  selectedKeys={selectedBrokerId ? new Set([selectedBrokerId.toString()]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys);
+                    setSelectedBrokerId(selected.length > 0 ? Number(selected[0]) : null);
+                  }}
+                  className="w-full"
+                  placeholder={brokers.length === 0 ? "No hay brokers disponibles" : "Seleccionar broker"}
+                  disabled={brokers.length === 0}
+                  renderValue={(items) => {
+                    if (items.length === 0) return "Seleccionar broker";
+                    const broker = brokers.find(b => b.id.toString() === items[0].key);
+                    return broker ? `${broker.nombre} (${broker.host}:${broker.puerto})` : "Seleccionar broker";
+                  }}
+                >
+                  {brokers.map(broker => (
+                    <SelectItem key={broker.id.toString()}>
+                      {broker.nombre} ({broker.host}:{broker.puerto})
+                    </SelectItem>
+                  ))}
+                </Select>
+                {brokers.length === 0 && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700 mb-2">
+                      ⚠️ No hay brokers configurados.
+                    </p>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="light"
+                      onClick={onCreateBroker}
+                    >
+                      Crear Broker Primero
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              {topicos.map(topico => (
-                <div key={topico} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                  {topico}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Puerto (opcional)
+                </label>
+                <Input
+                  type="number"
+                  value={puerto?.toString() || ''}
+                  onChange={(e) => setPuerto(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder={`Por defecto: ${selectedBrokerId ? brokers.find(b => b.id === selectedBrokerId)?.puerto : 'Selecciona broker'}`}
+                  fullWidth
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Si no especificas, se usará el puerto del broker seleccionado.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Topic de Prueba (opcional)
+                  </label>
+                  <Input
+                    value={topicPrueba}
+                    onChange={(e) => setTopicPrueba(e.target.value)}
+                    placeholder="Ej: agrotech/sensores/temperatura"
+                    fullWidth
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Especifica un topic para verificar si está enviando datos por este puerto.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 opacity-0">
+                    Button
+                  </label>
                   <Button
-                    onClick={() => handleRemoveTopico(topico)}
-                    color="danger"
-                    size="sm"
-                    variant="light"
-                    className="ml-1"
+                    onClick={handleTestConnection}
+                    color="secondary"
+                    variant="solid"
+                    disabled={!selectedBrokerId}
+                    startContent={<Server size={14} />}
+                    className="w-full h-10"
                   >
-                    ×
+                    Probar Conexión
                   </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sección 3: Tópicos del Lote */}
+          <div>
+            <h4 className="text-md font-semibold text-gray-700 mb-4 flex items-center gap-2">
+              <Layers size={16} className="text-purple-600" />
+              Tópicos del Lote
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+              <Input
+                value={nuevoTopico}
+                onChange={(e) => setNuevoTopico(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
+                placeholder="Ej: temperatura/lote1"
+                fullWidth
+              />
+              <Input
+                type="number"
+                value={nuevoMin?.toString() || ''}
+                onChange={(e) => setNuevoMin(e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Min (opcional)"
+                fullWidth
+              />
+              <Input
+                type="number"
+                value={nuevoMax?.toString() || ''}
+                onChange={(e) => setNuevoMax(e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Max (opcional)"
+                fullWidth
+              />
+              <Button
+                onClick={handleAddTopico}
+                color="primary"
+                className="h-10"
+                disabled={!nuevoTopico.trim()}
+              >
+                Agregar
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {topicos.map((topico, index) => (
+                <div key={topico.topic} className="flex items-center gap-2 p-3 bg-white/60 rounded-lg border border-gray-200/50 shadow-sm">
+                  <span className="flex-1 font-medium text-gray-800">{topico.topic}</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={topico.min?.toString() || ''}
+                      onChange={(e) => handleUpdateTopico(index, 'min', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="Min"
+                      size="sm"
+                      className="w-20"
+                    />
+                    <Input
+                      type="number"
+                      value={topico.max?.toString() || ''}
+                      onChange={(e) => handleUpdateTopico(index, 'max', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="Max"
+                      size="sm"
+                      className="w-20"
+                    />
+                    <Button
+                      onClick={() => handleRemoveTopico(topico.topic)}
+                      color="danger"
+                      size="sm"
+                      variant="light"
+                    >
+                      ×
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
           <Button variant="light" onClick={onClose}>
             Cancelar
           </Button>
@@ -587,11 +780,26 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
     if (!sensor) return;
     setLoading(true);
     getSensorHistory(sensor.id).then(data => {
-      const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).map(r => ({
-        time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
-        fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
-        valor: Number(r.valor),
-      }));
+      const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).map(r => {
+        let valor = Number(r.valor);
+
+        // Aplicar la MISMA transformación que la tarjeta para TODOS los sensores
+        const name = sensor.nombre.toLowerCase();
+        const topic = sensor.topic?.toLowerCase() || '';
+
+        // Transformaciones específicas por tipo de sensor (igual que en la tarjeta)
+        if (name.includes('luz') || topic.includes('luz')) {
+          valor = valor * 100; // Convertir a lux
+        }
+        // Temperatura, humedad, gas y otros sensores mantienen su valor original
+        // pero se mostrarán con las unidades correctas en el tooltip
+
+        return {
+          time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
+          fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
+          valor: valor,
+        };
+      });
       setHistory(formatted);
     }).catch(() => toast.error("Error cargando historial")).finally(() => setLoading(false));
   }, [sensor]);
@@ -602,10 +810,32 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
     if (loading) return <div className="h-64 flex items-center justify-center text-gray-400">Cargando datos...</div>;
     if (history.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400">No hay datos registrados</div>;
 
+    // Calcular el rango dinámico de valores para mayor sensibilidad
+    const valores = history.map(h => h.valor).filter(v => v !== null && v !== undefined);
+    const minValor = Math.min(...valores);
+    const maxValor = Math.max(...valores);
+    const rango = maxValor - minValor;
+
+    // Si el rango es muy pequeño, expandir ligeramente para mejor visualización
+    const padding = rango * 0.1; // 10% de padding
+    const domainMin = minValor - padding;
+    const domainMax = maxValor + padding;
+
+    // Determinar precisión decimal basada en el rango
+    const getPrecision = (range: number) => {
+      if (range < 0.01) return 4; // Para cambios muy pequeños
+      if (range < 0.1) return 3;
+      if (range < 1) return 2;
+      if (range < 10) return 1;
+      return 0;
+    };
+
+    const precision = getPrecision(rango);
+
     return (
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={history} margin={{ top: 15, right: 20, left: 15, bottom: 70 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f0f0f0" opacity={0.5} />
           <XAxis
             dataKey="time"
             fontSize={10}
@@ -615,19 +845,77 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
             angle={-45}
             textAnchor="end"
             height={45}
+            tick={{ fontSize: 9 }}
           />
           <YAxis
             fontSize={10}
             tickLine={false}
             axisLine={false}
-            domain={['auto', 'auto']}
+            domain={[domainMin, domainMax]}
             tickFormatter={(value) => {
               const num = Number(value);
-              if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-              if (num % 1 === 0) return num.toString();
-              return num.toFixed(2);
+              if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1) + 'k';
+              return num.toFixed(precision);
             }}
-            width={45}
+            width={50}
+            tick={{ fontSize: 9 }}
+            tickCount={8} // Más ticks para mejor granularidad
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              fontSize: '12px'
+            }}
+            formatter={(value: number) => {
+              // Sistema inteligente de detección de unidades (igual que en la tarjeta)
+              const name = sensor.nombre.toLowerCase();
+              const topic = sensor.topic?.toLowerCase() || '';
+              let unit = '';
+
+              // Sensores conocidos con unidades específicas
+              if (name.includes('luz') || topic.includes('luz')) {
+                unit = 'lux';
+              } else if (name.includes('temperatura') || topic.includes('temperatura')) {
+                unit = '°C';
+              } else if (name.includes('humedad')) {
+                unit = '%';
+              } else if (name.includes('gas') || topic.includes('gas') ||
+                        name.includes('co2') || topic.includes('co2') ||
+                        name.includes('ppm') || topic.includes('ppm')) {
+                unit = 'ppm';
+              }
+
+              // Para sensores nuevos/desconocidos, intentar detectar unidades comunes
+              else {
+                // Detección por tópico MQTT (común en IoT)
+                if (topic.includes('temp') || topic.includes('temperature')) unit = '°C';
+                else if (topic.includes('hum') || topic.includes('humidity')) unit = '%';
+                else if (topic.includes('press') || topic.includes('pressure')) unit = 'hPa';
+                else if (topic.includes('volt') || topic.includes('voltage')) unit = 'V';
+                else if (topic.includes('current') || topic.includes('amp')) unit = 'A';
+                else if (topic.includes('power') || topic.includes('watt')) unit = 'W';
+                else if (topic.includes('level') || topic.includes('distance')) unit = 'cm';
+                else if (topic.includes('speed') || topic.includes('velocity')) unit = 'km/h';
+                else if (topic.includes('ph') || topic.includes('acidity')) unit = 'pH';
+                else if (topic.includes('conductivity') || topic.includes('ec')) unit = 'µS/cm';
+                else if (topic.includes('soil') && topic.includes('moisture')) unit = '%';
+                else if (topic.includes('wind') && topic.includes('speed')) unit = 'm/s';
+                else if (topic.includes('rain') || topic.includes('precipitation')) unit = 'mm';
+                else if (topic.includes('uv') || topic.includes('radiation')) unit = 'UV';
+                // Si no se detecta ninguna unidad específica, se muestra sin unidad
+              }
+
+              return [
+                <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>
+                  {Number(value).toFixed(precision + 1)}{unit && ` ${unit}`}
+                </span>,
+                sensor.nombre
+              ];
+            }}
+            labelFormatter={(label) => `Hora: ${label}`}
           />
           <Legend
             wrapperStyle={{
@@ -642,21 +930,25 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
             type="monotone"
             dataKey="valor"
             stroke="#3b82f6"
-            strokeWidth={2}
+            strokeWidth={3}
             dot={false}
             activeDot={{
-              r: 4,
+              r: 5,
               stroke: '#3b82f6',
               strokeWidth: 2,
               fill: '#fff',
-              style: { filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' }
+              style: {
+                filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.4))',
+                cursor: 'pointer'
+              }
             }}
             name={sensor.nombre}
             isAnimationActive={true}
-            animationDuration={800}
+            animationDuration={300}
             connectNulls={true}
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter="drop-shadow(0 0 2px rgba(59, 130, 246, 0.2))"
           />
         </LineChart>
       </ResponsiveContainer>
@@ -818,7 +1110,7 @@ export default function GestionSensoresPage(): ReactElement {
     // queremos ver el último dato que quedó guardado (congelado).
     fetchData(); // Carga inicial al montar o cambiar filtro
 
-    const interval = setInterval(fetchData, 2000);
+    const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
   }, [filtroId, historySensor, sensores.length]); // Agregar dependencia de sensores para refrescar cuando se agregan nuevos
 
@@ -982,15 +1274,32 @@ export default function GestionSensoresPage(): ReactElement {
     }
   };
 
-  const handleUpdateBrokerLote = async (id: number, topicos: string[]) => {
-    const toastId = toast.loading("Actualizando configuración...");
+  const handleUpdateBrokerLote = async (id: number, topicos: (string | { topic: string; min?: number; max?: number })[], puerto?: number, topicPrueba?: string) => {
+    const toastId = toast.loading("Actualizando configuración y creando sensores...");
     try {
-      await actualizarBrokerLote(id, topicos);
-      toast.success("Configuración actualizada", { id: toastId });
+      await actualizarBrokerLote(id, { topicos, puerto, topicPrueba });
+      toast.success("Configuración actualizada y sensores creados", { id: toastId });
       closeBrokerLoteModal();
+
+      // Limpiar TODOS los datos para forzar recarga completa
+      setSensorHistories({});
+      setLatestData([]);
+      setSensoresGrafica([]);
+
+      // Recargar estructura completa (sensores incluidos)
+      await loadStructure();
+
+      // Recargar configuraciones BrokerLote
       if (filtroId !== 'TODOS') {
         loadBrokerLotes(filtroId as number);
       }
+
+      // Forzar múltiples cargas inmediatas de datos con intervalos agresivos
+      const fetchIntervals = [100, 500, 1000, 1500, 2000, 3000, 4000];
+      fetchIntervals.forEach(delay => {
+        setTimeout(() => fetchData(), delay);
+      });
+
     } catch (error: any) {
       toast.error("Error al actualizar configuración", { id: toastId });
     }
@@ -1201,6 +1510,7 @@ export default function GestionSensoresPage(): ReactElement {
                    Configurar Lote
                  </Button>
                )}
+
              </div>
           </div>
         </div>
@@ -1337,13 +1647,8 @@ export default function GestionSensoresPage(): ReactElement {
           <div className="flex justify-between items-start mb-3">
            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
              <TrendingUp size={14} className="text-blue-600"/>
-             {modoVista === 'GENERAL' && filtroId !== 'TODOS'
-               ? `Lote: ${lotes.find(l => l.id === filtroId)?.nombre}`
-               : modoVista === 'LOTE' && filtroId !== 'TODOS'
-               ? `Lote: ${lotes.find(l => l.id === filtroId)?.nombre}`
-               : sensoresGrafica.length === 1
-               ? `Sensor: ${sensoresParaGrafica.find(s => s.id === sensoresGrafica[0])?.nombre}`
-               : sensoresGrafica.length > 1
+             {/* Título Dinámico */}
+             {sensoresGrafica.length > 0
                ? `${sensoresGrafica.length} Sensores Seleccionados`
                : 'Todos los Sensores'
              }
@@ -1424,49 +1729,72 @@ export default function GestionSensoresPage(): ReactElement {
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={320} key={`chart-${sensoresGrafica.join('-')}`}>
+          <ResponsiveContainer width="100%" height={320}>
             {(() => {
-              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-              const sensoresParaGraficar = sensoresGrafica.length > 0 ? sensoresGrafica : sensoresParaGrafica.map(s => s.id);
+              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
-              if (sensoresParaGraficar.length === 0) {
-                return <div className="flex items-center justify-center h-full text-gray-500 text-sm">No hay sensores para mostrar</div>;
+              // 1. 🔥 LÓGICA DINÁMICA DE SELECCIÓN
+              // Si el usuario seleccionó sensores manualmente, úsalos.
+              // Si NO, usa TODOS los sensores visibles que no sean bombas.
+              const sensoresParaGraficarIds = sensoresGrafica.length > 0
+                ? sensoresGrafica
+                : sensoresParaGrafica.map(s => s.id);
+
+              // 2. Filtrar solo aquellos que tienen historial cargado para evitar líneas vacías
+              const sensoresActivosConDatos = sensoresParaGraficarIds.filter(id =>
+                sensorHistories[id] && sensorHistories[id].length > 0
+              );
+
+              if (sensoresActivosConDatos.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                    <Activity size={32} className="opacity-20 animate-pulse" />
+                    <span className="text-xs">Esperando flujo de datos...</span>
+                  </div>
+                );
               }
 
-              // Verificar si tenemos datos para al menos un sensor
-              const hasData = sensoresParaGraficar.some(sensorId => sensorHistories[sensorId] && sensorHistories[sensorId].length > 0);
+              // 3. Normalizar longitud de datos (Tomamos el historial más largo como referencia de tiempo)
+              const maxHistoryLength = Math.max(...sensoresActivosConDatos.map(id => sensorHistories[id]?.length || 0));
 
-              if (!hasData) {
-                return <div className="flex items-center justify-center h-full text-gray-500 text-sm">Cargando datos...</div>;
-              }
+              // Construimos los datos unificados
+              const chartData = Array.from({ length: maxHistoryLength }, (_, i) => {
+                // Usamos el tiempo del primer sensor disponible como referencia del eje X
+                const refSensorId = sensoresActivosConDatos[0];
+                const timeLabel = sensorHistories[refSensorId]?.[i]?.time || '';
 
-              const firstSensorId = sensoresParaGraficar[0];
-              const maxPoints = Math.max(...sensoresParaGraficar.map(id => sensorHistories[id]?.length || 0));
-              const pointsToShow = Math.min(maxPoints, sensoresParaGraficar.length === 1 ? 30 : 20); // Más puntos para mejor sensibilidad
+                const dataPoint: any = { time: timeLabel };
 
-              const chartData = Array.from({length: pointsToShow}, (_, i) => {
-                const obj: any = { time: sensorHistories[firstSensorId]?.[i]?.time || `${i+1}` };
-                sensoresParaGraficar.forEach(sensorId => {
-                  const sensor = sensoresParaGrafica.find(s => s.id === sensorId);
+                sensoresActivosConDatos.forEach(sensorId => {
+                  const sensor = sensoresFiltrados.find(s => s.id === sensorId);
                   const history = sensorHistories[sensorId];
-                  const valor = history?.[i]?.valor ?? null;
-                  if (valor !== null && sensor) {
-                    const min = sensor.valor_minimo_alerta;
-                    const max = sensor.valor_maximo_alerta;
-                    const porcentaje = Math.min(100, Math.max(0, ((valor - min) / (max - min)) * 100));
-                    obj[sensorId] = porcentaje;
-                    // Guardar el valor real para el tooltip
-                    obj[`${sensorId}_real`] = valor;
+                  const point = history?.[i]; // Obtener el punto en el índice i
+
+                  if (point && sensor) {
+                    const valor = point.valor;
+                    const min = sensor.valor_minimo_alerta || 0;
+                    const max = sensor.valor_maximo_alerta || 100;
+
+                    // 🔥 FORMULA DE PORCENTAJE (0-100%)
+                    // Evitamos división por cero si min == max
+                    const rango = (max - min) === 0 ? 1 : (max - min);
+                    const porcentaje = Math.min(100, Math.max(0, ((valor - min) / rango) * 100));
+
+                    dataPoint[sensorId] = porcentaje;       // Valor graficado (0-100)
+                    dataPoint[`${sensorId}_real`] = valor;  // Valor real para el tooltip
+                    dataPoint[`${sensorId}_name`] = sensor.nombre; // Nombre para tooltip
+
+                    // Si no tenemos etiqueta de tiempo aún, intentar tomarla de este sensor
+                    if (!dataPoint.time && point.time) dataPoint.time = point.time;
                   } else {
-                    obj[sensorId] = null;
-                    obj[`${sensorId}_real`] = null;
+                    dataPoint[sensorId] = null;
                   }
                 });
-                return obj;
+                return dataPoint;
               });
 
               return (
-                <LineChart data={chartData} margin={{ top: 15, right: 20, left: 15, bottom: 70 }}>
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis
                     dataKey="time"
@@ -1474,51 +1802,60 @@ export default function GestionSensoresPage(): ReactElement {
                     tickLine={false}
                     axisLine={false}
                     interval="preserveStartEnd"
-                    angle={-45}
-                    textAnchor="end"
-                    height={45}
+                    minTickGap={20}
                   />
                   <YAxis
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    domain={['auto', 'auto']}
-                    tickFormatter={(value) => `${value.toFixed(1)}%`}
-                    width={45}
+                    domain={[0, 100]} // Eje Y fijo de 0% a 100%
+                    tickFormatter={(value) => `${value}%`}
+                    width={35}
                   />
-                  {sensoresGrafica.length <= 4 && sensoresGrafica.length > 0 && <Tooltip />}
-                  <Legend
-                    wrapperStyle={{
-                      fontSize: '11px',
-                      paddingTop: '10px'
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    labelStyle={{ color: '#6b7280', fontSize: '10px', marginBottom: '4px' }}
+                    formatter={(value: number, name: string, props: any) => {
+                      // Custom tooltip para mostrar valor real y unidad
+                      const dataKey = props.dataKey;
+                      const valorReal = props.payload[`${dataKey}_real`];
+                      const nombreReal = props.payload[`${dataKey}_name`];
+
+                      // Detectar unidad simple basada en nombre (puedes mejorar esto)
+                      let unidad = '';
+                      const n = nombreReal?.toLowerCase() || '';
+                      if(n.includes('temp')) unidad = '°C';
+                      else if(n.includes('hum')) unidad = '%';
+                      else if(n.includes('luz')) unidad = 'lx';
+
+                      return [
+                        <span className="font-semibold ml-2">
+                          {Number(valorReal).toFixed(1)} <span className="text-xs text-gray-500">{unidad}</span>
+                        </span>,
+                        nombreReal
+                      ];
                     }}
-                    iconType="line"
-                    verticalAlign="bottom"
-                    height={36}
                   />
-                  {sensoresParaGraficar.map((sensorId, i) => {
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
+                  />
+
+                  {sensoresActivosConDatos.map((sensorId, i) => {
                     const sensor = sensoresFiltrados.find(s => s.id === sensorId);
                     return (
                       <Line
-                        key={`line-${sensorId}-${sensoresGrafica.join('-')}`}
+                        key={sensorId}
                         type="monotone"
                         dataKey={sensorId}
+                        name={sensor?.nombre || `Sensor ${sensorId}`}
                         stroke={colors[i % colors.length]}
                         strokeWidth={2}
                         dot={false}
-                        activeDot={{
-                          r: 4,
-                          stroke: colors[i % colors.length],
-                          strokeWidth: 2,
-                          fill: '#fff',
-                          style: { filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.2))' }
-                        }}
-                        name={sensoresParaGrafica.find(s => s.id === sensorId)?.nombre || `Sensor ${sensorId}`}
-                        isAnimationActive={true}
-                        animationDuration={800}
-                        connectNulls={true} // Mejor conexión de datos
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        activeDot={{ r: 4, strokeWidth: 0 }}
+                        isAnimationActive={false} // Desactivar animación para flujo suave continuo
+                        connectNulls={true} // 🔥 CRÍTICO: Conecta puntos si hay saltos de conexión
                       />
                     );
                   })}

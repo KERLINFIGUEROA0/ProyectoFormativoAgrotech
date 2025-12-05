@@ -52,8 +52,29 @@ export class Sensor {
   @Column({ name: 'json_key', type: 'varchar', length: 50, nullable: true })
   json_key: string | null;
 
+  // Nueva columna para mapear con sensorKey dinámico de InformacionSensor
+  @Column({ name: 'sensor_key', type: 'varchar', length: 100, nullable: true })
+  sensorKey: string | null;
+
   @Column({ name: 'ultimo_mqtt_mensaje', type: 'timestamp', nullable: true })
   ultimo_mqtt_mensaje: Date | null;
+
+  // ✅ CONFIGURACIÓN DE ESTADO DE CONEXIÓN
+  // Campo del JSON que indica estado de conexión (ej: "estado", "status", "connected")
+  @Column({ name: 'connection_field', type: 'varchar', length: 50, nullable: true })
+  connectionField: string | null;
+
+  // Si el campo de conexión es obligatorio (si no llega, se considera desconexión)
+  @Column({ name: 'connection_required', type: 'boolean', default: false })
+  connectionRequired: boolean;
+
+  // Valores que indican desconexión (JSON array: [0, false, "offline", "disconnected"])
+  @Column({ name: 'disconnection_values', type: 'json', nullable: true })
+  disconnectionValues: any[];
+
+  // Valores que indican conexión (JSON array: [1, true, "online", "connected"])
+  @Column({ name: 'connection_values', type: 'json', nullable: true })
+  connectionValues: any[];
 
   @ManyToOne(() => Lote, (lote) => lote.sublotes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'loteId' })

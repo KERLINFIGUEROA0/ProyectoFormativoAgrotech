@@ -6,6 +6,8 @@ import { Broker } from './entities/broker.entity';
 import { BrokerLote } from './entities/broker-lote.entity';
 import { Sensor } from '../sensores/entities/sensore.entity';
 import { InformacionSensorService } from '../informacion_sensor/informacion_sensor.service';
+import { HttpClientService } from './http-client.service';
+import { WebSocketClientService } from './websocket-client.service';
 
 @Injectable()
 export class MqttClientService implements OnModuleInit, OnModuleDestroy {
@@ -21,31 +23,70 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
     private readonly sensorRepo: Repository<Sensor>,
     @Inject(forwardRef(() => InformacionSensorService))
     private readonly infoSensorService: InformacionSensorService,
+    private readonly httpClientService: HttpClientService,
+    private readonly webSocketClientService: WebSocketClientService,
   ) { }
   
   async publishToBroker(brokerId: number, topic: string, payload: string): Promise<void> {
+    try {
+      // Obtener el broker para saber qué protocolo usa
+      const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
+      if (!broker) {
+        throw new Error(`Broker ${brokerId} no encontrado`);
+      }
+
+      // Delegar según el protocolo
+      switch (broker.protocolo) {
+        case 'mqtt':
+        case 'mqtts':
+          await this.publishToMqttBroker(brokerId, topic, payload);
+          break;
+
+        case 'http':
+        case 'https':
+          // Para HTTP, podríamos implementar POST requests
+          throw new Error(`Publicación no implementada para protocolo ${broker.protocolo}`);
+
+        case 'ws':
+        case 'wss':
+          await this.webSocketClientService.sendWebSocketMessage(brokerId, payload);
+          break;
+
+        default:
+          throw new Error(`Protocolo no soportado para publicación: ${broker.protocolo}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error publicando en broker ${brokerId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Publica mensaje en broker MQTT
+   */
+  private async publishToMqttBroker(brokerId: number, topic: string, payload: string): Promise<void> {
     const client = this.clients.get(brokerId);
 
     // 1. Validar que existe el cliente
     if (!client) {
-      this.logger.warn(`Intento de publicar en Broker ID ${brokerId}, pero no hay cliente inicializado.`);
-      throw new Error(`No hay conexión activa con el Broker ID ${brokerId}`);
+      this.logger.warn(`Intento de publicar en Broker MQTT ID ${brokerId}, pero no hay cliente inicializado.`);
+      throw new Error(`No hay conexión activa con el Broker MQTT ID ${brokerId}`);
     }
 
     // 2. Validar que está conectado
     if (!client.connected) {
-      this.logger.warn(`El cliente del Broker ID ${brokerId} está desconectado. No se pudo enviar el mensaje.`);
-      throw new Error(`El Broker ID ${brokerId} está desconectado.`);
+      this.logger.warn(`El cliente del Broker MQTT ID ${brokerId} está desconectado. No se pudo enviar el mensaje.`);
+      throw new Error(`El Broker MQTT ID ${brokerId} está desconectado.`);
     }
 
     // 3. Publicar el mensaje (usamos una Promesa para poder usar await)
     return new Promise((resolve, reject) => {
       client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) {
-          this.logger.error(`Error publicando mensaje en [${topic}]: ${error.message}`);
+          this.logger.error(`Error publicando mensaje MQTT en [${topic}]: ${error.message}`);
           reject(error);
         } else {
-          this.logger.log(`📤 Mensaje enviado a [${topic}] en Broker ID ${brokerId}: ${payload}`);
+          this.logger.log(`📤 Mensaje MQTT enviado a [${topic}] en Broker ID ${brokerId}: ${payload}`);
           resolve();
         }
       });
@@ -92,9 +133,42 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Conecta a un broker y se suscribe a los tópicos de sus sensores
+   * Conecta a un broker usando el protocolo apropiado
    */
   async connectToBroker(broker: Broker) {
+    try {
+      this.logger.log(`🔌 Conectando broker ${broker.nombre} con protocolo ${broker.protocolo}`);
+
+      // Delegar a la implementación específica según el protocolo
+      switch (broker.protocolo) {
+        case 'mqtt':
+        case 'mqtts':
+          await this.connectToMqttBroker(broker);
+          break;
+
+        case 'http':
+        case 'https':
+          await this.httpClientService.connectToHttpBroker(broker);
+          break;
+
+        case 'ws':
+        case 'wss':
+          await this.webSocketClientService.connectToWebSocketBroker(broker);
+          break;
+
+        default:
+          throw new Error(`Protocolo no soportado: ${broker.protocolo}`);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error conectando a broker ${broker.nombre}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Conecta a un broker MQTT (implementación original)
+   */
+  private async connectToMqttBroker(broker: Broker) {
     try {
       // Si ya existe un cliente para este broker, cerrarlo primero
       if (this.clients.has(broker.id)) {
@@ -103,9 +177,10 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Construir la URL del broker
-      const brokerUrl = `${broker.protocolo}${broker.host}:${broker.puerto}`;
+      const protocol = broker.protocolo === 'mqtts' ? 'mqtts' : 'mqtt';
+      const brokerUrl = `${protocol}://${broker.host}:${broker.puerto}`;
 
-      this.logger.log(`Conectando a broker: ${brokerUrl}`);
+      this.logger.log(`Conectando a broker MQTT: ${brokerUrl}`);
 
       // Opciones de conexión
       const options: mqtt.IClientOptions = {
@@ -123,44 +198,60 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
         options.password = broker.password;
       }
 
+      // SSL configuration for MQTTS
+      if (broker.protocolo === 'mqtts' && broker.sslConfig?.enabled) {
+        if (broker.sslConfig.rejectUnauthorized !== undefined) {
+          options.rejectUnauthorized = broker.sslConfig.rejectUnauthorized;
+        }
+        if (broker.sslConfig.ca) {
+          options.ca = broker.sslConfig.ca;
+        }
+        if (broker.sslConfig.cert) {
+          options.cert = broker.sslConfig.cert;
+        }
+        if (broker.sslConfig.key) {
+          options.key = broker.sslConfig.key;
+        }
+      }
+
       // Crear cliente MQTT
       const client = mqtt.connect(brokerUrl, options);
 
       // Eventos del cliente
       client.on('connect', () => {
-        this.logger.log(`✅ Conectado al broker: ${broker.nombre} (${brokerUrl})`);
+        this.logger.log(`✅ Conectado al broker MQTT: ${broker.nombre} (${brokerUrl})`);
         // Suscribirse a los tópicos de los sensores de este broker
         this.subscribeToSensorTopics(broker.id, client);
       });
 
       client.on('error', (error) => {
-        this.logger.error(`❌ Error en broker ${broker.nombre}: ${error.message}`);
+        this.logger.error(`❌ Error en broker MQTT ${broker.nombre}: ${error.message}`);
       });
 
       client.on('reconnect', () => {
-        this.logger.warn(`🔄 Reconectando a broker: ${broker.nombre}`);
+        this.logger.warn(`🔄 Reconectando a broker MQTT: ${broker.nombre}`);
       });
 
       client.on('offline', () => {
-        this.logger.warn(`⚠️ Broker ${broker.nombre} desconectado`);
+        this.logger.warn(`⚠️ Broker MQTT ${broker.nombre} desconectado`);
       });
 
       // Manejar mensajes recibidos
       client.on('message', async (topic, message) => {
         const payload = message.toString();
-        this.logger.log(`📨 Mensaje recibido en [${topic}]: ${payload}`);
+        this.logger.log(`📨 Mensaje MQTT recibido en [${topic}]: ${payload}`);
 
         try {
           await this.infoSensorService.createFromMqtt(topic, payload);
         } catch (error) {
-          this.logger.error(`Error procesando mensaje de [${topic}]: ${error.message}`);
+          this.logger.error(`Error procesando mensaje MQTT de [${topic}]: ${error.message}`);
         }
       });
 
       // Guardar el cliente
       this.clients.set(broker.id, client);
     } catch (error) {
-      this.logger.error(`Error conectando a broker ${broker.nombre}: ${error.message}`);
+      this.logger.error(`Error conectando a broker MQTT ${broker.nombre}: ${error.message}`);
     }
   }
 
@@ -261,14 +352,44 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Desconecta un broker
+   * Desconecta un broker usando el protocolo apropiado
    */
   async disconnectBroker(brokerId: number) {
-    const client = this.clients.get(brokerId);
-    if (client) {
-      client.end();
-      this.clients.delete(brokerId);
-      this.logger.log(`Desconectado broker ID: ${brokerId}`);
+    try {
+      // Obtener el broker para saber qué protocolo usa
+      const broker = await this.brokerRepo.findOne({ where: { id: brokerId } });
+      if (!broker) {
+        this.logger.warn(`Broker ${brokerId} no encontrado para desconectar`);
+        return;
+      }
+
+      // Delegar según el protocolo
+      switch (broker.protocolo) {
+        case 'mqtt':
+        case 'mqtts':
+          const client = this.clients.get(brokerId);
+          if (client) {
+            client.end();
+            this.clients.delete(brokerId);
+            this.logger.log(`Desconectado broker MQTT ID: ${brokerId}`);
+          }
+          break;
+
+        case 'http':
+        case 'https':
+          await this.httpClientService.disconnectHttpBroker(brokerId);
+          break;
+
+        case 'ws':
+        case 'wss':
+          await this.webSocketClientService.disconnectWebSocketBroker(brokerId);
+          break;
+
+        default:
+          this.logger.warn(`Protocolo no soportado para desconexión: ${broker.protocolo}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error desconectando broker ${brokerId}: ${error.message}`);
     }
   }
 

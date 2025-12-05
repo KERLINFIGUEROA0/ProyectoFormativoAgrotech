@@ -10,8 +10,8 @@ export class Broker {
   @Column({ type: 'varchar', length: 100, unique: true })
   nombre: string;
 
-  @Column({ type: 'varchar', length: 10, default: 'mqtt://' })
-  protocolo: string;
+  @Column({ type: 'enum', enum: ['mqtt', 'mqtts', 'http', 'https', 'ws', 'wss'], default: 'mqtt' })
+  protocolo: 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
 
   @Column({ type: 'varchar', length: 255 })
   host: string;
@@ -31,7 +31,20 @@ export class Broker {
   @Column({ type: 'varchar', length: 10, default: 'Activo' })
   estado: 'Activo' | 'Inactivo';
 
-  // CAMBIA la relación @ManyToMany antigua por esta:
+  // ✅ NUEVO: Umbrales dinámicos (JSON)
+  @Column({ type: 'json', nullable: true })
+  umbrales: Record<string, { minimo: number; maximo: number }>;
+
+  // ✅ SSL/TLS Configuration
+  @Column({ type: 'json', nullable: true })
+  sslConfig: {
+    enabled: boolean;
+    ca?: string;
+    cert?: string;
+    key?: string;
+    rejectUnauthorized?: boolean;
+  };
+
   @OneToMany(() => BrokerLote, (brokerLote) => brokerLote.broker)
   brokerLotes: BrokerLote[];
 
