@@ -137,7 +137,12 @@ export class PagosService {
     }
 
     // Guardar todos los pagos
-    return this.pagoRepository.save(pagos);
+    try {
+      const savedPagos = await this.pagoRepository.save(pagos);
+      return savedPagos;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async findByUsuario(idUsuario: number) {
@@ -167,15 +172,16 @@ export class PagosService {
 
     // Si es admin o administrador, ver todos los pagos
     if (role === 'admin' || role === 'administrador') {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Si es instructor, ver pagos de actividades que creó o asignó
     if (role === 'instructor' && userIdentificacion) {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         where: [
           {
             actividad: {
@@ -195,15 +201,17 @@ export class PagosService {
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Si es pasante, solo ver sus propios pagos
     if (userIdentificacion && role === 'pasante') {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         where: { idUsuario: userIdentificacion },
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Por defecto, devolver vacío si no hay usuario identificado

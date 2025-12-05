@@ -16,7 +16,7 @@ import { Card, CardBody, CardHeader, Input, Select, SelectItem, Table, TableHead
 // ✅ IMPORTAR HELPER DE CONVERSIÓN
 import {  convertirStockAUnidad } from '../../../utils/unitConversion';
 // ✅ IMPORTAR HELPER DE FECHAS
-import { DateUtils } from '../../../utils/dateUtils';
+import { formatToTable } from '../../../utils/dateUtils.ts';
 
 const GestionMovimientosPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoData[]>([]);
@@ -98,7 +98,7 @@ const GestionMovimientosPage: React.FC = () => {
   };
 
   const formatFecha = (fecha: string) => {
-    return DateUtils.formatToTable(fecha);
+    return formatToTable(fecha);
   };
 
   if (loading) {
@@ -220,7 +220,7 @@ const GestionMovimientosPage: React.FC = () => {
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Descripción</TableColumn>
               <TableColumn>Usuario</TableColumn>
-              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Hora</TableColumn>
               <TableColumn>Referencia</TableColumn>
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>

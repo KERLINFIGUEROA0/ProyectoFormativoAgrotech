@@ -3,11 +3,13 @@ import type { TransaccionData } from "../interfaces/finanzas";
 
 
 export const obtenerTransacciones = async () => {
-  // Obtener ingresos y egresos por separado y combinarlos
-  const [ventasRes, gastosRes] = await Promise.all([
+  // Obtener ingresos, egresos y pagos por separado y combinarlos
+  const [ventasRes, gastosRes, pagosRes] = await Promise.all([
     api.get("/ventas"),
-    api.get("/gastos-produccion")
+    api.get("/gastos-produccion"),
+    api.get("/pagos")
   ]);
+
 
   const ingresos = (ventasRes.data?.data || []).map((v: any) => ({
     ...v,
@@ -28,8 +30,22 @@ export const obtenerTransacciones = async () => {
     precioUnitario: g.precioUnitario !== null ? Number(g.precioUnitario) : g.monto,
   }));
 
+  const pagosEgresos = (pagosRes.data || []).map((p: any) => ({
+    ...p,
+    id: `pago-${p.id}`,
+    tipo: 'egreso',
+    descripcion: p.descripcion || `Pago a ${p.usuario?.nombre} ${p.usuario?.apellidos} por actividad ${p.actividad?.titulo}`,
+    fecha: p.fechaPago,
+    cantidad: p.horasTrabajadas || 1,
+    unidad: 'horas',
+    precioUnitario: p.tarifaHora || p.monto,
+    monto: p.monto,
+  }));
+
+
   // Combinar y ordenar por fecha descendente
-  const allTransacciones = [...ingresos, ...egresos].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  const allTransacciones = [...ingresos, ...egresos, ...pagosEgresos].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
 
   return { data: allTransacciones };
 };
@@ -66,11 +82,17 @@ export const actualizarTransaccion = async (id: string | number, data: Partial<T
 
 export const eliminarTransaccion = async (id: string | number) => {
   // Similar lógica para determinar el tipo
-  const isEgreso = typeof id === 'string' && id.startsWith('gasto-');
-  const actualId = isEgreso ? id.replace('gasto-', '') : id;
+  const isGasto = typeof id === 'string' && id.startsWith('gasto-');
+  const isPago = typeof id === 'string' && id.startsWith('pago-');
+  let actualId: string | number = id;
 
-  if (isEgreso) {
+  if (isGasto) {
+    actualId = id.replace('gasto-', '');
     const response = await api.delete(`/gastos-produccion/${actualId}`);
+    return response.data;
+  } else if (isPago) {
+    actualId = id.replace('pago-', '');
+    const response = await api.delete(`/pagos/${actualId}`);
     return response.data;
   } else {
     const response = await api.delete(`/ventas/${actualId}`);

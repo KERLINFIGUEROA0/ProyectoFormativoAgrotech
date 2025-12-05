@@ -14,7 +14,7 @@ import type { ReportData, SensorReport } from '../interfaces/iot';
 import type { Cultivo } from '../../cultivos/interfaces/cultivos';
 
 // ✅ IMPORTAR HELPER DE FECHAS
-import { DateUtils } from '../../../utils/dateUtils';
+import { formatToTable } from '../../../utils/dateUtils.ts';
 
 export default function ReportesSensoresPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -91,7 +91,7 @@ export default function ReportesSensoresPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return DateUtils.formatToTable(dateString);
+    return formatToTable(dateString);
   };
 
   const downloadReport = async () => {
@@ -116,7 +116,7 @@ export default function ReportesSensoresPage() {
       yPosition += 8;
       pdf.text(`Nombre: ${getScopeName()}`, 20, yPosition);
       yPosition += 8;
-      pdf.text(`Período: ${formatDate(reportData.dateRange.start)} - ${formatDate(reportData.dateRange.end)}`, 20, yPosition);
+      pdf.text(`Horario: ${formatDate(reportData.dateRange.start)} - ${formatDate(reportData.dateRange.end)}`, 20, yPosition);
       yPosition += 8;
       pdf.text(`Sensores analizados: ${reportData.sensors.length}`, 20, yPosition);
       yPosition += 15;
@@ -214,11 +214,11 @@ export default function ReportesSensoresPage() {
       for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);
         pdf.setFontSize(8);
-        pdf.text(`Generado el ${DateUtils.formatToTable(new Date())}`, 20, pageHeight - 10);
+        pdf.text(`Generado a las ${formatToTable(new Date())}`, 20, pageHeight - 10);
         pdf.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
       }
 
-      const fileName = `reporte-sensores-${DateUtils.formatDateOnly(new Date()).replace(/\//g, '-')}.pdf`;
+      const fileName = `reporte-sensores-${formatToTable(new Date()).replace(/:/g, '-')}.pdf`;
       console.log('Saving PDF:', fileName);
       pdf.save(fileName);
 
@@ -277,6 +277,7 @@ export default function ReportesSensoresPage() {
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => formatDate(value)}
+              label={{ value: 'Hora', position: 'insideBottom', offset: -5 }}
             />
             <YAxis fontSize={10} tickLine={false} axisLine={false} />
             <Tooltip
@@ -413,7 +414,7 @@ export default function ReportesSensoresPage() {
                 <div className="font-semibold text-gray-800">{getScopeName()}</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">Período</div>
+                <div className="text-sm text-gray-500">Horario</div>
                 <div className="font-semibold text-gray-800">
                   {formatDate(reportData.dateRange.start)} - {formatDate(reportData.dateRange.end)}
                 </div>

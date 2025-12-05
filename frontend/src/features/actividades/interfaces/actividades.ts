@@ -59,6 +59,9 @@ export interface Actividad {
   estado: EstadoActividad;
   horas?: number;
   tarifaHora?: number;
+  costoManoObra?: number;
+  totalHoras?: number;
+  promedioTarifa?: number;
   // Relaciones que vienen del backend
   usuario?: UsuarioSimple;
   cultivo?: CultivoSimple;
@@ -67,6 +70,7 @@ export interface Actividad {
   responsable?: UsuarioSimple;
   actividadMaterial?: {
     cantidadUsada: number;
+    unidadMedida?: string;
     material: {
       id: number;
       nombre: string;

@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Actividad } from '../../actividades/entities/actividade.entity';
+import { dateColumnTransformer } from '../../../common/transformers/date-column.transformer';
 
 @Entity('pagos')
 export class Pago {
@@ -43,7 +44,7 @@ export class Pago {
   @Column({ name: 'descripcion', length: 255, nullable: true })
   descripcion: string;
 
-  @Column({ name: 'fecha_pago', type: 'date', nullable: false })
+  @Column({ name: 'fecha_pago', type: 'date', nullable: false, transformer: dateColumnTransformer })
   fechaPago: Date;
 
   @CreateDateColumn({ name: 'fecha_creacion' })
