@@ -40,16 +40,11 @@ import {
 } from '../api/actividadesapi';
 import { getEstadoTexto } from '../utils/estadoUtils';
 // ✅ IMPORTAR HELPER DE FECHAS
-import { DateUtils } from '../../../utils/dateUtils';
+import { formatToTable, formatDateOnly, formatDateDisplay } from '../../../utils/dateUtils.ts';
 
 // --- INICIO: Componente ModalDetalles (MODIFICADO) ---
 interface ModalDetallesProps {
-  actividad: (Actividad & {
-    actividadMaterial?: {
-      cantidadUsada: number;
-      material: { id: number; nombre: string };
-    }[];
-  }) | null;
+  actividad: Actividad | null;
   onClose: () => void;
   onEdit: (actividad: Actividad) => void;
 }
@@ -100,10 +95,10 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   }
 
   const estadoTexto = getEstadoTexto(actividad.estado);
-  const fechaProgramada = DateUtils.formatDateOnly(actividad.fecha);
+  const fechaProgramada = formatDateDisplay(actividad.fecha);
 
   // --- INICIO DE CORRECCIÓN: Lógica de Costos y Pago ---
-  const costoManoDeObra = (actividad.horas || 0) * (actividad.tarifaHora || 0);
+  const costoManoDeObra = actividad.costoManoObra ?? ((actividad.totalHoras || actividad.horas || 0) * (actividad.promedioTarifa || actividad.tarifaHora || 0));
   // Basamos el estado del pago en el estado de la actividad
   const estadoPago = actividad.estado === 'completado' ? 'Pagado' : 'Pendiente de Pago';
   const colorEstadoPago = actividad.estado === 'completado' ? 'text-green-600' : 'text-yellow-600';
@@ -112,9 +107,9 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   return (
     <Modal isOpen={!!actividad} onOpenChange={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
-        <ModalHeader className={`flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600' : 'bg-blue-600'}`}>
+        <ModalHeader className={`flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600 shadow-lg' : 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg'}`}>
           <h2 className="text-xl">{actividad.titulo}</h2>
-          <span className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800`}>
+          <span className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800 shadow-sm`}>
             {estadoTexto}
           </span>
         </ModalHeader>
@@ -122,59 +117,82 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Columna Izquierda: Detalles */}
             <div className="space-y-4">
-              {/* (Info Básica sin cambios) */}
-              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+              {/* Información Básica */}
+              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-700">Información Básica</h3>
                 <p className="text-sm flex items-center gap-2">
-                  <ClipboardList size={14} className="text-blue-500" />
+                  <ClipboardList size={14} className="text-gray-600" />
                   <strong>Actividad:</strong> {actividad.titulo}
                 </p>
                 <p className="text-sm flex items-center gap-2">
-                  <User size={14} className="text-blue-500" />
+                  <User size={14} className="text-gray-600" />
                   <strong>Cultivo/Lote:</strong>{' '}
                   {actividad.cultivo?.nombre || 'No especificado'}
                 </p>
                 <p className="text-sm flex items-center gap-2">
-                  <Calendar size={14} className="text-blue-500" />
+                  <Calendar size={14} className="text-gray-600" />
                   <strong>Fecha Programada:</strong> {fechaProgramada}
                 </p>
               </div>
 
-              {/* (Aprendices Asignados sin cambios) */}
-              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+              {/* Aprendices Asignados - Convertido a tabla */}
+              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <Users size={16} /> Aprendices Asignados
+                  <Users size={16} className="text-gray-600" /> Aprendices Asignados
                 </h3>
                 {aprendicesAsignados.length > 0 ? (
-                  <ul className="list-disc list-inside pl-2 space-y-1">
-                    {aprendicesAsignados.map((user) => (
-                      <li key={user.identificacion} className="text-sm text-gray-700">
-                        {user.nombre} {user.apellidos} {user.ficha?.id_ficha ? `(Ficha: ${user.ficha.id_ficha})` : ''}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Nombre</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Apellidos</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Ficha</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {aprendicesAsignados.map((user) => (
+                          <tr key={user.identificacion} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-sm text-gray-700">{user.nombre}</td>
+                            <td className="px-4 py-2 text-sm text-gray-700">{user.apellidos}</td>
+                            <td className="px-4 py-2 text-sm text-gray-700">{user.ficha?.id_ficha || 'N/A'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-gray-500 text-sm">No asignado</p>
                 )}
               </div>
 
-              {/* (Materiales Utilizados sin cambios) */}
-              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+              {/* Materiales Utilizados - Convertido a tabla */}
+              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <Package size={16} /> Materiales Utilizados
+                  <Package size={16} className="text-gray-600" /> Materiales Utilizados
                 </h3>
                 {actividad.actividadMaterial &&
                   actividad.actividadMaterial.length > 0 ? (
-                  <ul className="list-disc list-inside pl-2 space-y-1">
-                    {actividad.actividadMaterial.map((item, index) => (
-                      <li key={index} className="text-sm text-gray-700">
-                        {item.material.nombre}:{' '}
-                        <span className="font-medium">
-                          {item.cantidadUsada}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Material</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Cantidad Usada</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {actividad.actividadMaterial.map((item, index) => {
+                          return (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-700">{item.material.nombre}</td>
+                              <td className="px-4 py-2 text-sm text-gray-700 font-medium">{`${Math.round(parseFloat(item.cantidadUsada))} ${String(item.unidadMedida) || 'unidades'}`}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-gray-500 text-sm">
                     No se registraron materiales.
@@ -182,25 +200,39 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 )}
               </div>
 
-              {/* --- INICIO DE CORRECCIÓN: Mostrar Costo y Estado de Pago --- */}
-              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+              {/* Costo Mano de Obra - Convertido a tabla */}
+              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <DollarSign size={16} /> Costo Mano de Obra
+                  <DollarSign size={16} className="text-gray-600" /> Costo Mano de Obra
                 </h3>
                 {costoManoDeObra > 0 ? (
-                  <div className="text-sm text-gray-700 space-y-1 pl-2">
-                    <p>
-                      <strong>Horas:</strong> {actividad.horas}
-                    </p>
-                    <p>
-                      <strong>Tarifa:</strong> ${new Intl.NumberFormat('es-CO').format(actividad.tarifaHora || 0)} / hora
-                    </p>
-                    <p className="font-medium text-gray-800">
-                      <strong>Total:</strong> ${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}
-                    </p>
-                    <p className={`font-medium ${colorEstadoPago}`}>
-                      <strong>Estado de Pago:</strong> {estadoPago}
-                    </p>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Concepto</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-700">Horas</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{actividad.totalHoras || actividad.horas}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-700">Tarifa por Hora</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">${new Intl.NumberFormat('es-CO').format(actividad.promedioTarifa || actividad.tarifaHora || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">Total Mano de Obra</td>
+                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">Estado de Pago</td>
+                          <td className={`px-4 py-2 text-sm font-medium ${colorEstadoPago}`}>{estadoPago}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <p className="text-gray-500 text-sm">
@@ -208,14 +240,13 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                   </p>
                 )}
               </div>
-              {/* --- FIN DE CORRECCIÓN --- */}
 
             </div>
 
             {/* Columna Derecha: Descripción e Imágenes */}
             <div className="space-y-4">
-              {/* (Descripción sin cambios) */}
-              <div className="p-3">
+              {/* Descripción */}
+              <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-700 mb-2">
                   Descripción Completa
                 </h3>
@@ -224,9 +255,9 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                 </p>
               </div>
 
-              {/* (Sección de Imágenes sin cambios) */}
+              {/* Sección de Imágenes */}
               {imagenes.length > 0 && (
-                <div className="p-3">
+                <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
                   <h3 className="font-bold text-gray-700 mb-2">
                     Imágenes de la Actividad
                   </h3>
@@ -236,7 +267,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
                         <img
                           src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
                           alt={`Imagen ${index + 1} de ${actividad.titulo}`}
-                          className="w-full h-32 object-cover rounded-lg border"
+                          className="w-full h-32 object-cover rounded-lg border shadow-sm"
                           onError={(e) => {
                             e.currentTarget.src =
                               'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
@@ -493,7 +524,7 @@ const GestionActividadesPage: React.FC = () => {
       doc.setFontSize(20);
       doc.text('Reporte de Actividades', 20, 20);
       doc.setFontSize(12);
-      doc.text(`Generado el: ${DateUtils.formatDateOnly(new Date())}`, 20, 35);
+      doc.text(`Generado a las: ${formatDateOnly(new Date())}`, 20, 35);
       doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
       doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
       doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
@@ -509,14 +540,14 @@ const GestionActividadesPage: React.FC = () => {
             return 'Ejecutar migraciones para ver asignados';
           }
         })(),
-        DateUtils.formatDateOnly(act.fecha),
+        formatDateDisplay(act.fecha),
         getEstadoTexto(act.estado),
         act.descripcion || 'Sin descripción',
         act.horas ? `${act.horas} horas` : 'No especificado',
         act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.tarifaHora)}` : 'No especificado',
         act.horas && act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.horas * act.tarifaHora)}` : 'No especificado',
         act.actividadMaterial && act.actividadMaterial.length > 0
-          ? act.actividadMaterial.map(am => `${am.material.nombre} (x${am.cantidadUsada})`).join(', ')
+          ? act.actividadMaterial.map(am => `${am.material.nombre} (${(am.cantidadUsada / 1000).toFixed(0)} ${String(am.unidadMedida) || 'unidades'})`).join(', ')
           : 'Sin materiales'
       ]);
 
@@ -543,7 +574,7 @@ const GestionActividadesPage: React.FC = () => {
         }
       });
 
-      doc.save(`reporte-actividades-${DateUtils.formatDateOnly(new Date()).replace(/\//g, '-')}.pdf`);
+      doc.save(`reporte-actividades-${formatToTable(new Date()).replace(/:/g, '-')}.pdf`);
       toast.success('PDF generado correctamente');
 
     } catch (error) {

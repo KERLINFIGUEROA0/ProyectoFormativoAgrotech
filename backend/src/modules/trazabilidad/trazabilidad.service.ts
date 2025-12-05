@@ -3,6 +3,7 @@ import { CultivosService } from '../cultivos/cultivos.service';
 import { ActividadesService } from '../actividades/actividades.service';
 import { ProduccionesService } from '../producciones/producciones.service';
 import { VentasService } from '../ventas/ventas.service';
+import { PagosService } from '../pagos/pagos.service';
 import { MovimientosService } from '../../movimientos/movimientos.service';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 
@@ -13,6 +14,7 @@ export class TrazabilidadService {
     private readonly actividadesService: ActividadesService,
     private readonly produccionesService: ProduccionesService,
     private readonly ventasService: VentasService,
+    private readonly pagosService: PagosService,
     private readonly movimientosService: MovimientosService,
   ) {}
 
@@ -54,6 +56,10 @@ export class TrazabilidadService {
     // ✅ CORRECCIÓN: Usamos la nueva función para obtener las ventas completas
     const idsProduccion = producciones.map((p) => p.id);
     const ventas = await this.ventasService.findByProduccionIds(idsProduccion);
+
+    // Consultar pagos relacionados con las actividades del cultivo
+    const idsActividad = actividades.map((a) => a.id);
+    const pagos = await this.pagosService.findByActividades(idsActividad);
 
     // Definimos el array de la línea de tiempo
     const timeline: any[] = [];
@@ -146,6 +152,19 @@ export class TrazabilidadService {
           // Usamos 'valorTotalVenta' que viene de la entidad e incluimos cantidad vendida
           descripcion: `${venta.descripcion}. Cantidad vendida: ${venta.cantidadVenta} kg. Total: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(venta.valorTotalVenta))}`,
           icono: 'DollarSign',
+        });
+      }
+    });
+
+    // Eventos de Pago
+    pagos.forEach((pago) => {
+      if (pago.fechaPago) { // Solo añadimos si tiene fecha
+        timeline.push({
+          tipo: 'Pago',
+          fecha: pago.fechaPago,
+          titulo: `Pago registrado a ${pago.usuario.nombre} ${pago.usuario.apellidos}`,
+          descripcion: `Pago por actividad "${pago.actividad.titulo}". Monto: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(pago.monto))}. Horas trabajadas: ${pago.horasTrabajadas}.`,
+          icono: 'CreditCard',
         });
       }
     });

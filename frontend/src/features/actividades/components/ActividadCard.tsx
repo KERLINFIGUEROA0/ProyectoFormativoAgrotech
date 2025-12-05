@@ -1,6 +1,6 @@
 // src/features/actividades/components/ActividadCard.tsx
 import React from 'react';
-import { Edit, Trash2, Eye, MessageSquare, FileText, Download, CheckCircle } from 'lucide-react'; // Importamos íconos
+import { Edit, Trash2, Eye, MessageSquare, FileText, CheckCircle } from 'lucide-react'; // Importamos íconos
 import type { Actividad } from '../interfaces/actividades';
 import { getEstadoBadgeClass, getEstadoTexto } from '../utils/estadoUtils';
 
@@ -132,7 +132,8 @@ const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDele
         <p className="text-sm text-gray-600 mt-3 h-12 overflow-hidden">
           {actividad.descripcion || 'Sin descripción.'}
         </p>
-        
+
+
         <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-sm">
           <div>
             <p className="text-gray-500">Cultivo:</p>

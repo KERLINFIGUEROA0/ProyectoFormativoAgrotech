@@ -6,6 +6,7 @@ import type {
   CalificarActividadPayload,
   RespuestaActividad,
   UsuarioSimple,
+  CultivoSimple,
 } from '../interfaces/actividades';
 // --- AÑADIR ESTE IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
@@ -55,10 +56,14 @@ export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]>
   }
 };
 
-export const obtenerCultivosParaActividades = async () => {
+export const obtenerCultivosParaActividades = async (): Promise<CultivoSimple[]> => {
    // ... (sin cambios)
    const response = await api.get('/cultivos/listar');
-   return response.data.data;
+   return response.data.data.map((cultivo: any) => ({
+     id: cultivo.id,
+     nombre: cultivo.nombre,
+     loteId: cultivo.lote?.id
+   }));
 };
 
 export const obtenerLotesParaActividades = async () => {

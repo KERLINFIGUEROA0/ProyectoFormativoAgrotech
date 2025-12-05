@@ -11,6 +11,7 @@ import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { Venta } from '../../common/enums/ventas/entities/venta.entity';
 import { Pago } from '../pagos/entities/pago.entity';
 import { CultivosService } from './cultivos.service';
+import { PagosService } from '../pagos/pagos.service';
 
 @Injectable()
 export class PdfService {
@@ -28,6 +29,7 @@ export class PdfService {
     @InjectRepository(Pago)
     private readonly pagoRepository: Repository<Pago>,
     private readonly cultivosService: CultivosService,
+    private readonly pagosService: PagosService,
   ) {}
 
   async countTotalActivities(): Promise<void> {
@@ -47,7 +49,6 @@ export class PdfService {
     let actividades: Actividad[] = [];
     let producciones: Produccion[] = [];
     let gastos: Gasto[] = [];
-    let pagos: Pago[] = [];
 
     try {
       actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
@@ -70,51 +71,62 @@ export class PdfService {
         console.error('Error obteniendo gastos directos:', error);
         gastos = [];
       }
-
-      try {
-        pagos = await this.pagoRepository.find({
-          where: {
-            actividad: { cultivo: { id } },
-            fechaPago: Between(new Date(fechaInicio), new Date(fechaFin + 'T23:59:59.999'))
-          },
-          relations: ['usuario', 'actividad']
-        });
-      } catch (error) {
-        console.error('Error obteniendo pagos:', error);
-        pagos = [];
-      }
     }
 
-    // Procesar actividades con materiales
-    const actividadesData = actividades.map(actividad => {
-      // Calcular costo de mano de obra para esta actividad
-      const costoManoObra = gastos
-        .filter(g => g.descripcion.includes(`actividad: ${actividad.titulo}`))
-        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+    let pagos: any[] = [];
+    try {
+      const actividadIds = actividades.map(act => act.id);
+      pagos = await this.pagosService.findByActividades(actividadIds);
+      if (fechaInicio && fechaFin) {
+        const start = new Date(fechaInicio);
+        const end = new Date(fechaFin);
+        pagos = pagos.filter(p => p.fechaPago >= start && p.fechaPago <= end);
+      }
+    } catch (error) {
+      console.error('Error obteniendo pagos:', error);
+      pagos = [];
+    }
 
-      return {
-        fecha: (() => {
-          let fecha = actividad.fecha;
-          if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-          return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
-        })(),
-        titulo: actividad.titulo || '',
-        estado: actividad.estado || '',
-        costoManoObra: costoManoObra.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
-        materiales: actividad.actividadMaterial?.map(am => ({
-          nombre: am.material.nombre,
-          cantidad: am.cantidadUsada,
-          unidad: am.material.medidasDeContenido || 'unidades'
-        })) || []
-      };
-    });
+    // Crear mapa de costos de mano de obra por actividad
+    const pagosPorActividad = pagos.reduce((map, pago) => {
+      const actId = pago.actividad?.id;
+      if (actId) {
+        map[actId] = (map[actId] || 0) + Number(pago.monto);
+      }
+      return map;
+    }, {} as Record<number, number>);
+
+    // Procesar actividades con materiales
+    const actividadesData = actividades.map(actividad => ({
+      fecha: (() => {
+        let fecha = actividad.createdAt;
+        if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
+        if (fecha instanceof Date && !isNaN(fecha.getTime())) {
+          fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
+          return fecha.toLocaleString('es-CO');
+        }
+        return '';
+      })(),
+      titulo: actividad.titulo || '',
+      estado: actividad.estado || '',
+      costoManoObra: (pagosPorActividad[actividad.id] || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
+      materiales: actividad.actividadMaterial?.map(am => ({
+        nombre: am.material.nombre,
+        cantidad: am.cantidadUsada,
+        unidad: am.material.medidasDeContenido || 'unidades'
+      })) || []
+    }));
 
     // Procesar recursos utilizados (materiales agregados de actividades)
     const recursosData = actividades.flatMap(act => act.actividadMaterial?.map(am => ({
       fecha: (() => {
-        let fecha = act.fecha;
+        let fecha = act.createdAt;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        if (fecha instanceof Date && !isNaN(fecha.getTime())) {
+          fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
+          return fecha.toLocaleString('es-CO');
+        }
+        return '';
       })(),
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada ?? 0,
@@ -167,10 +179,10 @@ export class PdfService {
     const ingresos = data.producciones.reduce((sum, p) => sum + parseFloat(p.totalVentas), 0);
 
     // Calcular costos de mano de obra
-    // Calcular costos de mano de obra desde los gastos de pagos
-    const laborCost = data.gastos
-      .filter(g => g.descripcion.startsWith('Pago a'))
-      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+    const laborCost = data.fullActividades.reduce((sum, act) => sum + ((Number(act.horas) || 0) * (Number(act.tarifaHora) || 0)), 0);
+
+    // Calcular costos de pagos a pasantes
+    const pagosCost = data.pagos.reduce((sum, p) => sum + Number(p.monto), 0);
 
     // Calcular costos de materiales
     const materialesCost = data.fullActividades.reduce((sum, act) => {
@@ -181,7 +193,7 @@ export class PdfService {
     const directGastosCost = data.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
 
     // Calcular costos totales
-    const costos = laborCost + materialesCost + directGastosCost;
+    const costos = laborCost + pagosCost + materialesCost + directGastosCost;
 
     // Calcular rentabilidad
     const rentabilidad = ingresos - costos;
@@ -189,7 +201,27 @@ export class PdfService {
     // Agrupar gastos por categoría
     const gastosPorCategoriaMap = new Map();
 
-    // Agregar todos los gastos directos categorizados por descripción
+    // Agregar mano de obra
+    if (laborCost > 0) {
+      gastosPorCategoriaMap.set('Mano de obra', laborCost);
+    }
+
+    // Agregar pagos a pasantes
+    if (pagosCost > 0) {
+      gastosPorCategoriaMap.set('Pagos a pasantes', pagosCost);
+    }
+
+    // Agregar gastos de materiales
+    data.recursos.forEach(recurso => {
+      const categoria = 'Materiales'; // Agrupar todos los materiales bajo una categoría común
+      if (!gastosPorCategoriaMap.has(categoria)) {
+        gastosPorCategoriaMap.set(categoria, 0);
+      }
+      const current = gastosPorCategoriaMap.get(categoria);
+      gastosPorCategoriaMap.set(categoria, current + recurso.costo);
+    });
+
+    // Agregar gastos directos categorizados por descripción
     data.gastos.forEach(gasto => {
       let categoria = 'Otros Gastos';
       const desc = gasto.descripcion.toLowerCase();

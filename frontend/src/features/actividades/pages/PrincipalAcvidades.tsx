@@ -89,17 +89,30 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
   }
 
   const getTimeElapsed = (date: string) => {
-    const diff = new Date().getTime() - new Date(date).getTime();
+    const diff = Math.abs(new Date().getTime() - new Date(date).getTime());
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours === 0) return 'Hace un momento';
     if (hours < 24) return `Hace ${hours} horas`;
     return new Date(date).toLocaleDateString();
   };
-  
+
+  const getScheduledText = (fecha: string) => {
+    const now = new Date();
+    const activityDate = new Date(fecha);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const activityDay = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+    if (activityDay.getTime() === today.getTime()) return 'Programado para hoy';
+    if (activityDay.getTime() === tomorrow.getTime()) return 'Programado para mañana';
+    if (activityDay < today) return 'Fecha pasada';
+    return 'Programado para mañana'; // for future dates beyond tomorrow
+  };
+
   const timeInfo =
     actividad.estado === 'completado' || actividad.estado === 'en proceso'
       ? getTimeElapsed(actividad.fecha)
-      : 'Programado para mañana';
+      : getScheduledText(actividad.fecha);
 
   return (
     <div className="flex justify-between items-start py-3 border-b last:border-b-0">
@@ -132,7 +145,7 @@ const ActividadesPrincipal: React.FC = () => {
       const data = await listarActividades();
       const sorted = (data || [])
         .sort((a: Actividad, b: Actividad) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-        .slice(0, 3);
+        .slice(0, 5);
       setActividadesRecientes(sorted);
     } catch (err) {
       toast.error('No se pudieron cargar las actividades recientes.');
