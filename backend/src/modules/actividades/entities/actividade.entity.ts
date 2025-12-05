@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany,JoinColumn} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 import { Lote } from '../../lotes/entities/lote.entity';
@@ -6,6 +6,7 @@ import { Sublote } from '../../sublotes/entities/sublote.entity';
 import { ActividadMaterial } from '../../actividades_materiales/entities/actividades_materiale.entity';
 import { RespuestaActividad } from './respuesta_actividad.entity';
 import { ActividadUsuario } from './actividad_usuario.entity';
+import { dateColumnTransformer } from '../../../common/transformers/date-column.transformer';
 
 
 @Entity('actividades')
@@ -13,10 +14,13 @@ export class Actividad {
   @PrimaryGeneratedColumn({ name: 'Id_Actividad' })
   id: number;
 
+  @CreateDateColumn()
+  createdAt: Date;
+
   @Column({ name: 'Titulo', length: 40, nullable: true })
   titulo: string;
 
-  @Column({ name: 'Fecha', type: 'date', nullable: true })
+  @Column({ name: 'Fecha', type: 'date', nullable: true, transformer: dateColumnTransformer })
   fecha: Date;
 
   @Column({ name: 'Descripcion', length: 250, nullable: true })

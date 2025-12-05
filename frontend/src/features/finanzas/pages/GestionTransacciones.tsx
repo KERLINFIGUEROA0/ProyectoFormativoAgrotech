@@ -17,7 +17,7 @@ import {
   Input,
 } from "@heroui/react";
 // ✅ IMPORTAR HELPER DE FECHAS
-import { DateUtils } from '../../../utils/dateUtils';
+import { formatToTable } from '../../../utils/dateUtils.ts';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -212,7 +212,7 @@ export default function GestionTransaccionesPage(): ReactElement {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
             <tr>
-              <th className="px-4 py-3 text-left">Fecha</th>
+              <th className="px-4 py-3 text-left">Hora</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left w-1/3">Descripción</th>
               <th className="px-4 py-3 text-right">Cantidad</th>
@@ -225,7 +225,7 @@ export default function GestionTransaccionesPage(): ReactElement {
           <tbody>
             {filteredTransacciones.map((t, index) => (
               <tr key={t.id} className={`border-t transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 hover:shadow-sm`}>
-                <td className="px-4 py-3">{DateUtils.formatDateOnly(t.fecha)}</td>
+                <td className="px-4 py-3">{formatToTable(t.fecha)}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     t.tipo === 'ingreso' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

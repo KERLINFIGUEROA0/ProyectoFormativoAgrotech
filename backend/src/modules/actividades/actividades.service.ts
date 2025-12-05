@@ -22,6 +22,7 @@ import { ActividadMaterial } from '../actividades_materiales/entities/actividade
 import { RespuestaActividad } from './entities/respuesta_actividad.entity';
 import { ActividadUsuario } from './entities/actividad_usuario.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
 import { UnidadMedida } from '../../common/enums/unidad-medida.enum';
@@ -74,21 +75,22 @@ export class ActividadesService {
     }
   }
 
+  // --- FUNCIÓN HELPER PARA FORMATEAR CANTIDADES SIN DECIMALES  ---
+  private formatCantidad(num: number): string {
+    const rounded = Math.round(num * 100) / 100;
+    return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2);
+  }
+
   // --- FUNCIÓN HELPER PARA VERIFICAR ESTADO DE LA ACTIVIDAD ---
     private async verificarEstadoActividad(actividad: Actividad) {
-      console.log('🔍 verificando estado actividad:', actividad.id, 'estado actual:', actividad.estado);
-
       if (!actividad.asignados) {
-        console.log('❌ No hay asignados');
         return;
       }
 
       try {
         const asignados = JSON.parse(actividad.asignados);
-        console.log('👥 Asignados:', asignados);
 
         if (!Array.isArray(asignados) || asignados.length === 0) {
-          console.log('❌ Asignados vacío o no array');
           return;
         }
 
@@ -98,42 +100,32 @@ export class ActividadesService {
           relations: ['usuario'],
         });
 
-        console.log('📝 Respuestas encontradas:', respuestas.length);
-
         // Contar respuestas únicas por usuario
         const usuariosQueRespondieron = new Set(respuestas.map(r => r.usuario.identificacion));
-        console.log('👤 Usuarios que respondieron:', Array.from(usuariosQueRespondieron));
 
         // Si hay al menos una respuesta, cambiar a 'en proceso'
         if (usuariosQueRespondieron.size > 0) {
           // Si no todos han respondido, estado 'en proceso'
           if (usuariosQueRespondieron.size < asignados.length) {
             actividad.estado = 'en proceso';
-            console.log('🔄 Estado: en proceso (no todos respondieron)');
           } else {
             // Todos han respondido, verificar si todas están calificadas
             const todasCalificadas = respuestas.every(r => r.estado !== 'pendiente');
-            console.log('✅ Todas calificadas:', todasCalificadas);
 
             if (todasCalificadas) {
               const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
-              console.log('🎯 Todas aprobadas:', todasAprobadas);
 
               actividad.estado = todasAprobadas ? 'completado' : 'en proceso'; // Si hay rechazos, mantener 'en proceso'
-              console.log('🏁 Estado final:', actividad.estado);
             } else {
               actividad.estado = 'en proceso'; // Todos respondieron, esperando calificación
-              console.log('⏳ Estado: en proceso (esperando calificación)');
             }
           }
         } else {
           // No hay respuestas, mantener pendiente
           actividad.estado = 'pendiente';
-          console.log('📋 Estado: pendiente (sin respuestas)');
         }
 
         await this.actividadRepository.save(actividad);
-        console.log('💾 Actividad guardada con estado:', actividad.estado);
       } catch (error) {
         console.error('❌ Error al verificar estado de actividad:', error);
       }
@@ -332,12 +324,13 @@ export class ActividadesService {
       .leftJoinAndSelect('usuarioRespuesta.ficha', 'fichaUsuario')
       .addSelect('actividad.asignados');
 
+    let actividades: any[];
     if (userRole && (userRole.toLowerCase() === 'instructor' || userRole.toLowerCase() === 'admin')) {
-      return query.getMany();
+      actividades = await query.getMany();
     } else {
-      const actividades = await query.getMany();
+      actividades = await query.getMany();
       const nombreCompleto = `${user?.nombre || ''} ${user?.apellidos || ''}`.trim();
-      return actividades.filter(actividad => {
+      actividades = actividades.filter(actividad => {
         if (!actividad.asignados) return false;
         try {
           const asignados = JSON.parse(actividad.asignados);
@@ -347,10 +340,35 @@ export class ActividadesService {
         }
       });
     }
+
+    // Calcular costoManoObra, totalHoras y promedioTarifa para cada actividad desde tabla pagos
+    const actividadesWithCosto = await Promise.all(actividades.map(async (act) => {
+      let costoManoObra = 0;
+      let totalHoras = 0;
+      let promedioTarifa = 0;
+
+      const pagos = await this.dataSource.getRepository(Pago).find({
+        where: { idActividad: act.id },
+        relations: ['usuario'],
+      });
+
+      costoManoObra = pagos.reduce((sum, p) => sum + Number(p.monto || 0), 0);
+      totalHoras = pagos.reduce((sum, p) => sum + Number(p.horasTrabajadas || 0), 0);
+      promedioTarifa = pagos.length > 0 ? pagos.reduce((sum, p) => sum + Number(p.tarifaHora || 0), 0) / pagos.length : 0;
+
+      // Si no hay pagos registrados, usar el costo estimado (horas * tarifaHora)
+      if (costoManoObra === 0 && act.horas && act.tarifaHora) {
+        costoManoObra = Number(act.horas) * Number(act.tarifaHora);
+      }
+
+      return { ...act, costoManoObra, totalHoras, promedioTarifa };
+    }));
+
+    return actividadesWithCosto;
   }
 
   async findOne(id: number) {
-    return this.actividadRepository.findOne({
+    const actividad = await this.actividadRepository.findOne({
       where: { id },
       relations: [
         'usuario',
@@ -364,6 +382,41 @@ export class ActividadesService {
       ],
       select: ['id', 'titulo', 'fecha', 'descripcion', 'img', 'archivoInicial', 'estado', 'horas', 'tarifaHora', 'asignados', 'respuestaTexto', 'respuestaArchivos', 'calificacion', 'comentarioInstructor'],
     });
+
+    if (!actividad) {
+      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
+    }
+
+    // Calcular costo de mano de obra, totalHoras y promedioTarifa desde pagos
+    let costoManoObra = 0;
+    let totalHoras = 0;
+    let promedioTarifa = 0;
+
+
+    // DEBUG: Ver todos los pagos para verificar si existen
+    const todosLosPagos = await this.dataSource.getRepository(Pago).find({
+      relations: ['usuario', 'actividad'],
+    });
+
+    // Consultar pagos relacionados con la actividad
+    const pagos = await this.dataSource.getRepository(Pago).find({
+      where: { idActividad: actividad.id },
+      relations: ['usuario'],
+    });
+
+
+    costoManoObra = pagos.reduce((sum, p) => sum + Number(p.monto || 0), 0);
+    totalHoras = pagos.reduce((sum, p) => sum + Number(p.horasTrabajadas || 0), 0);
+    promedioTarifa = pagos.length > 0 ? pagos.reduce((sum, p) => sum + Number(p.tarifaHora || 0), 0) / pagos.length : 0;
+
+    // Si no hay pagos registrados, usar el costo estimado (horas * tarifaHora)
+    if (costoManoObra === 0 && actividad.horas && actividad.tarifaHora) {
+      costoManoObra = Number(actividad.horas) * Number(actividad.tarifaHora);
+    } else {
+    }
+
+
+    return { ...actividad, costoManoObra, totalHoras, promedioTarifa };
   }
 
   // --- MÉTODO UPDATE ACTUALIZADO ---
@@ -514,7 +567,6 @@ export class ActividadesService {
   // ... (remove, search y otros métodos se mantienen igual)
   async remove(id: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) return { message: 'Actividad no encontrada' };
     await this.actividadRepository.delete(id);
     return { message: 'Actividad eliminada correctamente' };
   }
@@ -524,11 +576,7 @@ export class ActividadesService {
   }
 
   async enviarRespuesta(id: number, dto: CreateRespuestaDto, userIdentificacion: number) {
-    console.log('📨 enviarRespuesta called for actividad:', id, 'user:', userIdentificacion);
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-    }
 
       if (actividad.asignados) {
         try {
@@ -576,12 +624,6 @@ export class ActividadesService {
         }
 
         if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
-          // 🔍 DEBUG INICIAL
-          console.log('\n==================================================');
-          console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
-          console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
-          console.log('==================================================\n');
-
           const gastoRepo = queryRunner.manager.getRepository(Gasto);
           // Necesitamos este repositorio para saber en qué unidad se prestó
           const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
@@ -790,13 +832,22 @@ export class ActividadesService {
                         console.log(`      - Actualizando asignacionOriginal:`);
                         console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
                         console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
+                        console.log(`        - unidadMedida: ${asignacionOriginal.unidadMedida}`);
+                        console.log(`        - cantidadAsignadaBase: ${cantidadAsignadaBase}`);
+                        console.log(`        - cantidadRealConsumidaBase: ${cantidadRealConsumidaBase}`);
    
                         // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
                         asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
-   
-                        // Recalcular la cantidad visual para el usuario (regla de 3 inversa)
-                        if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada) {
+
+                        // B. Recalcular la cantidad visual para el usuario manteniendo la unidad original
+                        // Convertir la cantidad consumida en base de vuelta a la unidad original del usuario
+                        if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada && asignacionOriginal.unidadMedida) {
+                           // Regla de 3: si X unidades originales = cantidadAsignadaBase en base
+                           // entonces cantidadRealConsumidaBase en base = ? unidades originales
                            asignacionOriginal.cantidadUsada = (cantidadRealConsumidaBase * Number(asignacionOriginal.cantidadUsada)) / cantidadAsignadaBase;
+                        } else {
+                           // Fallback: si no hay datos suficientes, mantener el valor original
+                           console.warn(`No se pudo recalcular cantidadUsada para material ${material.nombre}. Manteniendo valor original.`);
                         }
    
                         asignacionOriginal.costo = nuevoCostoTotal;
@@ -804,11 +855,13 @@ export class ActividadesService {
                         console.log(`        - cantidadUsadaBase después: ${asignacionOriginal.cantidadUsadaBase}`);
                         console.log(`        - cantidadUsada después: ${asignacionOriginal.cantidadUsada}`);
                         console.log(`        - costo después: ${asignacionOriginal.costo}`);
+
+                        console.log(`      ✅ Actualización completada para material ${material.nombre}`);
    
                         await actMaterialRepo.save(asignacionOriginal);
    
                         console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
                         console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
@@ -816,7 +869,7 @@ export class ActividadesService {
    
                         // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
                         const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                              descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
                               monto: parseFloat(nuevoCostoTotal.toFixed(2)),
                               fecha: new Date(),
                               tipo: TipoMovimiento.EGRESO,
@@ -842,7 +895,6 @@ export class ActividadesService {
             await queryRunner.manager.save(material);
           }
         } else {
-          console.log('ℹ️ No hay materiales devueltos para procesar');
         }
 
       await queryRunner.commitTransaction();
@@ -879,8 +931,6 @@ export class ActividadesService {
   }
 
   async calificarRespuesta(respuestaId: number, dto: CalificarRespuestaDto, userRole?: string) {
-    console.log('🎯 calificarRespuesta called for respuesta:', respuestaId, 'estado:', dto.estado);
-
     if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
       throw new BadRequestException('Solo instructores y administradores pueden calificar respuestas.');
     }
@@ -892,12 +942,6 @@ export class ActividadesService {
     if (!respuesta) {
       throw new NotFoundException(`Respuesta con ID ${respuestaId} no encontrada.`);
     }
-
-    console.log('👤 Usuario encontrado:', {
-      id: respuesta.usuario.identificacion,
-      nombre: respuesta.usuario.nombre,
-      tipoUsuario: respuesta.usuario.tipoUsuario?.nombre
-    });
 
     respuesta.estado = dto.estado;
     respuesta.comentarioInstructor = dto.comentarioInstructor;
@@ -914,10 +958,6 @@ export class ActividadesService {
 
     // Retornar información adicional sobre si el usuario es pasante
     const esPasante = respuesta.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
-    console.log('🔍 Verificación de pasante:', {
-      tipoUsuarioNombre: respuesta.usuario.tipoUsuario?.nombre,
-      esPasante
-    });
 
     const resultado = {
       ...savedRespuesta,
@@ -928,19 +968,11 @@ export class ActividadesService {
       },
     };
 
-    console.log('📤 Respuesta que se retorna al frontend:', {
-      id: resultado.id,
-      estado: resultado.estado,
-      esPasante: resultado.esPasante,
-      usuarioTipo: resultado.usuario.tipoUsuario?.nombre
-    });
-
     return resultado;
   }
 
   async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {
     const actividad = await this.findOne(id);
-    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
     actividad.calificacion = dto.calificacion;
     actividad.comentarioInstructor = dto.comentarioInstructor;
 
@@ -951,7 +983,6 @@ export class ActividadesService {
 
   async generarReporteActividad(id: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
     let asignados: string[] = [];
     try { asignados = JSON.parse(actividad.asignados || '[]'); } catch {}
     
@@ -992,7 +1023,6 @@ export class ActividadesService {
 
   async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
 
     // Validaciones de seguridad
     if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
@@ -1221,13 +1251,19 @@ export class ActividadesService {
                         console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
                         console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
 
-                        // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
-                        asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
+                       // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
+                       asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
 
-                        // Recalcular la cantidad visual para el usuario (regla de 3 inversa)
-                        if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada) {
-                           asignacionOriginal.cantidadUsada = (cantidadRealConsumidaBase * Number(asignacionOriginal.cantidadUsada)) / cantidadAsignadaBase;
-                        }
+                       // B. Recalcular la cantidad visual para el usuario manteniendo la unidad original
+                       // Convertir la cantidad consumida en base de vuelta a la unidad original del usuario
+                       if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada && asignacionOriginal.unidadMedida) {
+                          // Regla de 3: si X unidades originales = cantidadAsignadaBase en base
+                          // entonces cantidadRealConsumidaBase en base = ? unidades originales
+                          asignacionOriginal.cantidadUsada = (cantidadRealConsumidaBase * Number(asignacionOriginal.cantidadUsada)) / cantidadAsignadaBase;
+                       } else {
+                          // Fallback: si no hay datos suficientes, mantener el valor original
+                          console.warn(`No se pudo recalcular cantidadUsada para material ${material.nombre}. Manteniendo valor original.`);
+                       }
 
                         asignacionOriginal.costo = nuevoCostoTotal;
 
@@ -1238,15 +1274,15 @@ export class ActividadesService {
                         await actMaterialRepo.save(asignacionOriginal);
 
                         console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
                         console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
                         console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
 
-                        // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
-                        const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                         // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
+                         const nuevoGasto = gastoRepo.create({
+                               descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
                               monto: parseFloat(nuevoCostoTotal.toFixed(2)), // Aquí van los 5000
                               fecha: new Date(),
                               tipo: TipoMovimiento.EGRESO,

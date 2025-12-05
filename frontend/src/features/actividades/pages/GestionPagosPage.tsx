@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Calendar, Clock, FileText, Edit, RefreshCw, UserCheck, Users } from 'lucide-react';
+import { DollarSign, Calendar, Clock, Edit, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../../../context/AuthContext';
 import { obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from '@heroui/react';
 
@@ -45,7 +44,6 @@ interface Pago {
 }
 
 const GestionPagosPage: React.FC = () => {
-  const { userData } = useAuth();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPago, setEditingPago] = useState<Pago | null>(null);

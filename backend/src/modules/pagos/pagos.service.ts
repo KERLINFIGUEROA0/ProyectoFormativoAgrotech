@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Pago } from './entities/pago.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Actividad } from '../actividades/entities/actividade.entity';
@@ -155,28 +155,11 @@ export class PagosService {
         fechaPago: new Date(createPagoDto.fechaPago),
       });
 
-      // Guardar el pago
-      const pagoGuardado = await this.pagoRepository.save(pago);
-
-      // Crear el gasto correspondiente
-      const gasto = this.gastoRepository.create({
-        descripcion: `Pago a ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-        monto: pagoGuardado.monto,
-        fecha: pagoGuardado.fechaPago,
-        tipo: TipoMovimiento.EGRESO,
-        cantidad: pagoGuardado.horasTrabajadas,
-        unidad: 'horas',
-        precioUnitario: pagoGuardado.tarifaHora,
-        cultivo: actividad.cultivo,
-      });
-
-      await this.gastoRepository.save(gasto);
-
-      pagos.push(pagoGuardado);
+      pagos.push(pago);
     }
 
-    // Retornar todos los pagos guardados
-    return pagos;
+    // Guardar todos los pagos
+    return this.pagoRepository.save(pagos);
   }
 
   async findByUsuario(idUsuario: number) {
@@ -206,15 +189,16 @@ export class PagosService {
 
     // Si es admin o administrador, ver todos los pagos
     if (role === 'admin' || role === 'administrador') {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Si es instructor, ver pagos de actividades que creó o asignó
     if (role === 'instructor' && userIdentificacion) {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         where: [
           {
             actividad: {
@@ -234,15 +218,17 @@ export class PagosService {
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario', 'actividad.usuario', 'actividad.responsable', 'actividad.usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Si es pasante, solo ver sus propios pagos
     if (userIdentificacion && role === 'pasante') {
-      return this.pagoRepository.find({
+      const pagos = await this.pagoRepository.find({
         where: { idUsuario: userIdentificacion },
         relations: ['usuario', 'actividad', 'usuario.tipoUsuario'],
         order: { fechaPago: 'DESC' },
       });
+      return pagos;
     }
 
     // Por defecto, devolver vacío si no hay usuario identificado
@@ -302,5 +288,13 @@ export class PagosService {
     }
 
     return this.pagoRepository.save(pago);
+  }
+
+  async findByActividades(actividadIds: number[]) {
+    return this.pagoRepository.find({
+      where: { idActividad: In(actividadIds) },
+      relations: ['usuario', 'actividad'],
+      order: { fechaPago: 'ASC' },
+    });
   }
 }

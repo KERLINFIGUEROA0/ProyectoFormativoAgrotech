@@ -119,19 +119,28 @@ const handleViewLocation = (lote: Lote) => {
     <div className="h-full flex flex-col space-y-4 md:space-y-6 p-4 md:p-6 bg-gray-50">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Gestión Lotes</h1>
+        <Button
+          onPress={() => openModal()}
+          color="success"
+          className="font-semibold"
+          size="sm"
+          startContent={<Plus size={16} strokeWidth={2.5} />}
+        >
+          Nuevo Lote
+        </Button>
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 md:gap-3">
         <Card className="border-l-4 border-l-green-500">
-          <CardBody className="p-4 md:p-6">
+          <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Lotes</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.total}</p>
                 <p className="text-xs text-gray-500">registrados</p>
               </div>
-              <div className="p-2 md:p-3 bg-green-100 rounded-full">
+              <div className="p-1.5 md:p-2 bg-green-100 rounded-full">
                 <FaThList className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
               </div>
             </div>
@@ -146,14 +155,14 @@ const handleViewLocation = (lote: Lote) => {
         </Card>
 
         <Card className="border-l-4 border-l-yellow-500">
-          <CardBody className="p-4 md:p-6">
+          <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Preparación</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enPreparacion}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.enPreparacion}</p>
                 <p className="text-xs text-gray-500">pendientes</p>
               </div>
-              <div className="p-2 md:p-3 bg-yellow-100 rounded-full">
+              <div className="p-1.5 md:p-2 bg-yellow-100 rounded-full">
                 <FaTools className="h-5 w-5 md:h-6 md:w-6 text-yellow-600" />
               </div>
             </div>
@@ -168,14 +177,14 @@ const handleViewLocation = (lote: Lote) => {
         </Card>
 
         <Card className="border-l-4 border-l-blue-500">
-          <CardBody className="p-4 md:p-6">
+          <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Parcialmente Ocupado</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.parcialmenteOcupado}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.parcialmenteOcupado}</p>
                 <p className="text-xs text-gray-500">algunos cultivos</p>
               </div>
-              <div className="p-2 md:p-3 bg-blue-100 rounded-full">
+              <div className="p-1.5 md:p-2 bg-blue-100 rounded-full">
                 <FaLeaf className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
               </div>
             </div>
@@ -190,14 +199,14 @@ const handleViewLocation = (lote: Lote) => {
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
-          <CardBody className="p-4 md:p-6">
+          <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Cultivo</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enCultivo}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.enCultivo}</p>
                 <p className="text-xs text-gray-500">completamente activos</p>
               </div>
-              <div className="p-2 md:p-3 bg-green-100 rounded-full">
+              <div className="p-1.5 md:p-2 bg-green-100 rounded-full">
                 <FaLeaf className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
               </div>
             </div>
@@ -212,14 +221,14 @@ const handleViewLocation = (lote: Lote) => {
         </Card>
 
         <Card className="border-l-4 border-l-red-500">
-          <CardBody className="p-4 md:p-6">
+          <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Mantenimiento</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enMantenimiento}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.enMantenimiento}</p>
                 <p className="text-xs text-gray-500">requieren atención</p>
               </div>
-              <div className="p-2 md:p-3 bg-red-100 rounded-full">
+              <div className="p-1.5 md:p-2 bg-red-100 rounded-full">
                 <FaTools className="h-5 w-5 md:h-6 md:w-6 text-red-600" />
               </div>
             </div>
@@ -237,19 +246,10 @@ const handleViewLocation = (lote: Lote) => {
       
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-grow min-h-0">
         <div className="w-full lg:flex-1 xl:flex-[3] flex flex-col min-w-0">
-          <Card className="p-6 w-full h-full flex flex-col">
-            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 flex-shrink-0">
+          <Card className="p-4 w-full h-full flex flex-col">
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-600">Lista de Lotes</h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  onPress={() => openModal()}
-                  color="success"
-                  className="font-semibold"
-                  size="sm"
-                  startContent={<Plus size={16} strokeWidth={2.5} />}
-                >
-                  Nuevo Lote
-                </Button>
                 <Select
                   selectedKeys={[filterStatus]}
                   onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento')}
@@ -265,7 +265,7 @@ const handleViewLocation = (lote: Lote) => {
               </div>
             </CardHeader>
 
-            <CardBody className="overflow-x-auto overflow-y-auto flex-grow min-h-[300px]">
+            <CardBody className="overflow-x-auto overflow-y-auto flex-grow">
               <Table aria-label="Tabla de lotes" className="min-w-full w-full">
                 <TableHeader>
                    <TableColumn>Nombre</TableColumn>
@@ -323,7 +323,7 @@ const handleViewLocation = (lote: Lote) => {
             </CardBody>
 
             {totalPages > 1 && (
-              <div className="flex justify-between items-center mt-4 pt-4 border-t flex-shrink-0">
+              <div className="flex justify-between items-center mt-2 pt-2 border-t flex-shrink-0">
                 <span className="text-sm text-gray-500">
                   Mostrando {currentLotes.length} de {filteredLotes.length} lotes
                 </span>
@@ -339,7 +339,7 @@ const handleViewLocation = (lote: Lote) => {
           </Card>
         </div>
         
-        <div className="w-full lg:flex-1 xl:flex-[1] flex flex-col gap-2 min-w-0 max-w-full">
+        <div className="w-full lg:flex-1 xl:flex-[2] flex flex-col gap-2 min-w-0 max-w-full">
           <h2 className="text-lg font-semibold text-gray-600 flex-shrink-0">Ubicación: <span className="text-green-700">{selectedLote ? selectedLote.nombre : 'General'}</span></h2>
           <div className="shadow-xl rounded-2xl flex-grow min-h-[400px] md:min-h-[500px]">
             <LotesMap

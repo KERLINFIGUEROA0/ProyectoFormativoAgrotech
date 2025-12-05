@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Clock, Calculator } from 'lucide-react';
+import { DollarSign, Clock, Calculator } from 'lucide-react';
 import { Button, Input, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { toast } from 'sonner';
 import type { Actividad } from '../interfaces/actividades';
