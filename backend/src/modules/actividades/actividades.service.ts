@@ -75,6 +75,12 @@ export class ActividadesService {
     }
   }
 
+  // --- FUNCIÓN HELPER PARA FORMATEAR CANTIDADES SIN DECIMALES  ---
+  private formatCantidad(num: number): string {
+    const rounded = Math.round(num * 100) / 100;
+    return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2);
+  }
+
   // --- FUNCIÓN HELPER PARA VERIFICAR ESTADO DE LA ACTIVIDAD ---
     private async verificarEstadoActividad(actividad: Actividad) {
       if (!actividad.asignados) {
@@ -855,7 +861,7 @@ export class ActividadesService {
                         await actMaterialRepo.save(asignacionOriginal);
    
                         console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
                         console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
@@ -863,7 +869,7 @@ export class ActividadesService {
    
                         // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
                         const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                              descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
                               monto: parseFloat(nuevoCostoTotal.toFixed(2)),
                               fecha: new Date(),
                               tipo: TipoMovimiento.EGRESO,
@@ -1268,15 +1274,15 @@ export class ActividadesService {
                         await actMaterialRepo.save(asignacionOriginal);
 
                         console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
                         console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
                         console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
 
-                        // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
-                        const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                         // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
+                         const nuevoGasto = gastoRepo.create({
+                               descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
                               monto: parseFloat(nuevoCostoTotal.toFixed(2)), // Aquí van los 5000
                               fecha: new Date(),
                               tipo: TipoMovimiento.EGRESO,
