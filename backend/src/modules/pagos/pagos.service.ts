@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Pago } from './entities/pago.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Actividad } from '../actividades/entities/actividade.entity';
@@ -271,5 +271,13 @@ export class PagosService {
     }
 
     return this.pagoRepository.save(pago);
+  }
+
+  async findByActividades(actividadIds: number[]) {
+    return this.pagoRepository.find({
+      where: { idActividad: In(actividadIds) },
+      relations: ['usuario', 'actividad'],
+      order: { fechaPago: 'ASC' },
+    });
   }
 }

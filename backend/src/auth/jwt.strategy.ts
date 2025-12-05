@@ -13,7 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    return {
+    const user = {
       id: payload.sub,
       identificacion: payload.identificacion,
       rolId: payload.rolId, // numérico
@@ -21,6 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       permisos: payload.permisos ?? [],
       modulos: payload.modulos ?? {},
     };
+    return user;
   }
 }
 

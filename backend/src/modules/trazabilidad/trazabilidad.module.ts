@@ -5,6 +5,7 @@ import { CultivosModule } from '../cultivos/cultivos.module';
 import { ActividadesModule } from '../actividades/actividades.module';
 import { ProduccionesModule } from '../producciones/producciones.module';
 import { VentasModule } from '../ventas/ventas.module';
+import { PagosModule } from '../pagos/pagos.module';
 import { MovimientosModule } from '../../movimientos/movimientos.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { MovimientosModule } from '../../movimientos/movimientos.module';
     ActividadesModule,  // Para obtener las actividades realizadas
     ProduccionesModule, // Para obtener las cosechas
     VentasModule,       // Para obtener las ventas
+    PagosModule,        // Para obtener los pagos
     MovimientosModule,  // Para obtener movimientos de materiales
   ],
   controllers: [TrazabilidadController],

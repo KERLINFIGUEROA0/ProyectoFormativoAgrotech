@@ -10,6 +10,7 @@ import { Produccion } from '../producciones/entities/produccione.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { Venta } from '../../common/enums/ventas/entities/venta.entity';
 import { CultivosService } from './cultivos.service';
+import { PagosService } from '../pagos/pagos.service';
 
 @Injectable()
 export class PdfService {
@@ -25,6 +26,7 @@ export class PdfService {
     @InjectRepository(Venta)
     private readonly ventaRepository: Repository<Venta>,
     private readonly cultivosService: CultivosService,
+    private readonly pagosService: PagosService,
   ) {}
 
   async countTotalActivities(): Promise<void> {
@@ -68,12 +70,30 @@ export class PdfService {
       }
     }
 
+    let pagos: any[] = [];
+    try {
+      const actividadIds = actividades.map(act => act.id);
+      pagos = await this.pagosService.findByActividades(actividadIds);
+      if (fechaInicio && fechaFin) {
+        const start = new Date(fechaInicio);
+        const end = new Date(fechaFin);
+        pagos = pagos.filter(p => p.fechaPago >= start && p.fechaPago <= end);
+      }
+    } catch (error) {
+      console.error('Error obteniendo pagos:', error);
+      pagos = [];
+    }
+
     // Procesar actividades con materiales
     const actividadesData = actividades.map(actividad => ({
       fecha: (() => {
-        let fecha = actividad.fecha;
+        let fecha = actividad.createdAt;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        if (fecha instanceof Date && !isNaN(fecha.getTime())) {
+          fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
+          return fecha.toLocaleString('es-CO');
+        }
+        return '';
       })(),
       titulo: actividad.titulo || '',
       estado: actividad.estado || '',
@@ -87,9 +107,13 @@ export class PdfService {
     // Procesar recursos utilizados (materiales agregados de actividades)
     const recursosData = actividades.flatMap(act => act.actividadMaterial?.map(am => ({
       fecha: (() => {
-        let fecha = act.fecha;
+        let fecha = act.createdAt;
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
-        return (fecha instanceof Date && !isNaN(fecha.getTime())) ? fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '';
+        if (fecha instanceof Date && !isNaN(fecha.getTime())) {
+          fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
+          return fecha.toLocaleString('es-CO');
+        }
+        return '';
       })(),
       descripcion: am.material.nombre,
       cantidad: am.cantidadUsada ?? 0,
@@ -132,7 +156,8 @@ export class PdfService {
       actividades: actividadesData, // processed for template
       recursos: recursosData,
       producciones: produccionesData,
-      gastos: gastos
+      gastos: gastos,
+      pagos: pagos
     };
   }
 
@@ -143,6 +168,9 @@ export class PdfService {
     // Calcular costos de mano de obra
     const laborCost = data.fullActividades.reduce((sum, act) => sum + ((Number(act.horas) || 0) * (Number(act.tarifaHora) || 0)), 0);
 
+    // Calcular costos de pagos a pasantes
+    const pagosCost = data.pagos.reduce((sum, p) => sum + Number(p.monto), 0);
+
     // Calcular costos de materiales
     const materialesCost = data.fullActividades.reduce((sum, act) => {
       return sum + (act.actividadMaterial?.reduce((subSum, am) => subSum + (Number(am.costo) || 0), 0) || 0);
@@ -152,7 +180,7 @@ export class PdfService {
     const directGastosCost = data.gastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
 
     // Calcular costos totales
-    const costos = laborCost + materialesCost + directGastosCost;
+    const costos = laborCost + pagosCost + materialesCost + directGastosCost;
 
     // Calcular rentabilidad
     const rentabilidad = ingresos - costos;
@@ -163,6 +191,11 @@ export class PdfService {
     // Agregar mano de obra
     if (laborCost > 0) {
       gastosPorCategoriaMap.set('Mano de obra', laborCost);
+    }
+
+    // Agregar pagos a pasantes
+    if (pagosCost > 0) {
+      gastosPorCategoriaMap.set('Pagos a pasantes', pagosCost);
     }
 
     // Agregar gastos de materiales

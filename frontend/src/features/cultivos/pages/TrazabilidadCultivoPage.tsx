@@ -11,6 +11,7 @@ const iconMap: any = {
   Actividad: <ClipboardList className="w-5 h-5" />,
   Cosecha: <Package className="w-5 h-5" />,
   Venta: <DollarSign className="w-5 h-5" />,
+  Pago: <DollarSign className="w-5 h-5" />,
 };
 
 export default function TrazabilidadCultivoPage() {

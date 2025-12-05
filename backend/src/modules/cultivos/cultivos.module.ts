@@ -15,12 +15,14 @@ import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { Venta } from '../../common/enums/ventas/entities/venta.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 import { WebSocketModule } from '../../websocket/websocket.module';
+import { PagosModule } from '../pagos/pagos.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cultivo, TipoCultivo, Lote, Sublote, Actividad, Produccion, Gasto, Venta]),
     CacheModule.register(),
     WebSocketModule,
+    PagosModule,
   ],
   controllers: [CultivosController],
   providers: [CultivosService, PdfService],
