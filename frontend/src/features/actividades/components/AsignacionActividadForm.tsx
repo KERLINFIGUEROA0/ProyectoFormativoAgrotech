@@ -33,7 +33,7 @@ import type {
 // --- AÑADIR IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
 import { UnidadMedida } from '../../inventario/interfaces/inventario';
-import { obtenerUnidadesDisponibles, esUnidadEmpaque, convertirStockAUnidad, FACTORES_CONVERSION } from '../../../utils/unitConversion';
+import { obtenerUnidadesDisponibles, esUnidadEmpaque, FACTORES_CONVERSION } from '../../../utils/unitConversion';
 
 interface AsignacionFormProps {
   usuarios: UsuarioSimple[];
@@ -442,7 +442,14 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
               selectedKeys={formData.cultivo ? [formData.cultivo] : []}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, cultivo: selected as string }));
+                const cultivoSeleccionado = cultivos.find(c => c.id === Number(selected));
+                const loteId = cultivoSeleccionado?.loteId;
+                setFormData(prev => ({
+                  ...prev,
+                  cultivo: selected as string,
+                  lote: loteId ? loteId.toString() : prev.lote,
+                  sublote: ''
+                }));
               }}
               label="Cultivo"
               placeholder="Seleccionar cultivo"

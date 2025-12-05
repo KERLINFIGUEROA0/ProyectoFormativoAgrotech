@@ -33,6 +33,7 @@ export interface UsuarioSimple {
 export interface CultivoSimple {
    id: number;
    nombre: string;
+   loteId?: number;
 }
 
 // Interfaz para un lote simple
