@@ -60,6 +60,17 @@ export const getSensorDataLog = async (): Promise<SensorDataLog[]> => {
   return response.data.data;
 };
 
+export const sincronizarSensoresLote = async (loteId: number) => {
+  const response = await api.post(`/sensores/sincronizar-lote/${loteId}`);
+  return response.data;
+};
+
+
+export const eliminarSensorDeLote = async (sensorId: number) => {
+  const response = await api.delete(`/sensores/eliminar-de-lote/${sensorId}`);
+  return response.data;
+};
+
 export const generateSensorReport = async (params: {
   scope: 'surco' | 'cultivo';
   scopeId: number;
@@ -101,5 +112,30 @@ export const generateSensorReport = async (params: {
       console.error('Error details:', axiosError.response?.data || axiosError.message);
     }
     throw error;
+  }
+};
+
+export const getCultivosActivosLote = async (loteId: number) => {
+  const response = await api.get(`/sensores/cultivos-activos-lote/${loteId}`);
+  return response.data;
+};
+
+export const descargarReporteApi = async (data: {
+  formato: 'pdf' | 'excel' | 'json';
+  loteId: number;
+  subloteId?: number;
+  fechaInicio: string;
+  fechaFin: string;
+}) => {
+  if (data.formato === 'json') {
+    // Para testing, devolver JSON directamente
+    const response = await api.post('/sensores/reporte-trazabilidad', data);
+    return response.data;
+  } else {
+    // Para PDF/Excel, descargar como blob
+    const response = await api.post('/sensores/reporte-trazabilidad', data, {
+      responseType: 'blob',
+    });
+    return response.data; // Retorna el blob
   }
 };

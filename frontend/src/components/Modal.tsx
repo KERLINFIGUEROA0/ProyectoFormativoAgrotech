@@ -35,7 +35,7 @@ export default function Modal({
           ✕
         </button>
         <h2 className="text-center text-2xl font-bold mb-4 animate-in slide-in-from-top-2 duration-400 delay-100">{title}</h2>
-        <div className="animate-in slide-in-from-bottom-2 duration-400 delay-150">
+        <div className="animate-in slide-in-from-bottom-2 duration-400 delay-150 max-h-[70vh] overflow-y-auto">
           {children}
         </div>
       </div>

@@ -4,6 +4,8 @@ import { TipoCategoria } from '../../../common/enums/tipo-categoria.enum';
 import { TipoMaterial } from '../../../common/enums/tipo-material.enum';
 import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum';
 import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
+import { TipoConsumo } from '../../../common/enums/tipo-consumo.enum';
+import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
 import { is } from 'cheerio/dist/commonjs/api/traversing';
 
 export class CreateMaterialeDto {
@@ -16,6 +18,20 @@ export class CreateMaterialeDto {
   @IsNotEmpty({ message: 'La cantidad es obligatoria.' })
   @Min(0)
   cantidad: number;
+
+  @IsEnum(TipoConsumo)
+  @IsOptional()
+  tipoConsumo?: TipoConsumo;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  cantidadPorUnidad?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  usosTotales?: number;
 
   // --- VALIDACIÓN PARA LAS NUEVAS COLUMNAS ---
   
@@ -63,4 +79,19 @@ export class CreateMaterialeDto {
   @IsDateString()
   @IsOptional()
   fechaVencimiento?: string;
+
+  // Campos para ingreso con paquetes
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  cantidadPaquetes?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0.001)
+  tamañoPorPaquete?: number;
+
+  @IsEnum(UnidadMedida)
+  @IsOptional()
+  unidadMedidaIngreso?: UnidadMedida;
 }

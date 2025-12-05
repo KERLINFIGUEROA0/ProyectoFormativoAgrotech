@@ -32,12 +32,38 @@ export class LotesController {
     };
   }
 
-  @Get('listar')
+  @Get()
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos')
   @CacheTTL(60000)
+  async findAll() {
+    const lista = await this.lotesService.listar();
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
+  @Get('listar')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_todos_alt')
+  @CacheTTL(60000)
   async listar() {
     const lista = await this.lotesService.listar();
+    return {
+      success: true,
+      total: lista.length,
+      data: lista,
+    };
+  }
+
+  @Get('disponibles')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_disponibles')
+  @CacheTTL(30000) // Cache más corto para datos dinámicos
+  async obtenerDisponibles() {
+    const lista = await this.lotesService.obtenerDisponibles();
     return {
       success: true,
       total: lista.length,
@@ -91,12 +117,7 @@ export class LotesController {
     };
   }
 
-  @Delete('eliminar/:id')
-  async eliminar(@Param('id', ParseIntPipe) id: number) {
-    await this.lotesService.eliminar(id);
-    return {
-      success: true,
-      message: `El lote con ID ${id} fue eliminado correctamente`,
-    };
-  }
+  // ✅ ELIMINADOS: Endpoints de eliminación y archivado
+  // Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
+  // Esto preserva toda la trazabilidad histórica
 }

@@ -13,20 +13,27 @@ import {
   Plus,
   X,
 } from 'lucide-react';
+import { Input, Select, SelectItem, Button, Textarea, Checkbox } from '@heroui/react';
 // --- MODIFICAR IMPORT ---
 import {
-  asignarActividad,
-  obtenerMaterialesDisponibles, // <-- AÑADIR
+   asignarActividad,
+   obtenerMaterialesDisponibles, // <-- AÑADIR
+   obtenerLotesParaActividades,
+   obtenerSublotesParaActividades,
 } from '../api/actividadesapi';
 import type {
-  AsignarActividadPayload,
-  UsuarioSimple,
-  CultivoSimple,
-  // --- AÑADIR IMPORT ---
-  MaterialUsado,
+   AsignarActividadPayload,
+   UsuarioSimple,
+   CultivoSimple,
+   LoteSimple,
+   SubloteSimple,
+   // --- AÑADIR IMPORT ---
+   MaterialUsado,
 } from '../interfaces/actividades';
 // --- AÑADIR IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
+import { UnidadMedida } from '../../inventario/interfaces/inventario';
+import { obtenerUnidadesDisponibles, esUnidadEmpaque, convertirStockAUnidad, FACTORES_CONVERSION } from '../../../utils/unitConversion';
 
 interface AsignacionFormProps {
   usuarios: UsuarioSimple[];
@@ -39,21 +46,27 @@ interface AsignacionFormProps {
 interface MaterialSeleccionado extends MaterialUsado {
   nombre: string;
   stockDisponible: number;
+  unidadMedida: UnidadMedida;
 }
 
 interface AsignacionFormState {
-  titulo: string;
-  descripcion: string;
-  fecha: string;
-  cultivo: string;
-  aprendices: number[];
-  searchTerm: string;
-  selectedFicha: string;
-  // --- AÑADIR CAMPOS ---
-  materiales: MaterialSeleccionado[];
-  materialActual: string; // ID
-  cantidadMaterial: number | string;
-  // --- FIN CAMPOS ---
+   titulo: string;
+   descripcion: string;
+   fecha: string;
+   cultivo: string;
+   lote: string;
+   sublote: string;
+   aprendices: number[];
+   responsable: string;
+   searchTerm: string;
+   selectedFicha: string;
+   // --- AÑADIR CAMPOS ---
+   materiales: MaterialSeleccionado[];
+   materialActual: string; // ID
+   cantidadMaterial: number | string;
+   unidadSeleccionada: UnidadMedida; // Nueva unidad seleccionada
+   archivosIniciales: FileList | null;
+   // --- FIN CAMPOS ---
 }
 
 const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
@@ -67,19 +80,53 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     descripcion: '',
     fecha: new Date().toISOString().substring(0, 10),
     cultivo: '',
+    lote: '',
+    sublote: '',
     aprendices: [],
+    responsable: '',
     searchTerm: '',
     selectedFicha: '',
     // --- AÑADIR ESTADO ---
     materiales: [],
     materialActual: '',
     cantidadMaterial: 1,
+    unidadSeleccionada: UnidadMedida.UNIDAD,
+    archivosIniciales: null,
     // --- FIN ESTADO ---
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   // --- AÑADIR ESTADO ---
   const [materialesDisponibles, setMaterialesDisponibles] = useState<Material[]>([]);
+  const [lotesDisponibles, setLotesDisponibles] = useState<LoteSimple[]>([]);
+  const [sublotesDisponibles, setSublotesDisponibles] = useState<SubloteSimple[]>([]);
   // --- FIN ESTADO ---
+
+  // Función para calcular el stock TOTAL en UNIDAD BASE (g o ml)
+  const calcularStockDisponible = (material: Material): number => {
+    // STOCK UNIFICADO: Todo el inventario es un único tanque/pila
+    // 'material.cantidad' YA ES el total en gramos/ml (ej: 2,500,000)
+    // No hay distinción entre paquetes cerrados y abiertos.
+    return material.cantidad;
+  };
+
+  // Función para calcular el costo estimado
+  const calcularCostoEstimado = (material: Material, cantidad: number, unidad: UnidadMedida): number => {
+    if (material.tipoConsumo !== 'consumible' || !material.precio) return 0;
+    if (!material.pesoPorUnidad || material.pesoPorUnidad === 0) return 0;
+
+    // 1. Obtener factor de la unidad seleccionada (Ej: si eligió Kg, factor es 1000)
+    const factor = FACTORES_CONVERSION[unidad] || 1;
+
+    // 2. Calcular cuántos GRAMOS/ML está pidiendo el usuario
+    // Si elige "2 Kg", son 2 * 1000 = 2000 gramos.
+    const cantidadEnBase = cantidad * factor;
+
+    // 3. Calcular el precio por GRAMO/ML
+    // Precio del paquete / Peso del paquete en gramos
+    const precioPorUnidadBase = material.precio / material.pesoPorUnidad;
+
+    return precioPorUnidadBase * cantidadEnBase;
+  };
 
   // ... (useMemo de fichasUnicas y usuariosFiltrados sin cambios) ...
   const fichasUnicas = useMemo(() => {
@@ -122,6 +169,82 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   }, []);
   // --- FIN USEEFFECT ---
 
+  // --- AÑADIR USEEFFECT PARA CARGAR LOTES ---
+  useEffect(() => {
+    const cargarLotes = async () => {
+      try {
+        const lotes = await obtenerLotesParaActividades();
+        setLotesDisponibles(lotes);
+      } catch (error) {
+        toast.error('No se pudieron cargar los lotes.');
+      }
+    };
+    cargarLotes();
+  }, []);
+  // --- FIN USEEFFECT ---
+
+  // --- AÑADIR USEEFFECT PARA CARGAR SUBLOTES ---
+  useEffect(() => {
+    const cargarSublotes = async () => {
+      if (formData.lote) {
+        try {
+          const sublotes = await obtenerSublotesParaActividades(parseInt(formData.lote));
+          setSublotesDisponibles(sublotes);
+        } catch (error) {
+          toast.error('No se pudieron cargar los sublotes.');
+        }
+      } else {
+        setSublotesDisponibles([]);
+      }
+    };
+    cargarSublotes();
+  }, [formData.lote]);
+  // --- FIN USEEFFECT ---
+
+  // Obtener material seleccionado para mostrar unidad
+  const materialSeleccionado = materialesDisponibles.find(m => m.id === parseInt(formData.materialActual));
+  
+  // Obtener unidades disponibles para el material seleccionado
+  const unidadesDisponibles = materialSeleccionado
+    ? obtenerUnidadesDisponibles(materialSeleccionado.tipoConsumo || 'consumible', materialSeleccionado.medidasDeContenido)
+    : [UnidadMedida.UNIDAD];
+  
+  // --- USEEFFECT PARA ACTUALIZAR UNIDAD CUANDO CAMBIA MATERIAL ---
+  useEffect(() => {
+    if (materialSeleccionado && unidadesDisponibles.length > 0) {
+      // Si la unidad actual no está disponible para este material, cambiar a la primera disponible
+      if (!unidadesDisponibles.includes(formData.unidadSeleccionada)) {
+        setFormData(prev => ({ ...prev, unidadSeleccionada: unidadesDisponibles[0] }));
+      }
+    }
+  }, [materialSeleccionado, unidadesDisponibles, formData.unidadSeleccionada]);
+
+  // --- CÁLCULO DINÁMICO DE STOCK EN LA UNIDAD SELECCIONADA ---
+  const stockEnUnidadSeleccionada = useMemo(() => {
+    if (!materialSeleccionado) return 0;
+
+    const stockTotalBase = calcularStockDisponible(materialSeleccionado); // Total en gramos
+    const unidad = formData.unidadSeleccionada;
+    const factor = FACTORES_CONVERSION[unidad];
+
+    // Si es un empaque, dividimos por el peso del empaque
+    if (esUnidadEmpaque(unidad)) {
+      if (materialSeleccionado.pesoPorUnidad) {
+        return Math.floor(stockTotalBase / materialSeleccionado.pesoPorUnidad);
+      }
+      return Math.floor(stockTotalBase);
+    }
+
+    // Si es masa/volumen (Kg, g, L), usamos el factor de conversión
+    // Ej: Tengo 500,000g (stockTotalBase). Selecciono Kg (factor 1000).
+    // 500,000 / 1000 = 500 Kg disponibles.
+    if (factor) {
+        return stockTotalBase / factor;
+    }
+
+    return stockTotalBase;
+  }, [materialSeleccionado, formData.unidadSeleccionada]);
+
   // ... (funciones de seleccionar/deseleccionar ficha sin cambios) ...
   const seleccionarTodosDeFicha = (fichaId: string) => {
     const aprendicesDeFicha = usuarios
@@ -162,9 +285,13 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       if (isChecked) {
         return { ...prev, aprendices: [...prev.aprendices, identificacion] };
       } else {
+        const newAprendices = prev.aprendices.filter((id) => id !== identificacion);
+        // Reset responsable if they were removed from the list
+        const newResponsable = newAprendices.includes(Number(prev.responsable)) ? prev.responsable : '';
         return {
           ...prev,
-          aprendices: prev.aprendices.filter((id) => id !== identificacion),
+          aprendices: newAprendices,
+          responsable: newResponsable,
         };
       }
     });
@@ -184,13 +311,20 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     if (!material) return;
 
     // Validación de stock total
-    const cantidadTotalRequerida = cantidad * (formData.aprendices.length || 1);
-    if (cantidadTotalRequerida > material.cantidad) {
+    const cantidadTotalRequerida = cantidad; // Cantidad total para la actividad
+
+    const stockDisponibleTotal = calcularStockDisponible(material);
+
+    if (cantidadTotalRequerida > stockDisponibleTotal) {
+      const unidadTexto = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
       toast.error(
-        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ( ${cantidad} x ${formData.aprendices.length} aprendices). Disponible: ${material.cantidad}`,
+        `Stock insuficiente. Se necesitan ${cantidadTotalRequerida} ${unidadTexto}. Disponible: ${stockDisponibleTotal} ${unidadTexto}`,
       );
       return;
     }
+
+    // Calcular costo estimado para mostrarlo en la lista
+    const costoEstimado = calcularCostoEstimado(material, cantidad, formData.unidadSeleccionada);
 
     // Evitar duplicados
     const existente = formData.materiales.find(m => m.materialId === id);
@@ -207,7 +341,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 materialId: material.id,
                 nombre: material.nombre,
                 cantidadUsada: cantidad,
-                stockDisponible: material.cantidad,
+                unidadMedida: formData.unidadSeleccionada,
+                stockDisponible: calcularStockDisponible(material),
+                costoEstimado: costoEstimado, // Guardamos esto para mostrarlo
             }
         ],
         materialActual: '',
@@ -230,10 +366,11 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
       !formData.titulo ||
       !formData.fecha ||
       !formData.cultivo ||
-      formData.aprendices.length === 0
+      formData.aprendices.length === 0 ||
+      (formData.aprendices.length > 1 && !formData.responsable)
     ) {
       toast.error(
-        'Por favor, complete Título, Fecha, Cultivo y asigne al menos un Aprendiz.',
+        'Por favor, complete Título, Fecha, Cultivo y asigne al menos un Aprendiz. Si hay múltiples aprendices, seleccione un responsable.',
       );
       return;
     }
@@ -241,15 +378,19 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     // --- MODIFICACIÓN: Añadir materiales al payload ---
     const materialesPayload = formData.materiales.map(m => ({
         materialId: m.materialId,
-        cantidadUsada: m.cantidadUsada
+        cantidadUsada: m.cantidadUsada,
+        unidadMedida: m.unidadMedida
     }));
-    
+
     const payload: AsignarActividadPayload = {
       titulo: formData.titulo,
       descripcion: formData.descripcion,
       fecha: formData.fecha,
       cultivo: Number(formData.cultivo),
+      lote: formData.lote ? Number(formData.lote) : undefined,
+      sublote: formData.sublote ? Number(formData.sublote) : undefined,
       aprendices: formData.aprendices,
+      responsable: formData.responsable ? Number(formData.responsable) : undefined,
       materiales: materialesPayload, // <-- AÑADIDO
     };
     // --- FIN MODIFICACIÓN ---
@@ -260,7 +401,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     const toastId = toast.loading('Asignando actividades...');
 
     try {
-      await asignarActividad(payload);
+      await asignarActividad(payload, formData.archivosIniciales || undefined);
       toast.success(`Actividades asignadas exitosamente.`, { id: toastId });
       onSuccess();
       onCancel();
@@ -283,69 +424,219 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             <ClipboardList className="w-5 h-5 text-green-600" /> Nueva Asignación
           </h2>
 
-          {/* ... (Inputs de Título, Cultivo, Descripción, Fecha sin cambios) ... */}
+          {/* Input de Título */}
           <div>
-            <label htmlFor="titulo" className="block text-sm font-medium text-gray-700">Nombre de la Actividad</label>
-            <input type="text" name="titulo" id="titulo" placeholder="Ej: Riego por goteo - Lote A" value={formData.titulo} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Input
+              type="text"
+              name="titulo"
+              placeholder="Ej: Riego por goteo - Lote A"
+              value={formData.titulo}
+              onChange={handleChange}
+              label="Nombre de la Actividad"
+              isRequired
+            />
           </div>
           <div>
-            <label htmlFor="cultivo" className="block text-sm font-medium text-gray-700">Cultivo</label>
-            <select name="cultivo" id="cultivo" value={formData.cultivo} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-white">
-                <option value="">Seleccionar cultivo</option>
-                {cultivos.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-            </select>
+            <Select
+              name="cultivo"
+              selectedKeys={formData.cultivo ? [formData.cultivo] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, cultivo: selected as string }));
+              }}
+              label="Cultivo"
+              placeholder="Seleccionar cultivo"
+              isRequired
+            >
+              {cultivos.map(c => (
+                <SelectItem key={c.id.toString()}>
+                  {c.nombre}
+                </SelectItem>
+              ))}
+            </Select>
           </div>
           <div>
-            <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700">Descripción de la Actividad</label>
-            <textarea name="descripcion" id="descripcion" placeholder="Describe la tarea a realizar..." value={formData.descripcion} onChange={handleChange} required rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Select
+              name="lote"
+              selectedKeys={formData.lote ? [formData.lote] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, lote: selected as string, sublote: '' })); // Reset sublote when lote changes
+              }}
+              label="Lote (Opcional)"
+              placeholder="Seleccionar lote"
+            >
+              {lotesDisponibles.map(l => (
+                <SelectItem key={l.id.toString()}>
+                  {l.nombre}
+                </SelectItem>
+              ))}
+            </Select>
           </div>
           <div>
-            <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">Fecha de Realización</label>
-            <input type="date" name="fecha" id="fecha" value={formData.fecha} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"/>
+            <Select
+              name="sublote"
+              selectedKeys={formData.sublote ? [formData.sublote] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, sublote: selected as string }));
+              }}
+              label="Sublote (Opcional)"
+              placeholder="Seleccionar sublote"
+              isDisabled={!formData.lote}
+            >
+              {sublotesDisponibles.map(s => (
+                <SelectItem key={s.id.toString()}>
+                  {s.nombre}
+                </SelectItem>
+              ))}
+            </Select>
           </div>
+          <div>
+            <Textarea
+              name="descripcion"
+              placeholder="Describe la tarea a realizar..."
+              value={formData.descripcion}
+              onChange={handleChange}
+              label="Descripción de la Actividad"
+              isRequired
+              minRows={3}
+            />
+          </div>
+          <div>
+            <Input
+              type="date"
+              name="fecha"
+              value={formData.fecha}
+              onChange={handleChange}
+              label="Fecha de Realización"
+              isRequired
+            />
+          </div>
+
+          {/* --- AÑADIR CAMPO PARA ARCHIVOS INICIALES --- */}
+          <div>
+            <label htmlFor="archivosIniciales" className="block text-sm font-medium text-gray-700">
+              Archivo Inicial (PDF, Excel, Imagen, etc.) - Opcional
+            </label>
+            <input
+              type="file"
+              name="archivosIniciales"
+              id="archivosIniciales"
+              multiple
+              accept=".pdf,.xlsx,.xls,.doc,.docx,.jpg,.jpeg,.png,.gif"
+              onChange={(e) => setFormData(prev => ({ ...prev, archivosIniciales: e.target.files }))}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Sube un archivo que los aprendices puedan descargar y usar como referencia para su respuesta.
+            </p>
+          </div>
+          {/* --- FIN CAMPO ARCHIVOS --- */}
 
           {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-medium text-gray-700">
-              Materiales a Utilizar (por aprendiz)
+              Materiales a Utilizar (cantidad total)
             </label>
             <div className="p-4 border rounded-lg bg-white space-y-3">
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Package size={14}/> Material</label>
-                  <select
-                    value={formData.materialActual}
-                    onChange={(e) => setFormData(prev => ({ ...prev, materialActual: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
+                  <Select
+                    selectedKeys={formData.materialActual ? [formData.materialActual] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0];
+                      setFormData(prev => ({ ...prev, materialActual: selected as string }));
+                    }}
+                    placeholder="Seleccionar..."
+                    label="Material"
+                    startContent={<Package size={14} />}
                   >
-                    <option value="">Seleccionar...</option>
-                    {materialesDisponibles.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (Disp: {m.cantidad})
-                      </option>
-                    ))}
-                  </select>
+                    {materialesDisponibles.map((m) => {
+                      const stockTotal = calcularStockDisponible(m);
+                      const unidadTexto = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
+                      return (
+                        <SelectItem key={m.id.toString()}>
+                          {m.nombre} (Disp: {stockTotal} {unidadTexto})
+                        </SelectItem>
+                      );
+                    })}
+                  </Select>
                 </div>
-                <div className="w-1/3">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
-                  <input
+                <div className="w-1/4">
+                  <Input
                     type="number"
-                    value={Number(formData.cantidadMaterial) || ''}
+                    value={formData.cantidadMaterial.toString()}
                     onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
                     min="1"
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                    label="Cantidad"
+                    startContent={<Hash size={14} />}
                   />
                 </div>
-                <button
+                <div className="w-1/4">
+                  <Select
+                    selectedKeys={[formData.unidadSeleccionada]}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0] as UnidadMedida;
+                      setFormData(prev => ({ ...prev, unidadSeleccionada: selected }));
+                    }}
+                    label="Unidad"
+                    placeholder="Unidad"
+                  >
+                    {unidadesDisponibles.map((unidad) => (
+                      <SelectItem key={unidad}>
+                        {unidad}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+                <Button
                   type="button"
                   onClick={handleAddMaterial}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  color="success"
+                  isIconOnly
                 >
                   <Plus size={20} />
-                </button>
+                </Button>
               </div>
+
+              {/* --- ZONA DE INFORMACIÓN DE STOCK DINÁMICO --- */}
+              {materialSeleccionado && (
+                <div className="w-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col gap-1">
+                   <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 font-medium">Stock Disponible:</span>
+                      <span className={`text-sm font-bold ${
+                         Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada
+                         ? 'text-red-600'
+                         : 'text-blue-600'
+                      }`}>
+                         {stockEnUnidadSeleccionada.toLocaleString('es-CO', { maximumFractionDigits: 2 })} {formData.unidadSeleccionada}
+                      </span>
+                   </div>
+
+                   {/* Barra de progreso visual */}
+                   <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${
+                           Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada ? 'bg-red-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${Math.min((Number(formData.cantidadMaterial) / (stockEnUnidadSeleccionada || 1)) * 100, 100)}%` }}
+                      ></div>
+                   </div>
+
+                   <p className="text-xs text-gray-400 mt-1">
+                     Total en inventario: {calcularStockDisponible(materialSeleccionado).toFixed(2)} {materialSeleccionado.unidadBase || 'g/ml'} (Base Unificada)
+                   </p>
+                </div>
+              )}
+
+              {/* --- FEEDBACK VISUAL PARA UNIDADES DE EMPAQUE --- */}
+              {esUnidadEmpaque(formData.unidadSeleccionada) && materialSeleccionado?.pesoPorUnidad && (
+                <div className="mt-2 p-2 bg-blue-50 text-blue-700 text-sm rounded border border-blue-200">
+                  💡 <strong>Nota:</strong> Estás usando <strong>{formData.unidadSeleccionada}</strong>.
+                  El sistema convertirá automáticamente a la unidad base para descontar del stock unificado.
+                </div>
+              )}
 
               <div className="space-y-2">
                 {formData.materiales.map((m) => (
@@ -354,18 +645,25 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     className="flex justify-between items-center bg-gray-100 p-2 border rounded-md"
                   >
                     <div className="text-sm">
-                      <p className="font-medium">{m.nombre}</p>
-                      <p className="text-xs text-gray-500">
-                        Cantidad por aprendiz: {m.cantidadUsada}
-                      </p>
+                      <p className="font-medium text-gray-800">{m.nombre}</p>
+                      <div className="flex gap-4 text-xs text-gray-600">
+                         <span>Cant: <strong>{m.cantidadUsada} {m.unidadMedida}</strong></span>
+                         {/* Mostramos el costo estimado */}
+                         <span className="text-green-700 font-semibold">
+                           Costo aprox: ${(m as any).costoEstimado?.toLocaleString('es-CO') || 0}
+                         </span>
+                      </div>
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRemoveMaterial(m.materialId)}
-                      className="p-1 text-red-500 hover:bg-red-100 rounded-full"
+                      color="danger"
+                      variant="light"
+                      isIconOnly
+                      size="sm"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -388,32 +686,49 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
             )}
           </div>
 
+          {formData.aprendices.length > 1 && (
+            <div>
+              <Select
+                name="responsable"
+                selectedKeys={formData.responsable ? [formData.responsable] : []}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  setFormData(prev => ({ ...prev, responsable: selected }));
+                }}
+                label="Persona Responsable (Obligatorio cuando hay múltiples aprendices)"
+                placeholder="Seleccionar responsable"
+                isRequired={formData.aprendices.length > 1}
+              >
+                {usuarios
+                  .filter(u => formData.aprendices.includes(Number(u.identificacion)))
+                  .map(u => (
+                    <SelectItem key={u.identificacion.toString()}>
+                      {u.nombre} {u.apellidos}
+                    </SelectItem>
+                  ))}
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Esta persona podrá devolver materiales no utilizados al finalizar la actividad.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-start gap-4 pt-4">
-            {/* ... (Botones de Submit y Cancelar sin cambios) ... */}
-              <button 
-                type="submit" 
-                disabled={isSubmitting || formData.aprendices.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-md transition duration-150 disabled:bg-gray-400"
+              <Button
+                type="submit"
+                disabled={isSubmitting || formData.aprendices.length === 0 || (formData.aprendices.length > 1 && !formData.responsable)}
+                color="success"
+                startContent={isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Asignando...
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="w-5 h-5" />
-                    Asignar Actividad
-                  </>
-                )}
-              </button>
-              <button 
-                  type="button" 
-                  onClick={onCancel} 
-                  className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 shadow-md transition duration-150"
+                {isSubmitting ? "Asignando..." : "Asignar Actividad"}
+              </Button>
+              <Button
+                type="button"
+                onClick={onCancel}
+                color="danger"
               >
-                  Cancelar
-              </button>
+                Cancelar
+              </Button>
           </div>
         </div>
 
@@ -426,49 +741,52 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
           </h2>
           
           <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre o identificación..."
-                value={formData.searchTerm}
-                onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm"
-              />
-            </div>
+            <Input
+              type="text"
+              placeholder="Buscar por nombre o identificación..."
+              value={formData.searchTerm}
+              onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
+              startContent={<Search className="w-4 h-4" />}
+            />
 
-            <div className="relative">
-              <Filter className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-              <select
-                value={formData.selectedFicha}
-                onChange={(e) => setFormData(prev => ({ ...prev, selectedFicha: e.target.value }))}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm p-2 text-sm bg-white"
-              >
-                <option value="">Todas las fichas</option>
-                {fichasUnicas.map(ficha => (
-                  <option key={ficha.id_ficha} value={ficha.id_ficha}>
-                    {ficha.nombre} ({ficha.id_ficha})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              selectedKeys={formData.selectedFicha ? [formData.selectedFicha] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, selectedFicha: selected as string }));
+              }}
+              placeholder="Todas las fichas"
+              startContent={<Filter className="w-4 h-4" />}
+            >
+              {fichasUnicas.map(ficha => (
+                <SelectItem key={ficha.id_ficha}>
+                  {ficha.nombre} ({ficha.id_ficha})
+                </SelectItem>
+              ))}
+            </Select>
 
             {formData.selectedFicha && (
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => seleccionarTodosDeFicha(formData.selectedFicha)}
-                  className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
+                  color="success"
+                  variant="light"
+                  size="sm"
+                  className="flex-1"
                 >
                   Seleccionar Todo
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => deseleccionarTodosDeFicha(formData.selectedFicha)}
-                  className="flex-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition-colors"
+                  color="danger"
+                  variant="light"
+                  size="sm"
+                  className="flex-1"
                 >
                   Deseleccionar Todo
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -501,11 +819,9 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                     
                     <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-blue-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={formData.aprendices.includes(Number(u.identificacion))}
-                          onChange={(e) => handleAprendicesChange(Number(u.identificacion), e.target.checked)}
-                          className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                        <Checkbox
+                          isSelected={formData.aprendices.includes(Number(u.identificacion))}
+                          onValueChange={(isSelected) => handleAprendicesChange(Number(u.identificacion), isSelected)}
                         />
                         <div>
                           <p className="font-medium text-gray-800">{u.nombre} {u.apellidos}</p>

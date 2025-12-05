@@ -1,39 +1,109 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-// --- ✅ 1. Importamos AlertTriangle ---
 import { Filter, Plus, Bell, Edit, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
 
-
 import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial } from '../api/inventarioApi';
-import Modal from '../../../components/Modal';
 import MaterialForm from '../components/MaterialForm';
 import { type Material, type MaterialData } from '../interfaces/inventario';
-
+import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem } from '@heroui/react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
-const getStatusInfo = (cantidad: number) => {
-  if (cantidad <= 10) return { text: 'Crítico', bg: 'bg-red-100', text_color: 'text-red-800' };
-  if (cantidad <= 25) return { text: 'Stock Bajo', bg: 'bg-yellow-100', text_color: 'text-yellow-800' };
+// --- ✅ CORRECCIÓN 1: Arrays de unidades para detección automática ---
+const UNIDADES_LIQUIDAS = ['L', 'l', 'ml', 'mL', 'Litro', 'Mililitro', 'gal', 'oz', 'cm3', 'cm³'];
+
+// --- ✅ CORRECCIÓN 2: Recibimos 'unidadMedida' como parámetro ---
+const renderCantidadAmigable = (
+  cantidadTotal: number | null | undefined, 
+  pesoPorUnidad: number | null | undefined, 
+  tipoEmpaque: string,
+  unidadMedida: string | null | undefined // Nuevo parámetro
+) => {
+  // Caso 1: Herramientas o items sin peso definido
+  if (!pesoPorUnidad || pesoPorUnidad <= 0) {
+    return (
+      <div className="font-semibold text-center text-gray-800">
+        {cantidadTotal || 0} {tipoEmpaque}
+      </div>
+    );
+  }
+
+  // Caso 2: Consumibles (Abonos, Químicos)
+  const cantidad = cantidadTotal || 0;
+  const paquetesEstimados = cantidad / pesoPorUnidad;
+  
+  // Calculamos el total (asumiendo que la DB guarda en gramos/mililitros)
+  const totalEnUnidadMayor = cantidad / 1000;
+
+  const paquetesVisual = Number.isInteger(paquetesEstimados)
+      ? paquetesEstimados
+      : paquetesEstimados.toFixed(1);
+
+  const totalVisual = Number.isInteger(totalEnUnidadMayor)
+      ? totalEnUnidadMayor
+      : totalEnUnidadMayor.toFixed(2);
+
+  // --- ✅ Lógica dinámica para detectar si es líquido ---
+  const esLiquido = unidadMedida && UNIDADES_LIQUIDAS.includes(unidadMedida);
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="font-bold text-gray-800 text-base">
+        {paquetesVisual} {tipoEmpaque}s
+      </div>
+      <div className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full mt-1">
+        {/* Si es líquido muestra L, si no kg */}
+        Total: {totalVisual} {esLiquido ? 'L' : 'kg'}
+      </div>
+    </div>
+  );
+};
+
+const getStatusInfo = (cantidad: number | null | undefined, pesoPorUnidad: number | null | undefined) => {
+  const cantidadReal = cantidad || 0;
+  let cantidadParaEvaluar = cantidadReal;
+
+  if (pesoPorUnidad && pesoPorUnidad > 0) {
+    cantidadParaEvaluar = cantidadReal / pesoPorUnidad;
+  }
+
+  if (cantidadParaEvaluar <= 5) return { text: 'Crítico', bg: 'bg-red-100', text_color: 'text-red-800' };
+  if (cantidadParaEvaluar <= 15) return { text: 'Stock Bajo', bg: 'bg-yellow-100', text_color: 'text-yellow-800' };
   return { text: 'Normal', bg: 'bg-green-100', text_color: 'text-green-800' };
 };
 
-
-
+// --- ✅ CORRECCIÓN 3: Mejoramos la detección en el formateo ---
 const formatarContenido = (peso: number | string | null, tipoMedida: string | null | undefined): string | null => {
   const pesoNumerico = Number(peso);
   if (!pesoNumerico || pesoNumerico <= 0) return null;
 
-  const esLiquido = tipoMedida === 'Litro' || tipoMedida === 'Mililitro';
+  // Verificamos si la unidad está en la lista de líquidos
+  const esLiquido = typeof tipoMedida === 'string' && UNIDADES_LIQUIDAS.includes(tipoMedida);
 
-  if (pesoNumerico < 1) {
-    const valorPequeño = Number((pesoNumerico * 1000).toFixed(3));
-    return esLiquido ? `${valorPequeño} ml` : `${valorPequeño} g`;
+  if (esLiquido) {
+    // Para líquidos, asumimos que pesoPorUnidad está en ml
+    if (pesoNumerico >= 1000) {
+      // Si >= 1000 ml, mostrar en L
+      const valorEnLitros = Number((pesoNumerico / 1000).toFixed(2));
+      return `${valorEnLitros} L`;
+    } else {
+      // Si < 1000 ml, mostrar en ml
+      const valorEnMl = Number(pesoNumerico.toFixed(3));
+      return `${valorEnMl} ml`;
+    }
+  } else {
+    // Para sólidos, asumimos que pesoPorUnidad está en g
+    if (pesoNumerico >= 1000) {
+      // Si >= 1000 g, mostrar en kg
+      const valorEnKg = Number((pesoNumerico / 1000).toFixed(2));
+      return `${valorEnKg} kg`;
+    } else {
+      // Si < 1000 g, mostrar en g
+      const valorEnG = Number(pesoNumerico.toFixed(3));
+      return `${valorEnG} g`;
+    }
   }
-
-  const valorGrande = Number(pesoNumerico.toFixed(3));
-  return esLiquido ? `${valorGrande} L` : `${valorGrande} kg`;
 }
 
 export default function GestionInventarioPage() {
@@ -51,8 +121,7 @@ export default function GestionInventarioPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  // --- ✅ CAMBIO AQUÍ ---
-  const [itemsPerPage] = useState(10); // Cambiado de 20 a 10
+  const [itemsPerPage] = useState(10); 
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Material | null; direction: 'ascending' | 'descending' }>({ key: 'nombre', direction: 'ascending' });
 
@@ -133,10 +202,14 @@ export default function GestionInventarioPage() {
     }
   };
 
-  // --- ✅ 2. Añadimos un Memo para contar los items críticos ---
   const itemsCriticos = useMemo(() => {
-    // Contamos solo los materiales activos que están en estado crítico (<= 10)
-    return materiales.filter(mat => mat.estado && mat.cantidad <= 10);
+    return materiales.filter(mat => {
+      if (!mat.estado) return false;
+      const cantidadParaEvaluar = mat.pesoPorUnidad && mat.pesoPorUnidad > 0
+        ? mat.cantidad / mat.pesoPorUnidad
+        : mat.cantidad;
+      return cantidadParaEvaluar <= 15; // Incluye tanto stock crítico (<=5) como bajo stock (<=15)
+    });
   }, [materiales]);
 
   const materialesFiltrados = useMemo(() => {
@@ -150,8 +223,10 @@ export default function GestionInventarioPage() {
       const coincideUbicacion = filtroUbicacion === 'Todas' || mat.ubicacion === filtroUbicacion;
       const coincideProveedor = filtroProveedor === 'Todos' || mat.proveedor === filtroProveedor;
 
-      const estadoStock = getStatusInfo(mat.cantidad).text;
-      const coincideEstadoStock = filtroEstadoStock === 'Todos' || estadoStock === filtroEstadoStock;
+      const estadoStock = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
+      const coincideEstadoStock = filtroEstadoStock === 'Todos' ||
+        (filtroEstadoStock === 'Crítico' && (estadoStock === 'Crítico' || estadoStock === 'Stock Bajo')) ||
+        estadoStock === filtroEstadoStock;
 
       const coincideEstadoMaterial = filtroEstadoMaterial === 'Todos' ||
         (filtroEstadoMaterial === 'Activo' && mat.estado) ||
@@ -203,10 +278,8 @@ export default function GestionInventarioPage() {
     setSortConfig({ key, direction });
   };
 
-  // --- ✅ INICIO DE LA CORRECCIÓN: Componente de icono de ordenamiento ---
   const SortIcon = ({ columnKey }: { columnKey: keyof Material }) => {
     if (sortConfig.key !== columnKey) {
-      // Devolvemos un ícono invisible para mantener el espacio
       return <ArrowUpDown size={12} className="text-transparent" />;
     }
     if (sortConfig.direction === 'ascending') {
@@ -214,7 +287,6 @@ export default function GestionInventarioPage() {
     }
     return <ArrowDown size={12} className="text-blue-600" />;
   };
-  // --- ✅ FIN DE LA CORRECCIÓN ---
 
   return (
 
@@ -222,16 +294,15 @@ export default function GestionInventarioPage() {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800">Gestión De Inventario</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button className="p-2 rounded-lg border hover:bg-gray-100">
-            <Bell size={20} className="text-gray-600" />
-          </button>
-          <button onClick={() => openModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700">
-            <Plus size={16} /> Añadir Producto
-          </button>
+          <Button isIconOnly variant="light">
+            <Bell size={20} />
+          </Button>
+          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />}>
+            Añadir Producto
+          </Button>
         </div>
       </header>
 
-      {/* --- ✅ 3. NUEVO BANNER DE ALERTA --- */}
       {itemsCriticos.length > 0 && (
         <div className="flex items-center justify-between gap-4 p-4 mb-6 bg-red-100 border-l-4 border-red-500 rounded-lg">
           <div className="flex items-center gap-3">
@@ -239,68 +310,67 @@ export default function GestionInventarioPage() {
             <div>
               <h4 className="font-bold text-red-800">Stock Crítico</h4>
               <p className="text-sm text-red-700">
-                Tienes {itemsCriticos.length} material(es) que necesitan reabastecimiento urgente.
+                Tienes {itemsCriticos.length} material(es) con stock crítico o bajo que necesitan atención.
               </p>
             </div>
           </div>
-          <button 
-            onClick={() => setFiltroEstadoStock('Crítico')}
-            className="flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow-sm"
+          <Button
+            onClick={() => setFiltroEstadoStock(filtroEstadoStock === 'Crítico' ? 'Todos' : 'Crítico')}
+            color="danger"
+            className="flex-shrink-0"
           >
-            Ver Críticos
-          </button>
+            {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Stock Bajo'}
+          </Button>
         </div>
       )}
-      {/* --- FIN DE BANNER DE ALERTA --- */}
-
 
       <div className="flex items-center gap-4 mb-6 flex-shrink-0">
-        <input
+        <Input
           type="text"
           placeholder="Buscar productos..."
-          className="border rounded-lg p-2 w-full max-w-xs text-sm"
+          className="w-full max-w-xs"
           value={filtroBusqueda}
           onChange={(e) => setFiltroBusqueda(e.target.value)}
         />
         <div className="relative">
-          <button
+          <Button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+            color="primary"
+            startContent={<Filter size={18} />}
           >
-            <Filter size={18} />
             Filtros
-          </button>
+          </Button>
 
           {showFilters && (
             <div className="absolute left-0 mt-2 w-72 bg-white border rounded-lg shadow-lg p-4 z-20">
               <div className="flex flex-col gap-3">
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroTipoCategoria} onChange={(e) => setFiltroTipoCategoria(e.target.value)}>
-                  <option value="Todas">Todas las categorías</option>
-                  {tiposCategoriaUnicos.map(cat => cat && <option key={cat} value={cat}>{cat}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroTipoCategoria]} onSelectionChange={(keys) => setFiltroTipoCategoria(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todas">Todas las categorías</SelectItem>
+                  {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)}>
-                  <option value="Todas">Todas las ubicaciones</option>
-                  {ubicacionesUnicas.map(ubi => ubi && <option key={ubi} value={ubi}>{ubi}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroUbicacion]} onSelectionChange={(keys) => setFiltroUbicacion(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todas">Todas las ubicaciones</SelectItem>
+                  {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroProveedor} onChange={(e) => setFiltroProveedor(e.target.value)}>
-                  <option value="Todos">Todos los proveedores</option>
-                  {proveedoresUnicos.map(prov => prov && <option key={prov} value={prov}>{prov}</option>)}
-                </select>
+                <Select className="w-full" selectedKeys={[filtroProveedor]} onSelectionChange={(keys) => setFiltroProveedor(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Todos los proveedores</SelectItem>
+                  {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroEstadoStock} onChange={(e) => setFiltroEstadoStock(e.target.value)}>
-                  <option value="Todos">Todos los estados de stock</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Stock Bajo">Stock Bajo</option>
-                  <option value="Crítico">Crítico</option>
-                </select>
+                <Select className="w-full" selectedKeys={[filtroEstadoStock]} onSelectionChange={(keys) => setFiltroEstadoStock(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Todos los estados de stock</SelectItem>
+                  <SelectItem key="Normal">Normal</SelectItem>
+                  <SelectItem key="Stock Bajo">Stock Bajo</SelectItem>
+                  <SelectItem key="Crítico">Crítico</SelectItem>
+                </Select>
 
-                <select className="border rounded-lg p-2 w-full bg-white text-sm" value={filtroEstadoMaterial} onChange={(e) => setFiltroEstadoMaterial(e.target.value)}>
-                  <option value="Todos">Activos e Inactivos</option>
-                  <option value="Activo">Solo Activos</option>
-                  <option value="Inactivo">Solo Inactivos</option>
-                </select>
+                <Select className="w-full" selectedKeys={[filtroEstadoMaterial]} onSelectionChange={(keys) => setFiltroEstadoMaterial(Array.from(keys)[0] as string)}>
+                  <SelectItem key="Todos">Activos e Inactivos</SelectItem>
+                  <SelectItem key="Activo">Solo Activos</SelectItem>
+                  <SelectItem key="Inactivo">Solo Inactivos</SelectItem>
+                </Select>
 
               </div>
             </div>
@@ -311,7 +381,6 @@ export default function GestionInventarioPage() {
       <div className="flex-grow min-h-0 overflow-auto border border-gray-200 rounded-lg">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10">
-            {/* --- ✅ INICIO DE LA CORRECCIÓN: Se usa el componente SortIcon --- */}
             <tr>
               <th className="px-6 py-3 text-left font-medium cursor-pointer" onClick={() => requestSort('nombre')}>
                 <div className="flex items-center gap-1">Producto <SortIcon columnKey="nombre" /></div>
@@ -332,12 +401,11 @@ export default function GestionInventarioPage() {
               <th className="px-6 py-3 text-center font-medium">Estado</th>
               <th className="px-6 py-3 text-center font-medium">Acciones</th>
             </tr>
-            {/* --- ✅ FIN DE LA CORRECCIÓN --- */}
           </thead>
           <tbody className="divide-y divide-gray-200">
             {currentMateriales.map((mat) => {
-              const status = getStatusInfo(mat.cantidad);
-              const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.medidasDeContenido);
+              const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
+              const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.medidasDeContenido || null);
 
               return (
                 <tr key={mat.id} className={`hover:bg-gray-50 ${!mat.estado ? 'bg-red-50 text-red-400' : ''}`}>
@@ -362,15 +430,13 @@ export default function GestionInventarioPage() {
                   </td>
 
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-center text-gray-800">{mat.cantidad} {mat.tipoEmpaque}</div>
-                    {textoContenido && (
-                      <div className="text-center text-xs text-gray-500">{textoContenido}</div>
-                    )}
+                    {/* --- ✅ CORRECCIÓN 4: Pasamos mat.medidasDeContenido --- */}
+                    {renderCantidadAmigable(mat.cantidad, mat.pesoPorUnidad, mat.tipoEmpaque, mat.medidasDeContenido)}
                   </td>
                   <td className="px-6 py-4">{mat.ubicacion}</td>
                   <td className="px-6 py-4">${Number(mat.precio).toLocaleString('es-CO')}</td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center"> {/* Asegura alineación vertical */}
+                    <div className="flex items-center">
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${status.bg} ${status.text_color}`}>
                         {status.text}
                       </span>
@@ -386,24 +452,24 @@ export default function GestionInventarioPage() {
                     </label>
                   </td>
                   <td className="px-6 py-4">
-                    {/* --- ✅ 4. MODIFICACIÓN EN ACCIONES --- */}
                     <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => openModal(mat)} className="p-1.5 text-gray-500 hover:text-blue-600" title="Editar">
+                      <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
                         <Edit size={16} />
-                      </button>
-                      
-                      {/* Esta es la nueva opción que pediste */}
+                      </Button>
+
                       {mat.estado && mat.cantidad <= 10 && (
-                        <button 
-                          onClick={() => navigate(`/stock/${mat.id}`)} 
-                          className="p-1.5 text-red-600 hover:bg-red-100 rounded-full animate-pulse"
+                        <Button
+                          onClick={() => navigate(`/stock/${mat.id}`)}
+                          color="danger"
+                          variant="light"
+                          isIconOnly
+                          className="animate-pulse"
                           title="Stock Crítico - Ver Detalles"
                         >
                           <AlertTriangle size={16} />
-                        </button>
+                        </Button>
                       )}
                     </div>
-                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                   </td>
                 </tr>
               );
@@ -418,31 +484,39 @@ export default function GestionInventarioPage() {
         </span>
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 border rounded-md text-sm bg-white hover:bg-gray-100 disabled:opacity-50"
+              variant="bordered"
+              isIconOnly
             >
               <ChevronLeft size={16} />
-            </button>
+            </Button>
             <span className="text-sm text-gray-600">
               Página {currentPage} de {totalPages}
             </span>
-            <button
+            <Button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 border rounded-md text-sm bg-white hover:bg-gray-100 disabled:opacity-50"
+              variant="bordered"
+              isIconOnly
             >
               <ChevronRight size={16} />
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingMaterial ? 'Editar Material' : 'Registrar Nuevo Material'}>
-        <MaterialForm initialData={formInitialData} onSave={handleSave} onCancel={closeModal} />
+      <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="4xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>
+            {editingMaterial ? 'Editar Material' : 'Registrar Nuevo Material'}
+          </ModalHeader>
+          <ModalBody>
+            <MaterialForm initialData={formInitialData} onSave={handleSave} onCancel={closeModal} />
+          </ModalBody>
+        </ModalContent>
       </Modal>
     </div>
   );
 }
-

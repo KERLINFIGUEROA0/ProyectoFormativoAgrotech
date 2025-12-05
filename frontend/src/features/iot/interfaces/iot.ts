@@ -1,23 +1,22 @@
 // src/features/iot/interfaces/iot.ts
 
+export interface Lote {
+  id: number;
+  nombre: string;
+  localizacion?: number;
+  area?: string;
+  estado: string;
+  coordenadas?: any;
+}
+
 export interface Surco {
   id: number;
   nombre: string;
-  lote: {
-    id: number;
-    nombre: string;
-  };
+  lote: Lote;
   // Agregamos el cultivo opcional para el filtro
   cultivo?: {
     id: number;
     nombre: string;
-  } | null;
-  broker?: {
-    id: number;
-    nombre: string;
-    host: string;
-    puerto: number;
-    protocolo: string;
   } | null;
 }
 
@@ -29,12 +28,16 @@ export interface Sensor {
   valor_minimo_alerta: number;
   valor_maximo_alerta: number;
   topic: string | null;
-  
+
   // ✅ NUEVA PROPIEDAD
-  frecuencia_escaneo?: number; 
+  frecuencia_escaneo?: number;
   latestData?: LatestSensorData;
-  
-  surco: Surco;
+
+  // ✅ NUEVO: Campo para mapear el JSON
+  json_key?: string | null;
+
+  lote: Lote;
+  surco?: Surco | null;
 }
 
 // Para los datos del dashboard
@@ -56,6 +59,7 @@ export interface LatestSensorData {
   valorMaximo: number;
   valor: number | null;
   fechaRegistro: string | null;
+  estado?: 'Activo' | 'Desconectado'; // Nuevo campo para estado del sensor
 }
 
 // --- Interfaces para la Configuración del Broker ---
@@ -74,15 +78,31 @@ export interface Broker {
   puerto: number;
   usuario?: string;
   password?: string;
-  // Ya no usamos surco único aquí si cambiamos a 1:N, pero lo dejamos por compatibilidad
-  surco?: Surco | null; 
+  lotes: Lote[];
   prefijoTopicos?: string;
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';
   subscripciones: Subscripcion[];
 }
 
-export type CreateBrokerDto = Omit<Broker, 'id' | 'subscripciones' | 'estado'>;
+// Clase auxiliar para configuración personalizada de tópicos
+export interface TopicoConfig {
+  topic: string;
+  min?: number;
+  max?: number;
+}
+
+export interface CreateBrokerDto {
+  nombre: string;
+  protocolo: string;
+  host: string;
+  puerto: number;
+  usuario?: string;
+  password?: string;
+  loteId: number;
+  prefijoTopicos?: string;
+  topicosAdicionales?: (string | TopicoConfig)[];
+}
 
 export interface CreateSubscripcionDto {
   brokerId: number;
@@ -109,6 +129,8 @@ export interface SensorReport {
   sensorName: string;
   statistics: SensorStatistics;
   chartData: ChartDataPoint[];
+  alertas: string[];
+  fechasCriticas: string[];
 }
 
 export interface ReportData {
@@ -120,4 +142,19 @@ export interface ReportData {
     end: string;
   };
   sensors: SensorReport[];
+}
+
+// --- Interfaces para BrokerLote (Configuraciones por Lote) ---
+
+export interface BrokerLote {
+  id: number;
+  broker: Broker;
+  lote: Lote;
+  topicos: string[];
+}
+
+export interface CreateBrokerLoteDto {
+  brokerId: number;
+  loteId: number;
+  topicos: string[];
 }

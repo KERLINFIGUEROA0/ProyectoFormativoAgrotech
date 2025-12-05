@@ -60,7 +60,11 @@ export const MedidasDeContenido = {
   MILIGRAMO: 'mg',
   LITRO: 'L',
   MILILITRO: 'ml',
-  UNIDADES: 'unidades',
+  CENTIMETRO_CUBICO: 'cm³',
+  METRO_CUBICO: 'm³',
+  GALON: 'gal',
+  ONZA_LIQUIDA: 'oz',
+  UNIDAD: 'unidad',
 } as const;
 export type MedidaDeContenido = typeof MedidasDeContenido[keyof typeof MedidasDeContenido];
 
@@ -80,6 +84,29 @@ export const TipoEmpaque = {
   TAMBOR: 'Tambor',
 } as const;
 export type TipoEmpaque = typeof TipoEmpaque[keyof typeof TipoEmpaque];
+
+// --- UNIDADES DE MEDIDA PARA CONVERSIONES ---
+// Actualizado a abreviaturas estándar
+export const UnidadMedida = {
+  UNIDAD: 'Unidad',
+  CAJA: 'Caja',
+  PAQUETE: 'Paquete',
+  SACO: 'Saco',
+  BULTO: 'Bulto',
+  ROLLO: 'Rollo',
+
+  // Masa (Abreviaturas estándar)
+  KILOGRAMO: 'kg',
+  GRAMO: 'g',
+  MILIGRAMO: 'mg',
+  LIBRA: 'lb',
+
+  // Volumen (Abreviaturas estándar)
+  LITRO: 'l',
+  MILILITRO: 'ml',
+  CENTIMETRO_CUBICO: 'cm3',
+} as const;
+export type UnidadMedida = typeof UnidadMedida[keyof typeof UnidadMedida];
 
 // --- 2. RELACIÓN LÓGICA ENTRE CATEGORÍAS Y MATERIALES ---
 export const categoriasYMateriales: Record<TipoCategoria, TipoMaterial[]> = {
@@ -110,7 +137,13 @@ export interface Material {
   tipoMaterial?: TipoMaterial;
   tipoEmpaque: TipoEmpaque;
   medidasDeContenido?: MedidaDeContenido;
-  pesoPorUnidad: number | null;
+  pesoPorUnidad?: number | null; // Para saber cuánto pesa un saco
+  tipoConsumo?: 'consumible' | 'no_consumible';
+  cantidadPorUnidad?: number;
+  cantidadRestanteEnUnidadActual?: number;
+  usosTotales?: number;
+  usosActuales?: number;
+  unidadBase?: UnidadMedida; // Unidad base para conversiones
 }
 
 export interface MaterialData {
@@ -128,4 +161,32 @@ export interface MaterialData {
   proveedor?: string | null;
   fechaVencimiento?: string | null;
   imageFile?: File | null;
+  tipoConsumo?: string;
+  cantidadPorUnidad?: number;
+  usosTotales?: number;
+}
+
+// --- Interfaces para Movimientos ---
+export interface UsuarioMovimiento {
+  identificacion: number;
+  nombre: string;
+  apellidos: string;
+}
+
+export interface MaterialMovimiento {
+  id: number;
+  nombre: string;
+  medidasDeContenido?: MedidaDeContenido;
+  tipoEmpaque?: TipoEmpaque;
+}
+
+export interface MovimientoData {
+  id: number;
+  tipo: string;
+  cantidad: number;
+  descripcion: string;
+  fecha: string;
+  referencia?: string;
+  material?: MaterialMovimiento;
+  usuario?: UsuarioMovimiento;
 }

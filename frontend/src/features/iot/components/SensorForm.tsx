@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactElement } from 'react';
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Select, SelectItem } from "@heroui/react";
 import { toast } from "sonner";
 import { probarConexionBroker } from '../api/mqttConfigApi';
 import type { Sensor, Surco } from '../interfaces/iot';
@@ -13,6 +13,8 @@ type SensorFormData = Partial<Omit<Sensor, 'surco'>> & {
   brokerProtocolo?: string;
   brokerUsuario?: string;
   brokerPassword?: string;
+  // Campo para configuración JSON
+  json_key?: string;
 };
 
 interface SensorFormProps {
@@ -35,14 +37,11 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       valor_minimo_alerta: initialData.valor_minimo_alerta,
       valor_maximo_alerta: initialData.valor_maximo_alerta,
       topic: initialData.topic,
+      json_key: initialData.json_key || '', // Cargar valor inicial
       surcoId: initialData.surco?.id,
       // Datos del broker del surco (si existe)
-      brokerNombre: initialData.surco?.broker?.nombre || '',
-      brokerHost: initialData.surco?.broker?.host || '',
-      brokerPuerto: initialData.surco?.broker?.puerto || 1883,
-      brokerProtocolo: initialData.surco?.broker?.protocolo || 'mqtt://',
     };
-    
+
     setFormData(flatData);
   }, [initialData]);
 
@@ -63,6 +62,16 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
     toast.info("Probando conexión con el broker MQTT...");
 
     try {
+      // Necesitamos enviar `loteId` según CreateBrokerDto
+      const surcoSeleccionado = surcos.find(s => s.id === Number(formData.surcoId));
+      const loteId = surcoSeleccionado?.lote?.id;
+
+      if (!loteId) {
+        toast.error("Debes seleccionar un surco/lote antes de probar la conexión del broker.");
+        setIsTestingConnection(false);
+        return;
+      }
+
       const brokerData = {
         nombre: brokerNombre,
         host: brokerHost,
@@ -70,6 +79,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         protocolo: brokerProtocolo,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
+        loteId,
       };
 
       const result = await probarConexionBroker(brokerData);
@@ -123,6 +133,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       valor_minimo_alerta: parseFloat(String(valor_minimo_alerta)),
       valor_maximo_alerta: parseFloat(String(valor_maximo_alerta)),
       topic: topic || null,
+      json_key: formData.json_key || null, // Enviar al backend
       estado: formData.estado || 'Activo',
       // Información del broker
       broker: {
@@ -132,6 +143,10 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         protocolo: brokerProtocolo,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
+        loteId: (() => {
+          const s = surcos.find(x => x.id === Number(surcoId));
+          return s?.lote?.id || 0;
+        })(),
       }
     };
 
@@ -146,15 +161,20 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label="Nombre del Sensor *" name="nombre" value={formData.nombre || ''} onChange={handleChange} placeholder="Ej: Sensor Temperatura 01" fullWidth />
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Ubicación (Surco) *</span>
-            <select name="surcoId" value={formData.surcoId || ''} onChange={handleChange} className="border border-gray-300 rounded-md p-2 bg-white">
-              <option value="" disabled>Seleccionar surco</option>
-              {surcos.map(surco => (
-                <option key={surco.id} value={surco.id}>{surco.nombre} (Lote: {surco.lote.nombre})</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Ubicación (Surco) *"
+            selectedKeys={formData.surcoId ? [formData.surcoId.toString()] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys);
+              setFormData(prev => ({ ...prev, surcoId: selected.length > 0 ? Number(selected[0]) : undefined }));
+            }}
+            placeholder="Seleccionar surco"
+            fullWidth
+          >
+            {surcos.map(surco => (
+              <SelectItem key={surco.id.toString()}>{surco.nombre} (Lote: {surco.lote.nombre})</SelectItem>
+            ))}
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -168,20 +188,38 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
 
       {/* Configuración MQTT */}
       <div className="border-b pb-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración MQTT</h3>
-        <div>
-          <Input
-            label="Tópico MQTT *"
-            name="topic"
-            value={formData.topic || ''}
-            onChange={handleChange}
-            placeholder="Ej: agrotech/sensores/lote1/temp"
-            fullWidth
-            required
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            El tópico MQTT donde se recibirán los datos del sensor. Puede ser compartido con otros sensores, pero cada sensor guardará los datos en su propio surco/lote.
-          </p>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración de Lectura</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Input
+              label="Tópico MQTT *"
+              name="topic"
+              value={formData.topic || ''}
+              onChange={handleChange}
+              placeholder="Ej: agrotech/sensores/lote1/temp"
+              fullWidth
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Ruta donde el dispositivo publica los datos.
+            </p>
+          </div>
+
+          {/* ✅ NUEVO INPUT: CLAVE JSON */}
+          <div>
+            <Input
+              label="Clave JSON (Opcional)"
+              name="json_key"
+              value={formData.json_key || ''}
+              onChange={handleChange}
+              placeholder="Ej: temperatura"
+              fullWidth
+            />
+            <p className="text-xs text-blue-500 mt-1">
+              Si el dispositivo envía <code>{`{"temp": 24}`}</code>, escribe <b>temp</b> aquí.
+              Déjalo vacío si envía solo el número.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -199,20 +237,20 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
             fullWidth
             required
           />
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Protocolo *</span>
-            <select
-              name="brokerProtocolo"
-              value={formData.brokerProtocolo || 'mqtt://'}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md p-2 bg-white"
-            >
-              <option value="mqtt://">mqtt://</option>
-              <option value="mqtts://">mqtts:// (SSL)</option>
-              <option value="ws://">ws:// (WebSocket)</option>
-              <option value="wss://">wss:// (WebSocket SSL)</option>
-            </select>
-          </label>
+          <Select
+            label="Protocolo *"
+            selectedKeys={[formData.brokerProtocolo || 'mqtt://']}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys);
+              setFormData(prev => ({ ...prev, brokerProtocolo: String(selected[0]) || 'mqtt://' }));
+            }}
+            fullWidth
+          >
+            <SelectItem key="mqtt://">mqtt://</SelectItem>
+            <SelectItem key="mqtts://">mqtts:// (SSL)</SelectItem>
+            <SelectItem key="ws://">ws:// (WebSocket)</SelectItem>
+            <SelectItem key="wss://">wss:// (WebSocket SSL)</SelectItem>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

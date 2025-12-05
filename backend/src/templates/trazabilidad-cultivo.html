@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; margin: 40px; color: #333; }
+        .container { border: 1px solid #eee; padding: 30px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { margin: 0; color: #2E7D32; }
+        .header p { margin: 5px 0; color: #777; }
+        .section { margin-bottom: 40px; page-break-inside: avoid; }
+        .section h2 { color: #2E7D32; border-bottom: 2px solid #2E7D32; padding-bottom: 5px; }
+        .details { margin-bottom: 30px; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details th, .details td { text-align: left; padding: 8px 0; }
+        .details th { color: #555; font-weight: bold; }
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .table th { background-color: #f9f9f9; color: #555; font-weight: bold; }
+        .table td { text-align: right; }
+        .table td:first-child { text-align: left; }
+        .total-row { font-weight: bold; background-color: #f0f0f0; }
+        .footer { text-align: center; margin-top: 50px; font-size: 0.9em; color: #888; }
+        .financial-summary { background-color: #f9f9f9; padding: 20px; border-radius: 5px; }
+        .financial-summary h3 { margin-top: 0; color: #2E7D32; }
+        .financial-item { display: flex; justify-content: space-between; margin: 10px 0; }
+        .financial-item.positive { color: green; }
+        .financial-item.negative { color: red; }
+        @media print {
+            .container { border: none; }
+            body { margin: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Portada -->
+        <div class="header">
+            <h1>AgroTECH Yamboró</h1>
+            <p>Reporte de Trazabilidad de Cultivo</p>
+            <h2>{{cultivo.nombre}}</h2>
+            <p>Generado el: {{fechaGeneracion}}</p>
+            <p>{{periodo}}</p>
+        </div>
+
+        <!-- Información General del Cultivo -->
+        <div class="section">
+            <h2>Información General del Cultivo</h2>
+            <div class="details">
+                <table>
+                    <tr>
+                        <th>Nombre del Cultivo:</th>
+                        <td>{{cultivo.nombre}}</td>
+                        <th>Tipo de Cultivo:</th>
+                        <td>{{cultivo.tipoCultivo.nombre}}</td>
+                    </tr>
+                    <tr>
+                        <th>Fecha de Plantado:</th>
+                        <td>{{cultivo.fechaPlantado}}</td>
+                        <th>Estado:</th>
+                        <td>{{cultivo.estado}}</td>
+                    </tr>
+                    <tr>
+                        <th>Lote:</th>
+                        <td>{{cultivo.lote.nombre}}</td>
+                        <th>Cantidad Inicial:</th>
+                        <td>{{cultivo.cantidad}}</td>
+                    </tr>
+                    <tr>
+                        <th>Cantidad Cosechada:</th>
+                        <td>{{cultivo.cantidadCosechada}}</td>
+                        <th>Descripción:</th>
+                        <td>{{cultivo.descripcion}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Historial de Actividades -->
+        <div class="section">
+            <h2>Historial de Actividades</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Actividad</th>
+                        <th>Estado</th>
+                        <th>Costo Mano de Obra</th>
+                        <th>Materiales Utilizados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each actividades}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagos a Pasantes -->
+        <div class="section">
+            <h2>Pagos a Pasantes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Pasante</th>
+                        <th>Actividad</th>
+                        <th>Horas</th>
+                        <th>Tarifa por Hora</th>
+                        <th>Total Pagado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each pagos}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recursos Utilizados -->
+        <div class="section">
+            <h2>Recursos Utilizados</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each recursos}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Ventas y Producciones -->
+        <div class="section">
+            <h2>Ventas y Producciones</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha Producción</th>
+                        <th>Cantidad Producida</th>
+                        <th>Cantidad Vendida</th>
+                        <th>Precio Unitario Promedio</th>
+                        <th>Total Ventas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each producciones}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Análisis Financiero -->
+        <div class="section">
+            <h2>Análisis Financiero</h2>
+            <div class="financial-summary">
+                <h3>Resumen Financiero</h3>
+                <div class="financial-item">
+                    <span>Total Ingresos:</span>
+                    <span class="positive">${{analisis.ingresos}}</span>
+                </div>
+                <div class="financial-item">
+                    <span>Total Costos:</span>
+                    <span class="negative">${{analisis.costos}}</span>
+                </div>
+                <div class="financial-item">
+                    <span>Rentabilidad:</span>
+                    <span class="{{analisis.rentabilidadClass}}">${{analisis.rentabilidad}}</span>
+                </div>
+            </div>
+
+            <h3>Detalle de Gastos por Categoría</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Categoría</th>
+                        <th>Total Gastos</th>
+                        <th>Porcentaje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each analisis.gastosPorCategoria}}{{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Reporte generado automáticamente por el sistema AgroTECH Yamboró.</p>
+            <p>Fecha de generación: {{fechaGeneracion}}</p>
+        </div>
+    </div>
+</body>
+</html>

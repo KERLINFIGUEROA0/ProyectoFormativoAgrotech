@@ -1,41 +1,197 @@
-// Reemplaza TODO el archivo: src/modules/actividades/actividades.service.ts
-
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In, DataSource, Like } from 'typeorm';
+import { Repository, In, DataSource, Like } from 'typeorm';
 import { Actividad } from './entities/actividade.entity';
 import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
+import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
+import { CalificarActividadDto } from './dto/calificar-actividad.dto';
+import { CreateRespuestaDto, CalificarRespuestaDto } from './dto/create-respuesta.dto';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { Lote } from '../lotes/entities/lote.entity';
+import { Sublote } from '../sublotes/entities/sublote.entity';
 import { Material } from '../materiales/entities/materiale.entity';
 import { ActividadMaterial } from '../actividades_materiales/entities/actividades_materiale.entity';
+import { RespuestaActividad } from './entities/respuesta_actividad.entity';
+import { ActividadUsuario } from './entities/actividad_usuario.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
+import { TipoConsumo } from '../../common/enums/tipo-consumo.enum';
+import { UnidadMedida } from '../../common/enums/unidad-medida.enum';
+import { UnitConversionUtil } from '../../common/utils/unit-conversion.util';
+import { MovimientosService } from '../../movimientos/movimientos.service';
+import { DateUtil } from '../../common/utils/date.util';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ActividadesService {
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Material)
-    private readonly materialRepository: Repository<Material>,
-    @InjectRepository(ActividadMaterial)
-    private readonly actMaterialRepository: Repository<ActividadMaterial>,
-    @InjectRepository(Actividad)
-    private readonly actividadRepository: Repository<Actividad>,
-    @InjectRepository(Usuario)
-    private readonly usuarioRepository: Repository<Usuario>,
-    @InjectRepository(Cultivo)
-    private readonly cultivoRepository: Repository<Cultivo>,
-  ) {}
+     private readonly dataSource: DataSource,
+     @InjectRepository(Material)
+     private readonly materialRepository: Repository<Material>,
+     @InjectRepository(ActividadMaterial)
+     private readonly actMaterialRepository: Repository<ActividadMaterial>,
+     @InjectRepository(Actividad)
+     private readonly actividadRepository: Repository<Actividad>,
+     @InjectRepository(Usuario)
+     private readonly usuarioRepository: Repository<Usuario>,
+     @InjectRepository(Cultivo)
+     private readonly cultivoRepository: Repository<Cultivo>,
+     @InjectRepository(Lote)
+     private readonly loteRepository: Repository<Lote>,
+     @InjectRepository(Sublote)
+     private readonly subloteRepository: Repository<Sublote>,
+     @InjectRepository(RespuestaActividad)
+     private readonly respuestaRepository: Repository<RespuestaActividad>,
+     @InjectRepository(ActividadUsuario)
+     private readonly actividadUsuarioRepository: Repository<ActividadUsuario>,
+     private readonly movimientosService: MovimientosService,
+   ) { }
 
-  // --- MÉTODO 'create' ACTUALIZADO ---
+  // --- FUNCIÓN HELPER PARA ELIMINAR ARCHIVOS FÍSICOS ---
+  private eliminarArchivosFisicos(archivosJson: string) {
+    try {
+      const archivos = JSON.parse(archivosJson);
+      if (Array.isArray(archivos)) {
+        archivos.forEach(filename => {
+          const filePath = path.resolve(process.cwd(), 'temp-uploads', 'actividades', filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error al eliminar archivos físicos:', error);
+    }
+  }
+
+  // --- FUNCIÓN HELPER PARA VERIFICAR ESTADO DE LA ACTIVIDAD ---
+    private async verificarEstadoActividad(actividad: Actividad) {
+      console.log('🔍 verificando estado actividad:', actividad.id, 'estado actual:', actividad.estado);
+
+      if (!actividad.asignados) {
+        console.log('❌ No hay asignados');
+        return;
+      }
+
+      try {
+        const asignados = JSON.parse(actividad.asignados);
+        console.log('👥 Asignados:', asignados);
+
+        if (!Array.isArray(asignados) || asignados.length === 0) {
+          console.log('❌ Asignados vacío o no array');
+          return;
+        }
+
+        // Obtener todas las respuestas de la actividad
+        const respuestas = await this.respuestaRepository.find({
+          where: { actividad: { id: actividad.id } },
+          relations: ['usuario'],
+        });
+
+        console.log('📝 Respuestas encontradas:', respuestas.length);
+
+        // Contar respuestas únicas por usuario
+        const usuariosQueRespondieron = new Set(respuestas.map(r => r.usuario.identificacion));
+        console.log('👤 Usuarios que respondieron:', Array.from(usuariosQueRespondieron));
+
+        // Si hay al menos una respuesta, cambiar a 'en proceso'
+        if (usuariosQueRespondieron.size > 0) {
+          // Si no todos han respondido, estado 'en proceso'
+          if (usuariosQueRespondieron.size < asignados.length) {
+            actividad.estado = 'en proceso';
+            console.log('🔄 Estado: en proceso (no todos respondieron)');
+          } else {
+            // Todos han respondido, verificar si todas están calificadas
+            const todasCalificadas = respuestas.every(r => r.estado !== 'pendiente');
+            console.log('✅ Todas calificadas:', todasCalificadas);
+
+            if (todasCalificadas) {
+              const todasAprobadas = respuestas.every(r => r.estado === 'aprobado');
+              console.log('🎯 Todas aprobadas:', todasAprobadas);
+
+              actividad.estado = todasAprobadas ? 'completado' : 'en proceso'; // Si hay rechazos, mantener 'en proceso'
+              console.log('🏁 Estado final:', actividad.estado);
+            } else {
+              actividad.estado = 'en proceso'; // Todos respondieron, esperando calificación
+              console.log('⏳ Estado: en proceso (esperando calificación)');
+            }
+          }
+        } else {
+          // No hay respuestas, mantener pendiente
+          actividad.estado = 'pendiente';
+          console.log('📋 Estado: pendiente (sin respuestas)');
+        }
+
+        await this.actividadRepository.save(actividad);
+        console.log('💾 Actividad guardada con estado:', actividad.estado);
+      } catch (error) {
+        console.error('❌ Error al verificar estado de actividad:', error);
+      }
+    }
+
+  // --- LÓGICA DE STOCK UNIFICADO ---
+  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean, debeGenerarGastoDepreciacion: boolean } {
+    if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+      if (!material.usosTotales) {
+        return { success: true, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
+      }
+      const usosAntes = Number(material.usosActuales) || 0;
+      material.usosActuales = usosAntes + cantidadUsada;
+
+      // Verificar si alcanzó el límite de usos
+      const alcanzoLimite = material.usosActuales >= material.usosTotales;
+
+      if (alcanzoLimite) {
+        // Si alcanzó el límite, reducir cantidad física y resetear usos
+        material.cantidad = Number(material.cantidad) - 1;
+        if (material.cantidad < 0) material.cantidad = 0;
+        material.usosActuales = 0; // Resetear usos para la siguiente unidad
+        return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: true };
+      }
+
+      return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
+    }
+
+    if (Number(material.cantidad) < cantidadUsada) {
+      return { success: false, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
+    }
+
+    material.cantidad = Number(material.cantidad) - cantidadUsada;
+    return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
+  }
+
+  private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
+    if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+      if (!material.usosTotales) return;
+
+      // Lógica inversa: reducir usos actuales
+      material.usosActuales = Number(material.usosActuales) - cantidadDevuelta;
+
+      // Si los usos quedan negativos, significa que se debe devolver una unidad física
+      while (material.usosActuales < 0 && material.cantidad >= 0) {
+        material.usosActuales += material.usosTotales;
+        material.cantidad = Number(material.cantidad) + 1;
+      }
+
+      // Asegurar que no queden usos negativos
+      if (material.usosActuales < 0) material.usosActuales = 0;
+
+      return;
+    }
+    material.cantidad = Number(material.cantidad) + cantidadDevuelta;
+  }
+
+  // --- MÉTODO CREATE ACTUALIZADO PARA CALCULAR GASTOS EXACTOS ---
   async create(dto: CreateActividadDto, usuarioIdentificacion: number) {
     const { materiales, cultivo: cultivoId, horas, tarifaHora, ...dtoActividad } = dto;
 
@@ -54,16 +210,15 @@ export class ActividadesService {
     try {
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
 
-      // --- 1. OBTENER EL NOMBRE DEL USUARIO ---
       const usuario = await queryRunner.manager.findOne(Usuario, {
         where: { identificacion: usuarioIdentificacion },
-        select: ['nombre', 'apellidos'], // Solo traemos lo que necesitamos
+        select: ['nombre', 'apellidos'],
       });
       const nombreUsuario = `${usuario?.nombre || 'Usuario'} ${usuario?.apellidos || ''}`.trim();
-      
+
       const actividad = this.actividadRepository.create({
         ...dtoActividad,
-        horas, 
+        horas,
         tarifaHora,
         usuario: { identificacion: usuarioIdentificacion },
         cultivo: cultivoEntidad ?? undefined,
@@ -71,51 +226,119 @@ export class ActividadesService {
       });
       const saved = await queryRunner.manager.save(actividad);
 
-      // (Lógica de materiales)
+      // --- LÓGICA DE MATERIALES Y GASTOS ---
       if (materiales && materiales.length > 0) {
         for (const item of materiales) {
-          // ... (lógica de buscar material y restar stock)
-          const { materialId, cantidadUsada } = item;
+          const { materialId, cantidadUsada, unidadMedida } = item;
+          
+          // 1. Obtener material
           const material = await queryRunner.manager.findOne(Material, { where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          if (material.cantidad < cantidadUsada) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
-          material.cantidad -= cantidadUsada;
+
+          // 2. Determinar unidad base y conversión
+          const unidadUsada = (unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBaseMaterial = material.unidadBase;
+          if (!unidadBaseMaterial) {
+            unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+              material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+              material.medidasDeContenido
+            );
+          }
+
+          let cantidadEnUnidadBase: number;
+          // Verificar conversión especial para empaques (ej. 1 bulto = 50kg)
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) &&
+              (unidadBaseMaterial === UnidadMedida.KILOGRAMO || unidadBaseMaterial === UnidadMedida.LITRO || unidadBaseMaterial === UnidadMedida.GRAMO || unidadBaseMaterial === UnidadMedida.MILILITRO)) {
+            const contenidoDelEmpaque = Number(material.pesoPorUnidad) || 1;
+            cantidadEnUnidadBase = cantidadUsada * contenidoDelEmpaque;
+          } else {
+            cantidadEnUnidadBase = UnitConversionUtil.convertirABase(cantidadUsada, unidadUsada);
+          }
+
+          // 3. Descontar Stock
+          const resultado = this.descontarMaterial(material, cantidadEnUnidadBase);
+          if (!resultado.success) {
+            throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
+          }
           await queryRunner.manager.save(material);
+
+          // 3.1. Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario; // Costo completo del material depreciado
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
+
+          // 4. Calcular COSTO EXACTO (Fórmula del PDF)
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
+
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const precioMaterial = Number(material.precio) || 0; // Precio del bulto/envase completo
+            const pesoPorUnidad = Number(material.pesoPorUnidad) || 1; // Contenido del bulto (ej. 50kg)
+
+            // A. Precio por unidad base (ej: precio por gramo o ml)
+            const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+            // B. Costo Total = PrecioBase * CantidadTotalBase
+            costoTotal = precioPorUnidadBase * cantidadEnUnidadBase;
+
+            // C. Precio Unitario para Mostrar (Ej: Precio por 1 Kg o por 1 Litro según lo que eligió el usuario)
+            // Fórmula: Costo Total / Cantidad que ingresó el usuario
+            precioUnitarioCalculado = cantidadUsada > 0 ? costoTotal / cantidadUsada : 0;
+
+          } else {
+            // Herramientas (Costo por uso si aplica, o 0)
+            costoTotal = 0;
+            precioUnitarioCalculado = 0;
+          }
+
+          // 5. Guardar relación Actividad-Material con el costo calculado
           const nuevaUnion = this.actMaterialRepository.create({
             actividad: saved,
             material: material,
             cantidadUsada: cantidadUsada,
+            unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadEnUnidadBase,
+            costo: costoTotal // Guardamos el costo histórico calculado
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 2. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`,
-              monto: costoTotal,
-              fecha: saved.fecha,
-              tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivoEntidad ?? undefined,
-            });
-            await queryRunner.manager.save(nuevoGasto);
-          }
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadEnUnidadBase,
+            material.id,
+            `Uso en actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
+          // 6. NO CREAR GASTO AQUÍ - Se creará en la devolución final
         }
       }
 
-      // --- 3. DESCRIPCIÓN DE MANO DE OBRA MEJORADA ---
+      // --- REGISTRO DE GASTO MANO DE OBRA ---
       const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
       if (costoManoDeObra > 0) {
         const nuevoGasto = gastoRepo.create({
           descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: costoManoDeObra,
+          monto: parseFloat(costoManoDeObra.toFixed(2)),
           fecha: saved.fecha,
           tipo: TipoMovimiento.EGRESO,
           cultivo: cultivoEntidad ?? undefined,
         });
         await queryRunner.manager.save(nuevoGasto);
       }
-      // --- FIN DE CAMBIOS EN 'create' ---
 
       await queryRunner.commitTransaction();
       return saved;
@@ -126,17 +349,43 @@ export class ActividadesService {
       await queryRunner.release();
     }
   }
-  
-  // ... (findAll y findOne quedan igual) ...
-  async findAll() {
-    return this.actividadRepository.find({
-      relations: [
-        'usuario',
-        'cultivo',
-        'actividadMaterial',
-        'actividadMaterial.material',
-      ],
+
+  // ... (findAll, findOne se mantienen igual) ...
+  async findAll(userIdentificacion?: number) {
+    if (!userIdentificacion) return [];
+    const user = await this.usuarioRepository.findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
     });
+    const userRole = user?.tipoUsuario?.nombre;
+
+    const query = this.actividadRepository.createQueryBuilder('actividad')
+      .leftJoinAndSelect('actividad.cultivo', 'cultivo')
+      .leftJoinAndSelect('actividad.lote', 'lote')
+      .leftJoinAndSelect('actividad.sublote', 'sublote')
+      .leftJoinAndSelect('actividad.responsable', 'responsable')
+      .leftJoinAndSelect('actividad.actividadMaterial', 'actividadMaterial')
+      .leftJoinAndSelect('actividadMaterial.material', 'material')
+      .leftJoinAndSelect('actividad.respuestas', 'respuestas')
+      .leftJoinAndSelect('respuestas.usuario', 'usuarioRespuesta')
+      .leftJoinAndSelect('usuarioRespuesta.ficha', 'fichaUsuario')
+      .addSelect('actividad.asignados');
+
+    if (userRole && (userRole.toLowerCase() === 'instructor' || userRole.toLowerCase() === 'admin')) {
+      return query.getMany();
+    } else {
+      const actividades = await query.getMany();
+      const nombreCompleto = `${user?.nombre || ''} ${user?.apellidos || ''}`.trim();
+      return actividades.filter(actividad => {
+        if (!actividad.asignados) return false;
+        try {
+          const asignados = JSON.parse(actividad.asignados);
+          return asignados.includes(nombreCompleto);
+        } catch {
+          return false;
+        }
+      });
+    }
   }
 
   async findOne(id: number) {
@@ -144,14 +393,19 @@ export class ActividadesService {
       where: { id },
       relations: [
         'usuario',
+        'usuario.ficha',
         'cultivo',
+        'lote',
+        'sublote',
+        'responsable',
         'actividadMaterial',
         'actividadMaterial.material',
       ],
+      select: ['id', 'titulo', 'fecha', 'descripcion', 'img', 'archivoInicial', 'estado', 'horas', 'tarifaHora', 'asignados', 'respuestaTexto', 'respuestaArchivos', 'calificacion', 'comentarioInstructor'],
     });
   }
 
-  // --- MÉTODO 'update' ACTUALIZADO ---
+  // --- MÉTODO UPDATE ACTUALIZADO ---
   async update(id: number, dto: UpdateActividadDto) {
     const { materiales, cultivo: cultivoId, horas, tarifaHora, ...dtoActividad } = dto;
 
@@ -160,108 +414,151 @@ export class ActividadesService {
     await queryRunner.startTransaction();
 
     try {
-      // --- 1. CARGAR RELACIÓN DE 'usuario' ---
       const actividad = await queryRunner.manager.findOne(Actividad, {
         where: { id },
-        relations: ['actividadMaterial', 'actividadMaterial.material', 'cultivo', 'usuario'], // <-- AÑADIDO 'usuario'
+        relations: ['actividadMaterial', 'actividadMaterial.material', 'cultivo', 'usuario'],
       });
-      if (!actividad) {
-        throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
-      }
-      
+      if (!actividad) throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
+
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
       const materialRepo = queryRunner.manager.getRepository(Material);
       const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
-      
-      // Obtenemos el nombre del usuario asignado (ej. "David")
       const nombreUsuario = `${actividad.usuario?.nombre || 'Usuario'} ${actividad.usuario?.apellidos || ''}`.trim();
 
-      // --- 4. REVERTIR GASTOS Y MATERIALES ANTIGUOS ---
-      // (Lógica de revertir stock de materiales queda igual)
+      // 1. REVERTIR MATERIALES AL STOCK (Devolución antes de recalcular)
       if (actividad.actividadMaterial && actividad.actividadMaterial.length > 0) {
         for (const am of actividad.actividadMaterial) {
           const material = await materialRepo.findOneBy({ id: am.material.id });
           if (material) {
-            material.cantidad += am.cantidadUsada; 
+            this.revertirDescontarMaterial(material, am.cantidadUsadaBase || 0);
             await queryRunner.manager.save(material);
           }
-          await queryRunner.manager.remove(am); 
+          await queryRunner.manager.remove(am);
         }
       }
-      
-      // --- 2. BORRAR GASTOS USANDO EL TÍTULO ANTIGUO ---
-      // (Esta es la forma más segura que teníamos)
-      if (actividad.cultivo) {
-          await gastoRepo.delete({
-            cultivo: { id: actividad.cultivo.id },
-            descripcion: Like(`%(Act: ${actividad.titulo})%`) // Borra todo lo que contenga `(Act: TítuloAntiguo)`
-          });
-      }
 
-      // --- 5. ACTUALIZAR LOS DATOS SIMPLES DE LA ACTIVIDAD ---
-      // (Lógica de actualizar cultivo, horas y tarifa queda igual)
+      // 2. NO HAY GASTOS ANTIGUOS QUE BORRAR - Los gastos se crean solo en devolución
+
+      // 3. ACTUALIZAR DATOS BÁSICOS DE ACTIVIDAD
       let cultivoEntidad: Cultivo | null = actividad.cultivo;
       if (cultivoId) {
-          cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
-          if (!cultivoEntidad) {
-              throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
-          }
+        cultivoEntidad = await queryRunner.manager.findOne(Cultivo, { where: { id: cultivoId } });
+        if (!cultivoEntidad) throw new NotFoundException(`El cultivo con ID ${cultivoId} no existe.`);
       }
-      Object.assign(actividad, dtoActividad); 
+      Object.assign(actividad, dtoActividad);
       actividad.cultivo = cultivoEntidad;
-      actividad.horas = horas; 
+      actividad.horas = horas;
       actividad.tarifaHora = tarifaHora;
-      
-      const saved = await queryRunner.manager.save(actividad); // 'saved' ahora tiene el título NUEVO
 
-      // --- 6. APLICAR LÓGICA DE 'CREATE' PARA LOS NUEVOS MATERIALES ---
+      const saved = await queryRunner.manager.save(actividad);
+
+      // 4. REGISTRAR NUEVOS MATERIALES Y GASTOS (Misma lógica de cálculo que Create)
       if (materiales && materiales.length > 0) {
         for (const item of materiales) {
-          // ... (lógica de restar stock y crear ActividadMaterial queda igual) ...
-          const { materialId, cantidadUsada } = item;
+          const { materialId, cantidadUsada, unidadMedida } = item;
           const material = await materialRepo.findOne({ where: { id: materialId } });
           if (!material) throw new NotFoundException(`El material con ID ${materialId} no existe.`);
-          if (material.cantidad < cantidadUsada) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
-          material.cantidad -= cantidadUsada;
+
+          const unidadUsada = (unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBaseMaterial = material.unidadBase;
+          if (!unidadBaseMaterial) {
+            unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+              material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+              material.medidasDeContenido
+            );
+          }
+
+          let cantidadEnUnidadBase: number;
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) &&
+              (unidadBaseMaterial === UnidadMedida.KILOGRAMO || unidadBaseMaterial === UnidadMedida.LITRO || unidadBaseMaterial === UnidadMedida.GRAMO || unidadBaseMaterial === UnidadMedida.MILILITRO)) {
+            const contenidoDelEmpaque = Number(material.pesoPorUnidad) || 1;
+            cantidadEnUnidadBase = cantidadUsada * contenidoDelEmpaque;
+          } else {
+            cantidadEnUnidadBase = UnitConversionUtil.convertirABase(cantidadUsada, unidadUsada);
+          }
+
+          const resultado = this.descontarMaterial(material, cantidadEnUnidadBase);
+          if (!resultado.success) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           await queryRunner.manager.save(material);
+
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
+
+          // CÁLCULO DE COSTO EXACTO
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
+
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+            const precioMaterial = Number(material.precio) || 0;
+            const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+
+            // A. Precio por unidad base
+            const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+            // B. Costo Total = PrecioBase * CantidadTotalBase
+            costoTotal = precioPorUnidadBase * cantidadEnUnidadBase;
+
+            // C. Precio Unitario para Mostrar
+            precioUnitarioCalculado = cantidadUsada > 0 ? costoTotal / cantidadUsada : 0;
+
+          } else {
+            // Herramientas
+            costoTotal = 0;
+            precioUnitarioCalculado = 0;
+          }
+
           const nuevaUnion = actMaterialRepo.create({
             actividad: saved,
             material: material,
             cantidadUsada: cantidadUsada,
+            unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadEnUnidadBase,
+            costo: costoTotal
           });
           await queryRunner.manager.save(nuevaUnion);
 
-          // --- 3. DESCRIPCIÓN DE GASTO DE MATERIAL MEJORADA ---
-          const costoTotal = (Number(material.precio) || 0) * cantidadUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Material: ${material.nombre} (Act: ${saved.titulo})`, // <-- Título NUEVO
-              monto: costoTotal,
-              fecha: saved.fecha, 
-              tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivoEntidad ?? undefined,
-            });
-            await queryRunner.manager.save(nuevoGasto);
-          }
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO,
+            cantidadEnUnidadBase,
+            material.id,
+            `Uso en actividad: ${saved.titulo}`,
+            `actividad-${saved.id}`
+          );
+
+          // NO CREAR GASTO AQUÍ - Se creará en la devolución final
         }
       }
 
-      // --- 4. DESCRIPCIÓN DE MANO DE OBRA MEJORADA ---
+      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA
       const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
       if (costoManoDeObra > 0) {
         const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`, // <-- Nombre de "David" + Título NUEVO
-          monto: costoManoDeObra,
+          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+          monto: parseFloat(costoManoDeObra.toFixed(2)),
           fecha: saved.fecha,
           tipo: TipoMovimiento.EGRESO,
           cultivo: cultivoEntidad ?? undefined,
         });
         await queryRunner.manager.save(nuevoGasto);
       }
-      // --- FIN DE CAMBIOS EN 'update' ---
 
       await queryRunner.commitTransaction();
-      return this.findOne(id); 
+      return this.findOne(id);
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -271,88 +568,909 @@ export class ActividadesService {
     }
   }
 
-  // ... (remove, search, y asignarActividad quedan igual) ...
+  // ... (remove, search y otros métodos se mantienen igual)
   async remove(id: number) {
     const actividad = await this.findOne(id);
-    if (!actividad) {
-      return { message: 'Actividad no encontrada' };
-    }
+    if (!actividad) return { message: 'Actividad no encontrada' };
     await this.actividadRepository.delete(id);
     return { message: 'Actividad eliminada correctamente' };
   }
 
   async search(dto: SearchActividadDto) {
-    // Implementa tu lógica de búsqueda aquí si es necesario
+    // Implementación de búsqueda existente...
   }
 
-  async asignarActividad(dto: AsignarActividadDto) {
-    // ... (este método no necesita cambios, ya que los gastos de mano de obra
-    // se están añadiendo manualmente en el formulario de edición)
-    const { cultivo: cultivoId, aprendices, titulo, descripcion, fecha, materiales } = dto;
-    const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
-    if (!cultivo) throw new NotFoundException(`El cultivo con ID ${cultivoId} no fue encontrado.`);
-    if (aprendices.length === 0) throw new BadRequestException('Debe seleccionar al menos un aprendiz.');
-    const usuariosEncontrados = await this.usuarioRepository.find({ where: { identificacion: In(aprendices) } });
-    if (usuariosEncontrados.length !== aprendices.length) {
-      const idsEncontrados = usuariosEncontrados.map((u) => u.identificacion);
-      const idsNoEncontrados = aprendices.filter((id) => !idsEncontrados.includes(id));
-      throw new NotFoundException(`Los siguientes aprendices no existen: ${idsNoEncontrados.join(', ')}`);
+  async enviarRespuesta(id: number, dto: CreateRespuestaDto, userIdentificacion: number) {
+    console.log('📨 enviarRespuesta called for actividad:', id, 'user:', userIdentificacion);
+    const actividad = await this.findOne(id);
+    if (!actividad) {
+      throw new NotFoundException(`Actividad con ID ${id} no encontrada.`);
     }
+
+      if (actividad.asignados) {
+        try {
+          const asignados = JSON.parse(actividad.asignados);
+          const usuario = await this.usuarioRepository.findOne({
+            where: { identificacion: userIdentificacion },
+            select: ['nombre', 'apellidos']
+          });
+          const nombreCompleto = `${usuario?.nombre || ''} ${usuario?.apellidos || ''}`.trim();
+          if (!asignados.includes(nombreCompleto)) {
+            throw new BadRequestException('No estás asignado a esta actividad.');
+          }
+        } catch (error) {}
+      }
+
+      const existingRespuesta = await this.respuestaRepository.findOne({
+        where: { actividad: { id }, usuario: { identificacion: userIdentificacion } },
+      });
+
+      if (existingRespuesta && existingRespuesta.estado === 'aprobado') {
+        throw new BadRequestException('La respuesta ya fue aprobada.');
+      }
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        let saved: RespuestaActividad;
+        if (existingRespuesta) {
+          if (existingRespuesta.archivos) this.eliminarArchivosFisicos(existingRespuesta.archivos);
+          existingRespuesta.descripcion = dto.descripcion || '';
+          existingRespuesta.archivos = dto.archivos || '';
+          existingRespuesta.estado = 'pendiente';
+          existingRespuesta.comentarioInstructor = undefined;
+          saved = await queryRunner.manager.save(existingRespuesta);
+        } else {
+          const respuesta = this.respuestaRepository.create({
+            descripcion: dto.descripcion,
+            archivos: dto.archivos,
+            actividad: { id },
+            usuario: { identificacion: userIdentificacion },
+          });
+          saved = await queryRunner.manager.save(respuesta);
+        }
+
+        if (dto.materialesDevueltos && dto.materialesDevueltos.length > 0) {
+          // 🔍 DEBUG INICIAL
+          console.log('\n==================================================');
+          console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
+          console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
+          console.log('==================================================\n');
+
+          const gastoRepo = queryRunner.manager.getRepository(Gasto);
+          // Necesitamos este repositorio para saber en qué unidad se prestó
+          const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
+
+          for (const dev of dto.materialesDevueltos) {
+            const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
+            if (!material) {
+              console.error(`❌ Material ${dev.materialId} no encontrado en BD`);
+              continue;
+            }
+
+            // 🔥 PASO 1: DETERMINAR LA UNIDAD PARA CÁLCULO
+            // Prioridad: Unidad seleccionada en frontend > Unidad originalmente asignada > Default 'UNIDAD'
+            const asignacionOriginal = await actMaterialRepo.findOne({
+              where: {
+                actividad: { id: actividad.id },
+                material: { id: material.id }
+              }
+            });
+
+            const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
+
+            // LOG DE DECISIÓN DE UNIDAD
+            console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
+            console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
+            console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
+
+            // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
+            const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
+            console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
+
+            // Cantidades que el usuario escribió (Ej: 50)
+            const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
+            const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
+            console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
+
+            // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
+            // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
+            let cantBuenasBase = 0;
+            let cantMalasBase = 0;
+
+            // Detectar la unidad base del material (Gramos o Mililitros)
+            let unidadBaseMaterial = material.unidadBase;
+            if (!unidadBaseMaterial) {
+              unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+                material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+                material.medidasDeContenido
+              );
+            }
+            console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
+
+            // Lógica de conversión (Usando la unidad seleccionada por el usuario)
+            if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
+                [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
+               // Si devolvió BULTOS o SACOS
+               const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+               console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
+               cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
+               cantMalasBase = cantMalasUsuario * pesoPorUnidad;
+            } else {
+               // Conversión estándar (L -> ml, kg -> g)
+               // Aquí es donde 50 L se convierten en 50,000 ml
+               console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
+               cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
+               cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
+            }
+
+            console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
+
+            if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
+              console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
+            }
+
+            const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
+
+            // =========================================================
+            // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+            // =========================================================
+            if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+                // Para herramientas, generalmente la unidad es UNIDAD, así que base y usuario son iguales.
+                // Restamos de "En Uso" para liberarlas
+                material.usosActuales = Number(material.usosActuales) - (cantBuenasUsuario + cantMalasUsuario);
+                if (material.usosActuales < 0) material.usosActuales = 0;
+
+                // Registro historial (lo bueno)
+                if (cantBuenasUsuario > 0) {
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.INGRESO,
+                        cantBuenasUsuario, // Guardamos el valor numérico base para cálculos
+                        material.id,
+                        `Devolución: ${cantBuenasUsuario} ${unidadParaCalculo} (Buen Estado) - ${actividad.titulo}`,
+                        `dev-ok-${actividad.id}`
+                    );
+                }
+
+                // Registro historial y cobro (lo dañado)
+                if (cantMalasUsuario > 0) {
+                    material.cantidad = Number(material.cantidad) - cantMalasUsuario; // Baja de inventario físico
+                    if (material.cantidad < 0) material.cantidad = 0;
+
+                    const precioUnitario = Number(material.precio) || 0;
+                    const costoDano = cantMalasUsuario * precioUnitario;
+
+                    // A. TRANSACCIÓN FINANCIERA (GASTO)
+                    const cobroPorDano = gastoRepo.create({
+                        descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
+                        monto: parseFloat(costoDano.toFixed(2)),
+                        fecha: new Date(),
+                        tipo: TipoMovimiento.EGRESO,
+                        cultivo: actividad.cultivo,
+                        cantidad: cantMalasUsuario,
+                        unidad: unidadParaCalculo,
+                        precioUnitario: precioUnitario
+                    });
+                    await queryRunner.manager.save(cobroPorDano);
+
+                    await this.movimientosService.registrarMovimiento(
+                        TipoMovimiento.EGRESO,
+                        cantMalasUsuario,
+                        material.id,
+                        `BAJA POR DAÑO: ${cantMalasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                        `baja-dano-${actividad.id}`
+                    );
+                }
+            }
+
+            // =========================================================
+            // 🧪 CASO B: CONSUMIBLES (INSUMOS: Abono, Veneno, etc.)
+            // =========================================================
+            else {
+                // Solo devolvemos al stock lo que sobró (lo bueno)
+                if (cantBuenasBase > 0) {
+                     // 🔥 AQUÍ ESTÁ EL ARREGLO:
+                     // Sumamos al stock la cantidad CONVERTIDA (50,000 ml), no la del usuario (50).
+                     // Usamos la función revertir (o suma directa)
+                     this.revertirDescontarMaterial(material, cantBuenasBase);
+
+                     // Registramos el movimiento
+                     await this.movimientosService.registrarMovimiento(
+                       TipoMovimiento.INGRESO,
+                       cantBuenasBase, // Guardamos el valor numérico base para cálculos
+                       material.id,
+                       // 🔥 PERO en la descripción ponemos lo que el usuario entiende: "50 Litros"
+                       `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                       `dev-cons-${actividad.id}`
+                     );
+
+                     console.log(`   ✅ Material ${material.id} procesado. Stock se aumentará en: ${cantBuenasBase}`);
+                }
+                // =========================================================
+                // 🧪 GESTIÓN FINANCIERA PARA CONSUMIBLES - SE EJECUTA SIEMPRE
+                // =========================================================
+                // Aquí calculamos el consumo real: ASIGNADO - DEVUELTO = CONSUMIDO
+   
+                if (asignacionOriginal) {
+                    const cantidadAsignadaBase = Number(asignacionOriginal.cantidadUsadaBase) || 0;
+   
+                    console.log(`   🔍 DEBUG FINANCIERO CONSUMIBLE - Material: ${material.nombre}`);
+                    console.log(`      - asignacionOriginal.cantidadUsadaBase: ${asignacionOriginal.cantidadUsadaBase}`);
+                    console.log(`      - cantidadAsignadaBase (Number): ${cantidadAsignadaBase}`);
+                    console.log(`      - cantBuenasBase (devuelto): ${cantBuenasBase}`);
+   
+                    // CÁLCULO CLAVE: Lo que se llevó - Lo que trajo = Lo que realmente gastó
+                    let cantidadRealConsumidaBase = cantidadAsignadaBase - cantBuenasBase;
+   
+                    console.log(`      - cantidadRealConsumidaBase (antes de protección): ${cantidadRealConsumidaBase}`);
+   
+                    // Protección: Si devuelve más de lo asignado (error de usuario), el consumo es 0
+                    if (cantidadRealConsumidaBase < 0) cantidadRealConsumidaBase = 0;
+   
+                    console.log(`   💰 CÁLCULO FINANCIERO:`);
+                    console.log(`      - Asignado (Base): ${cantidadAsignadaBase}`);
+                    console.log(`      - Devuelto (Base): ${cantBuenasBase}`);
+                    console.log(`      - Consumido Real : ${cantidadRealConsumidaBase}`);
+   
+                    // Solo generamos transacción si hubo un consumo real mayor a 0
+                    if (cantidadRealConsumidaBase > 0) {
+                        let nuevoCostoTotal = 0;
+                        let precioUnitarioBase = 0;
+                        let precioUnitarioGasto = 0;
+                        let factorUnidad = 1;
+   
+                        if (material.precio) {
+                           const precioMaterial = Number(material.precio);
+                           const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+   
+                           // Calcular precio por unidad base (ej: precio por 1 gramo o 1 ml)
+                           if (pesoPorUnidad > 0) {
+                              precioUnitarioBase = precioMaterial / pesoPorUnidad;
+                           } else {
+                              precioUnitarioBase = precioMaterial;
+                           }
+   
+                           // TOTAL = Precio Unitario * Cantidad Consumida (Los 5kg que faltan)
+                           nuevoCostoTotal = precioUnitarioBase * cantidadRealConsumidaBase;
+   
+                           // Calcular precio unitario para el gasto (per unidad visual)
+                           factorUnidad = UnitConversionUtil.convertirABase(1, asignacionOriginal.unidadMedida || UnidadMedida.UNIDAD);
+                           precioUnitarioGasto = precioUnitarioBase * factorUnidad;
+                       } else {
+                           // Si no hay precio, asignar valores por defecto
+                           precioUnitarioGasto = 0;
+                           factorUnidad = 1;
+                        }
+   
+                        console.log(`      - Actualizando asignacionOriginal:`);
+                        console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
+                        console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
+   
+                        // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
+                        asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
+   
+                        // Recalcular la cantidad visual para el usuario (regla de 3 inversa)
+                        if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada) {
+                           asignacionOriginal.cantidadUsada = (cantidadRealConsumidaBase * Number(asignacionOriginal.cantidadUsada)) / cantidadAsignadaBase;
+                        }
+   
+                        asignacionOriginal.costo = nuevoCostoTotal;
+   
+                        console.log(`        - cantidadUsadaBase después: ${asignacionOriginal.cantidadUsadaBase}`);
+                        console.log(`        - cantidadUsada después: ${asignacionOriginal.cantidadUsada}`);
+                        console.log(`        - costo después: ${asignacionOriginal.costo}`);
+   
+                        await actMaterialRepo.save(asignacionOriginal);
+   
+                        console.log(`      - Creando gasto:`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
+                        console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
+                        console.log(`        - factorUnidad: ${factorUnidad}`);
+                        console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
+   
+                        // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
+                        const nuevoGasto = gastoRepo.create({
+                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                              monto: parseFloat(nuevoCostoTotal.toFixed(2)),
+                              fecha: new Date(),
+                              tipo: TipoMovimiento.EGRESO,
+                              cultivo: actividad.cultivo ?? undefined,
+                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
+                              unidad: asignacionOriginal.unidadMedida,
+                              precioUnitario: precioUnitarioGasto
+                        });
+   
+                        await gastoRepo.save(nuevoGasto);
+                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                    } else {
+                        console.log(`      ℹ️ Consumo fue 0 (Se devolvió todo). No se genera cobro.`);
+                        // Actualizar asignación a 0
+                        asignacionOriginal.cantidadUsadaBase = 0;
+                        asignacionOriginal.cantidadUsada = 0;
+                        asignacionOriginal.costo = 0;
+                        await actMaterialRepo.save(asignacionOriginal);
+                    }
+                }
+                }
+
+            await queryRunner.manager.save(material);
+          }
+        } else {
+          console.log('ℹ️ No hay materiales devueltos para procesar');
+        }
+
+      await queryRunner.commitTransaction();
+
+      // Cargar la actividad completa con el campo asignados para verificar estado
+      const actividadCompleta = await this.findOne(id);
+
+      // Verificar si todos los asignados han respondido
+      if (actividadCompleta) {
+        await this.verificarEstadoActividad(actividadCompleta);
+      }
+
+      return saved;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async obtenerRespuestasPorActividad(id: number, userIdentificacion?: number, userRole?: string) {
+    const query = this.respuestaRepository.createQueryBuilder('respuesta')
+      .leftJoinAndSelect('respuesta.usuario', 'usuario')
+      .leftJoinAndSelect('usuario.tipoUsuario', 'tipoUsuario')
+      .leftJoinAndSelect('usuario.ficha', 'ficha')
+      .where('respuesta.actividad = :actividadId', { actividadId: id })
+      .orderBy('respuesta.fechaEnvio', 'DESC');
+
+    if (userIdentificacion && userRole && (userRole.toLowerCase() === 'aprendiz' || userRole.toLowerCase() === 'pasante')) {
+      query.andWhere('usuario.identificacion = :identificacion', { identificacion: userIdentificacion });
+    }
+    return query.getMany();
+  }
+
+  async calificarRespuesta(respuestaId: number, dto: CalificarRespuestaDto, userRole?: string) {
+    console.log('🎯 calificarRespuesta called for respuesta:', respuestaId, 'estado:', dto.estado);
+
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden calificar respuestas.');
+    }
+
+    const respuesta = await this.respuestaRepository.findOne({
+      where: { id: respuestaId },
+      relations: ['actividad', 'usuario', 'usuario.tipoUsuario'],
+    });
+    if (!respuesta) {
+      throw new NotFoundException(`Respuesta con ID ${respuestaId} no encontrada.`);
+    }
+
+    console.log('👤 Usuario encontrado:', {
+      id: respuesta.usuario.identificacion,
+      nombre: respuesta.usuario.nombre,
+      tipoUsuario: respuesta.usuario.tipoUsuario?.nombre
+    });
+
+    respuesta.estado = dto.estado;
+    respuesta.comentarioInstructor = dto.comentarioInstructor;
+
+    const savedRespuesta = await this.respuestaRepository.save(respuesta);
+
+    // Cargar la actividad completa con el campo asignados para verificar estado
+    const actividadCompleta = await this.findOne(respuesta.actividad.id);
+
+    // Actualizar estado de la actividad basado en todas las respuestas
+    if (actividadCompleta) {
+      await this.verificarEstadoActividad(actividadCompleta);
+    }
+
+    // Retornar información adicional sobre si el usuario es pasante
+    const esPasante = respuesta.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+    console.log('🔍 Verificación de pasante:', {
+      tipoUsuarioNombre: respuesta.usuario.tipoUsuario?.nombre,
+      esPasante
+    });
+
+    const resultado = {
+      ...savedRespuesta,
+      esPasante,
+      usuario: {
+        ...savedRespuesta.usuario,
+        tipoUsuario: respuesta.usuario.tipoUsuario,
+      },
+    };
+
+    console.log('📤 Respuesta que se retorna al frontend:', {
+      id: resultado.id,
+      estado: resultado.estado,
+      esPasante: resultado.esPasante,
+      usuarioTipo: resultado.usuario.tipoUsuario?.nombre
+    });
+
+    return resultado;
+  }
+
+  async calificarActividad(id: number, dto: CalificarActividadDto, userRole?: string) {
+    const actividad = await this.findOne(id);
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
+    actividad.calificacion = dto.calificacion;
+    actividad.comentarioInstructor = dto.comentarioInstructor;
+
+    // El estado se actualizará automáticamente por verificarEstadoActividad
+    // cuando se califiquen las respuestas individuales
+    return this.actividadRepository.save(actividad);
+  }
+
+  async generarReporteActividad(id: number) {
+    const actividad = await this.findOne(id);
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
+    let asignados: string[] = [];
+    try { asignados = JSON.parse(actividad.asignados || '[]'); } catch {}
+    
+    const respuestas = await this.respuestaRepository.find({
+      where: { actividad: { id } },
+      relations: ['usuario'],
+    });
+    const respuestasMap = new Map<string, RespuestaActividad>();
+    respuestas.forEach(r => respuestasMap.set(`${r.usuario.nombre} ${r.usuario.apellidos}`.trim(), r));
+
+    const reporte = asignados.map(nombre => {
+      const r = respuestasMap.get(nombre);
+      return {
+        nombre,
+        estado: r ? r.estado : 'pendiente',
+        fechaEnvio: r ? r.fechaEnvio : null,
+        comentarioInstructor: r ? r.comentarioInstructor : null,
+      };
+    });
+
+    return { actividad: { id: actividad.id, titulo: actividad.titulo, descripcion: actividad.descripcion, estado: actividad.estado }, reporte };
+  }
+
+  async generarReporteExcel(id: number): Promise<Buffer> {
+    const data = await this.generarReporteActividad(id);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Reporte');
+    worksheet.addRow(['Reporte de Actividad', data.actividad.titulo]);
+    worksheet.addRow(['Estado', data.actividad.estado]);
+    worksheet.addRow([]);
+    worksheet.addRow(['Aprendiz', 'Estado', 'Fecha', 'Comentarios']);
+    data.reporte.forEach(r => {
+      worksheet.addRow([r.nombre, r.estado, r.fechaEnvio, r.comentarioInstructor]);
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+
+  async devolverMaterialesFinal(id: number, dto: DevolverMaterialesFinalDto, userIdentificacion: number) {
+    const actividad = await this.findOne(id);
+    if (!actividad) throw new NotFoundException(`Actividad ${id} no encontrada.`);
+
+    // Validaciones de seguridad
+    if (!actividad.responsable || actividad.responsable.identificacion !== userIdentificacion) {
+      throw new BadRequestException('Solo el responsable puede devolver materiales.');
+    }
+    if (actividad.estado !== 'completado') {
+      throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
     try {
-      const fechaActividad = new Date(fecha);
-      const actividadesAGuardar: Actividad[] = [];
-      for (const identificacion of aprendices) {
-        const nuevaActividad = this.actividadRepository.create({
-          titulo,
-          descripcion,
-          fecha: fechaActividad,
-          cultivo,
-          usuario: { identificacion },
-          estado: 'pendiente',
+      // 🔍 DEBUG INICIAL
+      console.log('\n==================================================');
+      console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
+      console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
+      console.log('==================================================\n');
+
+      const gastoRepo = queryRunner.manager.getRepository(Gasto);
+      // Necesitamos este repositorio para saber en qué unidad se prestó
+      const actMaterialRepo = queryRunner.manager.getRepository(ActividadMaterial);
+
+      for (const dev of dto.materialesDevueltos) {
+        const material = await queryRunner.manager.findOne(Material, { where: { id: dev.materialId } });
+        if (!material) {
+          console.error(`❌ Material ${dev.materialId} no encontrado en BD`);
+          continue;
+        }
+
+        // 🔥 PASO 1: DETERMINAR LA UNIDAD PARA CÁLCULO
+        // Prioridad: Unidad seleccionada en frontend > Unidad originalmente asignada > Default 'UNIDAD'
+        const asignacionOriginal = await actMaterialRepo.findOne({
+          where: {
+            actividad: { id: actividad.id },
+            material: { id: material.id }
+          }
         });
-        const saved = await queryRunner.manager.save(nuevaActividad);
-        actividadesAGuardar.push(saved);
+
+        const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
+
+        // LOG DE DECISIÓN DE UNIDAD
+        console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
+        console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
+        console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
+
+        // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
+        const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
+        console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
+
+        // Cantidades que el usuario escribió (Ej: 50)
+        const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
+        const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
+        console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
+
+        // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
+        // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
+        let cantBuenasBase = 0;
+        let cantMalasBase = 0;
+
+        // Detectar la unidad base del material (Gramos o Mililitros)
+        let unidadBaseMaterial = material.unidadBase;
+        if (!unidadBaseMaterial) {
+          unidadBaseMaterial = UnitConversionUtil.obtenerUnidadBase(
+            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
+            material.medidasDeContenido
+          );
+        }
+        console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
+
+        // Lógica de conversión (Usando la unidad seleccionada por el usuario)
+        if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
+            [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
+           // Si devolvió BULTOS o SACOS
+           const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+           console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
+           cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
+           cantMalasBase = cantMalasUsuario * pesoPorUnidad;
+        } else {
+           // Conversión estándar (L -> ml, kg -> g)
+           // Aquí es donde 50 L se convierten en 50,000 ml
+           console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
+           cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
+           cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
+        }
+
+        console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
+
+        if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
+          console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
+        }
+
+        const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
+
+        // =========================================================
+        // 🛠️ CASO A: HERRAMIENTAS (NO CONSUMIBLES)
+        // =========================================================
+        if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
+            // Para herramientas, generalmente la unidad es UNIDAD, así que base y usuario son iguales.
+            // Restamos de "En Uso" para liberarlas
+            material.usosActuales = Number(material.usosActuales) - (cantBuenasUsuario + cantMalasUsuario);
+            if (material.usosActuales < 0) material.usosActuales = 0;
+
+            // Registro historial (lo bueno)
+            if (cantBuenasUsuario > 0) {
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.INGRESO,
+                    cantBuenasUsuario, // Guardamos el valor numérico base para cálculos
+                    material.id,
+                    `Devolución: ${cantBuenasUsuario} ${unidadParaCalculo} (Buen Estado) - ${actividad.titulo}`,
+                    `dev-ok-${actividad.id}`
+                );
+            }
+
+            // Registro historial y cobro (lo dañado)
+            if (cantMalasUsuario > 0) {
+                material.cantidad = Number(material.cantidad) - cantMalasUsuario; // Baja de inventario físico
+                if (material.cantidad < 0) material.cantidad = 0;
+
+                const precioUnitario = Number(material.precio) || 0;
+                const costoDano = cantMalasUsuario * precioUnitario;
+
+                // A. TRANSACCIÓN FINANCIERA (GASTO)
+                const cobroPorDano = gastoRepo.create({
+                    descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
+                    monto: parseFloat(costoDano.toFixed(2)),
+                    fecha: new Date(),
+                    tipo: TipoMovimiento.EGRESO,
+                    cultivo: actividad.cultivo,
+                    cantidad: cantMalasUsuario,
+                    unidad: unidadParaCalculo,
+                    precioUnitario: precioUnitario
+                });
+                await queryRunner.manager.save(cobroPorDano);
+
+                await this.movimientosService.registrarMovimiento(
+                    TipoMovimiento.EGRESO,
+                    cantMalasUsuario,
+                    material.id,
+                    `BAJA POR DAÑO: ${cantMalasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                    `baja-dano-${actividad.id}`
+                );
+            }
+        }
+
+            // =========================================================
+            // 🧪 CASO B: CONSUMIBLES (INSUMOS: Abono, Veneno, etc.)
+            // =========================================================
+            else {
+                // ---------------------------------------------------------
+                // 1. GESTIÓN DE INVENTARIO FÍSICO (Solo si devuelve algo)
+                // ---------------------------------------------------------
+                if (cantBuenasBase > 0) {
+                     // Devolver al stock lo que sobró
+                     this.revertirDescontarMaterial(material, cantBuenasBase);
+
+                     // Registrar el movimiento de entrada en Kárdex
+                     await this.movimientosService.registrarMovimiento(
+                       TipoMovimiento.INGRESO,
+                       cantBuenasBase,
+                       material.id,
+                       `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
+                       `dev-cons-${actividad.id}`
+                     );
+                     console.log(`   ✅ Stock recuperado: ${cantBuenasBase} (Base)`);
+                }
+
+                // ---------------------------------------------------------
+                // 2. GESTIÓN FINANCIERA (TRANSACCIÓN) - SE EJECUTA SIEMPRE
+                // ---------------------------------------------------------
+                // Aquí hacemos la matemática: ASIGNADO (10) - DEVUELTO (5) = A COBRAR (5)
+
+                if (asignacionOriginal) {
+                    const cantidadAsignadaBase = Number(asignacionOriginal.cantidadUsadaBase) || 0;
+
+                    console.log(`   🔍 DEBUG FINANCIERO - Material: ${material.nombre}`);
+                    console.log(`      - asignacionOriginal.cantidadUsadaBase: ${asignacionOriginal.cantidadUsadaBase}`);
+                    console.log(`      - cantidadAsignadaBase (Number): ${cantidadAsignadaBase}`);
+                    console.log(`      - cantBuenasBase (devuelto): ${cantBuenasBase}`);
+
+                    // CÁLCULO CLAVE: Lo que se llevó - Lo que trajo = Lo que realmente gastó
+                    let cantidadRealConsumidaBase = cantidadAsignadaBase - cantBuenasBase;
+
+                    console.log(`      - cantidadRealConsumidaBase (antes de protección): ${cantidadRealConsumidaBase}`);
+
+                    // Protección: Si devuelve más de lo asignado (error de usuario), el consumo es 0
+                    if (cantidadRealConsumidaBase < 0) cantidadRealConsumidaBase = 0;
+
+                    console.log(`   💰 CÁLCULO FINANCIERO:`);
+                    console.log(`      - Asignado (Base): ${cantidadAsignadaBase}`);
+                    console.log(`      - Devuelto (Base): ${cantBuenasBase}`);
+                    console.log(`      - Consumido Real : ${cantidadRealConsumidaBase}`);
+
+                    // Solo generamos transacción (dinero) si hubo un consumo real
+                    if (cantidadRealConsumidaBase > 0) {
+                        let nuevoCostoTotal = 0;
+                        let precioUnitarioBase = 0;
+                        let precioUnitarioGasto = 0;
+                        let factorUnidad = 1;
+
+                        if (material.precio) {
+                           const precioMaterial = Number(material.precio);
+                           const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+
+                           // Calcular precio por unidad base (ej: precio por 1 gramo o 1 ml)
+                           if (pesoPorUnidad > 0) {
+                               precioUnitarioBase = precioMaterial / pesoPorUnidad;
+                           } else {
+                               precioUnitarioBase = precioMaterial;
+                           }
+
+                           // TOTAL = Precio Unitario * Cantidad Consumida (Los 5kg que faltan)
+                           nuevoCostoTotal = precioUnitarioBase * cantidadRealConsumidaBase;
+
+                           // Calcular precio unitario para el gasto (per unidad visual)
+                           factorUnidad = UnitConversionUtil.convertirABase(1, asignacionOriginal.unidadMedida || UnidadMedida.UNIDAD);
+                           precioUnitarioGasto = precioUnitarioBase * factorUnidad;
+                       } else {
+                           // Si no hay precio, asignar valores por defecto
+                           precioUnitarioGasto = 0;
+                           factorUnidad = 1;
+                       }
+
+                       console.log(`      - Actualizando asignacionOriginal:`);
+                        console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
+                        console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
+
+                        // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
+                        asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
+
+                        // Recalcular la cantidad visual para el usuario (regla de 3 inversa)
+                        if (cantidadAsignadaBase > 0 && asignacionOriginal.cantidadUsada) {
+                           asignacionOriginal.cantidadUsada = (cantidadRealConsumidaBase * Number(asignacionOriginal.cantidadUsada)) / cantidadAsignadaBase;
+                        }
+
+                        asignacionOriginal.costo = nuevoCostoTotal;
+
+                        console.log(`        - cantidadUsadaBase después: ${asignacionOriginal.cantidadUsadaBase}`);
+                        console.log(`        - cantidadUsada después: ${asignacionOriginal.cantidadUsada}`);
+                        console.log(`        - costo después: ${asignacionOriginal.costo}`);
+
+                        await actMaterialRepo.save(asignacionOriginal);
+
+                        console.log(`      - Creando gasto:`);
+                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
+                        console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
+                        console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
+                        console.log(`        - factorUnidad: ${factorUnidad}`);
+                        console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
+
+                        // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
+                        const nuevoGasto = gastoRepo.create({
+                              descripcion: `Consumo: ${material.nombre} - ${asignacionOriginal.cantidadUsada?.toFixed(2) || '0'} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                              monto: parseFloat(nuevoCostoTotal.toFixed(2)), // Aquí van los 5000
+                              fecha: new Date(),
+                              tipo: TipoMovimiento.EGRESO,
+                              cultivo: actividad.cultivo ?? undefined,
+                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
+                              unidad: asignacionOriginal.unidadMedida,
+                              precioUnitario: precioUnitarioGasto
+                        });
+
+                        await gastoRepo.save(nuevoGasto);
+                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                    }
+                    else {
+                        // Si devolvió TODO (Consumo 0), actualizamos la asignación a 0 costo
+                        console.log(`      ℹ️ Se devolvió todo el material. Costo final: 0`);
+                        asignacionOriginal.cantidadUsadaBase = 0;
+                        asignacionOriginal.cantidadUsada = 0;
+                        asignacionOriginal.costo = 0;
+                        await actMaterialRepo.save(asignacionOriginal);
+                    }
+                }
+            }
+
+        await queryRunner.manager.save(material);
       }
+
+      await queryRunner.commitTransaction();
+      return { message: 'Devolución procesada correctamente. Stock actualizado.' };
+
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async asignarActividad(dto: AsignarActividadDto, usuarioIdentificacion?: number) {
+    const { cultivo: cultivoId, lote: loteId, sublote: subloteId, aprendices, titulo, descripcion, fecha, materiales, archivoInicial, responsable: responsableId } = dto;
+
+    // ... (Validaciones de entidades Cultivo, Lote, Sublote, Responsable igual que antes) ...
+    const cultivo = await this.cultivoRepository.findOneBy({ id: cultivoId });
+    if (!cultivo) throw new NotFoundException('Cultivo no encontrado');
+
+    let lote, sublote, responsable;
+    if(loteId) lote = await this.loteRepository.findOneBy({ id: loteId });
+    if(subloteId) sublote = await this.subloteRepository.findOneBy({ id: subloteId });
+    if(responsableId) responsable = await this.usuarioRepository.findOneBy({ identificacion: responsableId });
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const usuariosAsignados = await this.usuarioRepository.find({
+        where: { identificacion: In(aprendices) },
+        relations: ['tipoUsuario']
+      });
+      const nombresAsignados = usuariosAsignados.map(u => `${u.nombre} ${u.apellidos}`);
+
+      // Lógica para asignar responsable automáticamente
+      if (!responsable) {
+        if (aprendices.length === 1) {
+          // Si hay un solo aprendiz/pasante, él es el responsable
+          const usuarioUnico = usuariosAsignados[0];
+          const tipoUsuario = usuarioUnico.tipoUsuario?.nombre?.toLowerCase();
+          if (tipoUsuario === 'aprendiz' || tipoUsuario === 'pasante') {
+            responsable = usuarioUnico;
+          } else {
+            // Si no es aprendiz/pasante, asignar al instructor
+            responsable = await this.usuarioRepository.findOneBy({ identificacion: usuarioIdentificacion });
+          }
+        } else {
+          // Si hay múltiples usuarios, el responsable es el instructor
+          responsable = await this.usuarioRepository.findOneBy({ identificacion: usuarioIdentificacion });
+        }
+      }
+
+      const actividad = this.actividadRepository.create({
+        titulo, descripcion, fecha: new Date(fecha), cultivo, lote, sublote, responsable,
+        usuario: usuarioIdentificacion ? { identificacion: usuarioIdentificacion } : undefined,
+        estado: 'pendiente', asignados: JSON.stringify(nombresAsignados), archivoInicial
+      });
+      const saved = await queryRunner.manager.save(actividad);
+
       if (materiales && materiales.length > 0) {
         const gastoRepo = queryRunner.manager.getRepository(Gasto);
         for (const item of materiales) {
           const material = await queryRunner.manager.findOne(Material, { where: { id: item.materialId } });
           if (!material) throw new NotFoundException(`Material ${item.materialId} no encontrado.`);
-          const cantidadTotalUsada = item.cantidadUsada * aprendices.length;
-          if (material.cantidad < cantidadTotalUsada) {
-            throw new BadRequestException(`Stock insuficiente para ${material.nombre}. Se necesitan ${cantidadTotalUsada}, disponibles: ${material.cantidad}`);
+
+          const unidadUsada = (item.unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
+          let unidadBase = material.unidadBase || UnitConversionUtil.obtenerUnidadBase(
+            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible', 
+            material.medidasDeContenido
+          );
+
+          let cantidadBase = 0;
+          if (UnitConversionUtil.esUnidadEmpaque(unidadUsada) && [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBase)) {
+             cantidadBase = (item.cantidadUsada || 0) * (Number(material.pesoPorUnidad) || 1);
+          } else {
+             cantidadBase = UnitConversionUtil.convertirABase(item.cantidadUsada || 0, unidadUsada);
           }
-          material.cantidad -= cantidadTotalUsada;
+
+          const res = this.descontarMaterial(material, cantidadBase);
+          if (!res.success) throw new BadRequestException(`Stock insuficiente: ${material.nombre}`);
           await queryRunner.manager.save(material);
-          const costoTotal = (Number(material.precio) || 0) * cantidadTotalUsada;
-          if (costoTotal > 0) {
-            const nuevoGasto = gastoRepo.create({
-              descripcion: `Costo material: ${material.nombre} (Asignación: ${titulo})`,
-              monto: costoTotal,
-              fecha: fechaActividad,
+
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (res.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: new Date(fecha),
               tipo: TipoMovimiento.EGRESO,
-              cultivo: cultivo,
+              cultivo: cultivo ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
             });
-            await queryRunner.manager.save(nuevoGasto);
+            await queryRunner.manager.save(gastoDepreciacion);
           }
-          for (const actividad of actividadesAGuardar) {
-            const nuevaUnion = this.actMaterialRepository.create({
-              actividad: actividad,
-              material: material,
-              cantidadUsada: item.cantidadUsada,
-            });
-            await queryRunner.manager.save(nuevaUnion);
+
+          // CÁLCULO DE COSTO Y GASTO
+          let costoTotal = 0;
+          let precioUnitarioCalculado = 0; // Variable para el precio unitario
+
+          if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+             const precioMaterial = Number(material.precio) || 0;
+             const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+
+             // A. Precio por unidad base
+             const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
+
+             // B. Costo Total = PrecioBase * CantidadTotalBase
+             costoTotal = precioPorUnidadBase * cantidadBase;
+
+             // C. Precio Unitario para Mostrar
+             precioUnitarioCalculado = item.cantidadUsada > 0 ? costoTotal / item.cantidadUsada : 0;
+
+          } else {
+             // Herramientas
+             costoTotal = 0;
+             precioUnitarioCalculado = 0;
           }
+
+          const union = this.actMaterialRepository.create({
+            actividad: saved, material, cantidadUsada: item.cantidadUsada, unidadMedida: unidadUsada,
+            cantidadUsadaBase: cantidadBase, costo: costoTotal
+          });
+          await queryRunner.manager.save(union);
+
+          // NO CREAR GASTO AQUÍ - Se creará en la devolución final
+
+          await this.movimientosService.registrarMovimiento(
+            TipoMovimiento.EGRESO, cantidadBase, material.id, `Asignación: ${titulo}`, `act-${saved.id}`
+          );
         }
       }
       await queryRunner.commitTransaction();
-      return actividadesAGuardar;
-    } catch (error) {
+      return { actividad: saved };
+    } catch (e) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw e;
     } finally {
       await queryRunner.release();
     }

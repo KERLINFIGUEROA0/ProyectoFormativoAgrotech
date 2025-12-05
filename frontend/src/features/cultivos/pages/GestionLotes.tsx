@@ -1,49 +1,34 @@
-import { useState, useEffect, type ReactElement } from 'react';
+import { useState, useEffect, useCallback, type ReactElement } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FaPlus, FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaTrash, FaExclamationTriangle, FaEdit } from 'react-icons/fa';
-import { obtenerLotes, crearLote, actualizarLote, eliminarLote, actualizarEstadoLote, obtenerEstadisticasLotes } from '../api/lotesApi';
-import Modal from '../../../components/Modal';
+import { FaLeaf, FaThList, FaTools, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
+import { Plus } from 'lucide-react';
+import { obtenerLotes, crearLote, actualizarLote, obtenerEstadisticasLotes } from '../api/lotesApi';
+import { Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
 import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
-import type { Lote, LoteData, StatCardProps } from '../interfaces/cultivos';
-import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
+import type { Lote, LoteData } from '../interfaces/cultivos';
+import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Progress } from '@heroui/react';
 
-// --- Componente StatCard con Hero UI ---
-const StatCard = ({ icon, title, value, color }: StatCardProps): ReactElement => {
-  const colorMap = {
-    blue: 'primary',
-    red: 'danger',
-    green: 'success',
-    yellow: 'warning',
-  } as const;
-  return (
-    <Card className="p-2">
-      <CardBody className="flex flex-col items-center text-center py-1">
-        <div className={`p-1.5 rounded-full bg-${colorMap[color]}-100 text-${colorMap[color]}-600 mb-1`}>
-          {icon}
-        </div>
-        <p className="font-bold text-xl leading-tight mb-1">{value}</p>
-        <p className="text-gray-500 text-xs leading-tight">{title}</p>
-      </CardBody>
-    </Card>
-  );
-};
 
 export default function GestionLotesPage(): ReactElement {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLote, setEditingLote] = useState<Lote | null>(null);
   const [selectedLote, setSelectedLote] = useState<Lote | null>(null);
-  const [stats, setStats] = useState({ enCultivo: 0, total: 0, enPreparacion: 0 });
-  const [filterStatus, setFilterStatus] = useState<'all' | 'Activo' | 'Inactivo' | 'En preparación'>('all');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingLote, setDeletingLote] = useState<Lote | null>(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    enPreparacion: 0,
+    parcialmenteOcupado: 0,
+    enCultivo: 0,
+    enMantenimiento: 0
+  });
+  const [filterStatus, setFilterStatus] = useState<'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const location = useLocation(); 
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
     try {
       const [lotesResponse, statsResponse] = await Promise.all([obtenerLotes(), obtenerEstadisticasLotes()]);
       const fetchedLotes: Lote[] = lotesResponse.data || [];
@@ -52,15 +37,33 @@ export default function GestionLotesPage(): ReactElement {
     } catch {
       toast.error("Error al cargar los datos de los lotes.");
     }
-  };
+  }, []);
   
   useEffect(() => {
     fetchData();
-  }, [location]); 
+  }, [location]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [filterStatus]);
+
+  // 🔥 NUEVA FUNCIÓN: Maneja la actualización en tiempo real desde el mapa
+  const handleLotesUpdate = (updatedLotes: Lote[]) => {
+    // 1. Actualizar la lista visual de lotes (Tabla y Mapa)
+    setLotes(updatedLotes);
+
+    // 2. Refrescar las estadísticas para que los contadores coincidan
+    obtenerEstadisticasLotes()
+      .then((res) => setStats(res.data))
+      .catch((err) => console.error("Error actualizando stats:", err));
+
+    toast.success("Estado del lote actualizado en tiempo real");
+  };
 
 const handleSave = async (data: LoteData) => {
     const toastId = toast.loading("Guardando lote...");
@@ -83,16 +86,6 @@ const handleSave = async (data: LoteData) => {
     }
   };
   
-  const handleEstadoChange = async (loteId: number, nuevoEstado: string) => {
-    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
-    try {
-      await actualizarEstadoLote(loteId, nuevoEstado);
-      toast.success("Estado actualizado.", { id: toastId });
-      await fetchData();
-    } catch {
-      toast.error("No se pudo actualizar el estado.", { id: toastId });
-    }
-  };
 
   const openModal = (lote: Lote | null = null) => {
     setEditingLote(lote);
@@ -104,29 +97,8 @@ const handleSave = async (data: LoteData) => {
     setEditingLote(null);
   };
   
-  const openDeleteModal = (lote: Lote) => {
-    setDeletingLote(lote);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setDeletingLote(null);
-    setIsDeleteModalOpen(false);
-  };
-
-  const handleDelete = async () => {
-    if (!deletingLote) return;
-    const toastId = toast.loading("Eliminando lote...");
-    try {
-      await eliminarLote(deletingLote.id);
-      toast.success("Lote eliminado con éxito.", { id: toastId });
-      fetchData();
-      closeDeleteModal();
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al eliminar el lote.";
-      toast.error(message, { id: toastId });
-    }
-  };
+  // ✅ ELIMINADAS: Funciones de eliminación
+  // Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
 
 const handleViewLocation = (lote: Lote) => {
     setSelectedLote(lote);
@@ -144,69 +116,185 @@ const handleViewLocation = (lote: Lote) => {
   const totalPages = Math.ceil(filteredLotes.length / itemsPerPage);
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      <div className="flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Gestión de Lotes</h1>
-          <Button onClick={() => openModal()} color="primary" startContent={<FaPlus />}>
-            Nuevo Lote
-          </Button>
-        </div>
+    <div className="h-full flex flex-col space-y-4 md:space-y-6 p-4 md:p-6 bg-gray-50">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Gestión Lotes</h1>
       </div>
-      <div className="flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-600 mb-3">Información General de los Lotes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={<FaLeaf size={20}/>} title="En Cultivo" value={stats.enCultivo} color="blue" />
-          <StatCard icon={<FaThList size={20}/>} title="Total Lotes" value={stats.total} color="green" />
-          <StatCard icon={<FaTools size={20}/>} title="En Preparación" value={stats.enPreparacion} color="yellow" />
-        </div>
+
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Lotes</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-xs text-gray-500">registrados</p>
+              </div>
+              <div className="p-2 md:p-3 bg-green-100 rounded-full">
+                <FaThList className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={Math.min(stats.total * 10, 100)}
+              className="mt-2 md:mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de lotes totales: ${stats.total}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardBody className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Preparación</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enPreparacion}</p>
+                <p className="text-xs text-gray-500">pendientes</p>
+              </div>
+              <div className="p-2 md:p-3 bg-yellow-100 rounded-full">
+                <FaTools className="h-5 w-5 md:h-6 md:w-6 text-yellow-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enPreparacion / Math.max(stats.total, 1)) * 100}
+              className="mt-2 md:mt-3"
+              color="warning"
+              size="sm"
+              aria-label={`Progreso de lotes en preparación: ${stats.enPreparacion}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Parcialmente Ocupado</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.parcialmenteOcupado}</p>
+                <p className="text-xs text-gray-500">algunos cultivos</p>
+              </div>
+              <div className="p-2 md:p-3 bg-blue-100 rounded-full">
+                <FaLeaf className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.parcialmenteOcupado / Math.max(stats.total, 1)) * 100}
+              className="mt-2 md:mt-3"
+              color="primary"
+              size="sm"
+              aria-label={`Progreso de lotes parcialmente ocupados: ${stats.parcialmenteOcupado}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Cultivo</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enCultivo}</p>
+                <p className="text-xs text-gray-500">completamente activos</p>
+              </div>
+              <div className="p-2 md:p-3 bg-green-100 rounded-full">
+                <FaLeaf className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enCultivo / Math.max(stats.total, 1)) * 100}
+              className="mt-2 md:mt-3"
+              color="success"
+              size="sm"
+              aria-label={`Progreso de lotes en cultivo: ${stats.enCultivo}`}
+            />
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardBody className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Mantenimiento</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{stats.enMantenimiento}</p>
+                <p className="text-xs text-gray-500">requieren atención</p>
+              </div>
+              <div className="p-2 md:p-3 bg-red-100 rounded-full">
+                <FaTools className="h-5 w-5 md:h-6 md:w-6 text-red-600" />
+              </div>
+            </div>
+            <Progress
+              value={(stats.enMantenimiento / Math.max(stats.total, 1)) * 100}
+              className="mt-2 md:mt-3"
+              color="danger"
+              size="sm"
+              aria-label={`Progreso de lotes en mantenimiento: ${stats.enMantenimiento}`}
+            />
+          </CardBody>
+        </Card>
       </div>
+
       
-      <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-0">
-        <div className="w-full lg:w-3/5 xl:w-2/3 flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-grow min-h-0">
+        <div className="w-full lg:flex-1 xl:flex-[3] flex flex-col min-w-0">
           <Card className="p-6 w-full h-full flex flex-col">
-            <CardHeader className="flex justify-between items-center mb-4 flex-shrink-0">
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-600">Lista de Lotes</h2>
-              <Select
-                selectedKeys={[filterStatus]}
-                onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'Activo' | 'Inactivo' | 'En preparación')}
-                className="w-48"
-                placeholder="Filtrar por estado"
-              >
-                <SelectItem key="all">Todos</SelectItem>
-                <SelectItem key="Activo">Activos</SelectItem>
-                <SelectItem key="Inactivo">Inactivos</SelectItem>
-                <SelectItem key="En preparación">En Preparación</SelectItem>
-              </Select>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  onPress={() => openModal()}
+                  color="success"
+                  className="font-semibold"
+                  size="sm"
+                  startContent={<Plus size={16} strokeWidth={2.5} />}
+                >
+                  Nuevo Lote
+                </Button>
+                <Select
+                  selectedKeys={[filterStatus]}
+                  onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento')}
+                  className="w-full sm:w-48"
+                  placeholder="Filtrar por estado"
+                >
+                  <SelectItem key="all">Todos</SelectItem>
+                  <SelectItem key="En preparación">En Preparación</SelectItem>
+                  <SelectItem key="Parcialmente ocupado">Parcialmente Ocupado</SelectItem>
+                  <SelectItem key="En cultivación">En Cultivación</SelectItem>
+                  <SelectItem key="En mantenimiento">En Mantenimiento</SelectItem>
+                </Select>
+              </div>
             </CardHeader>
 
-            <CardBody className="overflow-y-auto flex-grow">
-              <Table aria-label="Tabla de lotes">
+            <CardBody className="overflow-x-auto overflow-y-auto flex-grow min-h-[300px]">
+              <Table aria-label="Tabla de lotes" className="min-w-full w-full">
                 <TableHeader>
-                  <TableColumn>Nombre</TableColumn>
-                  <TableColumn>Área (m²)</TableColumn>
-                  <TableColumn>Estado</TableColumn>
-                  <TableColumn>Ubicación</TableColumn>
-                  <TableColumn>Acciones</TableColumn>
-                </TableHeader>
+                   <TableColumn>Nombre</TableColumn>
+                   <TableColumn className="hidden md:table-cell">Área (m²)</TableColumn>
+                   <TableColumn>Estado</TableColumn>
+                   <TableColumn className="hidden lg:table-cell">Ubicación</TableColumn>
+                   <TableColumn>Acciones</TableColumn>
+                 </TableHeader>
                 <TableBody>
                   {currentLotes.map((lote) => (
                     <TableRow key={lote.id}>
                       <TableCell className="font-medium">{lote.nombre}</TableCell>
-                      <TableCell>{lote.area}</TableCell>
+                      <TableCell className="hidden md:table-cell">{lote.area}</TableCell>
                       <TableCell>
                         <Chip
                           color={
-                            lote.estado === 'Activo' ? 'success' :
-                            lote.estado === 'Inactivo' ? 'default' :
-                            'warning'
+                            lote.estado === 'En preparación' ? 'warning' :
+                            lote.estado === 'Parcialmente ocupado' ? 'primary' :
+                            lote.estado === 'En cultivación' ? 'success' :
+                            lote.estado === 'En mantenimiento' ? 'danger' :
+                            'default'
                           }
                           variant="flat"
+                          size="sm"
                         >
                           {lote.estado}
                         </Chip>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <Button
                           onClick={() => handleViewLocation(lote)}
                           color="primary"
@@ -218,36 +306,15 @@ const handleViewLocation = (lote: Lote) => {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => openModal(lote)}
-                            color="primary"
-                            variant="light"
-                            size="sm"
-                            isIconOnly
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            onClick={() => openDeleteModal(lote)}
-                            color="danger"
-                            variant="light"
-                            size="sm"
-                            isIconOnly
-                          >
-                            <FaTrash />
-                          </Button>
-                          <Select
-                            selectedKeys={[lote.estado]}
-                            onSelectionChange={(keys) => handleEstadoChange(lote.id, Array.from(keys)[0] as string)}
-                            size="sm"
-                            className="w-32"
-                          >
-                            <SelectItem key="Activo">Activo</SelectItem>
-                            <SelectItem key="Inactivo">Inactivo</SelectItem>
-                            <SelectItem key="En preparación">En preparación</SelectItem>
-                          </Select>
-                        </div>
+                        <Button
+                          onClick={() => openModal(lote)}
+                          color="primary"
+                          variant="light"
+                          size="sm"
+                          isIconOnly
+                        >
+                          <FaEdit />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -272,33 +339,43 @@ const handleViewLocation = (lote: Lote) => {
           </Card>
         </div>
         
-        <div className="w-full lg:w-2/5 xl:w-1/3 flex flex-col gap-2">
+        <div className="w-full lg:flex-1 xl:flex-[1] flex flex-col gap-2 min-w-0 max-w-full">
           <h2 className="text-lg font-semibold text-gray-600 flex-shrink-0">Ubicación: <span className="text-green-700">{selectedLote ? selectedLote.nombre : 'General'}</span></h2>
-          <div className="shadow-xl rounded-2xl flex-grow"> 
-            <LotesMap lotes={lotes} selectedLote={selectedLote} onSelectLote={setSelectedLote} />
+          <div className="shadow-xl rounded-2xl flex-grow min-h-[400px] md:min-h-[500px]">
+            <LotesMap
+              lotes={lotes}
+              selectedLote={selectedLote}
+              onSelectLote={setSelectedLote}
+              // 🔥 AQUÍ CONECTAMOS EL LISTENER
+              onLotesUpdate={handleLotesUpdate}
+            />
           </div>
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingLote ? 'Editar Lote' : 'Registrar Lote'}><LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} /></Modal>
-      <HeroModal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
+      <Modal
+        isOpen={isModalOpen}
+        onOpenChange={closeModal}
+        size="3xl"
+        scrollBehavior="inside"
+      >
         <ModalContent>
-          <ModalHeader className="flex flex-col items-center gap-3 text-center">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-              <FaExclamationTriangle className="text-red-600" size={24} />
+          <ModalHeader className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <FaLeaf className="h-6 w-6 text-green-600" />
             </div>
-            <h4 className="text-lg font-semibold">¿Eliminar Lote?</h4>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {editingLote ? 'Editar Lote' : 'Registrar Lote'}
+              </h3>
+              <p className="text-sm text-gray-600">Complete la información requerida</p>
+            </div>
           </ModalHeader>
           <ModalBody>
-            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold">{deletingLote?.nombre}</div>
-            <p className="text-xs text-gray-500">Esta acción no se puede deshacer. Se eliminará permanentemente el lote.</p>
+            <LoteForm initialData={editingLote} onSave={handleSave} onCancel={closeModal} />
           </ModalBody>
-          <ModalFooter>
-            <Button onClick={closeDeleteModal} variant="light">Cancelar</Button>
-            <Button onClick={handleDelete} color="danger">Eliminar</Button>
-          </ModalFooter>
         </ModalContent>
-      </HeroModal>
+      </Modal>
     </div>
   );
 }

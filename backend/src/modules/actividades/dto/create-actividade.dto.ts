@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested,Min } from 'class-validator';
+ import { IsString, IsDateString, IsOptional, IsNumber, IsIn, IsArray, IsPositive, ValidateNested,Min } from 'class-validator';
 // --- 1. IMPORTA plainToInstance ---
 import { Transform, Type, plainToInstance } from 'class-transformer';
 
@@ -10,6 +10,10 @@ export class MaterialUsadoDto {
   @IsNumber()
   @IsPositive()
   cantidadUsada: number;
+
+  @IsString()
+  @IsOptional()
+  unidadMedida?: string;
 }
 
 export class CreateActividadDto {
@@ -70,9 +74,9 @@ export class CreateActividadDto {
   @IsNumber()
   cultivo: number;
 
-  @IsIn(['pendiente', 'en proceso', 'completado'])
+  @IsIn(['pendiente', 'en proceso', 'enviado', 'aprobado', 'rechazado', 'completado'])
   @IsOptional()
-  estado?: 'pendiente' | 'en proceso' | 'completado';
+  estado?: 'pendiente' | 'en proceso' | 'enviado' | 'aprobado' | 'rechazado' | 'completado';
 
   @IsNumber()
   @IsOptional()

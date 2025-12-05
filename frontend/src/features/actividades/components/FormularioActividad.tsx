@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Upload, Plus, X, Package, Hash } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import { Input, Select, SelectItem, Button, Textarea } from "@heroui/react";
 import type {
   Actividad,
   EstadoActividad,
@@ -42,8 +43,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     cultivo: "",
     estado: "completado" as EstadoActividad,
     imagenes: [] as File[],
-    horas: '' as number | string, // <-- AÑADIDO
-    tarifaHora: '' as number | string, // <-- AÑADIDO
+    horas: '' as number | string, // <-- AÑADIDO (solo para creación)
+    tarifaHora: '' as number | string, // <-- AÑADIDO (solo para creación)
   });
 
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
@@ -52,8 +53,17 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   const [materialesSeleccionados, setMaterialesSeleccionados] = useState<
     MaterialSeleccionado[]
   >([]);
-  const [materialActual, setMaterialActual] = useState<string>(''); 
+  const [materialActual, setMaterialActual] = useState<string>('');
   const [cantidadMaterial, setCantidadMaterial] = useState<number | string>(1);
+
+  // Función para calcular el stock disponible
+  const calcularStockDisponible = (material: Material): number => {
+    if (material.tipoConsumo === 'consumible' && material.cantidadPorUnidad) {
+      const openPackageAdjustment = material.cantidadRestanteEnUnidadActual !== null && material.cantidadRestanteEnUnidadActual !== undefined ? 1 : 0;
+      return (material.cantidad - openPackageAdjustment) * material.cantidadPorUnidad + (material.cantidadRestanteEnUnidadActual || 0);
+    }
+    return material.cantidad;
+  };
 
   // Obtener usuario autenticado (sin cambios)
   useEffect(() => {
@@ -67,7 +77,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   // Precargar datos de edición (MODIFICADO)
   useEffect(() => {
     if (isEditing && actividadInicial) {
-      // --- CORRECCIÓN 2: Precargar horas y tarifaHora ---
+      // --- CORRECCIÓN 2: NO precargar horas y tarifaHora en edición ---
       setFormData({
         titulo: actividadInicial.titulo || "",
         descripcion: actividadInicial.descripcion || "",
@@ -77,8 +87,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         cultivo: actividadInicial.cultivo?.id?.toString() || "",
         estado: actividadInicial.estado || "pendiente",
         imagenes: [],
-        horas: actividadInicial.horas || '', // <-- AÑADIDO
-        tarifaHora: actividadInicial.tarifaHora || '', // <-- AÑADIDO
+        horas: '', // <-- NO precargar en edición
+        tarifaHora: '', // <-- NO precargar en edición
       });
       
       // Precargar materiales (Tu código ya estaba correcto aquí)
@@ -154,10 +164,12 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     const material = materialesDisponibles.find((m) => m.id === id);
     if (!material) return;
 
-    // Verificar stock (tu lógica es correcta)
-    if (cantidad > material.cantidad) {
+    // Verificar stock
+    const stockDisponible = calcularStockDisponible(material);
+    if (cantidad > stockDisponible) {
+      const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
       toast.error(
-        `Stock insuficiente. Disponible: ${material.cantidad} ${material.tipoEmpaque}`,
+        `Stock insuficiente. Disponible: ${stockDisponible} ${unidad}`,
       );
       return;
     }
@@ -165,8 +177,10 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     const existente = materialesSeleccionados.find(m => m.materialId === id);
     if (existente) {
         const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
-        if (nuevaCantidadTotal > material.cantidad) {
-            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${material.cantidad}`);
+        const stockDisponible = calcularStockDisponible(material);
+        if (nuevaCantidadTotal > stockDisponible) {
+            const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
+            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${stockDisponible} ${unidad}`);
             return;
         }
         
@@ -185,7 +199,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             materialId: material.id,
             nombre: material.nombre,
             cantidadUsada: cantidad,
-            stockDisponible: material.cantidad,
+            stockDisponible: calcularStockDisponible(material),
           },
         ]);
     }
@@ -222,9 +236,11 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     dataToSend.append("cultivo", formData.cultivo);
     dataToSend.append("estado", formData.estado);
 
-    // --- AÑADIDO: Enviar campos de costo ---
-    dataToSend.append("horas", formData.horas.toString() || "0");
-    dataToSend.append("tarifaHora", formData.tarifaHora.toString() || "0");
+    // --- AÑADIDO: Enviar campos de costo SOLO en creación ---
+    if (!isEditing) {
+      dataToSend.append("horas", formData.horas.toString() || "0");
+      dataToSend.append("tarifaHora", formData.tarifaHora.toString() || "0");
+    }
 
     // --- (Tu corrección de 'isEditing' ya estaba aquí, está perfecta) ---
     if (!isEditing) {
@@ -270,121 +286,112 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             </h3>
           </div>
           
-          {/* Nombre (sin cambios) */}
+          {/* Nombre */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre de Actividad <span className="text-red-500">*</span>
-            </label>
-            <input
+            <Input
               type="text"
               name="titulo"
               value={formData.titulo}
               onChange={handleChange}
               placeholder="Ej. Siembra de maíz"
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
+              label="Nombre de Actividad"
+              isRequired
             />
           </div>
 
-          {/* Fecha (sin cambios) */}
+          {/* Fecha */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha de realización <span className="text-red-500">*</span>
-            </label>
-            <input
+            <Input
               type="date"
               name="fecha"
               value={formData.fecha}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
+              label="Fecha de realización"
+              isRequired
             />
           </div>
 
-          {/* Cultivo (sin cambios) */}
+          {/* Cultivo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cultivo <span className="text-red-500">*</span>
-            </label>
-            <select
+            <Select
               name="cultivo"
-              value={formData.cultivo}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+              selectedKeys={formData.cultivo ? [formData.cultivo] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, cultivo: selected as string }));
+              }}
+              label="Cultivo"
+              placeholder="Seleccione cultivo"
+              isRequired
             >
-              <option value="">Seleccione cultivo</option>
               {cultivos.map((c) => (
-                <option key={c.id} value={c.id}>
+                <SelectItem key={c.id.toString()}>
                   {c.nombre}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </div>
 
-          {/* Estado (Ahora se muestra siempre, no solo al editar) */}
+          {/* Estado */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-            <select
+            <Select
               name="estado"
-              value={formData.estado}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+              selectedKeys={[formData.estado]}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, estado: selected as EstadoActividad }));
+              }}
+              label="Estado"
             >
               {estados.map((estado) => (
-                <option key={estado} value={estado}>
+                <SelectItem key={estado}>
                   {estado}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </div>
 
-          {/* Descripción (sin cambios) */}
+          {/* Descripción */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción
-            </label>
-            <textarea
+            <Textarea
               name="descripcion"
               value={formData.descripcion}
               onChange={handleChange}
               placeholder="Describe la actividad realizada..."
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none h-24"
+              label="Descripción"
+              minRows={3}
             />
           </div>
 
-          {/* --- CORRECCIÓN 5: Añadir Inputs de Costo al JSX --- */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Horas Trabajadas
-              </label>
-              <input
-                type="number"
-                name="horas"
-                value={formData.horas}
-                onChange={handleChange}
-                placeholder="Ej: 4"
-                min="0"
-                step="0.5"
-                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
-              />
+          {/* Costos - Solo mostrar en creación, NO en edición */}
+          {!isEditing && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Input
+                  type="number"
+                  name="horas"
+                  value={formData.horas.toString()}
+                  onChange={handleChange}
+                  placeholder="Ej: 4"
+                  label="Horas Trabajadas"
+                  min="0"
+                  step="0.5"
+                />
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  name="tarifaHora"
+                  value={formData.tarifaHora.toString()}
+                  onChange={handleChange}
+                  placeholder="Ej: 5000"
+                  label="Tarifa por Hora (COP)"
+                  min="0"
+                  step="500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tarifa por Hora (COP)
-              </label>
-              <input
-                type="number"
-                name="tarifaHora"
-                value={formData.tarifaHora}
-                onChange={handleChange}
-                placeholder="Ej: 5000"
-                min="0"
-                step="500"
-                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none"
-              />
-            </div>
-          </div>
-          {/* --- FIN DE LA CORRECCIÓN 5 --- */}
+          )}
 
         </div>
 
@@ -439,37 +446,45 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             <div className="p-4 border rounded-lg bg-gray-50 space-y-3">
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Package size={14}/> Material</label>
-                  <select
-                    value={materialActual}
-                    onChange={(e) => setMaterialActual(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 bg-white text-sm"
+                  <Select
+                    selectedKeys={materialActual ? [materialActual] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0];
+                      setMaterialActual(selected as string);
+                    }}
+                    placeholder="Seleccionar..."
+                    label="Material"
+                    startContent={<Package size={14} />}
                   >
-                    <option value="">Seleccionar...</option>
-                    {materialesDisponibles.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nombre} (Disp: {m.cantidad} {m.tipoEmpaque})
-                      </option>
-                    ))}
-                  </select>
+                    {materialesDisponibles.map((m) => {
+                      const stockDisp = calcularStockDisponible(m);
+                      const unidad = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
+                      return (
+                        <SelectItem key={m.id.toString()}>
+                          {m.nombre} (Disp: {stockDisp} {unidad})
+                        </SelectItem>
+                      );
+                    })}
+                  </Select>
                 </div>
                 <div className="w-1/3">
-                  <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Hash size={14}/> Cantidad</label>
-                  <input
+                  <Input
                     type="number"
-                    value={cantidadMaterial || ''}
+                    value={cantidadMaterial.toString()}
                     onChange={(e) => setCantidadMaterial(Number(e.target.value))}
                     min="1"
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                    label="Cantidad"
+                    startContent={<Hash size={14} />}
                   />
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={handleAddMaterial}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  color="success"
+                  isIconOnly
                 >
                   <Plus size={20} />
-                </button>
+                </Button>
               </div>
               <div className="space-y-2">
                 {materialesSeleccionados.map((m) => (
@@ -483,13 +498,16 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
                         Cantidad: {m.cantidadUsada}
                       </p>
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRemoveMaterial(m.materialId)}
-                      className="p-1 text-red-500 hover:bg-red-100 rounded-full"
+                      color="danger"
+                      variant="light"
+                      isIconOnly
+                      size="sm"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -497,21 +515,23 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
           </div>
         </div>
 
-        {/* (Botones sin cambios) */}
+        {/* Botones */}
         <div className="col-span-1 md:col-span-2 flex justify-end gap-4 mt-6">
-          <button
+          <Button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center gap-2"
+            color="danger"
+            startContent="✕"
           >
-            ✕ Cancelar
-          </button>
-          <button
+            Cancelar
+          </Button>
+          <Button
             type="submit"
-            className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+            color="success"
+            startContent="💾"
           >
-            💾 {isEditing ? "Guardar Cambios" : "Guardar Actividad"}
-          </button>
+            {isEditing ? "Guardar Cambios" : "Guardar Actividad"}
+          </Button>
         </div>
       </form>
     </div>

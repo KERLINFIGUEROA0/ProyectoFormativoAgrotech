@@ -9,11 +9,12 @@ export class InformacionSensorController {
 
   /**
    * ✅ NUEVO: Devuelve el último dato de CADA sensor.
+   * Solo muestra datos recientes (configurable via query param).
    * (Ideal para un dashboard)
    */
   @Get('latest')
-  async getLatestData() {
-    const data = await this.informacionSensorService.getLatestData();
+  async getLatestData(@Query('maxAgeMinutes', new ParseIntPipe({ optional: true })) maxAgeMinutes?: number) {
+    const data = await this.informacionSensorService.getLatestData(maxAgeMinutes || 2);
     return { success: true, data };
   }
 
@@ -55,18 +56,19 @@ export class InformacionSensorController {
   }
 
   /**
-   * Generate advanced report with statistics and chart data
-   */
-  @Get('report')
-  async generateReport(
-    @Query('scope') scope: 'surco' | 'cultivo',
-    @Query('scopeId', ParseIntPipe) scopeId: number,
-    @Query('timeFilter') timeFilter: 'day' | 'date' | 'month',
-    @Query('date') date?: string,
-  ) {
-    const report = await this.informacionSensorService.generateReport(scope, scopeId, timeFilter, date);
-    return { success: true, data: report };
-  }
+    * Generate advanced report with statistics and chart data
+    */
+   @Get('report')
+   async generateReport(
+     @Query('scope') scope: 'sublote' | 'cultivo',
+     @Query('scopeId', ParseIntPipe) scopeId: number,
+     @Query('timeFilter') timeFilter: 'day' | 'date' | 'month',
+     @Query('date') date?: string,
+     @Query('sensorId', new ParseIntPipe({ optional: true })) sensorId?: number,
+   ) {
+     const report = await this.informacionSensorService.generateReport(scope, scopeId, timeFilter, date, sensorId);
+     return { success: true, data: report };
+   }
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {

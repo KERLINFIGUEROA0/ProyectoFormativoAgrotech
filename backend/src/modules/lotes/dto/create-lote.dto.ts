@@ -36,7 +36,7 @@ export class CreateLoteDto {
 
   @IsNumber({}, { message: 'El área debe ser un valor numérico.' })
   @IsNotEmpty({ message: 'El área es requerida.' })
-  @Max(3000, { message: 'El área del lote no puede superar los 3000 m².' })
+  @Max(10000, { message: 'El área del lote no puede superar los 10000 m².' })
   area: number;
 
   @IsString()

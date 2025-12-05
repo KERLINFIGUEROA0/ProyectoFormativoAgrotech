@@ -3,7 +3,7 @@ import Usuario from "../components/Usuario";
 import { cambiarPassword } from "../../auth/api/auth";
 import { toast } from "sonner";
 import { useOutletContext } from "react-router-dom";
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 
 interface UsuarioPageProps {
   initialSection?: string;
@@ -28,8 +28,7 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
     setErrores([]);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
+  const validateAndSubmit = async (): Promise<void> => {
     setErrores([]);
 
     const erroresTemp: string[] = [];
@@ -70,96 +69,117 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+    await validateAndSubmit();
+  };
+
   return (
     <div className="w-full h-full">
       <Usuario onOpenModal={() => setIsModalOpen(true)} initialSection={initialSection} handleLogout={handleLogout} />
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="relative w-full max-w-lg px-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 relative">
-              <button
-                className="absolute top-3 right-3 text-gray-600 hover:text-gray-900"
-                onClick={() => {
-                  resetForm();
-                  setIsModalOpen(false);
-                }}
-                aria-label="Cerrar modal"
-              >
-                ✕
-              </button>
-
-              <h2 className="text-xl font-semibold mb-4">Cambiar Contraseña</h2>
-
-              {errores.length > 0 && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span className="font-semibold">Errores en el formulario</span>
-                  </div>
-                  <ul className="list-disc pl-5 text-sm space-y-1">
-                    {errores.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <Input
-                  label="Contraseña Actual"
-                  type="password"
-                  value={contrasenaActual}
-                  onValueChange={setContrasenaActual}
-                  placeholder="••••••••"
-                  classNames={{
-                    input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
-                    label: "text-sm font-semibold text-gray-700"
-                  }}
-                />
-
-                <div>
-                  <Input
-                    label="Nueva Contraseña"
-                    type="password"
-                    value={nuevaContrasena}
-                    onValueChange={setNuevaContrasena}
-                    placeholder="Nueva contraseña"
-                    classNames={{
-                      input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
-                      label: "text-sm font-semibold text-gray-700"
-                    }}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números.</p>
-                </div>
-
-                <Input
-                  label="Confirmar Nueva Contraseña"
-                  type="password"
-                  value={confirmarContrasena}
-                  onValueChange={setConfirmarContrasena}
-                  placeholder="Confirmar contraseña"
-                  classNames={{
-                    input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500",
-                    label: "text-sm font-semibold text-gray-700"
-                  }}
-                />
-
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    className="ml-auto bg-[#4CAF50] hover:bg-[#45a049] text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    Cambiar Contraseña
-                  </Button>
-                </div>
-              </form>
+      <Modal isOpen={isModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          resetForm();
+          setIsModalOpen(false);
+        }
+      }} size="2xl" scrollBehavior="inside" className="max-h-[90vh]">
+        <ModalContent className="border-2 border-gray-200 rounded-2xl overflow-hidden shadow-xl bg-white">
+          <ModalHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Cambiar Contraseña</h3>
+                <p className="text-sm text-gray-600">Actualiza tu contraseña de seguridad</p>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </ModalHeader>
+
+          <ModalBody className="py-6">
+            {errores.length > 0 && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl shadow-sm mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-semibold">Errores en el formulario</span>
+                </div>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  {errores.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <Input
+                label="Contraseña Actual"
+                type="password"
+                value={contrasenaActual}
+                onValueChange={setContrasenaActual}
+                placeholder="••••••••"
+                classNames={{
+                  input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500 bg-white",
+                  label: "text-sm font-semibold text-gray-700"
+                }}
+              />
+
+              <div>
+                <Input
+                  label="Nueva Contraseña"
+                  type="password"
+                  value={nuevaContrasena}
+                  onValueChange={setNuevaContrasena}
+                  placeholder="Nueva contraseña"
+                  classNames={{
+                    input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500 bg-white",
+                    label: "text-sm font-semibold text-gray-700"
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-2">La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números.</p>
+              </div>
+
+              <Input
+                label="Confirmar Nueva Contraseña"
+                type="password"
+                value={confirmarContrasena}
+                onValueChange={setConfirmarContrasena}
+                placeholder="Confirmar contraseña"
+                classNames={{
+                  input: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500 bg-white",
+                  label: "text-sm font-semibold text-gray-700"
+                }}
+              />
+            </form>
+          </ModalBody>
+
+          <ModalFooter className="bg-gray-50 border-t border-gray-200">
+            <Button
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(false);
+              }}
+              color="default"
+              variant="light"
+              className="font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={validateAndSubmit}
+              color="primary"
+              className="font-medium shadow-lg"
+            >
+              Cambiar Contraseña
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

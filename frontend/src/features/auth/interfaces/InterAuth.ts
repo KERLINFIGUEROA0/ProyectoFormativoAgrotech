@@ -15,7 +15,7 @@ export interface User {
   id: number;
   identificacion: number;
   nombre: string;
-  nombres?: string; 
+  nombres?: string;
   apellidos?: string;
   correo?: string;
   telefono?: string;
@@ -23,7 +23,8 @@ export interface User {
   fotoUrl?: string;
   rolId: number;
   rolNombre: string;
-  permisos?: string[]
+  permisos?: string[];
+  modulos?: Record<string, string[]>;
 }
 
 export interface LoginResponse {

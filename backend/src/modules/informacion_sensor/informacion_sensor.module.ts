@@ -1,14 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm'; // ✅ AÑADIDO
 import { InformacionSensorService } from './informacion_sensor.service';
 import { InformacionSensorController } from './informacion_sensor.controller';
 import { InformacionSensor } from './entities/informacion_sensor.entity'; // ✅ AÑADIDO
 import { Sensor } from '../sensores/entities/sensore.entity'; // ✅ AÑADIDO
 import { MqttController } from './mqtt.controller'; // ✅ AÑADIDO
+import { MqttConfigModule } from '../mqtt-config/mqtt-config.module'; // Para MqttClientService
 
 @Module({
   // ✅ AÑADIDO: Importar las entidades que usa el servicio
-  imports: [TypeOrmModule.forFeature([InformacionSensor, Sensor])],
+  imports: [
+    TypeOrmModule.forFeature([InformacionSensor, Sensor]),
+    forwardRef(() => MqttConfigModule), // Para MqttClientService
+  ],
   
   // ✅ AÑADIDO: El nuevo MqttController
   controllers: [InformacionSensorController, MqttController],

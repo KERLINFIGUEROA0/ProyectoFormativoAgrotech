@@ -1,27 +1,36 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  Patch,
-  Delete,
-  UseGuards,
-  Req,
-  UseInterceptors,
-  UploadedFiles,
-  BadRequestException, // <-- 1. Importa BadRequestException
-} from '@nestjs/common';
+   Controller,
+   Get,
+   Post,
+   Body,
+   Param,
+   Query,
+   Patch,
+   Delete,
+   UseGuards,
+   Req,
+   UseInterceptors,
+   UploadedFiles,
+   BadRequestException, // <-- 1. Importa BadRequestException
+   Res,
+   ParseIntPipe,
+ } from '@nestjs/common';
+import { Response } from 'express';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { multerConfigActividades } from '../../config/multer/multer.config';
 import { ActividadesService } from './actividades.service';
 // --- 2. Importa MaterialUsadoDto y plainToInstance ---
 import { CreateActividadDto, MaterialUsadoDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { SearchActividadDto } from './dto/search-actividad.dto';
 import { AsignarActividadDto } from './dto/asignar-actividad.dto';
+import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
+import { CreateRespuestaDto, CalificarRespuestaDto, MaterialDevueltoDto } from './dto/create-respuesta.dto';
+import { CalificarActividadDto } from './dto/calificar-actividad.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { plainToInstance } from 'class-transformer';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Controller('actividades')
 export class ActividadesController {
@@ -30,7 +39,7 @@ export class ActividadesController {
   // ✅ Crear actividad con imágenes y usuario autenticado
   @UseGuards(JwtAuthGuard)
   @Post('registrar')
-  @UseInterceptors(AnyFilesInterceptor())
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   async create(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() dto: CreateActividadDto,
@@ -58,10 +67,12 @@ export class ActividadesController {
     }
   }
 
-  // ✅ Listar todas las actividades (con relaciones)
+  // ✅ Listar actividades filtradas por usuario (con relaciones)
+  @UseGuards(JwtAuthGuard)
   @Get('listar')
-  findAll() {
-    return this.actividadesService.findAll();
+  findAll(@Req() req) {
+    const userIdentificacion = req.user?.identificacion;
+    return this.actividadesService.findAll(userIdentificacion);
   }
 
   // ✅ Buscar por término (id, título, descripción)
@@ -79,7 +90,7 @@ export class ActividadesController {
 
   // --- INICIO DE LA CORRECCIÓN ---
   // ✅ Actualizar actividad
-  @UseInterceptors(AnyFilesInterceptor()) // Sigue usando AnyFilesInterceptor
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades)) // Configuración específica para actividades
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -145,10 +156,241 @@ export class ActividadesController {
     return this.actividadesService.remove(Number(id));
   }
   
-  // ✅ Asignar actividad a aprendices
-  @Post('asignar')
-  asignarActividad(@Body() dto: AsignarActividadDto) {
-    return this.actividadesService.asignarActividad(dto);
+  // ✅ Enviar respuesta a actividad (aprendices)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
+  @Post(':id/respuesta')
+  async enviarRespuesta(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any, // Recibir como any para procesar FormData
+    @Req() req,
+  ) {
+    const userIdentificacion = req.user?.identificacion;
+    const imagenes = files?.map((file) => file.filename) ?? [];
+
+    // Procesar DTO manualmente desde FormData
+    const dto = new CreateRespuestaDto();
+    dto.descripcion = body.descripcion || '';
+    dto.archivos = imagenes.length > 0 ? JSON.stringify(imagenes) : (body.archivos || '');
+
+    // Parsear materialesDevueltos si existe
+    if (body.materialesDevueltos && typeof body.materialesDevueltos === 'string') {
+      try {
+        const parsedMateriales = JSON.parse(body.materialesDevueltos);
+        if (Array.isArray(parsedMateriales)) {
+          dto.materialesDevueltos = parsedMateriales.map((item: any) =>
+            plainToInstance(MaterialDevueltoDto, item)
+          );
+        }
+      } catch (e) {
+        console.error('Error al parsear materialesDevueltos:', e);
+        dto.materialesDevueltos = undefined;
+      }
+    }
+
+    console.log('Archivos finales a guardar:', dto.archivos);
+    console.log('Materiales devueltos:', dto.materialesDevueltos);
+
+    return this.actividadesService.enviarRespuesta(Number(id), dto, userIdentificacion);
   }
+
+  // ✅ Obtener respuestas de una actividad
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/respuestas')
+  async obtenerRespuestasPorActividad(@Param('id') id: string, @Req() req) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    return this.actividadesService.obtenerRespuestasPorActividad(Number(id), userIdentificacion, userRole);
+  }
+
+  // ✅ Calificar respuesta (instructores)
+  @UseGuards(JwtAuthGuard)
+  @Patch('respuesta/:respuestaId/calificar')
+  async calificarRespuesta(
+    @Param('respuestaId') respuestaId: string,
+    @Body() dto: CalificarRespuestaDto,
+    @Req() req,
+  ) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    return this.actividadesService.calificarRespuesta(Number(respuestaId), dto, userRole);
+  }
+
+  // ✅ Calificar actividad (instructores)
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/calificar')
+  async calificarActividad(
+    @Param('id') id: string,
+    @Body() dto: CalificarActividadDto,
+    @Req() req,
+  ) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    return this.actividadesService.calificarActividad(Number(id), dto, userRole);
+  }
+
+
+  // ✅ Descargar archivo de evidencia
+  @UseGuards(JwtAuthGuard)
+  @Get('descargar/:filename')
+  async descargarArchivo(@Param('filename') filename: string, @Query('nombre') nombreOriginal: string, @Res() res: Response) {
+    try {
+      // Usar el directorio temp-uploads del proyecto
+      const filePath = path.resolve(process.cwd(), 'temp-uploads', 'actividades', filename);
+
+      // Verificar si el archivo existe
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Archivo no encontrado' });
+      }
+
+      // Usar el nombre original proporcionado por query param, o extraerlo del filename
+      let finalName = nombreOriginal;
+      if (!finalName) {
+        // Fallback: extraer del filename
+        if (filename.includes('___')) {
+          const parts = filename.split('___');
+          finalName = parts.length >= 3 ? parts[2] : filename;
+        } else if (filename.includes('-')) {
+          const parts = filename.split('-');
+          finalName = parts.length >= 3 ? parts.slice(2).join('-') : filename;
+        } else {
+          finalName = filename;
+        }
+      }
+
+      // Configurar headers para descarga con el nombre original
+      res.setHeader('Content-Disposition', `attachment; filename="${finalName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+
+      // Enviar el archivo
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error('Error al descargar archivo:', error);
+      return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+
+  // ✅ Obtener reporte de actividad
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reporte')
+  async obtenerReporteActividad(@Param('id') id: string, @Req() req) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden ver reportes.');
+    }
+    return this.actividadesService.generarReporteActividad(Number(id));
+  }
+
+  // ✅ Descargar reporte de actividad en Excel
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reporte/excel')
+  async descargarReporteExcel(@Param('id') id: string, @Req() req, @Res() res: Response) {
+    const userIdentificacion = req.user?.identificacion;
+    const user = await this.actividadesService['usuarioRepository'].findOne({
+      where: { identificacion: userIdentificacion },
+      relations: ['tipoUsuario'],
+    });
+    const userRole = user?.tipoUsuario?.nombre;
+    if (userRole?.toLowerCase() !== 'instructor' && userRole?.toLowerCase() !== 'admin') {
+      throw new BadRequestException('Solo instructores y administradores pueden descargar reportes.');
+    }
+
+    const buffer = await this.actividadesService.generarReporteExcel(Number(id));
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=reporte-actividad-${id}.xlsx`);
+    res.send(buffer);
+  }
+
+  // ✅ Devolver materiales finales (solo responsable cuando actividad completada)
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/devolver-materiales-final')
+  async devolverMaterialesFinal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DevolverMaterialesFinalDto,
+    @Req() req,
+  ) {
+    const userIdentificacion = req.user.identificacion;
+    return this.actividadesService.devolverMaterialesFinal(id, dto, userIdentificacion);
+  }
+
+  // ✅ Asignar actividad a aprendices
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
+  @Post('asignar')
+  asignarActividad(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any, // Recibir como any para procesar FormData
+    @Req() req,
+  ) {
+    // Convertir manualmente los tipos desde FormData
+    const dto = new AsignarActividadDto();
+
+    dto.cultivo = parseInt(body.cultivo, 10);
+    if (body.lote) dto.lote = parseInt(body.lote, 10);
+    if (body.sublote) dto.sublote = parseInt(body.sublote, 10);
+    dto.titulo = body.titulo;
+    dto.descripcion = body.descripcion;
+    dto.fecha = body.fecha;
+
+    // Convertir aprendices de JSON string a array de números
+    if (body.aprendices) {
+      try {
+        dto.aprendices = JSON.parse(body.aprendices);
+      } catch (e) {
+        dto.aprendices = [];
+      }
+    } else {
+      dto.aprendices = [];
+    }
+
+    if (body.responsable) dto.responsable = parseInt(body.responsable, 10);
+
+    // Convertir materiales de JSON string a array de objetos
+    if (body.materiales) {
+      try {
+        const parsedMateriales = JSON.parse(body.materiales);
+        if (Array.isArray(parsedMateriales)) {
+          dto.materiales = parsedMateriales.map(item =>
+            plainToInstance(MaterialUsadoDto, item)
+          );
+        }
+      } catch (e) {
+        dto.materiales = undefined;
+      }
+    }
+
+    // Estado opcional
+    if (body.estado) {
+      dto.estado = body.estado;
+    }
+
+    // Archivo inicial opcional
+    const archivos = files?.map((file) => file.filename) ?? [];
+    const archivoInicial = archivos.length > 0 ? JSON.stringify(archivos) : undefined;
+    dto.archivoInicial = archivoInicial;
+
+    const usuarioIdentificacion = req.user?.identificacion;
+    return this.actividadesService.asignarActividad(dto, usuarioIdentificacion);
+  }
+
 
 }

@@ -3,9 +3,21 @@ import { toast } from 'sonner';
 import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
-import Modal from '../../../components/Modal';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Select,
+  SelectItem,
+  Input,
+} from "@heroui/react";
+// ✅ IMPORTAR HELPER DE FECHAS
+import { DateUtils } from '../../../utils/dateUtils';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -18,22 +30,15 @@ interface Cultivo {
 export default function GestionTransaccionesPage(): ReactElement {
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number; tipo: string } | null }>({ isOpen: false, item: null });
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: { id: number | string; tipo: string } | null }>({ isOpen: false, item: null });
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
   const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
       const transRes = await obtenerTransacciones();
-
-      const transacciones = (transRes.data || []).map((t: any) => ({
-        ...t,
-        tipo: t.tipo || 'ingreso',
-        cantidad: t.cantidad || 1,
-        precioUnitario: t.precioUnitario || t.monto,
-      }));
-
-      setTransacciones(transacciones);
+      // Ya viene mapeado desde la API, solo asignamos
+      setTransacciones(transRes.data || []);
     } catch (error) {
       toast.error("Error al cargar las transacciones.");
     }
@@ -61,7 +66,7 @@ export default function GestionTransaccionesPage(): ReactElement {
     }
   };
 
-  const handleDelete = (id: number, tipo: string) => {
+  const handleDelete = (id: number | string, tipo: string) => {
     setDeleteModal({ isOpen: true, item: { id, tipo } });
   };
 
@@ -137,7 +142,7 @@ export default function GestionTransaccionesPage(): ReactElement {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
         <div className="flex gap-4">
-          <button
+          <Button
             onClick={async () => {
               if (selectedCultivoId) {
                 try {
@@ -150,11 +155,12 @@ export default function GestionTransaccionesPage(): ReactElement {
                 toast.error("Por favor seleccione un cultivo primero");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
+            color="success"
+            startContent={<FaFileExcel />}
           >
-            <FaFileExcel /> Exportar Excel por Cultivo
-          </button>
-          <button
+            Exportar Excel por Cultivo
+          </Button>
+          <Button
             onClick={async () => {
               try {
                 await exportarExcelGeneral();
@@ -163,36 +169,41 @@ export default function GestionTransaccionesPage(): ReactElement {
                 toast.error('Error al generar el reporte Excel general');
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
+            color="success"
+            startContent={<FaFileExcel />}
           >
-            <FaFileExcel /> Exportar Excel General
-          </button>
-          <button
+            Exportar Excel General
+          </Button>
+          <Button
             onClick={openModal}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm hover:bg-green-700"
+            color="success"
+            startContent={<FaPlus />}
           >
-            <FaPlus /> Nueva Venta
-          </button>
+            Nueva Venta
+          </Button>
         </div>
       </div>
       <div className="flex gap-4 mb-4">
-        <select
-          className="border border-gray-300 rounded-lg px-4 py-2 w-64"
-          value={selectedCultivoId || ''}
-          onChange={(e) => setSelectedCultivoId(e.target.value ? Number(e.target.value) : null)}
+        <Select
+          placeholder="Seleccionar Cultivo"
+          className="w-64"
+          selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0];
+            setSelectedCultivoId(selected ? Number(selected) : null);
+          }}
         >
-          <option value="">Seleccionar Cultivo</option>
           {cultivos.map(cultivo => (
-            <option key={cultivo.id} value={cultivo.id}>
+            <SelectItem key={cultivo.id.toString()}>
               {cultivo.nombre}
-            </option>
+            </SelectItem>
           ))}
-        </select>
+        </Select>
 
-        <input 
-          type="text" 
-          placeholder="Buscar por descripción..." 
-          className="border border-gray-300 rounded-lg px-4 py-2 w-72"
+        <Input
+          type="text"
+          placeholder="Buscar por descripción..."
+          className="w-72"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
@@ -203,8 +214,9 @@ export default function GestionTransaccionesPage(): ReactElement {
             <tr>
               <th className="px-4 py-3 text-left">Fecha</th>
               <th className="px-4 py-3 text-left">Tipo</th>
-              <th className="px-4 py-3 text-left">Descripción</th>
+              <th className="px-4 py-3 text-left w-1/3">Descripción</th>
               <th className="px-4 py-3 text-right">Cantidad</th>
+              <th className="px-4 py-3 text-center">Unidad</th> {/* ✅ Nueva columna */}
               <th className="px-4 py-3 text-right">Precio Unitario</th>
               <th className="px-4 py-3 text-right">Valor Total</th>
               <th className="px-4 py-3 text-center">Acciones</th>
@@ -213,7 +225,7 @@ export default function GestionTransaccionesPage(): ReactElement {
           <tbody>
             {filteredTransacciones.map((t, index) => (
               <tr key={t.id} className={`border-t transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 hover:shadow-sm`}>
-                <td className="px-4 py-3">{new Date(t.fecha).toLocaleDateString('es-ES')}</td>
+                <td className="px-4 py-3">{DateUtils.formatDateOnly(t.fecha)}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     t.tipo === 'ingreso' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -222,9 +234,18 @@ export default function GestionTransaccionesPage(): ReactElement {
                     {t.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-medium">{t.descripcion}</td>
-                <td className="px-4 py-3 text-right">{t.cantidad}</td>
-                <td className="px-4 py-3 text-right">{currencyFormatter.format(t.precioUnitario || 0)}</td>
+                <td className="px-4 py-3 font-medium truncate max-w-xs" title={t.descripcion}>
+                  {t.descripcion}
+                </td>
+                <td className="px-4 py-3 text-right font-mono">
+                  {t.cantidad}
+                </td>
+                <td className="px-4 py-3 text-center text-gray-500"> {/* ✅ Nueva celda */}
+                  {t.unidad || '-'}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-gray-600">
+                  {currencyFormatter.format(t.precioUnitario || 0)}
+                </td>
                 <td className={`px-4 py-3 font-semibold text-right ${t.tipo === 'egreso' ? 'text-red-600' : 'text-green-600'}`}>
                   {t.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(t.monto)}
                 </td>
@@ -253,31 +274,34 @@ export default function GestionTransaccionesPage(): ReactElement {
           </tbody>
         </table>
       </div>
-       <Modal isOpen={isModalOpen} onClose={closeModal} title={''}>
-           <TransaccionForm
+       <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="4xl" scrollBehavior="inside">
+         <ModalContent>
+           <ModalBody>
+             <TransaccionForm
                onSave={handleSave}
                onCancel={closeModal}
-           />
+             />
+           </ModalBody>
+         </ModalContent>
        </Modal>
 
-       <Modal isOpen={deleteModal.isOpen} onClose={cancelDelete} title="Confirmar Eliminación">
-         <p className="text-center mb-4">
-           ¿Estás seguro de que quieres eliminar esta {deleteModal.item?.tipo === 'ingreso' ? 'venta' : 'gasto'}?
-         </p>
-         <div className="flex justify-center gap-4">
-           <button
-             onClick={cancelDelete}
-             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-           >
-             Cancelar
-           </button>
-           <button
-             onClick={confirmDelete}
-             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-           >
-             Eliminar
-           </button>
-         </div>
+       <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete} size="md">
+         <ModalContent>
+           <ModalHeader>Confirmar Eliminación</ModalHeader>
+           <ModalBody>
+             <p className="text-center">
+               ¿Estás seguro de que quieres eliminar esta {deleteModal.item?.tipo === 'ingreso' ? 'venta' : 'gasto'}?
+             </p>
+           </ModalBody>
+           <ModalFooter>
+             <Button onClick={cancelDelete} color="default" variant="light">
+               Cancelar
+             </Button>
+             <Button onClick={confirmDelete} color="danger">
+               Eliminar
+             </Button>
+           </ModalFooter>
+         </ModalContent>
        </Modal>
    </div>
  );

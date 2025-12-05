@@ -6,7 +6,8 @@ import { CreateGastosProduccionDto } from './dto/create-gastos_produccion.dto';
 import { UpdateGastosProduccionDto } from './dto/update-gastos_produccion.dto';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import { Produccion } from '../producciones/entities/produccione.entity';
-import { Cultivo } from '../cultivos/entities/cultivo.entity'; // <-- 1. IMPORTAR CULTIVO
+import { Cultivo } from '../cultivos/entities/cultivo.entity';
+import { DateUtil } from '../../common/utils/date.util';
 
 @Injectable()
 export class GastosProduccionService {
@@ -44,6 +45,7 @@ export class GastosProduccionService {
       tipo: TipoMovimiento.EGRESO,
       produccion: produccion, // Asignar la entidad o null
       cultivo: cultivo,       // Asignar la entidad o null
+      fecha: restoDto.fecha ? DateUtil.fromISO(restoDto.fecha) : DateUtil.getCurrentDate(),
     });
 
     return this.gastoRepository.save(nuevoGasto);
@@ -62,6 +64,10 @@ export class GastosProduccionService {
       monto: parseFloat(g.monto as any),
       fecha: g.fecha,
       tipo: g.tipo,
+      // ✅ NUEVOS CAMPOS PARA EL DESGLOSE FINANCIERO
+      cantidad: g.cantidad,
+      unidad: g.unidad,
+      precioUnitario: g.precioUnitario,
       // Opcional: añadir info de a qué está ligado
       asociadoA: g.produccion ? `Producción ID: ${g.produccion.id}` : (g.cultivo ? `Cultivo: ${g.cultivo.nombre}` : 'General')
     }));

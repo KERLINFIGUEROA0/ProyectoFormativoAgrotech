@@ -34,7 +34,11 @@ export class CreateSensoreDto {
 
   @IsNumber()
   @IsNotEmpty()
-  surcoId: number;
+  loteId: number;
+
+  @IsNumber()
+  @IsOptional()
+  subloteId?: number;
 
   @IsDateString()
   @IsNotEmpty()
@@ -55,6 +59,10 @@ export class CreateSensoreDto {
   @IsString()
   @IsNotEmpty()
   topic: string;
+
+  @IsString()
+  @IsOptional()
+  json_key?: string | null; // ✅ Añadir esto
 
   @IsObject()
   @ValidateNested()
