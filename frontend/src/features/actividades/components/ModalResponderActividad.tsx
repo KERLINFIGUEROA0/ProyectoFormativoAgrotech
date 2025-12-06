@@ -210,7 +210,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
   return (
     <>
       <SuccessModal />
-      <Modal isOpen={isOpen} onClose={onClose} size="lg" scrollBehavior="inside">
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>
             <h2 className="text-xl font-bold">

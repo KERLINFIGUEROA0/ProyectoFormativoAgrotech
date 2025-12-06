@@ -99,6 +99,7 @@ export class PagosService {
 
   async createMultiple(createPagoDtos: CreatePagoDto[]) {
     const pagos: Pago[] = [];
+    const pagoData: { pago: Pago; usuario: Usuario; actividad: Actividad }[] = [];
 
     for (const createPagoDto of createPagoDtos) {
       // Usar la lógica de validación del método create para cada pago
@@ -156,12 +157,33 @@ export class PagosService {
       });
 
       pagos.push(pago);
-      pagos.push(pago);
+      pagoData.push({ pago, usuario, actividad });
     }
 
     // Guardar todos los pagos
     try {
       const savedPagos = await this.pagoRepository.save(pagos);
+
+      // Crear los gastos correspondientes para cada pago
+      const gastos: Gasto[] = [];
+      for (let i = 0; i < savedPagos.length; i++) {
+        const { usuario, actividad } = pagoData[i];
+        const pago = savedPagos[i];
+        const gasto = this.gastoRepository.create({
+          descripcion: `Pago a ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
+          monto: pago.monto,
+          fecha: pago.fechaPago,
+          tipo: TipoMovimiento.EGRESO,
+          cantidad: pago.horasTrabajadas,
+          unidad: 'horas',
+          precioUnitario: pago.tarifaHora,
+          cultivo: actividad.cultivo,
+        });
+        gastos.push(gasto);
+      }
+
+      await this.gastoRepository.save(gastos);
+
       return savedPagos;
     } catch (error) {
       throw error;
