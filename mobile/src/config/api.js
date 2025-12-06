@@ -1,7 +1,8 @@
 // Configuración de la API
 // Para emulador/dispositivo real, cambiar localhost por la IP del computador
 // Ejemplo: http://192.168.1.100:3000
-export const API_BASE_URL = 'http://192.168.1.14:3000';
+// Usando ngrok para desarrollo móvil
+export const API_BASE_URL = 'https://pretelegraphic-cheree-lacunal.ngrok-free.dev';
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';

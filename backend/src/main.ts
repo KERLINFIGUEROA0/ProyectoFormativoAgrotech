@@ -10,7 +10,12 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
-    origin: true,
+    origin: [
+      'http://localhost:5173', // Frontend desarrollo
+      'http://localhost:3000', // Backend mismo
+      'https://pretelegraphic-cheree-lacunal.ngrok-free.dev', // ngrok URL
+       // Para desarrollo
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
     credentials: true,
