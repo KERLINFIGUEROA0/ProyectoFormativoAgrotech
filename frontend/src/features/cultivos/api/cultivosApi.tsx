@@ -89,3 +89,18 @@ export const generarPdfTrazabilidad = async (cultivoId: number, fechaInicio?: st
   });
   return response.data;
 };
+
+// --- FUNCIONES PARA EXPORTAR REPORTES EXCEL ---
+export const exportarExcelCultivo = async (cultivoId: number) => {
+  const response = await api.get(`/cultivos/${cultivoId}/exportar-excel`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const exportarExcelGeneral = async () => {
+  const response = await api.get('/cultivos/exportar-excel/general', {
+    responseType: 'blob',
+  });
+  return response.data;
+};

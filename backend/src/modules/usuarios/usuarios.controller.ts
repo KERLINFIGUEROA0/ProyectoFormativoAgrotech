@@ -400,6 +400,11 @@ export class UsuariosController {
            correo: usuario.correo,
            telefono: usuario.telefono,
            rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
+           ficha: usuario.ficha ? {
+             id: usuario.ficha.id,
+             nombre: usuario.ficha.nombre,
+             id_ficha: usuario.ficha.id_ficha,
+           } : null,
            permisos,
            modulos,
          },

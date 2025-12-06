@@ -2,7 +2,8 @@ import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf, Sprout, CheckCircle,
-  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin
+  Clock, Search, Filter, Map as MapIcon, LayoutGrid, MapPin,
+  FileText, Download, FileSpreadsheet
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,13 +15,14 @@ import {
 } from '@heroui/react';
 
 // API & Components
-import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha } from '../api/cultivosApi';
+import { listarCultivos, crearCultivo, actualizarCultivo, listarTiposCultivo, subirImagenCultivo, crearTipoCultivo, finalizarCultivo, registrarCosecha, exportarExcelCultivo, exportarExcelGeneral, generarPdfTrazabilidad } from '../api/cultivosApi';
 import { obtenerLotes } from '../api/lotesApi';
 import { obtenerSublotesPorLote } from '../api/sublotesApi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import CultivoForm from '../components/CultivoForm';
 import LotesMap from '../components/LotesMap';
 import ModalUbicacionCultivo from '../components/ModalUbicacionCultivo';
+import { downloadFile } from '../../../utils/downloadUtils';
 import type { Cultivo, TipoCultivo, Lote, Sublote } from '../interfaces/cultivos';
 
 // --- Componente StatCard Más Compacto (Menos altura) ---
@@ -260,6 +262,46 @@ export default function GestionCultivosPage(): ReactElement {
     setShowUbicacionModal(true);
   };
 
+  // Handlers para descargar reportes
+  const handleDescargarExcelCultivo = async (cultivo: Cultivo) => {
+    try {
+      toast.info("Generando reporte Excel...", { id: `excel-${cultivo.id}` });
+      const blob = await exportarExcelCultivo(cultivo.id);
+      const filename = `cultivo-${cultivo.id}-reporte.xlsx`;
+      downloadFile(blob, filename);
+      toast.success("Reporte Excel descargado", { id: `excel-${cultivo.id}` });
+    } catch (error: any) {
+      console.error('Error al descargar Excel:', error);
+      toast.error(error.response?.data?.message || "Error al descargar el reporte Excel", { id: `excel-${cultivo.id}` });
+    }
+  };
+
+  const handleDescargarExcelGeneral = async () => {
+    try {
+      toast.info("Generando reporte Excel general...", { id: 'excel-general' });
+      const blob = await exportarExcelGeneral();
+      const filename = `cultivos-reporte-general.xlsx`;
+      downloadFile(blob, filename);
+      toast.success("Reporte Excel general descargado", { id: 'excel-general' });
+    } catch (error: any) {
+      console.error('Error al descargar Excel general:', error);
+      toast.error(error.response?.data?.message || "Error al descargar el reporte Excel general", { id: 'excel-general' });
+    }
+  };
+
+  const handleDescargarPdfTrazabilidad = async (cultivo: Cultivo) => {
+    try {
+      toast.info("Generando PDF de trazabilidad...", { id: `pdf-${cultivo.id}` });
+      const blob = await generarPdfTrazabilidad(cultivo.id);
+      const filename = `cultivo-${cultivo.id}-trazabilidad.pdf`;
+      downloadFile(blob, filename);
+      toast.success("PDF de trazabilidad descargado", { id: `pdf-${cultivo.id}` });
+    } catch (error: any) {
+      console.error('Error al descargar PDF:', error);
+      toast.error(error.response?.data?.message || "Error al descargar el PDF de trazabilidad", { id: `pdf-${cultivo.id}` });
+    }
+  };
+
   const handleSelectLote = async (lote: Lote | null) => {
     setSelectedLote(lote);
     // Note: sublotes state was removed as it wasn't being used for rendering
@@ -325,15 +367,25 @@ export default function GestionCultivosPage(): ReactElement {
           </div>
           <div className="flex gap-3">
              <Button
-               onPress={() => openModal()}
-               color="primary"
-               className="font-semibold shadow-md shadow-blue-500/30"
-               size="lg"
-               startContent={<Plus size={20} strokeWidth={2.5} />}
-             >
-               Nuevo Cultivo
-             </Button>
-           </div>
+                onPress={() => openModal()}
+                color="primary"
+                className="font-semibold shadow-md shadow-blue-500/30"
+                size="lg"
+                startContent={<Plus size={20} strokeWidth={2.5} />}
+              >
+                Nuevo Cultivo
+              </Button>
+              <Button
+                onPress={handleDescargarExcelGeneral}
+                color="success"
+                variant="bordered"
+                className="font-semibold"
+                size="lg"
+                startContent={<FileSpreadsheet size={20} />}
+              >
+                Reporte General Excel
+              </Button>
+            </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -524,95 +576,131 @@ export default function GestionCultivosPage(): ReactElement {
 
                         <Divider className="bg-gray-100" />
 
-                        {/* 3. FOOTER (Botones en una sola línea) */}
-                        <div className="p-3 flex items-center gap-2">
-                          {/* Botón Producción (Verde con texto blanco) */}
-                          <Button
-                            className="flex-1 font-semibold text-xs h-9 bg-green-600 text-white hover:bg-green-700"
-                            size="sm"
-                            variant="solid"
-                            radius="md"
-                            startContent={<DollarSign size={14} className="text-white" />}
-                            onPress={() => navigate(`/cultivos/${cultivo.id}/produccion`)}
-                          >
-                            Producción
-                          </Button>
-
-                          {/* Botón Trazabilidad (Azul con texto blanco) */}
-                          <Button
-                            className="flex-1 font-semibold text-xs h-9 bg-blue-600 text-white hover:bg-blue-700"
-                            size="sm"
-                            variant="solid"
-                            radius="md"
-                            startContent={<BookCheck size={14} className="text-white" />}
-                            onPress={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)}
-                          >
-                            Trazabilidad
-                          </Button>
-
-                          {/* Botón Finalizar Cultivo (Solo si no está finalizado) */}
-                          {cultivo.Estado !== 'Finalizado' && (
-                            <Tooltip content="Finalizar cultivo (liberar terreno)">
-                              <Button
-                                isIconOnly
-                                className="bg-orange-100 text-orange-600 hover:bg-orange-200 min-w-9 w-9 h-9"
-                                size="sm"
-                                variant="solid"
-                                radius="md"
-                                onPress={() => handleClickFinalizar(cultivo)}
-                                aria-label="Finalizar cultivo"
-                              >
-                                <CheckCircle size={16} />
-                              </Button>
-                            </Tooltip>
-                          )}
-  
-                          {/* Botón Registrar Cosecha (Solo si no está finalizado) */}
-                          {cultivo.Estado !== 'Finalizado' && (
-                            <Tooltip content="Registrar cosecha">
-                              <Button
-                                isIconOnly
-                                className="bg-green-600 text-white hover:bg-green-700 min-w-9 w-9 h-9"
-                                size="sm"
-                                variant="solid"
-                                radius="md"
-                                onPress={() => handleClickCosecha(cultivo)}
-                                aria-label="Registrar cosecha"
-                              >
-                                <DollarSign size={16} />
-                              </Button>
-                            </Tooltip>
-                          )}
-
-                          {/* Botón Ubicación (Morado con icono blanco) */}
-                          <Tooltip content="Ver ubicación exacta">
+                        {/* 3. FOOTER (Botones en dos filas) */}
+                        <div className="p-3 space-y-2">
+                          {/* Primera fila: Botones principales */}
+                          <div className="flex items-center gap-2">
+                            {/* Botón Producción (Verde con texto blanco) */}
                             <Button
-                              isIconOnly
-                              className="bg-purple-600 text-white hover:bg-purple-700 min-w-9 w-9 h-9"
+                              className="flex-1 font-semibold text-xs h-9 bg-green-600 text-white hover:bg-green-700"
                               size="sm"
                               variant="solid"
                               radius="md"
-                              onPress={() => handleVerUbicacion(cultivo)}
-                              aria-label="Ver ubicación"
+                              startContent={<DollarSign size={14} className="text-white" />}
+                              onPress={() => navigate(`/cultivos/${cultivo.id}/produccion`)}
                             >
-                              <MapPin size={16} />
+                              Producción
                             </Button>
-                          </Tooltip>
 
-                          {/* Botón Editar (Azul con icono blanco) */}
-                          <Tooltip content="Editar cultivo">
+                            {/* Botón Trazabilidad (Azul con texto blanco) */}
                             <Button
-                              isIconOnly
-                              className="bg-blue-600 text-white hover:bg-blue-700 min-w-9 w-9 h-9"
+                              className="flex-1 font-semibold text-xs h-9 bg-blue-600 text-white hover:bg-blue-700"
                               size="sm"
                               variant="solid"
                               radius="md"
-                              onPress={() => openModal(cultivo)}
-                              aria-label="Editar cultivo"
+                              startContent={<BookCheck size={14} className="text-white" />}
+                              onPress={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)}
                             >
-                              <Edit size={16} />
+                              Trazabilidad
                             </Button>
-                          </Tooltip>
+                          </div>
+
+                          {/* Segunda fila: Botones de reportes y acciones */}
+                          <div className="flex items-center gap-2">
+                            {/* Botón Excel (Verde claro) */}
+                            <Tooltip content="Descargar reporte Excel">
+                              <Button
+                                isIconOnly
+                                className="bg-emerald-100 text-emerald-600 hover:bg-emerald-200 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => handleDescargarExcelCultivo(cultivo)}
+                                aria-label="Descargar Excel"
+                              >
+                                <FileSpreadsheet size={16} />
+                              </Button>
+                            </Tooltip>
+
+                            {/* Botón PDF (Rojo claro) */}
+                            <Tooltip content="Descargar PDF trazabilidad">
+                              <Button
+                                isIconOnly
+                                className="bg-red-100 text-red-600 hover:bg-red-200 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => handleDescargarPdfTrazabilidad(cultivo)}
+                                aria-label="Descargar PDF"
+                              >
+                                <FileText size={16} />
+                              </Button>
+                            </Tooltip>
+
+                            {/* Botón Finalizar Cultivo (Solo si no está finalizado) */}
+                            {cultivo.Estado !== 'Finalizado' && (
+                              <Tooltip content="Finalizar cultivo (liberar terreno)">
+                                <Button
+                                  isIconOnly
+                                  className="bg-orange-100 text-orange-600 hover:bg-orange-200 min-w-9 w-9 h-9"
+                                  size="sm"
+                                  variant="solid"
+                                  radius="md"
+                                  onPress={() => handleClickFinalizar(cultivo)}
+                                  aria-label="Finalizar cultivo"
+                                >
+                                  <CheckCircle size={16} />
+                                </Button>
+                              </Tooltip>
+                            )}
+
+                            {/* Botón Registrar Cosecha (Solo si no está finalizado) */}
+                            {cultivo.Estado !== 'Finalizado' && (
+                              <Tooltip content="Registrar cosecha">
+                                <Button
+                                  isIconOnly
+                                  className="bg-green-600 text-white hover:bg-green-700 min-w-9 w-9 h-9"
+                                  size="sm"
+                                  variant="solid"
+                                  radius="md"
+                                  onPress={() => handleClickCosecha(cultivo)}
+                                  aria-label="Registrar cosecha"
+                                >
+                                  <DollarSign size={16} />
+                                </Button>
+                              </Tooltip>
+                            )}
+
+                            {/* Botón Ubicación (Morado con icono blanco) */}
+                            <Tooltip content="Ver ubicación exacta">
+                              <Button
+                                isIconOnly
+                                className="bg-purple-600 text-white hover:bg-purple-700 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => handleVerUbicacion(cultivo)}
+                                aria-label="Ver ubicación"
+                              >
+                                <MapPin size={16} />
+                              </Button>
+                            </Tooltip>
+
+                            {/* Botón Editar (Azul con icono blanco) */}
+                            <Tooltip content="Editar cultivo">
+                              <Button
+                                isIconOnly
+                                className="bg-blue-600 text-white hover:bg-blue-700 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => openModal(cultivo)}
+                                aria-label="Editar cultivo"
+                              >
+                                <Edit size={16} />
+                              </Button>
+                            </Tooltip>
+                          </div>
                         </div>
                       </Card>
                     ))}
