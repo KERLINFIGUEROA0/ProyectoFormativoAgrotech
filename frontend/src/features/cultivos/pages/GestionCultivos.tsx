@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import {
   Plus, Edit, DollarSign, BookCheck, Leaf,
-  Search, Filter, Map as MapIcon, LayoutGrid, MapPin
+  Search, Map as MapIcon, LayoutGrid, MapPin
 } from 'lucide-react';
 import { FaLeaf, FaThList, FaTools } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -37,8 +37,8 @@ export default function GestionCultivosPage(): ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCultivo, setEditingCultivo] = useState<Cultivo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [estadoFilter, setEstadoFilter] = useState<string>('todos');
   const [subloteEstadoFilter, setSubloteEstadoFilter] = useState<string>('todos');
+  const [estadoFilter, setEstadoFilter] = useState<string>('todos');
 
 
   // Estados para registrar cosecha
@@ -449,20 +449,20 @@ export default function GestionCultivosPage(): ReactElement {
               />
               <Select
                 placeholder="Estado Cultivo"
-                startContent={<Filter size={16} className="text-gray-400" />}
+                startContent={<MapPin size={16} className="text-gray-400" />}
                 selectedKeys={[estadoFilter]}
                 onSelectionChange={(keys) => setEstadoFilter(Array.from(keys)[0] as string)}
                 size="sm"
                 variant="bordered"
-                className="w-full sm:w-40"
+                className="w-full sm:w-36"
                 classNames={{
                   trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
                 }}
               >
                 <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Activo">En Crecimiento</SelectItem>
+                <SelectItem key="Activo">Activo</SelectItem>
                 <SelectItem key="En Cosecha">En Cosecha</SelectItem>
-                <SelectItem key="Finalizado">Finalizados</SelectItem>
+                <SelectItem key="Finalizado">Finalizado</SelectItem>
               </Select>
               <Select
                 placeholder="Estado Sublotes"

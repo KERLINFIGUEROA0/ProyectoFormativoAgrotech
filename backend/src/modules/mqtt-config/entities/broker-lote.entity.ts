@@ -20,4 +20,15 @@ export class BrokerLote {
   // AQUÍ está la clave: Los tópicos pertenecen a la relación, no al broker solo
   @Column({ type: 'json', nullable: true })
   topicos: string[];
+
+  // Puerto opcional: si no se especifica, usa el del broker
+  @Column({ type: 'int', nullable: true })
+  puerto: number;
+
+  // Topic de prueba opcional para verificar envío de datos
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  topicPrueba: string;
+
+  @Column({ default: true })
+  isActive: boolean;
 }

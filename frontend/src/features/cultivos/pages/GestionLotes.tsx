@@ -66,25 +66,30 @@ export default function GestionLotesPage(): ReactElement {
   };
 
 const handleSave = async (data: LoteData) => {
-    const toastId = toast.loading("Guardando lote...");
-    try {
-      let updatedLote;
-      if (editingLote) {
-        updatedLote = await actualizarLote(editingLote.id, data);
-        toast.success("Lote actualizado con éxito.", { id: toastId });
-      } else {
-        updatedLote = await crearLote(data);
-        toast.success("Lote creado con éxito.", { id: toastId });
-      }
-      await fetchData(); 
-      // Seleccionamos el lote recién creado o editado en el mapa
-      setSelectedLote(updatedLote.data);
-      closeModal();
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al guardar el lote.";
-      toast.error(message, { id: toastId });
-    }
-  };
+   const toastId = toast.loading("Guardando lote...");
+   try {
+     let updatedLote: any;
+     if (editingLote) {
+       updatedLote = await actualizarLote(editingLote.id, data);
+       // Actualizar el lote en el estado local inmediatamente
+       setLotes(prevLotes => prevLotes.map(lote => lote.id === editingLote.id ? updatedLote.data : lote));
+       toast.success("Lote actualizado con éxito.", { id: toastId });
+     } else {
+       updatedLote = await crearLote(data);
+       // Agregar el nuevo lote al estado local inmediatamente
+       setLotes(prevLotes => [...prevLotes, updatedLote.data]);
+       toast.success("Lote creado con éxito.", { id: toastId });
+     }
+     // Refrescar datos en segundo plano para asegurar consistencia
+     fetchData();
+     // Seleccionamos el lote recién creado o editado en el mapa
+     setSelectedLote(updatedLote.data);
+     closeModal();
+   } catch (error: unknown) {
+     const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al guardar el lote.";
+     toast.error(message, { id: toastId });
+   }
+ };
   
 
   const openModal = (lote: Lote | null = null) => {

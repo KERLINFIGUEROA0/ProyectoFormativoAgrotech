@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm'; // ✅ AÑADIDO
+import { ScheduleModule } from '@nestjs/schedule'; // Para cron jobs
 import { InformacionSensorService } from './informacion_sensor.service';
 import { InformacionSensorController } from './informacion_sensor.controller';
 import { InformacionSensor } from './entities/informacion_sensor.entity'; // ✅ AÑADIDO
@@ -11,6 +12,7 @@ import { MqttConfigModule } from '../mqtt-config/mqtt-config.module'; // Para Mq
   // ✅ AÑADIDO: Importar las entidades que usa el servicio
   imports: [
     TypeOrmModule.forFeature([InformacionSensor, Sensor]),
+    ScheduleModule, // Para cron jobs del watchdog
     forwardRef(() => MqttConfigModule), // Para MqttClientService
   ],
   

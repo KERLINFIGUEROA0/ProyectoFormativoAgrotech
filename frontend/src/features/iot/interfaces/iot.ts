@@ -36,6 +36,12 @@ export interface Sensor {
   // ✅ NUEVO: Campo para mapear el JSON
   json_key?: string | null;
 
+  // Nueva propiedad para mapear con sensorKey dinámico
+  sensorKey?: string | null;
+
+  // Último mensaje MQTT para determinar estado de conexión
+  ultimo_mqtt_mensaje?: string | null;
+
   lote: Lote;
   surco?: Surco | null;
 }
@@ -73,7 +79,7 @@ export interface Subscripcion {
 export interface Broker {
   id: number;
   nombre: string;
-  protocolo: string;
+  protocolo: 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
   host: string;
   puerto: number;
   usuario?: string;
@@ -83,6 +89,13 @@ export interface Broker {
   topicosAdicionales?: string[];
   estado: 'Activo' | 'Inactivo';
   subscripciones: Subscripcion[];
+  sslConfig?: {
+    enabled: boolean;
+    ca?: string;
+    cert?: string;
+    key?: string;
+    rejectUnauthorized?: boolean;
+  };
 }
 
 // Clase auxiliar para configuración personalizada de tópicos
@@ -94,7 +107,7 @@ export interface TopicoConfig {
 
 export interface CreateBrokerDto {
   nombre: string;
-  protocolo: string;
+  protocolo: 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
   host: string;
   puerto: number;
   usuario?: string;
@@ -102,6 +115,13 @@ export interface CreateBrokerDto {
   loteId: number;
   prefijoTopicos?: string;
   topicosAdicionales?: (string | TopicoConfig)[];
+  sslConfig?: {
+    enabled: boolean;
+    ca?: string;
+    cert?: string;
+    key?: string;
+    rejectUnauthorized?: boolean;
+  };
 }
 
 export interface CreateSubscripcionDto {
@@ -151,10 +171,14 @@ export interface BrokerLote {
   broker: Broker;
   lote: Lote;
   topicos: string[];
+  puerto?: number;
+  topicPrueba?: string;
 }
 
 export interface CreateBrokerLoteDto {
   brokerId: number;
   loteId: number;
-  topicos: string[];
+  topicos: (string | TopicoConfig)[];
+  puerto?: number;
+  topicPrueba?: string;
 }

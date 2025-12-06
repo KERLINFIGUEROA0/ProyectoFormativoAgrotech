@@ -49,6 +49,7 @@ export class PdfService {
     let actividades: Actividad[] = [];
     let producciones: Produccion[] = [];
     let gastos: Gasto[] = [];
+    let pagos: any[] = [];
 
     try {
       actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
@@ -73,7 +74,6 @@ export class PdfService {
       }
     }
 
-    let pagos: any[] = [];
     try {
       const actividadIds = actividades.map(act => act.id);
       pagos = await this.pagosService.findByActividades(actividadIds);

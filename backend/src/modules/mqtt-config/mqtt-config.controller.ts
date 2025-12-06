@@ -111,8 +111,8 @@ export class MqttConfigController {
 
   @Put('broker-lotes/:id')
   @Permission('Iot.Editar')
-  async updateBrokerLote(@Param('id', ParseIntPipe) id: number, @Body('topicos') topicos: string[]) {
-    const data = await this.configService.updateBrokerLote(id, topicos);
+  async updateBrokerLote(@Param('id', ParseIntPipe) id: number, @Body() updateData: { topicos: (string | { topic: string; min?: number; max?: number })[]; puerto?: number; topicPrueba?: string }) {
+    const data = await this.configService.updateBrokerLote(id, updateData);
     return { success: true, message: 'Configuración Broker-Lote actualizada.', data };
   }
 
@@ -121,5 +121,12 @@ export class MqttConfigController {
   async deleteBrokerLote(@Param('id', ParseIntPipe) id: number) {
     await this.configService.deleteBrokerLote(id);
     return { success: true, message: 'Configuración Broker-Lote eliminada.' };
+  }
+
+  @Post('broker-lotes/test-connection')
+  @Permission('Iot.Crear')
+  async testBrokerLoteConnection(@Body() dto: { brokerId: number; puerto?: number; topicos: string[]; topicPrueba?: string }) {
+    const result = await this.configService.testBrokerLoteConnection(dto);
+    return { success: true, message: result.message, connected: result.connected, topicsAvailable: result.topicsAvailable, jsonReceived: result.jsonReceived, activeTopicsCount: result.activeTopicsCount, topicPruebaReceived: result.topicPruebaReceived };
   }
 }

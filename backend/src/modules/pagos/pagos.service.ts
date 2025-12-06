@@ -156,6 +156,7 @@ export class PagosService {
       });
 
       pagos.push(pago);
+      pagos.push(pago);
     }
 
     // Guardar todos los pagos

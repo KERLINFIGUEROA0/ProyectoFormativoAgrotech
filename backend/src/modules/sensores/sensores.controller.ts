@@ -59,6 +59,17 @@ export class SensoresController {
     };
   }
 
+  // --- ENDPOINT PARA ELIMINAR SENSORES AUTOMÁTICOS ---
+  @Delete('eliminar-automaticos')
+  async eliminarSensoresAutomaticos() {
+    const resultado = await this.sensoresService.eliminarSensoresAutomaticos();
+    return {
+      success: true,
+      message: resultado.mensaje,
+      eliminados: resultado.eliminados
+    };
+  }
+
   /**
    * Obtiene sensores por surco
    */

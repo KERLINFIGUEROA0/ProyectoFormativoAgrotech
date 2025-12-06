@@ -1,118 +1,60 @@
-/**
- * Utility functions for date and time formatting
- */
+// src/utils/dateUtils.ts
 
-/**
- * Formats a Date object to a time string in HH:MM:SS format
- * @param date - The Date object to format
- * @returns A string representing the time in HH:MM:SS format
- */
-export function formatTime(date: Date): string {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
-}
+// 1. Obtener la fecha y hora actual exacta en Colombia (para enviar al backend)
+export const getColombiaDate = (): Date => {
+  const now = new Date();
+  // Obtener la fecha en string formato Colombia
+  const colombiaTimeStr = now.toLocaleString("en-US", { timeZone: "America/Bogota" });
+  return new Date(colombiaTimeStr);
+};
 
-/**
- * Gets the current date in Colombia timezone as a Date object
- * @returns Current date in Colombia timezone
- */
-export function getCurrentDate(): Date {
-  // Using native Date for simplicity, assuming local timezone is Colombia
-  // For more accurate timezone handling, consider using a library like Luxon
-  return new Date();
-}
+// 2. Obtener fecha ISO actual corregida a Colombia (Para guardar en DB)
+export const getColombiaISOString = (): string => {
+  // Ajustamos el offset manualmente para que el ISO string refleje -5 horas
+  // Ojo: toISOString siempre devuelve Z (UTC).
+  // Truco: Restamos 5 horas al UTC para que al guardar coincida visualmente o usamos librerías como date-fns-tz
+  // Solución nativa robusta para enviar al input type="datetime-local" o DB:
 
-/**
- * Gets the current date and time in Colombia timezone as an ISO string
- * @returns Current date and time in ISO format
- */
-export function getCurrentISO(): string {
-  return new Date().toISOString();
-}
+  const tzOffset = -5 * 60; // Colombia es UTC-5
+  const localISOTime = new Date(Date.now() - (tzOffset * 60000)).toISOString().slice(0, -1);
+  return localISOTime; // Devuelve formato "YYYY-MM-DDTHH:mm:ss.sss" sin la Z
+};
 
-/**
- * Converts an ISO string to a Date object in local timezone
- * @param isoString - The ISO string to convert
- * @returns Date object
- */
-export function fromISO(isoString: string): Date {
-  return new Date(isoString);
-}
+// 3. Formatear visualización (Display)
+export const formatToColombiaTime = (dateString: string | Date): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
 
-/**
- * Converts a Date object to local timezone (assuming Colombia)
- * @param date - The Date object to convert
- * @returns Date object in local timezone
- */
-export function toLocalTime(date: Date): Date {
-  // For simplicity, return as is. In a real app, handle timezone properly
-  return new Date(date);
-}
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+};
 
-/**
- * Formats a date string or Date object to a time string in HH:MM:SS format
- * @param date - The date to format
- * @returns Formatted time string
- */
-export function formatToTable(date: string | Date): string {
-  return to(date) ?? '';
-}
+// 4. Formatear solo fecha (para reportes)
+export const formatDateOnly = (dateString: string | Date): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
 
-/**
- * Formats a date string or Date object to a short time format (HH:MM)
- * @param date - The date to format
- * @returns Formatted time string
- */
-export function formatDateOnly(date: string | Date): string {
-  const time = to(date) ?? '';
-  return time.slice(0, 5);
-}
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: 'numeric',
+  }).format(date);
+};
 
-/**
- * Formats a Date object to a date string in YYYY-MM-DD format
- * @param date - The Date object to format
- * @returns Formatted date string
- */
-export function formatDate(date: Date | string | null): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toISOString().split('T')[0];
-}
+// 5. Formatear para display detallado
+export const formatDateDisplay = (dateString: string | Date): string => {
+  return formatToColombiaTime(dateString);
+};
 
-/**
- * Formats a Date object to a localized date string (DD/MM/YYYY)
- * @param date - The Date object to format
- * @returns Formatted date string
- */
-export function formatDateDisplay(date: Date | string | null): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('es-CO'); // DD/MM/YYYY
-}
-// Utility functions for time formatting instead of date
-export function from(value: string | Date | null): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  // Si el valor incluye tiempo (tiene 'T' o espacio), parseamos como está; sino, medianoche UTC
-  if (value.includes('T') || value.includes(' ')) {
-    return new Date(value);
-  } else {
-    return new Date(`${value}T00:00:00.000Z`);
-  }
-}
-
-// Adapted for time formatting: returns time as "HH:MM:SS"
-export function to(value: Date | string | null): string | null {
-  if (!value) return null;
-  if (typeof value === 'string') return value;
-  const timeString = value.toTimeString().split(' ')[0]; // Gets "HH:MM:SS"
-  return timeString;
-}
-
-// Export DateUtils object for backward compatibility
-export const DateUtils = {
-  formatToTable,
-  formatDateOnly,
+// 6. Formatear para tablas y nombres de archivo
+export const formatToTable = (dateString: string | Date): string => {
+  return formatToColombiaTime(dateString);
 };

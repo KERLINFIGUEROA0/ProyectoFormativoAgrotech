@@ -8,7 +8,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { Inject, Logger, forwardRef } from '@nestjs/common';
 import { UsuariosService } from '../modules/usuarios/usuarios.service';
-import { AuthService } from 'src/auth/auth.service'; // <-- AÑADIR IMPORT
+import { AuthService } from '../auth/auth.service'; // <-- AÑADIR IMPORT
 
 @WebSocketGateway({
   cors: { origin: '*' },

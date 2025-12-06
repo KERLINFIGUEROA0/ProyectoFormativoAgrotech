@@ -64,6 +64,10 @@ export class CreateSensoreDto {
   @IsOptional()
   json_key?: string | null; // ✅ Añadir esto
 
+  @IsString()
+  @IsOptional()
+  sensorKey?: string | null; // Nueva propiedad
+
   @IsObject()
   @ValidateNested()
   @Type(() => BrokerDto)
@@ -74,4 +78,18 @@ export class CreateSensoreDto {
   @Min(5) // Mínimo 5 segundos por ejemplo
   @IsOptional()
   frecuencia_escaneo?: number;
+
+  // ✅ CONFIGURACIÓN DE ESTADO DE CONEXIÓN
+  @IsString()
+  @IsOptional()
+  connectionField?: string | null; // Campo del JSON que indica estado
+
+  @IsOptional()
+  connectionRequired?: boolean; // Si el campo es obligatorio
+
+  @IsOptional()
+  disconnectionValues?: any[]; // Valores que indican desconexión
+
+  @IsOptional()
+  connectionValues?: any[]; // Valores que indican conexión
 }

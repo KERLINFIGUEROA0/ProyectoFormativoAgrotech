@@ -30,7 +30,6 @@ export default function DashboardProduccion() {
   const { cultivoId } = useParams<{ cultivoId: string }>();
   const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [cultivoNombre, setCultivoNombre] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduccion, setEditingProduccion] = useState<Produccion | null>(null);
 
@@ -45,8 +44,6 @@ export default function DashboardProduccion() {
       ]);
       setProducciones(produccionesRes.data || []);
       setStats(statsRes.data);
-      const cultivo = cultivosRes.data.find((c: any) => c.id === id);
-      if (cultivo) setCultivoNombre(cultivo.nombre);
     } catch (error) {
       toast.error("Error al cargar los datos de producción.");
     }

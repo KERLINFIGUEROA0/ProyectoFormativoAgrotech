@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Server, X, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
-import { Input, Button, Select, SelectItem, Textarea } from "@heroui/react";
+import { Input, Button, Select, SelectItem } from "@heroui/react";
 import type { Broker, Lote } from '../interfaces/iot';
 import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
@@ -22,7 +22,7 @@ const defaultTopicsConfig = [
   { key: 'sensores/bomba', label: 'Bomba' }
 ];
 
-export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers }: BrokerFormModalProps) {
+export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers: _brokers }: BrokerFormModalProps) {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [topicosAdicionales, setTopicosAdicionales] = useState<Array<{topic: string, min?: number, max?: number}>>([{topic: '', min: undefined, max: undefined}]);
 
@@ -36,10 +36,18 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
   });
 
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [showBrokerList, setShowBrokerList] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    nombre: string;
+    protocolo: 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
+    host: string;
+    puerto: string;
+    loteId: string;
+    prefijoTopicos: string;
+    usuario: string;
+    password: string;
+  }>({
     nombre: '',
-    protocolo: 'mqtt://',
+    protocolo: 'mqtt',
     host: '',
     puerto: '',
     loteId: '',
@@ -60,11 +68,6 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
       };
       cargarDatos();
 
-      if (!broker && brokers && brokers.length > 0) {
-        setShowBrokerList(true);
-      } else {
-        setShowBrokerList(false);
-      }
 
       if (broker) {
         let loteId = '';
@@ -78,7 +81,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
 
         setFormData({
           nombre: broker.nombre,
-          protocolo: broker.protocolo,
+          protocolo: broker.protocolo as 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss',
           host: broker.host,
           puerto: broker.puerto.toString(),
           loteId: loteId,
@@ -119,7 +122,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
       } else {
         setFormData({
           nombre: '',
-          protocolo: 'mqtt://',
+          protocolo: 'mqtt',
           host: '',
           puerto: '',
           loteId: '',
@@ -291,15 +294,17 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                     label="Protocolo"
                     selectedKeys={[formData.protocolo]}
                     onSelectionChange={(keys) => {
-                      const selected = Array.from(keys);
-                      setFormData({ ...formData, protocolo: String(selected[0]) });
+                      const selected = Array.from(keys)[0] as 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
+                      setFormData({ ...formData, protocolo: selected });
                     }}
                     fullWidth
                   >
-                    <SelectItem key="mqtt://">mqtt://</SelectItem>
-                    <SelectItem key="mqtts://">mqtts://</SelectItem>
-                    <SelectItem key="ws://">ws://</SelectItem>
-                    <SelectItem key="wss://">wss://</SelectItem>
+                    <SelectItem key="mqtt">MQTT (mqtt://)</SelectItem>
+                    <SelectItem key="mqtts">MQTT SSL (mqtts://)</SelectItem>
+                    <SelectItem key="http">HTTP (http://)</SelectItem>
+                    <SelectItem key="https">HTTPS (https://)</SelectItem>
+                    <SelectItem key="ws">WebSocket (ws://)</SelectItem>
+                    <SelectItem key="wss">WebSocket SSL (wss://)</SelectItem>
                   </Select>
                 </div>
 
@@ -370,9 +375,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                   <div className="bg-white p-3 rounded-md border border-green-100">
                     <div className="grid grid-cols-2 gap-3">
                       {defaultTopicsConfig.map((dt) => {
-                        // Construcción visual del tópico final
-                        const fullTopic = normalizedPrefix ? `${normalizedPrefix}/${dt.key}` : dt.key;
-                        const isPump = dt.key.includes('bomba');
+                         // Construcción visual del tópico final
+                         const fullTopic = normalizedPrefix ? `${normalizedPrefix}/${dt.key}` : dt.key;
 
                         return (
                           <label key={dt.key} className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${defaultTopicsEnabled[dt.key] ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'}`}>

@@ -15,11 +15,14 @@ RUN npm install
 COPY . .
 
 # Construimos la aplicación para producción
-RUN npm run build
+RUN npx tsc --build tsconfig.build.json --force
 
 # --- Etapa de Producción ---
 # Usamos una imagen de Node.js más ligera para ejecutar la aplicación ya construida
 FROM node:18-alpine
+
+# Instalamos tzdata para soporte de zonas horarias
+RUN apk add --no-cache tzdata
 
 WORKDIR /usr/src/app
 
@@ -34,4 +37,4 @@ COPY --from=builder /usr/src/app/dist ./dist
 EXPOSE 3000
 
 # El comando para iniciar la aplicación
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]

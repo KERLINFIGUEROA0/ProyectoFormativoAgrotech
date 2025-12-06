@@ -1,18 +1,15 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MqttService } from './mqtt.service';
 import { MqttGateway } from './mqtt.gateway';
 import { BrokerLote } from '../mqtt-config/entities/broker-lote.entity';
-import { InformacionSensorModule } from '../informacion_sensor/informacion_sensor.module';
-import { MqttConfigModule } from '../mqtt-config/mqtt-config.module';
+import { InformacionSensor } from '../informacion_sensor/entities/informacion_sensor.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BrokerLote]),
-    forwardRef(() => InformacionSensorModule),
-    forwardRef(() => MqttConfigModule),
+    TypeOrmModule.forFeature([BrokerLote, InformacionSensor])
   ],
   providers: [MqttService, MqttGateway],
-  exports: [MqttService, MqttGateway],
+  exports: [MqttService],
 })
 export class MqttModule {}

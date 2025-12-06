@@ -15,7 +15,7 @@ import { Usuario } from './entities/usuario.entity';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
-import { CorreoService } from 'src/correo/correo.service';
+import { CorreoService } from '../../correo/correo.service';
 import { TipoUsuario } from '../tipo_usuario/entities/tipo_usuario.entity';
 import { Ficha } from '../../modules/fichas/entities/ficha.entity';
 
@@ -345,7 +345,27 @@ export class UsuariosService {
         relations: ['tipoUsuario']
       });
       if (!usuario) throw new NotFoundException('Usuario no encontrado');
-
+  
+      // Validar unicidad de identificación si se está cambiando
+      if (data.identificacion !== undefined && data.identificacion !== usuario.identificacion) {
+        const existeIdentificacion = await this.usuarioRepository.findOne({
+          where: { identificacion: data.identificacion, id: Not(id) }
+        });
+        if (existeIdentificacion) {
+          throw new BadRequestException(`La identificación '${data.identificacion}' ya está registrada.`);
+        }
+      }
+  
+      // Validar unicidad de correo si se está cambiando
+      if (data.correo !== undefined && data.correo !== usuario.correo) {
+        const existeCorreo = await this.usuarioRepository.findOne({
+          where: { correo: data.correo, id: Not(id) }
+        });
+        if (existeCorreo) {
+          throw new BadRequestException(`El correo '${data.correo}' ya está registrado.`);
+        }
+      }
+  
       if (data.password) {
         const salt = await bcrypt.genSalt(10);
         usuario.passwordHash = await bcrypt.hash(data.password, salt);
@@ -453,6 +473,22 @@ export class UsuariosService {
 
   async crear(data: CreateUsuarioDto): Promise<Usuario> {
     const { tipoUsuario, password, id_ficha, ...resto } = data;
+
+    // Validar unicidad de identificación
+    const existeIdentificacion = await this.usuarioRepository.findOne({
+      where: { identificacion: data.identificacion }
+    });
+    if (existeIdentificacion) {
+      throw new BadRequestException(`La identificación '${data.identificacion}' ya está registrada.`);
+    }
+
+    // Validar unicidad de correo
+    const existeCorreo = await this.usuarioRepository.findOne({
+      where: { correo: data.correo }
+    });
+    if (existeCorreo) {
+      throw new BadRequestException(`El correo '${data.correo}' ya está registrado.`);
+    }
 
     // Validar que no se cree más de un administrador
     const rol = await this.tipoUsuarioRepository.findOne({ where: { id: tipoUsuario } });

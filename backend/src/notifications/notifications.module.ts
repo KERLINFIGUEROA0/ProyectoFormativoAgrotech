@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { NotificationsGateway } from './notifications.gateway';
-import { AuthModule } from 'src/auth/auth.module';
+import { AuthModule } from '../auth/auth.module';
 import { UsuariosModule } from '../modules/usuarios/usuarios.module';
 
 @Module({

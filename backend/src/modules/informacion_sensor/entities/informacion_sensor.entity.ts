@@ -1,23 +1,40 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
 import { Sensor } from '../../sensores/entities/sensore.entity';
+import { Lote } from '../../lotes/entities/lote.entity';
 
 @Entity('informacion_sensor')
 export class InformacionSensor {
   @PrimaryGeneratedColumn({ name: 'Id_Informacion_Sensor' })
   id: number;
 
-  // ✅ CAMBIO: Se usa CreateDateColumn para que la BD ponga la fecha automáticamente
   @CreateDateColumn({ name: 'Fecha_Registro', type: 'timestamp' })
-  fechaRegistro: Date;
+  fechaRegistro: Date; // Tu nombre original
 
-  // ✅ NUEVO: Cn multes25.5)
+  // ✅ NUEVO: Para guardar el nombre del sensor dinámico
+  @Column({ name: 'Sensor_Key', type: 'varchar', length: 100, nullable: true })
+  sensorKey: string;
+
   @Column({ name: 'Valor', type: 'decimal', precision: 10, scale: 2 })
   valor: number;
 
-  // ❌ ELIMINADOS: valorMaximo y valorMinimo
+  @Column({ name: 'Unidad', type: 'varchar', length: 20, nullable: true })
+  unidad: string;
 
+  // ✅ NUEVO: Relación con Lote
+  @ManyToOne(() => Lote, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'Id_Lote' })
+  lote: Lote;
+
+  @Column({ nullable: true })
+  loteId: number; // ID numérico para referencia rápida
+
+  // Relación opcional con Sensor antiguo
   @ManyToOne(() => Sensor, (sensor) => sensor.informaciones, {
     onDelete: 'CASCADE',
+    nullable: true
   })
   sensor: Sensor;
+
+  @Column({ name: 'Tipo', type: 'varchar', length: 20, default: 'regular' })
+  tipo: string;
 }

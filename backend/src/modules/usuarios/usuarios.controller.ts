@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from 'src/config/multer/multer.config';
+import { multerConfig } from '../../config/multer/multer.config';
 
 
 import { UsuariosService } from './usuarios.service';

@@ -49,17 +49,17 @@ export const UNIDADES_EMPAQUE = [
 
 // Determina si una unidad es de masa
 export const esUnidadMasa = (unidad: string): boolean => {
-  return UNIDADES_MASA.includes(unidad as UnidadMedida);
+  return UNIDADES_MASA.includes(unidad as typeof UNIDADES_MASA[number]);
 };
 
 // Determina si una unidad es de volumen
 export const esUnidadVolumen = (unidad: string): boolean => {
-  return UNIDADES_VOLUMEN.includes(unidad as UnidadMedida);
+  return UNIDADES_VOLUMEN.includes(unidad as typeof UNIDADES_VOLUMEN[number]);
 };
 
 // Determina si una unidad es de empaque
 export const esUnidadEmpaque = (unidad: string): boolean => {
-  return UNIDADES_EMPAQUE.includes(unidad as UnidadMedida);
+  return UNIDADES_EMPAQUE.includes(unidad as typeof UNIDADES_EMPAQUE[number]);
 };
 
 // Obtiene las unidades disponibles para un tipo de material
