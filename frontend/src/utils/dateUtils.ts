@@ -10,7 +10,6 @@ export const getColombiaDate = (): Date => {
 
 // 2. Obtener fecha ISO actual corregida a Colombia (Para guardar en DB)
 export const getColombiaISOString = (): string => {
-  const colombiaDate = getColombiaDate();
   // Ajustamos el offset manualmente para que el ISO string refleje -5 horas
   // Ojo: toISOString siempre devuelve Z (UTC).
   // Truco: Restamos 5 horas al UTC para que al guardar coincida visualmente o usamos librerías como date-fns-tz
