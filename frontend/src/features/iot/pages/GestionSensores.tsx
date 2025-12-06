@@ -15,7 +15,7 @@ import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, Dr
 
 // --- APIS ---
 import {
-  listarSensores, eliminarSensor, getLatestSensorData, getSensorHistory, actualizarEstadoSensor, sincronizarSensoresLote, eliminarSensorDeLote
+  listarSensores, eliminarSensor, getLatestSensorData, getSensorHistory, actualizarEstadoSensor, eliminarSensorDeLote
 } from '../api/sensoresApi';
 import {
   listarBrokers,
@@ -25,7 +25,7 @@ import {
   eliminarBrokerLote
 } from '../api/mqttConfigApi';
 // Asegúrate de importar 'actualizarLote'
-import { obtenerLotes, actualizarLote } from '../../cultivos/api/lotesApi';
+import { obtenerLotes } from '../../cultivos/api/lotesApi';
 
 // --- COMPONENTES ---
 import Modal from '../../../components/Modal';
@@ -38,7 +38,6 @@ import type { Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 // --- HOOKS ---
-import { useMqttSocket } from '../hooks/useMqttSocket';
 
 // --- TIPOS GLOBALES ---
 declare global {
@@ -53,6 +52,7 @@ type ChartData = {
   time: string;
   valor: number;
   fecha: string;
+  timestamp: number;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -333,7 +333,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
   const [nuevoMax, setNuevoMax] = useState<number | undefined>(undefined);
   const [puerto, setPuerto] = useState<number | undefined>(undefined);
   const [topicPrueba, setTopicPrueba] = useState<string>('');
-  const [testResult, setTestResult] = useState<{ connected: boolean; message: string; topicsAvailable?: string[]; jsonReceived?: string[]; activeTopicsCount?: number; topicPruebaReceived?: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<any | null>(null);
 
   useEffect(() => {
     const loadExistingConfiguration = async () => {
@@ -613,6 +613,14 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
                   >
                     Probar Conexión
                   </Button>
+                  {testResult && (
+                    <div className={`mt-3 p-3 rounded-lg border ${testResult.connected ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                      <p className="text-sm font-medium">{testResult.message || (testResult.connected ? 'Conectado' : 'No conectado')}</p>
+                      {Array.isArray(testResult.topicsAvailable) && testResult.topicsAvailable.length > 0 && (
+                        <p className="text-xs text-gray-600 mt-1">Tópicos disponibles: {testResult.topicsAvailable.join(', ')}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -794,10 +802,12 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
         // Temperatura, humedad, gas y otros sensores mantienen su valor original
         // pero se mostrarán con las unidades correctas en el tooltip
 
+        const registroTime = new Date(r.fechaRegistro);
         return {
-          time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
-          fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
+          time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+          fecha: registroTime.toLocaleDateString('es-CO'),
           valor: valor,
+          timestamp: registroTime.getTime(),
         };
       });
       setHistory(formatted);
@@ -1004,7 +1014,7 @@ export default function GestionSensoresPage(): ReactElement {
   const [isTrazabilidadModalOpen, setIsTrazabilidadModalOpen] = useState(false);
 
   // Estado para auto-play del carrusel
-  const [autoPlay, setAutoPlay] = useState(true);
+  const [autoPlay] = useState(true);
 
   // 1. CARGA DE ESTRUCTURA
   const loadStructure = async () => {
@@ -1072,19 +1082,34 @@ export default function GestionSensoresPage(): ReactElement {
       const datos = await getLatestSensorData();
       setLatestData(datos || []);
 
-      // Load histories for filtered sensors
+      // Actualizar historiales en tiempo real para monitoreo
       if (sensoresFiltrados.length > 0) {
         const currentSensorIds = Object.keys(sensorHistories).map(Number);
         const newSensorIds = sensoresFiltrados.map(s => s.id).filter(id => !currentSensorIds.includes(id));
 
+        // Cargar historial inicial para sensores nuevos
         if (newSensorIds.length > 0) {
           const promises = newSensorIds.map(sensorId =>
             getSensorHistory(sensorId).then(data => {
-              const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => ({
-                time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
-                valor: Number(r.valor),
-                fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
-              }));
+              const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-20).map(r => {
+                let valor = Number(r.valor);
+                const sensor = sensoresFiltrados.find(s => s.id === sensorId);
+                if (sensor) {
+                  const name = sensor.nombre.toLowerCase();
+                  const topic = sensor.topic?.toLowerCase() || '';
+                  if (name.includes('luz') || topic.includes('luz')) {
+                    valor = valor * 100;
+                  }
+                }
+                // Usar la fecha real del registro para monitoreo preciso
+                const registroTime = new Date(r.fechaRegistro);
+                return {
+                  time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+                  valor: valor,
+                  fecha: registroTime.toLocaleDateString('es-CO'),
+                  timestamp: registroTime.getTime(),
+                };
+              });
               return { sensorId, history: formatted };
             })
           );
@@ -1098,6 +1123,62 @@ export default function GestionSensoresPage(): ReactElement {
             });
           }).catch(() => toast.error("Error cargando historial"));
         }
+
+        // Actualizar datos en tiempo real para sensores existentes
+        const existingSensorIds = sensoresFiltrados.map(s => s.id).filter(id => currentSensorIds.includes(id));
+        existingSensorIds.forEach(sensorId => {
+          const sensor = sensoresFiltrados.find(s => s.id === sensorId);
+          const latestSensorData = datos?.find(d => d.id === sensorId);
+
+          if (latestSensorData && sensor) {
+            // Usar la fecha real del registro del sensor para monitoreo real
+            const registroTime = latestSensorData.fechaRegistro ? new Date(latestSensorData.fechaRegistro) : new Date();
+            const timeLabel = registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+            const dateLabel = registroTime.toLocaleDateString('es-CO');
+
+            // Aplicar la misma transformación que en la tarjeta
+            let valor = Number(latestSensorData.valor);
+            const name = sensor.nombre.toLowerCase();
+            const topic = sensor.topic?.toLowerCase() || '';
+
+            if (name.includes('luz') || topic.includes('luz')) {
+              valor = valor * 100; // Convertir a lux
+            }
+
+            const newPoint = {
+              time: timeLabel,
+              valor: valor,
+              fecha: dateLabel,
+              timestamp: registroTime.getTime(),
+            };
+
+            setSensorHistories(prev => {
+              const currentHistory = prev[sensorId] || [];
+              const updatedHistory = [...currentHistory];
+
+              // Verificar si ya existe un punto con timestamp similar (evitar duplicados)
+              const existingIndex = updatedHistory.findIndex(point =>
+                Math.abs(point.timestamp - newPoint.timestamp) < 1000 // 1 segundo de tolerancia
+              );
+
+              if (existingIndex === -1) {
+                // Agregar nuevo punto y mantener solo los últimos 50 para rendimiento
+                updatedHistory.push(newPoint);
+                if (updatedHistory.length > 50) {
+                  updatedHistory.shift(); // Remover el más antiguo
+                }
+              } else {
+                // Actualizar punto existente
+                updatedHistory[existingIndex] = newPoint;
+              }
+
+              return {
+                ...prev,
+                [sensorId]: updatedHistory
+              };
+            });
+          }
+        });
       }
     } catch (error) {
       console.error("Error fetching data", error);
@@ -1122,11 +1203,24 @@ export default function GestionSensoresPage(): ReactElement {
       if (sensoresSinHistorial.length > 0) {
         const promises = sensoresSinHistorial.map(sensorId =>
           getSensorHistory(sensorId).then(data => {
-            const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => ({
-              time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
-              valor: Number(r.valor),
-              fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
-            }));
+            const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => {
+              let valor = Number(r.valor);
+              const sensor = sensoresFiltrados.find(s => s.id === sensorId);
+              if (sensor) {
+                const name = sensor.nombre.toLowerCase();
+                const topic = sensor.topic?.toLowerCase() || '';
+                if (name.includes('luz') || topic.includes('luz')) {
+                  valor = valor * 100;
+                }
+              }
+              const registroTime = new Date(r.fechaRegistro);
+              return {
+                time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+                valor: valor,
+                fecha: registroTime.toLocaleDateString('es-CO'),
+                timestamp: registroTime.getTime(),
+              };
+            });
             return { sensorId, history: formatted };
           })
         );
@@ -1149,11 +1243,22 @@ export default function GestionSensoresPage(): ReactElement {
       // Solo cargar si no hay historiales cargados aún
       const promises = sensores.slice(0, 10).map(sensor => // Limitar a primeros 10 para performance inicial
         getSensorHistory(sensor.id).then(data => {
-          const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => ({
-            time: subtract5Hours(r.fechaRegistro)?.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}) || '',
-            valor: Number(r.valor),
-            fecha: subtract5Hours(r.fechaRegistro)?.toLocaleDateString('es-CO') || '',
-          }));
+          const formatted = (data || []).sort((a, b) => new Date(a.fechaRegistro).getTime() - new Date(b.fechaRegistro).getTime()).slice(-10).map(r => {
+            let valor = Number(r.valor);
+            const name = sensor.nombre.toLowerCase();
+            const topic = sensor.topic?.toLowerCase() || '';
+            if (name.includes('luz') || topic.includes('luz')) {
+              valor = valor * 100;
+            }
+            // Usar fecha real del registro
+            const registroTime = new Date(r.fechaRegistro);
+            return {
+              time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+              valor: valor,
+              fecha: registroTime.toLocaleDateString('es-CO'),
+              timestamp: registroTime.getTime(),
+            };
+          });
           return { sensorId: sensor.id, history: formatted };
         }).catch(() => ({ sensorId: sensor.id, history: [] })) // En caso de error, devolver array vacío
       );
@@ -1195,39 +1300,6 @@ export default function GestionSensoresPage(): ReactElement {
   };
 
 
-  const handleSincronizar = async (loteId: number) => {
-    const toastId = toast.loading(`Sincronizando sensores...`);
-    try {
-      const res = await sincronizarSensoresLote(loteId);
-      if (res.sensoresCreados > 0) {
-        toast.success(res.message, { id: toastId });
-        // Limpiar TODOS los datos para forzar recarga completa
-        setSensorHistories({});
-        setLatestData([]);
-        setSensoresGrafica([]);
-
-        await loadStructure();
-        await loadBrokerLotes(loteId); // Recargar configuraciones
-
-        // Forzar múltiples cargas inmediatas de datos con intervalos agresivos
-        const fetchIntervals = [100, 500, 1000, 1500, 2000, 3000, 4000];
-        fetchIntervals.forEach(delay => {
-          setTimeout(() => fetchData(), delay);
-        });
-
-        // Después de las cargas iniciales, asegurar que estamos en el modo correcto
-        setTimeout(() => {
-          if (modoVista === 'LOTE' && filtroId === loteId) {
-            setSensoresGrafica([]); // Mostrar todos los sensores del lote
-          }
-        }, 4500);
-      } else {
-        toast.info("Sensores al día", { id: toastId });
-      }
-    } catch (error: any) {
-      toast.error("Error al sincronizar", { id: toastId });
-    }
-  };
 
   // Funciones para BrokerLote
   const openBrokerLoteModal = (brokerLote: BrokerLote | null = null) => {
@@ -1815,7 +1887,7 @@ export default function GestionSensoresPage(): ReactElement {
                   <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     labelStyle={{ color: '#6b7280', fontSize: '10px', marginBottom: '4px' }}
-                    formatter={(value: number, name: string, props: any) => {
+                    formatter={(_value: number, _name: string, props: any) => {
                       // Custom tooltip para mostrar valor real y unidad
                       const dataKey = props.dataKey;
                       const valorReal = props.payload[`${dataKey}_real`];
