@@ -150,6 +150,15 @@ export class ActividadesService {
   }
 
   private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
+    // Validar que la cantidad no cause overflow en la base de datos
+    const maxCantidad = 9999999.999999; // Máximo para numeric(14,6)
+    const nuevaCantidad = Number(material.cantidad) + cantidadDevuelta;
+
+    if (nuevaCantidad > maxCantidad) {
+      console.error(`❌ ERROR: Cantidad resultante ${nuevaCantidad} excede el límite máximo ${maxCantidad} para material ${material.nombre}. Cantidad devuelta: ${cantidadDevuelta}, Cantidad actual: ${material.cantidad}`);
+      throw new BadRequestException(`La cantidad resultante (${nuevaCantidad}) excede el límite máximo permitido para el material ${material.nombre}.`);
+    }
+
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
       if (!material.usosTotales) return;
       material.usosActuales -= cantidadDevuelta;
@@ -159,7 +168,7 @@ export class ActividadesService {
       }
       return;
     }
-    material.cantidad = Number(material.cantidad) + cantidadDevuelta;
+    material.cantidad = nuevaCantidad;
   }
 
   // --- MÉTODO CREATE ACTUALIZADO PARA CALCULAR GASTOS EXACTOS ---

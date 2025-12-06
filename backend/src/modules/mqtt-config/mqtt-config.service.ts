@@ -670,7 +670,7 @@ export class MqttConfigService {
       }
 
       if (jsonReceived.length > 0) {
-        message += ` JSON recibido en: ${jsonReceived.join(', ')}.`;
+        message += ` Datos del sensor recibido en: ${jsonReceived.join(', ')}.`;
       }
 
       this.logger.log(`✅ ${message}`);
@@ -701,7 +701,7 @@ export class MqttConfigService {
       return { connected: false, message: 'Faltan campos requeridos: protocolo, host y puerto.' };
     }
 
-    const brokerUrl = `${protocolo}${host}:${puerto}`;
+    const brokerUrl = `${protocolo}://${host}:${puerto}`;
 
     this.logger.log(`Probando conexión a broker: ${brokerUrl}`);
 

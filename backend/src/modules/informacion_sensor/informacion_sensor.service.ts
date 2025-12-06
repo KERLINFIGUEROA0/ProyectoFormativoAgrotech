@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { InformacionSensor } from './entities/informacion_sensor.entity';
 import { Sensor } from '../sensores/entities/sensore.entity';
 import { CreateInformacionSensorDto } from './dto/create-informacion_sensor.dto';
@@ -267,6 +268,40 @@ export class InformacionSensorService {
 
       // Validar si tenemos un número válido
       if (valorFinal === null || isNaN(valorFinal)) {
+        // 🔥 DETECCIÓN DE DESCONEXIÓN: Si el payload contiene valores de desconexión, marcar como desconectado
+        if (isJson) {
+          const valoresDesconexion = ['error', 'ERROR', 'Error', 'null', 'NULL', 'desconectado', 'DESCONECTADO', 'Desconectado', 'offline', 'OFFLINE', 'Offline', 'disconnected', 'DISCONNECTED', 'Disconnected'];
+          let contieneDesconexion = false;
+
+          // Verificar si algún valor en el JSON indica desconexión
+          for (const [key, value] of Object.entries(jsonData)) {
+            if (typeof value === 'string' && valoresDesconexion.includes(value.toUpperCase())) {
+              contieneDesconexion = true;
+              this.logger.warn(`🔴 Sensor ${sensor.nombre} reportó DESCONEXIÓN en campo '${key}': ${value} - Marcando como DESCONECTADO`);
+              break;
+            }
+          }
+
+          if (contieneDesconexion) {
+            sensor.estado = 'Desconectado';
+            sensor.ultimo_mqtt_mensaje = new Date();
+            await this.sensorRepo.save(sensor);
+            this.logger.warn(`❌ Sensor ${sensor.nombre} marcado como DESCONECTADO por reporte de desconexión`);
+            continue;
+          }
+        } else {
+          // Para payloads no JSON que indiquen desconexión
+          const payloadLower = payload.toLowerCase().trim();
+          if (payloadLower === 'error' || payloadLower === 'null' || payloadLower === 'undefined' ||
+              payloadLower === 'desconectado' || payloadLower === 'offline' || payloadLower === 'disconnected') {
+            sensor.estado = 'Desconectado';
+            sensor.ultimo_mqtt_mensaje = new Date();
+            await this.sensorRepo.save(sensor);
+            this.logger.warn(`❌ Sensor ${sensor.nombre} marcado como DESCONECTADO por payload: ${payload}`);
+            continue;
+          }
+        }
+
         // 🔥 CORRECCIÓN: Si el JSON llega pero NO tiene la clave de este sensor
         // (ej: desconectaste el sensor de Temperatura pero llega Humedad),
         // hacemos 'continue'. NO actualizamos su fecha, por lo que el Watchdog lo matará en 60s.
@@ -871,5 +906,51 @@ export class InformacionSensorService {
 
      return { alertas, fechasCriticas };
    }
+
+ /**
+  * 🐕 WATCHDOG: Revisa periódicamente sensores sin mensajes recientes y los marca como desconectados
+  * Se ejecuta cada 2 minutos para sensores que no han enviado datos en los últimos 5 minutos
+  */
+ @Cron('0 */2 * * * *') // Cada 2 minutos
+ async watchdogSensoresDesconectados() {
+   this.logger.log('🐕 Ejecutando watchdog de sensores desconectados...');
+
+   try {
+     // Calcular límite de tiempo (5 minutos sin mensajes)
+     const limiteTiempo = new Date();
+     limiteTiempo.setMinutes(limiteTiempo.getMinutes() - 5);
+
+     // Buscar sensores activos que no han enviado mensajes en los últimos 5 minutos
+     const sensoresSinMensajes = await this.sensorRepo.find({
+       where: [
+         { estado: 'Activo', ultimo_mqtt_mensaje: LessThan(limiteTiempo) },
+         { estado: 'Desconectado', ultimo_mqtt_mensaje: LessThan(limiteTiempo) } // También verificar desconectados por si acaso
+       ]
+     });
+
+     if (sensoresSinMensajes.length === 0) {
+       this.logger.debug('✅ Todos los sensores han enviado mensajes recientes');
+       return;
+     }
+
+     let desconectados = 0;
+     for (const sensor of sensoresSinMensajes) {
+       // Solo marcar como desconectado si no estaba ya desconectado
+       if (sensor.estado !== 'Desconectado') {
+         sensor.estado = 'Desconectado';
+         await this.sensorRepo.save(sensor);
+         this.logger.warn(`❌ WATCHDOG: Sensor ${sensor.nombre} (ID: ${sensor.id}) marcado como DESCONECTADO - sin mensajes desde ${sensor.ultimo_mqtt_mensaje}`);
+         desconectados++;
+       }
+     }
+
+     if (desconectados > 0) {
+       this.logger.log(`🐕 Watchdog completado: ${desconectados} sensores marcados como desconectados`);
+     }
+
+   } catch (error) {
+     this.logger.error(`❌ Error en watchdog de sensores: ${error.message}`);
+   }
+ }
 
 }

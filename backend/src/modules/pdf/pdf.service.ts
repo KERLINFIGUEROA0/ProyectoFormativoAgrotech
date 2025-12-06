@@ -1268,8 +1268,8 @@ export class PdfService {
                                 }
 
                                 // Limitamos a 500 registros por seguridad de renderizado PDF,
-                                // pero mostramos los más recientes primero (ya vienen ordenados DESC)
-                                const limiteVisualizacion = historial.slice(0, 500);
+                                // mostramos los últimos 500 registros (más recientes)
+                                const limiteVisualizacion = historial.slice(-500);
 
                                 return limiteVisualizacion.map((r, idx) => {
                                     const fechaObj = this.transformDateForDisplay(r.fecha);
@@ -1298,7 +1298,7 @@ export class PdfService {
                         </tbody>
                     </table>
                     ${(info.historialDetallado && info.historialDetallado.length > 500)
-                        ? `<p style="text-align: center; font-style: italic; color: #777;">... mostrando los primeros 500 registros de ${info.historialDetallado.length} ...</p>`
+                        ? `<p style="text-align: center; font-style: italic; color: #777;">... mostrando los últimos 500 registros de ${info.historialDetallado.length} ...</p>`
                         : ''}
                 </div>
 

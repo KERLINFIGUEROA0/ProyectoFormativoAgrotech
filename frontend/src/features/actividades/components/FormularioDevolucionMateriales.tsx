@@ -382,10 +382,6 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
               </tfoot>
             </table>
           </div>
-
-          <p className="text-xs text-slate-500 mt-3 text-center">
-            * Se generará automáticamente un registro de <strong>Egreso</strong> en Transacciones por este valor.
-          </p>
         </div>
       )}
     </div>

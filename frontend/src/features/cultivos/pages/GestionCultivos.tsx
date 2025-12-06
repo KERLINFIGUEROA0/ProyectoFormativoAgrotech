@@ -448,23 +448,6 @@ export default function GestionCultivosPage(): ReactElement {
                 aria-label="Buscar cultivos"
               />
               <Select
-                placeholder="Estado Cultivo"
-                startContent={<Filter size={16} className="text-gray-400" />}
-                selectedKeys={[estadoFilter]}
-                onSelectionChange={(keys) => setEstadoFilter(Array.from(keys)[0] as string)}
-                size="sm"
-                variant="bordered"
-                className="w-full sm:w-40"
-                classNames={{
-                  trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
-                }}
-              >
-                <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Activo">En Crecimiento</SelectItem>
-                <SelectItem key="En Cosecha">En Cosecha</SelectItem>
-                <SelectItem key="Finalizado">Finalizados</SelectItem>
-              </Select>
-              <Select
                 placeholder="Estado Sublotes"
                 startContent={<MapPin size={16} className="text-gray-400" />}
                 selectedKeys={[subloteEstadoFilter]}

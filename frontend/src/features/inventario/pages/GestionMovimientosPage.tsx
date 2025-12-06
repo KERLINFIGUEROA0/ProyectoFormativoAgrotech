@@ -220,7 +220,7 @@ const GestionMovimientosPage: React.FC = () => {
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Descripción</TableColumn>
               <TableColumn>Usuario</TableColumn>
-              <TableColumn>Hora</TableColumn>
+              <TableColumn>Fecha</TableColumn>
               <TableColumn>Referencia</TableColumn>
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>

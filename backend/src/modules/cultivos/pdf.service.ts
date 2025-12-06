@@ -74,7 +74,6 @@ export class PdfService {
       }
     }
 
-    let pagos: any[] = [];
     try {
       const actividadIds = actividades.map(act => act.id);
       pagos = await this.pagosService.findByActividades(actividadIds);

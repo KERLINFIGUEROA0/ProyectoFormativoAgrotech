@@ -1,11 +1,13 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { Input, Select, SelectItem, Button, Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/react";
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import type { UsuarioForm, Rol } from '../interfaces/usuarios';
 import type { FichaOption } from '../../fichas/interfaces/fichas';
 import { getFichasOpcionesFromUsuarios, createFicha } from '../../fichas/api/fichas';
 import FichaFormComponent from '../../fichas/components/FichaForm';
 import type { FichaForm } from '../../fichas/interfaces/fichas';
+import { api } from '../../../lib/axios';
 
 interface UserFormProps {
   initialData: Partial<UsuarioForm>;
@@ -17,7 +19,6 @@ interface UserFormProps {
 
 export default function UserForm({ initialData, roles, onSave, onCancel, editingId }: UserFormProps): ReactElement {
   const [form, setForm] = useState(initialData);
-  const [errors, setErrors] = useState<string[]>([]);
   const [fichasOpciones, setFichasOpciones] = useState<FichaOption[]>([]);
   const [loadingFichas, setLoadingFichas] = useState(false);
   const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
@@ -84,32 +85,58 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
   };
 
   const validateAndSave = async () => {
-    const errs: string[] = [];
     const idDigits = String(form.identificacion ?? "").replace(/\D+/g, "");
     if (idDigits.length < 6 || idDigits.length > 10) {
-      errs.push("Identificación debe tener entre 6 y 10 dígitos");
+      toast.error("Identificación debe tener entre 6 y 10 dígitos");
+      return;
     }
     const telDigits = String(form.telefono ?? "").replace(/\D+/g, "");
     if (telDigits.length !== 10) {
-      errs.push("Teléfono debe tener exactamente 10 dígitos");
+      toast.error("Teléfono debe tener exactamente 10 dígitos");
+      return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(String(form.correo ?? ""))) {
-      errs.push("Email inválido");
-    }
-    if (!form.rolId) errs.push("Debe seleccionar un rol.");
-    if (!form.nombre) errs.push("El nombre es requerido.");
-    if (!form.apellidos) errs.push("Los apellidos son requeridos.");
-    if (requiereFicha && !form.id_ficha) {
-      const rolName = rolSeleccionado?.nombre.charAt(0).toUpperCase() + rolSeleccionado?.nombre.slice(1);
-      errs.push(`La ficha es obligatoria para el rol de ${rolName}.`);
-    }
-
-    if (errs.length > 0) {
-      setErrors(errs);
+      toast.error("Email inválido");
       return;
     }
-    setErrors([]);
+    if (!form.rolId) {
+      toast.error("Debe seleccionar un rol.");
+      return;
+    }
+    if (!form.nombre) {
+      toast.error("El nombre es requerido.");
+      return;
+    }
+    if (!form.apellidos) {
+      toast.error("Los apellidos son requeridos.");
+      return;
+    }
+    if (requiereFicha && !form.id_ficha) {
+      const rolName = rolSeleccionado?.nombre.charAt(0).toUpperCase() + rolSeleccionado?.nombre.slice(1);
+      toast.error(`La ficha es obligatoria para el rol de ${rolName}.`);
+      return;
+    }
+
+    // Verificar unicidad de identificación si es creación o si cambió
+    if (!editingId || form.identificacion !== initialData.identificacion) {
+      try {
+        const response = await api.get(`/usuarios/identificacion/${form.identificacion}`);
+        if (response.data.success) {
+          toast.error("La identificación ya está registrada.");
+          return;
+        }
+      } catch (error: any) {
+        if (error.response?.status !== 404) {
+          // Si no es 404 (no encontrado), es otro error
+          console.error("Error verificando identificación:", error);
+          toast.error("Error al verificar la identificación. Intente nuevamente.");
+          return;
+        }
+        // Si es 404, significa que no existe, está bien
+      }
+    }
+
     await onSave(form as UsuarioForm);
   };
 
@@ -282,17 +309,6 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           </div>
         </div>
 
-        {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-2 mb-2 animate-in slide-in-from-left-2 duration-300 delay-100">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-in scale-in duration-200 delay-50"></div>
-              <span className="text-sm font-medium">Errores de validación:</span>
-            </div>
-            <ul className="list-disc pl-5 space-y-1 animate-in slide-in-from-bottom-2 duration-300 delay-200">
-              {errors.map((err, i) => <li key={i} className="text-sm animate-in fade-in duration-200" style={{ animationDelay: `${300 + i * 50}ms` }}>{err}</li>)}
-            </ul>
-          </div>
-        )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-200">
           <Button
