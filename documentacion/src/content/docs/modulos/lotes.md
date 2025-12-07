@@ -25,7 +25,7 @@ title: "Módulo Lotes"
 ```
 
 ### GET /lotes/listar
-**Descripción**: Lista todos los lotes con sus surcos y cultivos relacionados.
+**Descripción**: Lista todos los lotes con sus sublotes y cultivos relacionados.
 
 **URL completa:** `http://localhost:3000/lotes/listar`
 
@@ -40,7 +40,7 @@ title: "Módulo Lotes"
       "localizacion": null,
       "nombre": "Lote Norte",
       "area": "1500.50",
-      "estado": "Activo",
+      "estado": "En cultivación",
       "coordenadas": {
         "type": "polygon",
         "coordinates": [
@@ -50,10 +50,10 @@ title: "Módulo Lotes"
           { "lat": 4.6097, "lng": -74.0807 }
         ]
       },
-      "surcos": [
+      "sublotes": [
         {
           "id": 1,
-          "numero": 1,
+          "nombre": "Sublote Norte - Sección A",
           "cultivo": {
             "id": 1,
             "nombre": "Tomate cherry"
@@ -68,14 +68,38 @@ title: "Módulo Lotes"
       "area": "800.25",
       "estado": "En preparación",
       "coordenadas": null,
-      "surcos": []
+      "sublotes": []
+    }
+  ]
+}
+```
+
+### GET /lotes/disponibles
+**Descripción**: Lista todos los lotes disponibles para asignación.
+
+**URL completa:** `http://localhost:3000/lotes/disponibles`
+
+**Response:**
+```json
+{
+  "success": true,
+  "total": 1,
+  "data": [
+    {
+      "id": 2,
+      "localizacion": null,
+      "nombre": "Lote Sur",
+      "area": "800.25",
+      "estado": "En preparación",
+      "coordenadas": null,
+      "sublotes": []
     }
   ]
 }
 ```
 
 ### GET /lotes/:id
-**Descripción**: Obtiene un lote específico por ID con sus surcos.
+**Descripción**: Obtiene un lote específico por ID con sus sublotes.
 
 **URL completa:** `http://localhost:3000/lotes/:id`
 
@@ -91,7 +115,7 @@ title: "Módulo Lotes"
     "localizacion": null,
     "nombre": "Lote Norte",
     "area": "1500.50",
-    "estado": "Activo",
+    "estado": "En cultivación",
     "coordenadas": {
       "type": "polygon",
       "coordinates": [
@@ -101,10 +125,10 @@ title: "Módulo Lotes"
         { "lat": 4.6097, "lng": -74.0807 }
       ]
     },
-    "surcos": [
+    "sublotes": [
       {
         "id": 1,
-        "numero": 1,
+        "nombre": "Sublote Norte - Sección A",
         "cultivo": {
           "id": 1,
           "nombre": "Tomate cherry"
@@ -158,7 +182,7 @@ title: "Módulo Lotes"
         { "lat": 4.6097, "lng": -74.0807 }
       ]
     },
-    "surcos": []
+    "sublotes": []
   }
 }
 ```
@@ -190,7 +214,7 @@ title: "Módulo Lotes"
     "localizacion": null,
     "nombre": "Lote Este Premium",
     "area": "2200.00",
-    "estado": "Activo",
+    "estado": "En cultivación",
     "coordenadas": {
       "type": "polygon",
       "coordinates": [
@@ -200,7 +224,7 @@ title: "Módulo Lotes"
         { "lat": 4.6097, "lng": -74.0807 }
       ]
     },
-    "surcos": []
+    "sublotes": []
   }
 }
 ```
@@ -224,13 +248,13 @@ title: "Módulo Lotes"
 ```json
 {
   "success": true,
-  "message": "El estado del lote con ID 3 se actualizó a \"Activo\"",
+  "message": "El estado del lote con ID 3 se actualizó a \"En cultivación\"",
   "data": {
     "id": 3,
     "localizacion": null,
     "nombre": "Lote Este Premium",
     "area": "2200.00",
-    "estado": "Activo",
+    "estado": "En cultivación",
     "coordenadas": {
       "type": "polygon",
       "coordinates": [
@@ -240,7 +264,7 @@ title: "Módulo Lotes"
         { "lat": 4.6097, "lng": -74.0807 }
       ]
     },
-    "surcos": []
+    "sublotes": []
   }
 }
 ```
@@ -254,7 +278,7 @@ title: "Módulo Lotes"
   "localizacion": null,
   "nombre": "Lote Norte",
   "area": "1500.50",
-  "estado": "Activo",
+  "estado": "En cultivación",
   "coordenadas": {
     "type": "polygon",
     "coordinates": [
@@ -264,11 +288,11 @@ title: "Módulo Lotes"
       { "lat": 4.6097, "lng": -74.0807 }
     ]
   },
-  "surcos": [
+  "sublotes": [
     {
       "id": 1,
-      "numero": 1,
-      "estado": "Activo",
+      "nombre": "Sublote Norte - Sección A",
+      "estado": "Disponible",
       "cultivoId": 1,
       "loteId": 1
     }
@@ -283,7 +307,7 @@ title: "Módulo Lotes"
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | El nombre del lote es requerido. |
 | `area` | `number` | `@IsNumber, @IsNotEmpty, @Max(10000)` | El área es requerida. El área del lote no puede superar los 10000 m². |
-| `estado` | `string` | `@IsString, @IsOptional, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | - |
+| `estado` | `string` | `@IsString, @IsOptional, @IsIn(['En preparación', 'Parcialmente ocupado', 'En cultivación'])` | - |
 | `coordenadas` | `CoordenadasDto` | `@IsObject, @ValidateNested, @Type(() => CoordenadasDto), @IsOptional` | - |
 
 ### UpdateLoteDto
@@ -292,7 +316,7 @@ Similar a CreateLoteDto.
 ###  UpdateLoteEstadoDto
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
-| `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Activo', 'Inactivo', 'En preparación'])` | El estado debe ser "Activo", "Inactivo" o "En preparación". |
+| `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['En preparación', 'Parcialmente ocupado', 'En cultivación'])` | El estado debe ser "En preparación", "Parcialmente ocupado" o "En cultivación". |
 
 ## Funcionalidades Adicionales
 

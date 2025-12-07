@@ -36,17 +36,17 @@ graph TD
 erDiagram
     Usuario ||--o{ Cultivo : "gestiona"
     Usuario ||--o{ Lote : "administra"
-    Lote ||--o{ Surco : "contiene"
-    Surco ||--o{ Cultivo : "tiene"
-    Cultivo ||--o{ Produccione : "produce"
-    Produccione ||--o{ Venta : "vende"
-    Cultivo ||--o{ Actividade : "asociada"
-    Materiale ||--o{ Actividade : "usado en"
+    Lote ||--o{ Sublote : "contiene"
+    Sublote ||--o{ Cultivo : "tiene"
+    Cultivo ||--o{ Produccion : "produce"
+    Produccion ||--o{ Venta : "vende"
+    Cultivo ||--o{ Actividad : "asociada"
+    Material ||--o{ Actividad : "usado en"
     Usuario ||--o{ Permiso : "tiene"
 ```
 
 ### Descripción
-- **Relaciones principales**: Usuario administra lotes y cultivos, lotes contienen surcos, surcos tienen cultivos, cultivos producen y generan ventas.
+- **Relaciones principales**: Usuario administra lotes y cultivos, lotes contienen sublotes, sublotes tienen cultivos, cultivos producen y generan ventas.
 - **Tipos**: 1:N (uno a muchos), opcionales con "o".
 - **Ver diagrama completo** más abajo para todas las entidades y relaciones detalladas.
 
@@ -120,15 +120,7 @@ erDiagram
         datetime updated_at
     }
 
-    Ficha {
-        int id PK
-        varchar nombre
-        varchar id_ficha UK
-        int usuario_id FK
-        datetime created_at
-    }
-
-    Tipo_Usuario {
+    TipoUsuario {
         int id PK
         varchar nombre
         varchar descripcion
@@ -142,11 +134,30 @@ erDiagram
         datetime created_at
     }
 
-    Usuario_Permisos {
+    UsuarioPermiso {
         int id PK
         int usuario_id FK
         int permiso_id FK
         boolean estado
+    }
+
+    RolPermiso {
+        int id PK
+        int tipo_usuario_id FK
+        int permiso_id FK
+    }
+
+    Modulo {
+        int id PK
+        varchar nombre
+        varchar descripcion
+    }
+
+    Ficha {
+        int id PK
+        varchar nombre
+        varchar id_ficha UK
+        datetime created_at
     }
 
     Lote {
@@ -160,14 +171,14 @@ erDiagram
         datetime updated_at
     }
 
-    Surco {
+    Sublote {
         int id PK
         varchar nombre
         varchar descripcion
         int lote_id FK
         int cultivo_id FK
-        int broker_id FK
         boolean activo_mqtt
+        varchar estado
         datetime created_at
         datetime updated_at
     }
@@ -181,21 +192,21 @@ erDiagram
         int tipo_cultivo_id FK
         varchar estado
         date fecha_plantado
+        date fecha_fin
         int lote_id FK
-        int surco_id FK
         int usuario_id FK
         datetime created_at
         datetime updated_at
     }
 
-    Tipo_Cultivo {
+    TipoCultivo {
         int id PK
         varchar nombre
         varchar descripcion
         datetime created_at
     }
 
-    Produccione {
+    Produccion {
         int id PK
         int cantidad
         int cantidad_original
@@ -218,7 +229,17 @@ erDiagram
         datetime created_at
     }
 
-    Materiale {
+    Gasto {
+        int id PK
+        varchar descripcion
+        decimal monto
+        date fecha
+        int produccion_id FK
+        int cultivo_id FK
+        datetime created_at
+    }
+
+    Material {
         int id PK
         varchar nombre
         decimal cantidad
@@ -237,7 +258,7 @@ erDiagram
         datetime updated_at
     }
 
-    Actividade {
+    Actividad {
         int id PK
         varchar titulo
         varchar descripcion
@@ -246,20 +267,62 @@ erDiagram
         varchar estado
         int usuario_id FK
         int cultivo_id FK
-        int horas
+        int lote_id FK
+        int sublote_id FK
+        decimal horas
         decimal tarifa_hora
         datetime created_at
         datetime updated_at
     }
 
-    Actividad_Materiale {
+    ActividadMaterial {
         int id PK
         int actividad_id FK
-        int materiale_id FK
+        int material_id FK
         decimal cantidad_usada
     }
 
-    Sensore {
+    ActividadUsuario {
+        int id PK
+        int actividad_id FK
+        int usuario_id FK
+    }
+
+    RespuestaActividad {
+        int id PK
+        varchar descripcion
+        varchar archivos
+        datetime fecha_envio
+        varchar estado
+        varchar comentario_instructor
+        int actividad_id FK
+        int usuario_id FK
+    }
+
+    Pago {
+        int id PK
+        int id_usuario
+        int id_actividad
+        decimal monto
+        decimal horas_trabajadas
+        decimal tarifa_hora
+        varchar descripcion
+        date fecha_pago
+        datetime fecha_creacion
+    }
+
+    Movimiento {
+        int id PK
+        varchar tipo
+        decimal cantidad
+        varchar descripcion
+        varchar referencia
+        int material_id FK
+        int usuario_id FK
+        datetime fecha
+    }
+
+    Sensor {
         int id PK
         varchar nombre
         date fecha_instalacion
@@ -267,16 +330,24 @@ erDiagram
         decimal valor_maximo_alerta
         varchar estado
         varchar topic
-        int surco_id FK
+        int sublote_id FK
         int tipo_sensor_id FK
         datetime created_at
         datetime updated_at
     }
 
-    Tipo_Sensor {
+    TipoSensor {
         int id PK
         varchar nombre
         datetime created_at
+    }
+
+    InformacionSensor {
+        int id PK
+        varchar sensor_key
+        varchar valor
+        datetime fecha
+        int sensor_id FK
     }
 
     Broker {
@@ -289,7 +360,18 @@ erDiagram
         varchar password
         varchar prefijo_topicos
         json topicos_adicionales
+        json umbrales
         datetime created_at
+    }
+
+    BrokerLote {
+        int id PK
+        int broker_id FK
+        int lote_id FK
+        json topicos
+        int puerto
+        varchar topic_prueba
+        boolean is_active
     }
 
     Subscripcion {
@@ -323,66 +405,73 @@ erDiagram
         datetime created_at
     }
 
-    Cultivos_Epa {
+    CultivoEpa {
         int id PK
         int cultivo_id FK
         int epa_id FK
     }
 
-    Epa_Tratamiento {
+    EpaTratamiento {
         int id PK
         int tratamiento_id FK
         int epa_id FK
     }
 
-    Gastos_Produccion {
-        int id PK
-        varchar descripcion
-        decimal monto
-        date fecha
-        int produccion_id FK
-        int cultivo_id FK
-        datetime created_at
-    }
-
     Usuario ||--o{ Ficha : "tiene"
     Usuario ||--o{ Lote : "administra"
     Usuario ||--o{ Cultivo : "gestiona"
-    Usuario ||--o{ Actividade : "realiza"
-    Usuario }o--o{ Usuario_Permisos : "tiene"
-    Usuario_Permisos }o--|| Permiso : "accede"
+    Usuario ||--o{ Actividad : "realiza"
+    Usuario }o--o{ UsuarioPermiso : "tiene"
+    UsuarioPermiso }o--|| Permiso : "accede"
+    Usuario ||--o{ Movimiento : "registra"
+    Usuario ||--o{ Pago : "recibe"
+    Usuario ||--o{ RespuestaActividad : "envia"
+    Usuario ||--o{ ActividadUsuario : "asignado"
 
-    Tipo_Usuario ||--o{ Usuario : "clasifica"
+    TipoUsuario ||--o{ Usuario : "clasifica"
+    TipoUsuario ||--o{ RolPermiso : "tiene"
 
-    Lote ||--o{ Surco : "contiene"
+    RolPermiso }o--|| Permiso : "accede"
+
+    Modulo ||--o{ Permiso : "contiene"
+
+    Lote ||--o{ Sublote : "contiene"
     Lote ||--o{ Cultivo : "alberga"
+    Lote ||--o{ BrokerLote : "conecta"
 
-    Surco ||--o{ Sensore : "monitorea"
-    Surco ||--o{ Cultivo : "tiene"
-    Surco }o--o{ Broker : "conecta"
+    Sublote ||--o{ Sensor : "monitorea"
+    Sublote ||--o{ Cultivo : "tiene"
+    Sublote ||--o{ Actividad : "asociada"
 
-    Cultivo ||--o{ Produccione : "produce"
-    Cultivo ||--o{ Actividade : "asociada"
+    Cultivo ||--o{ Produccion : "produce"
+    Cultivo ||--o{ Actividad : "asociada"
     Cultivo ||--o{ Tratamiento : "recibe"
-    Cultivo }o--o{ Cultivos_Epa : "relacionada"
+    Cultivo }o--o{ CultivoEpa : "relacionada"
+    Cultivo ||--o{ Gasto : "tiene"
 
-    Tipo_Cultivo ||--o{ Cultivo : "define"
+    TipoCultivo ||--o{ Cultivo : "define"
 
-    Produccione ||--o{ Venta : "vende"
-    Produccione ||--o{ Gastos_Produccion : "tiene"
+    Produccion ||--o{ Venta : "vende"
+    Produccion ||--o{ Gasto : "tiene"
 
-    Venta ||--o{ Factura : "genera"
+    Material ||--o{ ActividadMaterial : "usado en"
+    Material ||--o{ Movimiento : "afecta"
 
-    Materiale ||--o{ Actividad_Materiale : "usado en"
-    Actividade ||--o{ Actividad_Materiale : "consume"
+    Actividad ||--o{ ActividadMaterial : "consume"
+    Actividad ||--o{ RespuestaActividad : "tiene"
+    Actividad ||--o{ ActividadUsuario : "asigna"
+    Actividad ||--o{ Pago : "genera"
 
-    Sensore }o--|| Tipo_Sensor : "clasifica"
+    Sensor }o--|| TipoSensor : "clasifica"
+    Sensor ||--o{ InformacionSensor : "registra"
 
+    Broker ||--o{ BrokerLote : "conecta"
     Broker ||--o{ Subscripcion : "tiene"
 
-    Tratamiento ||--o{ Epa_Tratamiento : "aplica"
-    Epa ||--o{ Epa_Tratamiento : "tratada"
-    Epa ||--o{ Cultivos_Epa : "afecta"
+    Tratamiento ||--o{ EpaTratamiento : "aplica"
+
+    Epa ||--o{ EpaTratamiento : "tratada"
+    Epa ||--o{ CultivoEpa : "afecta"
 ```
 
 ### Descripción de las Tablas y su Contenido
@@ -390,45 +479,53 @@ erDiagram
 #### **Entidades de Usuarios y Seguridad:**
 - **Usuario**: Datos personales, credenciales, rol y ficha académica
 - **Ficha**: Información académica (id_ficha, nombre)
-- **Tipo_Usuario**: Roles del sistema (Admin, Agricultor, etc.)
+- **TipoUsuario**: Roles del sistema (Admin, Agricultor, etc.)
 - **Permiso**: Accesos específicos del sistema
-- **Usuario_Permisos**: Relación muchos a muchos usuarios-permisos
+- **UsuarioPermiso**: Relación muchos a muchos usuarios-permisos
+- **RolPermiso**: Relación muchos a muchos roles-permisos
+- **Modulo**: Agrupaciones de permisos del sistema
 
 #### **Entidades Geográficas y Agrícolas:**
 - **Lote**: Áreas de terreno con coordenadas geográficas
-- **Surco**: Subdivisiones dentro de lotes para cultivos específicos
+- **Sublote**: Subdivisiones dentro de lotes para cultivos específicos
 - **Cultivo**: Plantaciones con tipo, estado y fechas
-- **Tipo_Cultivo**: Catálogo de tipos de cultivos disponibles
+- **TipoCultivo**: Catálogo de tipos de cultivos disponibles
 
 #### **Entidades de Producción y Ventas:**
 - **Produccion**: Cosechas con cantidades y estados
 - **Venta**: Transacciones comerciales con facturación
-- **Gastos_Produccion**: Costos asociados a producciones
-- **Factura**: Documentos generados automáticamente
+- **Gasto**: Costos asociados a producciones
 
 #### **Entidades de Inventario y Actividades:**
 - **Material**: Insumos con categorías, tipos y empaques
 - **Actividad**: Trabajos realizados con materiales usados
-- **Actividad_Material**: Relación consumo de materiales
+- **ActividadMaterial**: Relación consumo de materiales
+- **ActividadUsuario**: Asignación de actividades a usuarios
+- **RespuestaActividad**: Respuestas y evaluaciones de actividades
+- **Pago**: Pagos por actividades realizadas
+- **Movimiento**: Registro de movimientos de inventario
 
 #### **Entidades IoT y Monitoreo:**
 - **Sensor**: Dispositivos de medición con alertas
-- **Tipo_Sensor**: Clasificación de sensores
+- **TipoSensor**: Clasificación de sensores
+- **InformacionSensor**: Datos históricos de sensores
 - **Broker**: Servidores MQTT para comunicación
+- **BrokerLote**: Conexión entre brokers y lotes
 - **Subscripcion**: Tópicos MQTT suscritos
 
 #### **Entidades Fitosanitarias:**
 - **Epa**: Problemas fitosanitarios detectados
 - **Tratamiento**: Soluciones aplicadas
-- **Cultivos_Epa**: Relación cultivos afectados
-- **Epa_Tratamiento**: Tratamientos aplicados a problemas
+- **CultivoEpa**: Relación cultivos afectados
+- **EpaTratamiento**: Tratamientos aplicados a problemas
 
 #### **Relaciones Clave:**
-- **Jerarquía**: Usuario → Lote → Surco → Cultivo → Produccion → Venta
+- **Jerarquía**: Usuario → Lote → Sublote → Cultivo → Produccion → Venta
 - **Control**: Usuario administra lotes, cultivos y actividades
-- **Consumo**: Actividades usan materiales, producciones generan gastos
-- **Monitoreo**: Surcos tienen sensores conectados via MQTT
+- **Consumo**: Actividades usan materiales, producciones generan gastos, movimientos rastrean inventario
+- **Monitoreo**: Sublotes tienen sensores conectados via MQTT, brokers conectan lotes
 - **Salud**: Cultivos pueden tener problemas (Epa) que requieren tratamientos
+- **Aprendizaje**: Actividades asignadas a usuarios generan respuestas, pagos y evaluaciones
 
 ## Diagrama de Secuencia - Flujo Típico de Operación
 
@@ -1157,48 +1254,57 @@ erDiagram
 
 **Usuarios y Seguridad:**
 - `Usuario`: Información personal, credenciales, rol
-- `Tipo_Usuario`: Roles (Admin, Agricultor, Instructor, Aprendiz)
+- `TipoUsuario`: Roles (Admin, Agricultor, Instructor, Aprendiz)
 - `Permiso`: Accesos específicos del sistema
-- `Usuario_Permisos`: Relación muchos-muchos
+- `UsuarioPermiso`: Relación muchos-muchos usuarios-permisos
+- `RolPermiso`: Relación muchos-muchos roles-permisos
+- `Modulo`: Agrupaciones de permisos
 - `Ficha`: Información académica
 
 **Geografía Agrícola:**
 - `Lote`: Áreas de terreno con coordenadas GPS
-- `Surco`: Subdivisiones dentro de lotes
+- `Sublote`: Subdivisiones dentro de lotes
 - `Cultivo`: Plantaciones específicas
-- `Tipo_Cultivo`: Catálogo de tipos de cultivos
+- `TipoCultivo`: Catálogo de tipos de cultivos
 
 **Producción y Ventas:**
-- `Produccione`: Cosechas y rendimientos
+- `Produccion`: Cosechas y rendimientos
 - `Venta`: Transacciones comerciales
-- `Gastos_Produccion`: Costos asociados
+- `Gasto`: Costos asociados
 
 **Inventario:**
-- `Materiale`: Insumos agrícolas con categorías
+- `Material`: Insumos agrícolas con categorías
+- `Movimiento`: Registro de entradas y salidas de inventario
 
 **Actividades:**
-- `Actividade`: Trabajos realizados
-- `Actividad_Materiale`: Consumo de materiales
+- `Actividad`: Trabajos realizados
+- `ActividadMaterial`: Consumo de materiales
+- `ActividadUsuario`: Asignación de actividades
+- `RespuestaActividad`: Respuestas de usuarios
+- `Pago`: Pagos por actividades
 
 **IoT:**
-- `Sensore`: Dispositivos de medición
-- `Tipo_Sensor`: Clasificación de sensores
+- `Sensor`: Dispositivos de medición
+- `TipoSensor`: Clasificación de sensores
+- `InformacionSensor`: Datos históricos
 - `Broker`: Servidores MQTT
+- `BrokerLote`: Conexiones broker-lote
 - `Subscripcion`: Tópicos suscritos
 
 **Fitosanitario:**
 - `Tratamiento`: Soluciones aplicadas
 - `Epa`: Problemas detectados
-- `Cultivos_Epa`: Relaciones cultivo-problema
-- `Epa_Tratamiento`: Tratamientos aplicados
+- `CultivoEpa`: Relaciones cultivo-problema
+- `EpaTratamiento`: Tratamientos aplicados
 
 #### **Relaciones Clave:**
-- **Jerarquía Espacial**: Usuario → Lote → Surco → Cultivo
+- **Jerarquía Espacial**: Usuario → Lote → Sublote → Cultivo
 - **Ciclo Productivo**: Cultivo → Produccion → Venta
-- **Control de Acceso**: Usuario → Rol → Permisos
-- **Monitoreo**: Surco → Sensor → Broker
-- **Salud**: Cultivo → EPA → Tratamiento
-- **Consumo**: Actividad → Material
+- **Control de Acceso**: Usuario → TipoUsuario → RolPermiso → Permiso
+- **Monitoreo**: Sublote → Sensor → InformacionSensor, Lote → BrokerLote → Broker
+- **Salud**: Cultivo → CultivoEpa → Epa → EpaTratamiento → Tratamiento
+- **Consumo**: Actividad → ActividadMaterial → Material, Movimiento registra cambios
+- **Aprendizaje**: Actividad → ActividadUsuario → RespuestaActividad → Pago
 
 ## Notas sobre la Arquitectura
 - **Modularidad**: Cada módulo (actividades, materiales, etc.) sigue el patrón Controller-Service-Entity.
