@@ -29,6 +29,12 @@ export class PdfService {
     if (!date) return '';
     return date.toLocaleString('es-CO', { timeZone: 'America/Bogota' });
   }
+
+  // Helper function to format dates only (without time) for display in Bogota time zone
+  private formatDateOnlyForDisplay(date: Date | null): string {
+    if (!date) return '';
+    return date.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+  }
   async generarFacturaPdf(venta: Venta): Promise<string> {
     
     // --- INICIO DE LA CORRECCIÓN ---
@@ -299,7 +305,7 @@ export class PdfService {
     }
 
     // --- LOGO PARA PRIMERA PÁGINA ---
-    const logoPath = path.join(process.cwd(), 'uploads', 'logos', 'logo.png');
+    const logoPath = path.join(process.cwd(), '..', 'frontend', 'src', 'assets', 'logo.png');
     const logoBase64 = getImageAsBase64(logoPath);
 
     // --- 🧠 FUNCIÓN DE DIAGNÓSTICO INTELIGENTE ---
@@ -688,19 +694,50 @@ export class PdfService {
            <div style="flex: 1;">
              <h1 style="margin: 0 0 5px 0; color: #1b5e20; font-size: 24px; font-weight: bold;">REPORTE DE TRAZABILIDAD - AGROTECH</h1>
              <p style="margin: 0 0 5px 0; color: #2E7D32; font-size: 14px; font-weight: 600;">Lote: ${data.lote} | Rango: ${data.rango}</p>
-             <p style="margin: 0; color: #666; font-size: 10px;">${data.cultivos.length > 1 ? `Cultivos Activos: ${data.cultivos.filter(c => c.estadoActual === 'activo' || c.estadoActual === 'en cosecha').length}` : `Cultivo Activo: ${data.cultivos[0].nombre}`} | Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
+             <p style="margin: 0; color: #666; font-size: 10px;">${data.cultivos.length > 1 ? `Cultivos Activos: ${data.cultivos.filter(c => c.estadoActual === 'activo' || c.estadoActual === 'en cosecha').length}` : `Cultivo Activo: ${data.cultivos[0].nombre}`} | Generado: ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
            </div>
            ${logoBase64 ? `
            <div style="flex-shrink: 0; margin-left: 15px;">
-             <img src="${logoBase64}" alt="Logo AgroTech" style="height: 50px; width: auto;" />
+             <img src="${logoBase64}" alt="Logo TIC" style="height: 50px; width: auto;" />
            </div>
            ` : ''}
         </div>
 
     
+        <!-- ==========================================
+             SECCIÓN 2: INFORMACIÓN GENERAL DEL LOTE
+             ========================================== -->
+        <div class="card" style="margin-bottom: 20px; page-break-inside: avoid;">
+            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">📊 Información General del Lote</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Cultivos</span>
+                    <span class="kpi-value">${data.cultivos.length}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Sensores IoT</span>
+                    <span class="kpi-value">${Object.keys(data.sensores).length}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Pagos Registrados</span>
+                    <span class="kpi-value">${data.pagos ? data.pagos.length : 0}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Estado del Reporte</span>
+                    <span class="kpi-value" style="color: ${data.cultivos.length > 0 || Object.keys(data.sensores).length > 0 ? '#28a745' : '#6c757d'}">${data.cultivos.length > 0 || Object.keys(data.sensores).length > 0 ? 'Con Datos' : 'Sin Datos Activos'}</span>
+                </div>
+            </div>
+            ${data.cultivos.length === 0 ? `
+            <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #6c757d; text-align: center;">
+                <strong style="color: #6c757d;">ℹ️ Este lote no tiene cultivos activos registrados en el período seleccionado.</strong>
+                <br><small>Si el lote tiene cultivos finalizados o fuera del rango de fechas, no aparecerán en este reporte.</small>
+            </div>
+            ` : ''}
+        </div>
+
         ${data.cultivos.length > 1 ? `
         <!-- ==========================================
-             SECCIÓN 2: PAGOS A PASANTES - ACTIVIDADES DE LOTE
+             SECCIÓN 3: PAGOS A PASANTES - ACTIVIDADES DE LOTE
              ========================================== -->
         <div class="card" style="margin-bottom: 10px; page-break-inside: avoid;">
             <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">💰 Pagos a Pasantes - Actividades de Lote</h2>
@@ -720,7 +757,7 @@ export class PdfService {
                         const pagosLote = data.pagos ? data.pagos.filter(p => !p.cultivo || p.cultivo === '') : [];
                         return pagosLote.length > 0 ? pagosLote.map(p => `
                         <tr>
-                            <td>${this.formatDateForDisplay(this.transformDateForDisplay(p.fecha))}</td>
+                            <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(p.fecha))}</td>
                             <td>${p.pasante}</td>
                             <td>${p.actividad}</td>
                             <td class="text-center">${p.horasTrabajadas}</td>
@@ -746,9 +783,9 @@ export class PdfService {
         ` : ''}
 
         <!-- ==========================================
-             SECCIÓN 3: DETALLE DE CULTIVOS INDIVIDUALES
+             SECCIÓN ${data.cultivos.length > 1 ? '4' : '3'}: DETALLE DE CULTIVOS INDIVIDUALES
              ========================================== -->
-        ${data.cultivos.map(c => `
+        ${data.cultivos.length > 0 ? data.cultivos.map(c => `
             <!-- === CULTIVO: ${c.nombre} === -->
             ${(() => {
                 const pagosCultivo = data.pagos ? data.pagos.filter(p => p.cultivo === c.nombre) : [];
@@ -810,8 +847,6 @@ export class PdfService {
                         Insumos: ${formatCurrency(insumos)} |
                         Mano de Obra (Pasantes): ${formatCurrency(manoDeObraCultivo)}
                         <br><br>
-                        <strong style="color: #2E7D32;">Fórmula de Ganancia Neta:</strong><br>
-                        <em>Ingresos Totales - (Insumos + Mano de Obra) = ${formatCurrency(rentabilidadAjustada)}</em>
                     </div>
                 </div>
                 `;
@@ -829,7 +864,7 @@ export class PdfService {
                     <tbody>
                         ${c.cosechas && c.cosechas.length > 0 ? c.cosechas.map(co => `
                             <tr>
-                                <td>${this.formatDateForDisplay(this.transformDateForDisplay(co.fecha))}</td>
+                                <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(co.fecha))}</td>
                                 <td class="text-right ${co.cantidadRestante > 0 ? 'warning' : ''}">${co.cantidadRestante.toLocaleString()} Kg</td>
                                 <td class="text-center">
                                     <span class="${co.estado === 'Pendiente' ? 'status-pending' : 'status-completed'}">
@@ -872,7 +907,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleMateriales.map(m => `
                                     <tr>
-                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(m.fecha))}</td>
+                                        <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(m.fecha))}</td>
                                         <td>${m.nombre}</td>
                                         <td class="text-right">${m.cantidad} ${m.unidad || 'unidad'}</td>
                                         <td class="text-right">${formatCurrency(m.precioUnitario)} <span style="font-size:8px; color:#888;">/${m.unidad || 'ud'}</span></td>
@@ -914,7 +949,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleVentas.map(v => `
                                     <tr>
-                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(v.fecha))}</td>
+                                        <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(v.fecha))}</td>
                                         <td>${v.descripcion}</td>
                                         <td class="text-right">${v.cantidadVendida} Kg</td>
                                         <td class="text-right">${formatCurrency(Number(v.precioUnitario))}</td>
@@ -963,7 +998,7 @@ export class PdfService {
                     <tbody>
                         ${pagosCultivo.map(p => `
                         <tr>
-                            <td>${this.formatDateForDisplay(this.transformDateForDisplay(p.fecha))}</td>
+                            <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(p.fecha))}</td>
                             <td>${p.pasante}</td>
                             <td>${p.actividad}</td>
                             <td class="text-center">${p.horasTrabajadas}</td>
@@ -980,7 +1015,7 @@ export class PdfService {
                 ` : '';
                 })()}
             </div>
-        `).join('')}
+        `).join('') : '<div class="card"><h3 style="text-align: center; color: #6c757d;">No hay cultivos activos registrados en este lote</h3></div>'}
 
         <!-- ==========================================
              SECCIÓN 4: MONITOREO Y ANÁLISIS DE SENSORES IoT
@@ -1214,7 +1249,7 @@ export class PdfService {
                                     const estado = prom > 0.5 ? 'ACTIVA' : 'INACTIVA';
                                     return `
                                     <tr>
-                                          <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.dia))}</td>
+                                          <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(d.dia))}</td>
                                           <td class="text-center"><strong>${estado}</strong></td>
                                       </tr>
                                     `;
@@ -1223,7 +1258,7 @@ export class PdfService {
                                     const maxDia = d.datos && d.datos.length > 0 ? Math.max(...d.datos.map(dd => Number(dd.valor))) : prom;
                                     return `
                                     <tr>
-                                          <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.dia))}</td>
+                                          <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(d.dia))}</td>
                                           <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad} (Mín: ${minDia.toFixed(1)}, Máx: ${maxDia.toFixed(1)})</strong></td>
                                       </tr>
                                     `;
@@ -1375,7 +1410,7 @@ export class PdfService {
               ========================================== -->
         <div class="footer">
             <p>⚠️ Este reporte es una herramienta de apoyo. Verifique siempre las condiciones en campo antes de aplicar correctivos mayores.</p>
-            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
+            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
             <p style="text-align: center; font-size: 10px; color: #666;">Página 1</p>
         </div>
     </body>
@@ -1396,6 +1431,16 @@ export class PdfService {
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
+      displayHeaderFooter: true,
+      footerTemplate: `
+        <div style="font-size: 10px; text-align: center; width: 100%; margin: 0; padding: 8px 20px; border-top: 2px solid #2E7D32; background: linear-gradient(to right, #E8F5E9, #F1F8E9, #E8F5E9); color: #2E7D32;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 11px;">🌱 AgroTech 2025</span>
+            <span style="font-weight: bold; background: #2E7D32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 9px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+            <span style="font-weight: bold; font-size: 11px;">📊 Sistema de Gestión y Monitoreo</span>
+          </div>
+        </div>
+      `,
       margin: {
         top: '20px',
         right: '20px',
