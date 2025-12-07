@@ -1,5 +1,4 @@
 
-
 services:
   db:
     image: postgres:15
@@ -16,21 +15,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  backend:
-    build: .
-    container_name: backend-formativo
-    restart: always
-    environment:
-      - TZ=America/Bogota
-      - NODE_ENV=production
-    ports:
-      - "3000:3000"
-    depends_on:
-      - db
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-    command: node dist/src/main.js
 
   redis:
     image: redis:alpine
