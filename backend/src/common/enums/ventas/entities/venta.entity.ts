@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Produccion } from '../../../../modules/producciones/entities/produccione.entity';
+import { dateColumnTransformer } from '../../../transformers/date-column.transformer';
 
 @Entity('ventas')
 export class Venta {
@@ -9,7 +10,7 @@ export class Venta {
   @Column({ name: 'Descripcion', type: 'varchar', length: 255, nullable: true })
   descripcion: string;
 
-  @Column({ name: 'Fecha', type: 'date' })
+  @Column({ name: 'Fecha', type: 'date', transformer: dateColumnTransformer })
   fecha: Date;
 
   // --- CORRECCIÓN ---

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, Plus, Minus, Settings, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, AlertTriangle } from 'lucide-react';
 // --- ✅ 1. Importamos la API y las interfaces ---
 import { obtenerMaterialPorId, actualizarMaterial, subirImagenMaterial, listarMovimientosPorMaterial } from '../api/inventarioApi';
 import type { Material, MaterialData, MovimientoData } from '../interfaces/inventario';
@@ -217,14 +217,14 @@ export default function DetalleMaterialPage() {
       </div>
 
       {/* Cuadrícula de Contenido Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna Izquierda (Sin cambios) */}
-        <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Columna Izquierda - Imagen y Detalles Básicos */}
+        <div className="space-y-6">
           <div className="bg-white p-4 rounded-xl shadow-md text-center">
             <img
               src={material.img ? `${API_URL}/uploads/${material.img}` : 'https://via.placeholder.com/300'}
               alt={material.nombre}
-              className="w-full h-56 object-cover rounded-lg mb-4"
+              className="w-full h-48 object-cover rounded-lg mb-4"
             />
             <div className="flex justify-center items-center gap-2">
               <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800">{material.tipoMaterial}</span>
@@ -233,20 +233,11 @@ export default function DetalleMaterialPage() {
               </span>
             </div>
           </div>
-          {/* --- ✅ Botones de Movimiento Deshabilitados --- */}
-          <div className="bg-white p-4 rounded-xl shadow-md space-y-3">
-            <h3 className="font-semibold text-gray-700">Registrar Movimiento</h3>
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg opacity-50 cursor-not-allowed" disabled><Plus size={16} /> Entrada de Inventario</button>
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg opacity-50 cursor-not-allowed" disabled><Minus size={16} /> Salida de Inventario</button>
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg opacity-50 cursor-not-allowed" disabled><Settings size={16} /> Ajuste de Inventario</button>
-          </div>
-        </div>
 
-        {/* Columna Derecha (Modificada) */}
-        <div className="lg:col-span-2 space-y-6">
+          {/* Detalles del Material */}
           <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="font-semibold text-gray-700 mb-4">Detalles</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <h3 className="font-semibold text-gray-700 mb-4">Información del Producto</h3>
+            <div className="grid grid-cols-1 gap-4">
               <InfoItem label="Descripción" value={material.descripcion} />
               <InfoItem label="Proveedor" value={material.proveedor} />
               <InfoItem label="Ubicación" value={material.ubicacion} />
@@ -258,6 +249,10 @@ export default function DetalleMaterialPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Columna Derecha - Stock y Movimientos */}
+        <div className="space-y-6">
           
           {/* --- ✅ 5. SECCIÓN DE STOCK VISUAL --- */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

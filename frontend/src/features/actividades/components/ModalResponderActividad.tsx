@@ -210,7 +210,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
   return (
     <>
       <SuccessModal />
-      <Modal isOpen={isOpen} onClose={onClose} size="lg" scrollBehavior="inside">
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>
             <h2 className="text-xl font-bold">
@@ -362,7 +362,9 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                        materialId: am.material.id,
                        nombre: am.material.nombre,
                        cantidadAsignada: Number(am.cantidadUsada),
-                       precioUnitario: Number(am.cantidadUsada) > 0 ? Number(am.costo) / Number(am.cantidadUsada) : 0,
+                       precioUnitario: am.material.tipoConsumo === 'no_consumible'
+                         ? Number(am.material.precio) || 0
+                         : Number(am.cantidadUsada) > 0 ? Number(am.costo) / Number(am.cantidadUsada) : 0,
                        unidad: am.unidadMedida,
                        tipoConsumo: am.material.tipoConsumo
                     }))}

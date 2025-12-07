@@ -212,7 +212,7 @@ export default function GestionTransaccionesPage(): ReactElement {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
             <tr>
-              <th className="px-4 py-3 text-left">Hora</th>
+              <th className="px-4 py-3 text-left">Fecha</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left w-1/3">Descripción</th>
               <th className="px-4 py-3 text-right">Cantidad</th>

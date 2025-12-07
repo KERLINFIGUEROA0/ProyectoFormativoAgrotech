@@ -59,16 +59,33 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   // Lógica de 'aprendicesAsignados' usando el campo asignados
   const aprendicesAsignados: UsuarioSimple[] = useMemo(() => {
     if (!actividad) return [];
+
+    // Crear un mapa de usuarios por nombre completo para acceder a la ficha
+    const usuariosMap = new Map<string, any>();
+    actividad.respuestas?.forEach(respuesta => {
+      const nombreCompleto = `${respuesta.usuario.nombre} ${respuesta.usuario.apellidos}`.trim();
+      usuariosMap.set(nombreCompleto, respuesta.usuario);
+    });
+
     try {
       if (actividad.asignados) {
         // Si hay asignados guardados, intentar parsear y crear objetos UsuarioSimple
         const nombres = JSON.parse(actividad.asignados);
-        return nombres.map((nombre: string, index: number) => ({
-          id: index + 1, // ID temporal
-          identificacion: index + 1, // Identificación temporal
-          nombre: nombre.split(' ')[0] || 'Usuario',
-          apellidos: nombre.split(' ').slice(1).join(' ') || '',
-        }));
+        return nombres.map((nombre: string, index: number) => {
+          // Buscar el usuario real por nombre para obtener la ficha
+          const usuarioReal = usuariosMap.get(nombre.trim());
+          if (usuarioReal) {
+            return usuarioReal;
+          }
+          // Fallback: crear usuario temporal sin ficha
+          return {
+            id: index + 1, // ID temporal
+            identificacion: index + 1, // Identificación temporal
+            nombre: nombre.split(' ')[0] || 'Usuario',
+            apellidos: nombre.split(' ').slice(1).join(' ') || '',
+            ficha: null
+          };
+        });
       }
     } catch {
       // Si falla el parseo, usar respuestas como fallback
@@ -95,7 +112,7 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   }
 
   const estadoTexto = getEstadoTexto(actividad.estado);
-  const fechaProgramada = formatDateDisplay(actividad.fecha);
+  const fechaProgramada = formatDateOnly(actividad.fecha);
 
   // --- INICIO DE CORRECCIÓN: Lógica de Costos y Pago ---
   const costoManoDeObra = actividad.costoManoObra ?? ((actividad.totalHoras || actividad.horas || 0) * (actividad.promedioTarifa || actividad.tarifaHora || 0));

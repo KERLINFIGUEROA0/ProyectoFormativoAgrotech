@@ -143,7 +143,7 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
 
   const mostrarSeccionContenido = useMemo(() => {
     if (!formData.tipoCategoria) return false;
-    const categoriasSinContenido: TipoCategoria[] = [TipoCategoria.HERRAMIENTAS_MANUALES, TipoCategoria.MAQUINARIA_Y_EQUIPOS];
+    const categoriasSinContenido: TipoCategoria[] = [TipoCategoria.HERRAMIENTAS_MANUALES, TipoCategoria.MAQUINARIA_Y_EQUIPOS, TipoCategoria.PROTECCION_Y_SEGURIDAD];
     return !categoriasSinContenido.includes(formData.tipoCategoria);
   }, [formData.tipoCategoria]);
 
