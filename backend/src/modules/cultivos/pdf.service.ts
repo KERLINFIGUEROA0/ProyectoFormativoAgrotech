@@ -49,7 +49,7 @@ export class PdfService {
     let actividades: Actividad[] = [];
     let producciones: Produccion[] = [];
     let gastos: Gasto[] = [];
-    let pagos: Pago[] = [];
+    let pagos: any[] = [];
 
     try {
       actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
@@ -87,6 +87,15 @@ export class PdfService {
       pagos = [];
     }
 
+    // Crear mapa de costos de mano de obra por actividad
+    const pagosPorActividad = pagos.reduce((map, pago) => {
+      const actId = pago.actividad?.id;
+      if (actId) {
+        map[actId] = (map[actId] || 0) + Number(pago.monto);
+      }
+      return map;
+    }, {} as Record<number, number>);
+
     // Procesar actividades con materiales
     const actividadesData = actividades.map(actividad => ({
       fecha: (() => {
@@ -100,6 +109,7 @@ export class PdfService {
       })(),
       titulo: actividad.titulo || '',
       estado: actividad.estado || '',
+      costoManoObra: (pagosPorActividad[actividad.id] || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
       materiales: actividad.actividadMaterial?.map(am => ({
         nombre: am.material.nombre,
         cantidad: am.cantidadUsada,
@@ -215,8 +225,10 @@ export class PdfService {
     data.gastos.forEach(gasto => {
       let categoria = 'Otros Gastos';
       const desc = gasto.descripcion.toLowerCase();
-      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador')) {
+      if (desc.includes('mano') || desc.includes('pasante') || desc.includes('labor') || desc.includes('trabajador') || desc.startsWith('pago a')) {
         categoria = 'Mano de obra';
+      } else if (desc.startsWith('consumo')) {
+        categoria = 'Materiales';
       } else {
         categoria = gasto.descripcion.split(' ')[0] || 'Otros Gastos';
       }
@@ -227,7 +239,7 @@ export class PdfService {
       gastosPorCategoriaMap.set(categoria, current + Number(gasto.monto));
     });
 
-    const totalGastos = costos;
+    const totalGastos = Array.from(gastosPorCategoriaMap.values()).reduce((sum, val) => sum + val, 0);
     const gastosPorCategoria = Array.from(gastosPorCategoriaMap.entries()).map(([categoria, total]) => {
       return {
         categoria,
@@ -237,11 +249,11 @@ export class PdfService {
     });
 
     return {
-      costos,
+      costos: totalGastos,
       ingresos,
-      rentabilidad,
+      rentabilidad: ingresos - totalGastos,
       gastosPorCategoria,
-      rentabilidadClass: rentabilidad >= 0 ? 'positive' : 'negative'
+      rentabilidadClass: (ingresos - totalGastos) >= 0 ? 'positive' : 'negative'
     };
   }
 

@@ -132,21 +132,34 @@ export class ActividadesService {
     }
 
   // --- LÓGICA DE STOCK UNIFICADO ---
-  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean } {
+  private descontarMaterial(material: Material, cantidadUsada: number): { success: boolean, debeRegistrarEgreso: boolean, debeGenerarGastoDepreciacion: boolean } {
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
       if (!material.usosTotales) {
-        return { success: true, debeRegistrarEgreso: false };
+        return { success: true, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
       }
-      material.usosActuales = Number(material.usosActuales) + cantidadUsada;
-      return { success: true, debeRegistrarEgreso: true };
+      const usosAntes = Number(material.usosActuales) || 0;
+      material.usosActuales = usosAntes + cantidadUsada;
+
+      // Verificar si alcanzó el límite de usos
+      const alcanzoLimite = material.usosActuales >= material.usosTotales;
+
+      if (alcanzoLimite) {
+        // Si alcanzó el límite, reducir cantidad física y resetear usos
+        material.cantidad = Number(material.cantidad) - 1;
+        if (material.cantidad < 0) material.cantidad = 0;
+        material.usosActuales = 0; // Resetear usos para la siguiente unidad
+        return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: true };
+      }
+
+      return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
     }
 
     if (Number(material.cantidad) < cantidadUsada) {
-      return { success: false, debeRegistrarEgreso: false };
+      return { success: false, debeRegistrarEgreso: false, debeGenerarGastoDepreciacion: false };
     }
 
     material.cantidad = Number(material.cantidad) - cantidadUsada;
-    return { success: true, debeRegistrarEgreso: true };
+    return { success: true, debeRegistrarEgreso: true, debeGenerarGastoDepreciacion: false };
   }
 
   private revertirDescontarMaterial(material: Material, cantidadDevuelta: number) {
@@ -161,11 +174,19 @@ export class ActividadesService {
 
     if (material.tipoConsumo === TipoConsumo.NO_CONSUMIBLE) {
       if (!material.usosTotales) return;
-      material.usosActuales -= cantidadDevuelta;
-      while (material.usosActuales < 0 && material.cantidad > 0) {
+
+      // Lógica inversa: reducir usos actuales
+      material.usosActuales = Number(material.usosActuales) - cantidadDevuelta;
+
+      // Si los usos quedan negativos, significa que se debe devolver una unidad física
+      while (material.usosActuales < 0 && material.cantidad >= 0) {
         material.usosActuales += material.usosTotales;
-        material.cantidad += 1;
+        material.cantidad = Number(material.cantidad) + 1;
       }
+
+      // Asegurar que no queden usos negativos
+      if (material.usosActuales < 0) material.usosActuales = 0;
+
       return;
     }
     material.cantidad = nuevaCantidad;
@@ -242,6 +263,24 @@ export class ActividadesService {
           }
           await queryRunner.manager.save(material);
 
+          // 3.1. Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario; // Costo completo del material depreciado
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
+
           // 4. Calcular COSTO EXACTO (Fórmula del PDF)
           let costoTotal = 0;
           let precioUnitarioCalculado = 0; // Variable para el precio unitario
@@ -289,18 +328,19 @@ export class ActividadesService {
         }
       }
 
-      // --- REGISTRO DE GASTO MANO DE OBRA ---
-      const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
-      if (costoManoDeObra > 0) {
-        const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: parseFloat(costoManoDeObra.toFixed(2)),
-          fecha: saved.fecha,
-          tipo: TipoMovimiento.EGRESO,
-          cultivo: cultivoEntidad ?? undefined,
-        });
-        await queryRunner.manager.save(nuevoGasto);
-      }
+      // --- REGISTRO DE GASTO MANO DE OBRA REMOVIDO ---
+      // Los gastos de mano de obra se registran cuando se pagan los pasantes
+      // const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
+      // if (costoManoDeObra > 0) {
+      //   const nuevoGasto = gastoRepo.create({
+      //     descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+      //     monto: parseFloat(costoManoDeObra.toFixed(2)),
+      //     fecha: saved.fecha,
+      //     tipo: TipoMovimiento.EGRESO,
+      //     cultivo: cultivoEntidad ?? undefined,
+      //   });
+      //   await queryRunner.manager.save(nuevoGasto);
+      // }
 
       await queryRunner.commitTransaction();
       return saved;
@@ -388,6 +428,8 @@ export class ActividadesService {
         'responsable',
         'actividadMaterial',
         'actividadMaterial.material',
+        'respuestas',
+        'respuestas.usuario',
       ],
       select: ['id', 'titulo', 'fecha', 'descripcion', 'img', 'archivoInicial', 'estado', 'horas', 'tarifaHora', 'asignados', 'respuestaTexto', 'respuestaArchivos', 'calificacion', 'comentarioInstructor'],
     });
@@ -504,6 +546,24 @@ export class ActividadesService {
           if (!resultado.success) throw new BadRequestException(`Stock insuficiente para ${material.nombre}.`);
           await queryRunner.manager.save(material);
 
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (resultado.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: saved.fecha,
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivoEntidad ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
+
           // CÁLCULO DE COSTO EXACTO
           let costoTotal = 0;
           let precioUnitarioCalculado = 0; // Variable para el precio unitario
@@ -549,18 +609,19 @@ export class ActividadesService {
         }
       }
 
-      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA
-      const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
-      if (costoManoDeObra > 0) {
-        const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: parseFloat(costoManoDeObra.toFixed(2)),
-          fecha: saved.fecha,
-          tipo: TipoMovimiento.EGRESO,
-          cultivo: cultivoEntidad ?? undefined,
-        });
-        await queryRunner.manager.save(nuevoGasto);
-      }
+      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA REMOVIDO
+      // Los gastos de mano de obra se registran cuando se pagan los pasantes
+      // const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
+      // if (costoManoDeObra > 0) {
+      //   const nuevoGasto = gastoRepo.create({
+      //     descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+      //     monto: parseFloat(costoManoDeObra.toFixed(2)),
+      //     fecha: saved.fecha,
+      //     tipo: TipoMovimiento.EGRESO,
+      //     cultivo: cultivoEntidad ?? undefined,
+      //   });
+      //   await queryRunner.manager.save(nuevoGasto);
+      // }
 
       await queryRunner.commitTransaction();
       return this.findOne(id);
@@ -736,18 +797,8 @@ export class ActividadesService {
                     const precioUnitario = Number(material.precio) || 0;
                     const costoDano = cantMalasUsuario * precioUnitario;
 
-                    // A. TRANSACCIÓN FINANCIERA (GASTO)
-                    const cobroPorDano = gastoRepo.create({
-                        descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
-                        monto: parseFloat(costoDano.toFixed(2)),
-                        fecha: new Date(),
-                        tipo: TipoMovimiento.EGRESO,
-                        cultivo: actividad.cultivo,
-                        cantidad: cantMalasUsuario,
-                        unidad: unidadParaCalculo,
-                        precioUnitario: precioUnitario
-                    });
-                    await queryRunner.manager.save(cobroPorDano);
+                    // A. TRANSACCIÓN FINANCIERA (GASTO) - Se crea en devolverMaterialesFinal
+                    // No crear gastos aquí para evitar duplicación
 
                     await this.movimientosService.registrarMovimiento(
                         TipoMovimiento.EGRESO,
@@ -875,21 +926,33 @@ export class ActividadesService {
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
                         console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
-   
-                        // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
-                        const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
-                              monto: parseFloat(nuevoCostoTotal.toFixed(2)),
-                              fecha: new Date(),
-                              tipo: TipoMovimiento.EGRESO,
-                              cultivo: actividad.cultivo ?? undefined,
-                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
-                              unidad: asignacionOriginal.unidadMedida,
-                              precioUnitario: precioUnitarioGasto
+
+                        // Verificar si ya existe un gasto para este material en esta actividad
+                        const gastoExistente = await gastoRepo.findOne({
+                          where: {
+                            descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                            cultivo: actividad.cultivo ?? undefined
+                          }
                         });
-   
-                        await gastoRepo.save(nuevoGasto);
-                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+
+                        if (!gastoExistente) {
+                          // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
+                          const nuevoGasto = gastoRepo.create({
+                                descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                                monto: parseFloat(nuevoCostoTotal.toFixed(2)),
+                                fecha: new Date(),
+                                tipo: TipoMovimiento.EGRESO,
+                                cultivo: actividad.cultivo ?? undefined,
+                                cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
+                                unidad: asignacionOriginal.unidadMedida,
+                                precioUnitario: precioUnitarioGasto
+                          });
+
+                          await gastoRepo.save(nuevoGasto);
+                          console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                        } else {
+                          console.log(`      ℹ️ Gasto ya existe, no se duplica`);
+                        }
                     } else {
                         console.log(`      ℹ️ Consumo fue 0 (Se devolvió todo). No se genera cobro.`);
                         // Actualizar asignación a 0
@@ -1040,6 +1103,9 @@ export class ActividadesService {
     if (actividad.estado !== 'completado') {
       throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
     }
+
+    // Verificar si todas las respuestas están aprobadas para crear gastos
+    const todasRespuestasAprobadas = actividad.respuestas?.every(r => r.estado === 'aprobado') ?? false;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -1282,27 +1348,7 @@ export class ActividadesService {
 
                         await actMaterialRepo.save(asignacionOriginal);
 
-                        console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
-                        console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
-                        console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
-                        console.log(`        - factorUnidad: ${factorUnidad}`);
-                        console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
-
-                         // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
-                         const nuevoGasto = gastoRepo.create({
-                               descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
-                              monto: parseFloat(nuevoCostoTotal.toFixed(2)), // Aquí van los 5000
-                              fecha: new Date(),
-                              tipo: TipoMovimiento.EGRESO,
-                              cultivo: actividad.cultivo ?? undefined,
-                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
-                              unidad: asignacionOriginal.unidadMedida,
-                              precioUnitario: precioUnitarioGasto
-                        });
-
-                        await gastoRepo.save(nuevoGasto);
-                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                        // Gastos para consumibles se crean en enviarRespuesta con verificación de duplicados
                     }
                     else {
                         // Si devolvió TODO (Consumo 0), actualizamos la asignación a 0 costo
@@ -1399,6 +1445,24 @@ export class ActividadesService {
           const res = this.descontarMaterial(material, cantidadBase);
           if (!res.success) throw new BadRequestException(`Stock insuficiente: ${material.nombre}`);
           await queryRunner.manager.save(material);
+
+          // Generar gasto por depreciación si el material alcanzó su límite de usos
+          if (res.debeGenerarGastoDepreciacion) {
+            const precioUnitario = Number(material.precio) || 0;
+            const costoDepreciacion = precioUnitario;
+
+            const gastoDepreciacion = gastoRepo.create({
+              descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${titulo}`,
+              monto: parseFloat(costoDepreciacion.toFixed(2)),
+              fecha: new Date(fecha),
+              tipo: TipoMovimiento.EGRESO,
+              cultivo: cultivo ?? undefined,
+              cantidad: 1,
+              unidad: UnidadMedida.UNIDAD,
+              precioUnitario: precioUnitario
+            });
+            await queryRunner.manager.save(gastoDepreciacion);
+          }
 
           // CÁLCULO DE COSTO Y GASTO
           let costoTotal = 0;

@@ -75,30 +75,20 @@ export class PagosService {
     // Crear el pago
     const pago = this.pagoRepository.create({
       ...createPagoDto,
+      descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} - Actividad: ${actividad.titulo}`,
       fechaPago: new Date(createPagoDto.fechaPago),
     });
 
     const pagoGuardado = await this.pagoRepository.save(pago);
 
-    // Crear el gasto correspondiente para el cultivo
-    const gasto = this.gastoRepository.create({
-      descripcion: `Pago a ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-      monto: pagoGuardado.monto,
-      fecha: pagoGuardado.fechaPago,
-      tipo: TipoMovimiento.EGRESO,
-      cantidad: pagoGuardado.horasTrabajadas,
-      unidad: 'horas',
-      precioUnitario: pagoGuardado.tarifaHora,
-      cultivo: actividad.cultivo,
-    });
-
-    await this.gastoRepository.save(gasto);
+    // No crear gasto correspondiente para evitar duplicación en gestión de transacción
 
     return pagoGuardado;
   }
 
   async createMultiple(createPagoDtos: CreatePagoDto[]) {
     const pagos: Pago[] = [];
+    const pagoData: { pago: Pago; usuario: Usuario; actividad: Actividad }[] = [];
 
     for (const createPagoDto of createPagoDtos) {
       // Usar la lógica de validación del método create para cada pago
@@ -152,14 +142,24 @@ export class PagosService {
       // Crear el pago
       const pago = this.pagoRepository.create({
         ...createPagoDto,
+        descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} - Actividad: ${actividad.titulo}`,
         fechaPago: new Date(createPagoDto.fechaPago),
       });
 
       pagos.push(pago);
+      pagoData.push({ pago, usuario, actividad });
     }
 
     // Guardar todos los pagos
-    return this.pagoRepository.save(pagos);
+    try {
+      const savedPagos = await this.pagoRepository.save(pagos);
+
+      // No crear gastos correspondientes para evitar duplicación en gestión de transacción
+
+      return savedPagos;
+    } catch (error) {
+      throw error;
+    }
   }
 
   async findByUsuario(idUsuario: number) {

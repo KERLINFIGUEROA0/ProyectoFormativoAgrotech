@@ -4,25 +4,28 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DollarSign, BarChart, Edit, Trash2, Plus, ArrowLeft } from 'lucide-react';
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Card, CardBody } from '@heroui/react';
 import { getProduccionesPorCultivo, getStatsPorCultivo, deleteProduccion, createProduccion, updateProduccion } from '../api/produccionApi';
 import { listarCultivos } from '../api/cultivosApi';
-import Modal from '../../../components/Modal';
 import ProduccionForm from '../components/ProduccionForm';
 import type { Produccion, Stats} from '../interfaces/cultivos';
+import { formatDateOnly } from '../../../utils/dateUtils';
 
 const StatCard = ({ title, value, icon, isCurrency = true }: any) => {
-  const formattedValue = isCurrency 
+  const formattedValue = isCurrency
     ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)
     : `${value.toLocaleString('es-CO')} kg`;
-    
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4">
-      <div className="p-3 rounded-full bg-green-100 text-green-700">{icon}</div>
-      <div>
-        <p className="text-gray-500 text-sm">{title}</p>
-        <p className="font-bold text-2xl">{formattedValue}</p>
-      </div>
-    </div>
+    <Card className="p-6">
+      <CardBody className="flex items-center gap-4">
+        <div className="p-3 rounded-full bg-green-100 text-green-700">{icon}</div>
+        <div>
+          <p className="text-gray-500 text-sm">{title}</p>
+          <p className="font-bold text-2xl">{formattedValue}</p>
+        </div>
+      </CardBody>
+    </Card>
   );
 };
 
@@ -30,7 +33,6 @@ export default function DashboardProduccion() {
   const { cultivoId } = useParams<{ cultivoId: string }>();
   const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [cultivoNombre, setCultivoNombre] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduccion, setEditingProduccion] = useState<Produccion | null>(null);
 
@@ -45,8 +47,6 @@ export default function DashboardProduccion() {
       ]);
       setProducciones(produccionesRes.data || []);
       setStats(statsRes.data);
-      const cultivo = cultivosRes.data.find((c: any) => c.id === id);
-      if (cultivo) setCultivoNombre(cultivo.nombre);
     } catch (error) {
       toast.error("Error al cargar los datos de producción.");
     }
@@ -120,9 +120,9 @@ export default function DashboardProduccion() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-md">
-            <Plus /> Registrar Cosecha
-        </button>
+        <Button onClick={() => handleOpenModal()} color="primary" startContent={<Plus />}>
+           Registrar Cosecha
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -156,7 +156,20 @@ export default function DashboardProduccion() {
                 return (
                   <tr key={p.id} className={`border-t hover:bg-gray-50 ${isSoldOut ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3 font-medium">PROD-{p.id}</td>
-                    <td className="px-4 py-3">{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3">{(() => {
+                      if (!p.fecha) return '';
+                      const fechaStr = p.fecha.toString();
+                      // Si no incluye tiempo, agregamos mediodía para evitar cambio de día
+                      const fechaCompleta = fechaStr.includes('T') || fechaStr.includes(' ') ?
+                        fechaStr : `${fechaStr}T12:00:00.000Z`;
+                      const date = new Date(fechaCompleta);
+                      return date.toLocaleDateString('es-CO', {
+                        timeZone: 'America/Bogota',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      });
+                    })()}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estado)}`}>
                           {p.estado}
@@ -177,14 +190,21 @@ export default function DashboardProduccion() {
           </table>
         </div>
       </div>
-       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingProduccion ? "Editar Cosecha" : "Registrar Cosecha"}>
-          <ProduccionForm 
-              onSave={handleSave}
-              onCancel={handleCloseModal}
-              initialData={editingProduccion || undefined}
+       <Modal isOpen={isModalOpen} onOpenChange={handleCloseModal} size="2xl">
+         <ModalContent>
+           <ModalHeader>
+             {editingProduccion ? "Editar Cosecha" : "Registrar Cosecha"}
+           </ModalHeader>
+           <ModalBody>
+             <ProduccionForm
+               onSave={handleSave}
+               onCancel={handleCloseModal}
+               initialData={editingProduccion || undefined}
                cultivoId={parseInt(cultivoId)}
-          />
-      </Modal>
+             />
+           </ModalBody>
+         </ModalContent>
+       </Modal>
     </div>
   );
 }

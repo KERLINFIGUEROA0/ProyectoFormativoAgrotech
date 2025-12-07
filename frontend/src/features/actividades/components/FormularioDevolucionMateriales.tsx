@@ -340,7 +340,7 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
             Previsualización de Costos (Transacción a Generar)
           </h4>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200 bg-white">
               <thead className="bg-slate-100">
                 <tr>

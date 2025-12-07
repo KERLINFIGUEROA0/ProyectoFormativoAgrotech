@@ -56,5 +56,5 @@ export const formatDateDisplay = (dateString: string | Date): string => {
 
 // 6. Formatear para tablas y nombres de archivo
 export const formatToTable = (dateString: string | Date): string => {
-  return formatToColombiaTime(dateString);
+  return formatDateOnly(dateString);
 };
