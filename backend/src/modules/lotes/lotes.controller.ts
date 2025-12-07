@@ -128,58 +128,46 @@ export class LotesController {
 
   @Post('reporte-trazabilidad')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
-    console.log('Recibiendo solicitud de reporte:', dto);
     try {
+      // 1. Obtener datos (El servicio ahora garantizará que no sean null)
       const datos = await this.sensoresService.getFullTraceabilityData(dto);
-      console.log('Datos obtenidos, generando reporte...');
 
       if (dto.formato === 'pdf') {
-        console.log('Intentando generar PDF...');
-        try {
-          const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
-          console.log('PDF generado exitosamente, tamaño:', buffer.length);
 
-          res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.pdf`,
-            'Content-Length': buffer.length,
-          });
-          res.end(buffer);
-        } catch (pdfError) {
-          console.error('Error generando PDF:', pdfError);
-          // Si falla el PDF, devolver JSON para debugging
-          res.json({
-            error: 'Error generando PDF',
-            datos: datos,
-            pdfError: pdfError.message
-          });
-        }
+        // 2. Generar Buffer
+        const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
+
+        // 3. Configurar cabeceras CRÍTICAS para evitar "PDF corrupto" y caché
+        const filename = `trazabilidad_lote_${dto.loteId}_${new Date().getTime()}.pdf`;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', buffer.length.toString());
+
+        // Evitar caché del navegador (Soluciona el "Actualizar no sirve")
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        // 4. Enviar el archivo
+        res.end(buffer);
+
       } else if (dto.formato === 'csv') {
-        console.log('Generando CSV...');
-        try {
-          const csvContent = await this.pdfService.generarReporteTrazabilidadCSV(datos);
-          console.log('CSV generado exitosamente, tamaño:', csvContent.length);
-
-          res.set({
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.csv`,
-          });
-          res.send('\uFEFF' + csvContent); // BOM for Excel compatibility
-        } catch (csvError) {
-          console.error('Error generando CSV:', csvError);
-          res.json({
-            error: 'Error generando CSV',
-            datos: datos,
-            csvError: csvError.message
-          });
-        }
+        // ... lógica CSV existente ...
+        const csvContent = await this.pdfService.generarReporteTrazabilidadCSV(datos);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=trazabilidad_${dto.loteId}.csv`);
+        res.send('\uFEFF' + csvContent);
       } else {
-        // Devolver JSON para testing
         res.json(datos);
       }
     } catch (error) {
-      console.error('Error en descargarReporte:', error);
-      res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+      console.error('Error generando reporte:', error);
+      // En caso de error fatal, enviar un JSON claro en vez de un PDF roto
+      res.status(500).json({
+        message: 'Error generando el reporte. Posiblemente faltan datos críticos.',
+        error: error.message
+      });
     }
   }
 

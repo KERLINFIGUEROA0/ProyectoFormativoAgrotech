@@ -37,7 +37,6 @@ export default function GestionCultivosPage(): ReactElement {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCultivo, setEditingCultivo] = useState<Cultivo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [subloteEstadoFilter, setSubloteEstadoFilter] = useState<string>('todos');
   const [estadoFilter, setEstadoFilter] = useState<string>('todos');
 
 
@@ -112,17 +111,8 @@ export default function GestionCultivosPage(): ReactElement {
       filtered = filtered.filter(cultivo => cultivo.Estado === estadoFilter);
     }
 
-    // Filtrar por estado de sublotes
-    if (subloteEstadoFilter !== 'todos') {
-      filtered = filtered.filter(cultivo => {
-        // Buscar si el cultivo tiene sublotes con el estado filtrado
-        const sublotesDelCultivo = allSublotes.filter(s => s.cultivo?.id === cultivo.id);
-        return sublotesDelCultivo.some(s => s.estado === subloteEstadoFilter);
-      });
-    }
-
     setFilteredCultivos(filtered);
-  }, [cultivos, searchTerm, estadoFilter, subloteEstadoFilter, allSublotes]);
+  }, [cultivos, searchTerm, estadoFilter, allSublotes]);
 
   // Estadísticas
   const stats = {
@@ -463,23 +453,6 @@ export default function GestionCultivosPage(): ReactElement {
                 <SelectItem key="Activo">Activo</SelectItem>
                 <SelectItem key="En Cosecha">En Cosecha</SelectItem>
                 <SelectItem key="Finalizado">Finalizado</SelectItem>
-              </Select>
-              <Select
-                placeholder="Estado Sublotes"
-                startContent={<MapPin size={16} className="text-gray-400" />}
-                selectedKeys={[subloteEstadoFilter]}
-                onSelectionChange={(keys) => setSubloteEstadoFilter(Array.from(keys)[0] as string)}
-                size="sm"
-                variant="bordered"
-                className="w-full sm:w-40"
-                classNames={{
-                  trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
-                }}
-              >
-                <SelectItem key="todos">Todos</SelectItem>
-                <SelectItem key="Disponible">Disponible</SelectItem>
-                <SelectItem key="En cultivación">En cultivación</SelectItem>
-                <SelectItem key="En mantenimiento">En mantenimiento</SelectItem>
               </Select>
             </div>
           )}
