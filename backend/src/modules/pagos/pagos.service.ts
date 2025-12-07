@@ -75,36 +75,13 @@ export class PagosService {
     // Crear el pago
     const pago = this.pagoRepository.create({
       ...createPagoDto,
+      descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} - Actividad: ${actividad.titulo}`,
       fechaPago: new Date(createPagoDto.fechaPago),
     });
 
     const pagoGuardado = await this.pagoRepository.save(pago);
 
-    // Verificar si ya existe un gasto con la misma descripción, fecha y monto
-    const gastoExistente = await this.gastoRepository.findOne({
-      where: {
-        descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-        fecha: new Date(pagoGuardado.fechaPago),
-        monto: pagoGuardado.monto,
-        cultivo: actividad.cultivo,
-      },
-    });
-
-    if (!gastoExistente) {
-      // Crear el gasto correspondiente para el cultivo
-      const gasto = this.gastoRepository.create({
-        descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-        monto: pagoGuardado.monto,
-        fecha: new Date(pagoGuardado.fechaPago), // Asegurar que sea Date
-        tipo: TipoMovimiento.EGRESO,
-        cantidad: pagoGuardado.horasTrabajadas,
-        unidad: 'horas',
-        precioUnitario: pagoGuardado.tarifaHora,
-        cultivo: actividad.cultivo,
-      });
-
-      await this.gastoRepository.save(gasto);
-    }
+    // No crear gasto correspondiente para evitar duplicación en gestión de transacción
 
     return pagoGuardado;
   }
@@ -165,6 +142,7 @@ export class PagosService {
       // Crear el pago
       const pago = this.pagoRepository.create({
         ...createPagoDto,
+        descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} - Actividad: ${actividad.titulo}`,
         fechaPago: new Date(createPagoDto.fechaPago),
       });
 
@@ -176,40 +154,7 @@ export class PagosService {
     try {
       const savedPagos = await this.pagoRepository.save(pagos);
 
-      // Crear los gastos correspondientes para cada pago (solo si no existen)
-      const gastos: Gasto[] = [];
-      for (let i = 0; i < savedPagos.length; i++) {
-        const { usuario, actividad } = pagoData[i];
-        const pago = savedPagos[i];
-
-        // Verificar si ya existe un gasto con la misma descripción, fecha y monto
-        const gastoExistente = await this.gastoRepository.findOne({
-          where: {
-            descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-            fecha: new Date(pago.fechaPago),
-            monto: pago.monto,
-            cultivo: actividad.cultivo,
-          },
-        });
-
-        if (!gastoExistente) {
-          const gasto = this.gastoRepository.create({
-            descripcion: `Pago a pasante: ${usuario.nombre} ${usuario.apellidos} por actividad: ${actividad.titulo}`,
-            monto: pago.monto,
-            fecha: new Date(pago.fechaPago), // Asegurar que sea Date
-            tipo: TipoMovimiento.EGRESO,
-            cantidad: pago.horasTrabajadas,
-            unidad: 'horas',
-            precioUnitario: pago.tarifaHora,
-            cultivo: actividad.cultivo,
-          });
-          gastos.push(gasto);
-        }
-      }
-
-      if (gastos.length > 0) {
-        await this.gastoRepository.save(gastos);
-      }
+      // No crear gastos correspondientes para evitar duplicación en gestión de transacción
 
       return savedPagos;
     } catch (error) {

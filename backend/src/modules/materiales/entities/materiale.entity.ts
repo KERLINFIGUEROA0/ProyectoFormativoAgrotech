@@ -7,6 +7,7 @@ import { MedidasDeContenido } from '../../../common/enums/unidad-contenido.enum'
 import { TipoEmpaque } from '../../../common/enums/tipo-empaque.enum';
 import { TipoConsumo } from '../../../common/enums/tipo-consumo.enum';
 import { UnidadMedida } from '../../../common/enums/unidad-medida.enum';
+import { dateColumnTransformer } from '../../../common/transformers/date-column.transformer';
 
 // --- TRANSFORMER PARA CONVERTIR STRINGS DE POSTGRES A NÚMEROS ---
 const numericTransformer = {
@@ -54,7 +55,7 @@ export class Material {
   @Column({ name: 'proveedor', type: 'varchar', length: 100, nullable: true })
   proveedor: string | null;
 
-  @Column({ name: 'fecha_vencimiento', type: 'date', nullable: true })
+  @Column({ name: 'fecha_vencimiento', type: 'date', nullable: true, transformer: dateColumnTransformer })
   fechaVencimiento: Date | null;
 
   @Column({

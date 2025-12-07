@@ -9,6 +9,7 @@ import { getProduccionesPorCultivo, getStatsPorCultivo, deleteProduccion, create
 import { listarCultivos } from '../api/cultivosApi';
 import ProduccionForm from '../components/ProduccionForm';
 import type { Produccion, Stats} from '../interfaces/cultivos';
+import { formatDateOnly } from '../../../utils/dateUtils';
 
 const StatCard = ({ title, value, icon, isCurrency = true }: any) => {
   const formattedValue = isCurrency
@@ -155,7 +156,20 @@ export default function DashboardProduccion() {
                 return (
                   <tr key={p.id} className={`border-t hover:bg-gray-50 ${isSoldOut ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3 font-medium">PROD-{p.id}</td>
-                    <td className="px-4 py-3">{new Date(p.fecha).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3">{(() => {
+                      if (!p.fecha) return '';
+                      const fechaStr = p.fecha.toString();
+                      // Si no incluye tiempo, agregamos mediodía para evitar cambio de día
+                      const fechaCompleta = fechaStr.includes('T') || fechaStr.includes(' ') ?
+                        fechaStr : `${fechaStr}T12:00:00.000Z`;
+                      const date = new Date(fechaCompleta);
+                      return date.toLocaleDateString('es-CO', {
+                        timeZone: 'America/Bogota',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      });
+                    })()}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estado)}`}>
                           {p.estado}

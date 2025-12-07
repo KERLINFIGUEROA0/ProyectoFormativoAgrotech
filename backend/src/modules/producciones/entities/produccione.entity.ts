@@ -3,6 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'ty
 import { Cultivo } from '../../cultivos/entities/cultivo.entity';
 import { Venta } from '../../ventas/entities/venta.entity';
 import { Gasto } from '../../gastos_produccion/entities/gastos_produccion.entity';
+import { dateColumnTransformer } from '../../../common/transformers/date-column.transformer';
 
 @Entity('producciones')
 export class Produccion {
@@ -16,7 +17,7 @@ export class Produccion {
   @Column({ name: 'Cantidad_Original', type: 'int', nullable: true })
   cantidadOriginal: number;
 
-  @Column({ name: 'Fecha', type: 'timestamp', nullable: true })
+  @Column({ name: 'Fecha', type: 'timestamp', nullable: true, transformer: dateColumnTransformer })
   fecha: Date;
 
   // --- ✅ AÑADIDO: Campo de estado ---
