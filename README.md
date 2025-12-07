@@ -79,7 +79,7 @@ npm run dev  # Servidor en http://localhost:4321
 - **Módulos**: Documentación detallada de cada módulo del backend:
   - Actividades (formativas)
   - Cultivos y Producciones
-  - Lotes y Surcos
+  - Lotes y Sublotes
   - Materiales e Inventario
   - Usuarios y Permisos
   - Sensores IoT

@@ -32,7 +32,7 @@ Authorization: Bearer <jwt_token>
 **Ejemplo Request Body (Form-Data):**
 ```
 titulo: Siembra de tomates
-descripcion: Proceso completo de siembra manual en surcos preparados
+descripcion: Proceso completo de siembra manual en sublotes preparados
 fecha: 2024-01-15T08:00:00.000Z
 cultivo: 1
 materiales: [{"materialId": 1, "cantidadUsada": 5}]
@@ -50,7 +50,7 @@ files: [imagen1.jpg, imagen2.jpg]
   "data": {
     "id": 1,
     "titulo": "Siembra de tomates",
-    "descripcion": "Proceso completo de siembra manual en surcos preparados",
+    "descripcion": "Proceso completo de siembra manual en sublotes preparados",
     "fecha": "2024-01-15T08:00:00.000Z",
     "estado": "pendiente",
     "horas": 4,
@@ -101,7 +101,7 @@ Authorization: Bearer <jwt_token>
     {
       "id": 1,
       "titulo": "Siembra de tomates",
-      "descripcion": "Proceso completo de siembra manual en surcos preparados",
+      "descripcion": "Proceso completo de siembra manual en sublotes preparados",
       "fecha": "2024-01-15T08:00:00.000Z",
       "estado": "completado",
       "horas": 4,
@@ -472,7 +472,7 @@ files: [instrucciones.pdf, plano_suelo.jpg]
 {
   "id": 1,
   "titulo": "Siembra de tomates",
-  "descripcion": "Proceso completo de siembra manual en surcos preparados",
+  "descripcion": "Proceso completo de siembra manual en sublotes preparados",
   "fecha": "2024-01-15T08:00:00.000Z",
   "estado": "completado",
   "horas": 4,
@@ -503,9 +503,9 @@ files: [instrucciones.pdf, plano_suelo.jpg]
       "nombre": "Lote Principal",
       "area": 1500.5
     },
-    "surco": {
+    "sublote": {
       "id": 1,
-      "nombre": "Surco Norte"
+      "nombre": "Sublote Norte"
     }
   },
   "materiales": [
@@ -628,4 +628,4 @@ Similar a CreateActividadDto con campos opcionales.
 - **Cultivos**: Actividades relacionadas con cultivos específicos
 - **Materiales**: Control de inventario y consumo
 - **Usuarios**: Distinción entre instructores y aprendices
-- **Lotes/Surcos**: Ubicación geográfica de las actividades
+- **Lotes/Sublotes**: Ubicación geográfica de las actividades

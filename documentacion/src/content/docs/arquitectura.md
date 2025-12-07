@@ -1017,7 +1017,7 @@ erDiagram
         datetime updated_at
     }
 
-    Surco {
+    Sublote {
         int id PK
         varchar nombre
         varchar descripcion
@@ -1041,7 +1041,7 @@ erDiagram
         varchar estado
         date fecha_plantado
         int lote_id FK
-        int surco_id FK
+        int sublote_id FK
         int usuario_id FK
         datetime created_at
         datetime updated_at
@@ -1140,7 +1140,7 @@ erDiagram
         decimal valor_maximo_alerta
         varchar estado
         varchar topic
-        int surco_id FK
+        int sublote_id FK
         int tipo_sensor_id FK
         datetime created_at
         datetime updated_at
@@ -1309,6 +1309,6 @@ erDiagram
 ## Notas sobre la Arquitectura
 - **Modularidad**: Cada módulo (actividades, materiales, etc.) sigue el patrón Controller-Service-Entity.
 - **Seguridad**: Guards y estrategias JWT protegen rutas; permisos gestionan accesos.
-- **IoT**: MQTT integra sensores en surcos para monitoreo en tiempo real.
+- **IoT**: MQTT integra sensores en Lotes para monitoreo en tiempo real.
 - **Cache**: Redis acelera consultas frecuentes.
 - Para más detalles, ver [DTOs y Validaciones](/dtos) y [Despliegue](/despliegue).

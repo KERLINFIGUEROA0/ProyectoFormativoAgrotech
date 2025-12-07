@@ -243,7 +243,7 @@ file: [Archivo de imagen]
       "estado": "Cosechado"
     }
   ],
-  "surcos": [
+  "sublotes": [
     {
       "id": 1,
       "numero": 1,

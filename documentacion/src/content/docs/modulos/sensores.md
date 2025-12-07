@@ -14,13 +14,13 @@ title: "Módulo Sensores"
 **Request Body:**
 ```json
 {
-  "nombre": "Sensor Temperatura Surco 1",
-  "surcoId": 1,
+  "nombre": "Sensor Temperatura Sublote 1",
+  "subloteId": 1,
   "fecha_instalacion": "2024-01-15",
   "valor_minimo_alerta": 10.0,
   "valor_maximo_alerta": 35.0,
   "estado": "Activo",
-  "topic": "agrotech/surco1/temperatura",
+  "topic": "agrotech/sublote1/temperatura",
   "broker": {
     "nombre": "Broker Principal",
     "protocolo": "mqtt",
@@ -36,16 +36,16 @@ title: "Módulo Sensores"
 ```json
 {
   "success": true,
-  "message": "Sensor \"Sensor Temperatura Surco 1\" creado.",
+  "message": "Sensor \"Sensor Temperatura Sublote 1\" creado.",
   "data": {
     "id": 1,
-    "nombre": "Sensor Temperatura Surco 1",
-    "surcoId": 1,
+    "nombre": "Sensor Temperatura Sublote 1",
+    "subloteId": 1,
     "fecha_instalacion": "2024-01-15T00:00:00.000Z",
     "valor_minimo_alerta": 10.0,
     "valor_maximo_alerta": 35.0,
     "estado": "Activo",
-    "topic": "agrotech/surco1/temperatura",
+    "topic": "agrotech/sublote1/temperatura",
     "tipo_sensor": {
       "id": 1,
       "nombre": "Temperatura"
@@ -67,16 +67,16 @@ title: "Módulo Sensores"
   "data": [
     {
       "id": 1,
-      "nombre": "Sensor Temperatura Surco 1",
-      "surcoId": 1,
+      "nombre": "Sensor Temperatura Sublote 1",
+      "subloteId": 1,
       "fecha_instalacion": "2024-01-15T00:00:00.000Z",
       "valor_minimo_alerta": 10.0,
       "valor_maximo_alerta": 35.0,
       "estado": "Activo",
-      "topic": "agrotech/surco1/temperatura",
-      "surco": {
+      "topic": "agrotech/sublote1/temperatura",
+      "sublote": {
         "id": 1,
-        "nombre": "Surco Norte",
+        "nombre": "Sublote Norte",
         "lote": {
           "id": 1,
           "nombre": "Lote Principal"
@@ -102,10 +102,10 @@ title: "Módulo Sensores"
 **Request Body:**
 ```json
 {
-  "nombre": "Sensor Temperatura Surco 1 - Actualizado",
+  "nombre": "Sensor Temperatura Sublote 1 - Actualizado",
   "valor_minimo_alerta": 8.0,
   "valor_maximo_alerta": 38.0,
-  "topic": "agrotech/surco1/temp"
+  "topic": "agrotech/sublote1/temp"
 }
 ```
 
@@ -116,10 +116,10 @@ title: "Módulo Sensores"
   "message": "Sensor con ID 1 actualizado.",
   "data": {
     "id": 1,
-    "nombre": "Sensor Temperatura Surco 1 - Actualizado",
+    "nombre": "Sensor Temperatura Sublote 1 - Actualizado",
     "valor_minimo_alerta": 8.0,
     "valor_maximo_alerta": 38.0,
-    "topic": "agrotech/surco1/temp"
+    "topic": "agrotech/sublote1/temp"
   }
 }
 ```
@@ -173,16 +173,16 @@ title: "Módulo Sensores"
 ```json
 {
   "id": 1,
-  "nombre": "Sensor Temperatura Surco 1",
-  "surcoId": 1,
+  "nombre": "Sensor Temperatura Sublote 1",
+  "subloteId": 1,
   "fecha_instalacion": "2024-01-15T00:00:00.000Z",
   "valor_minimo_alerta": 10.0,
   "valor_maximo_alerta": 35.0,
   "estado": "Activo",
-  "topic": "agrotech/surco1/temperatura",
-  "surco": {
+  "topic": "agrotech/sublote1/temperatura",
+  "sublote": {
     "id": 1,
-    "nombre": "Surco Norte",
+    "nombre": "Sublote Norte",
     "lote": {
       "id": 1,
       "nombre": "Lote Principal"
@@ -209,7 +209,7 @@ title: "Módulo Sensores"
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | - |
-| `surcoId` | `number` | `@IsNumber, @IsNotEmpty` | - |
+| `subloteId` | `number` | `@IsNumber, @IsNotEmpty` | - |
 | `fecha_instalacion` | `string` | `@IsDateString, @IsNotEmpty` | - |
 | `valor_minimo_alerta` | `number` | `@IsNumber, @IsNotEmpty` | - |
 | `valor_maximo_alerta` | `number` | `@IsNumber, @IsNotEmpty` | - |
@@ -221,7 +221,7 @@ title: "Módulo Sensores"
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsOptional, @IsString` | - |
-| `surcoId` | `number` | `@IsOptional, @IsNumber` | - |
+| `subloteId` | `number` | `@IsOptional, @IsNumber` | - |
 | `fecha_instalacion` | `string` | `@IsOptional, @IsDateString` | - |
 | `valor_minimo_alerta` | `number` | `@IsOptional, @IsNumber` | - |
 | `valor_maximo_alerta` | `number` | `@IsOptional, @IsNumber` | - |
@@ -238,7 +238,7 @@ title: "Módulo Sensores"
 - **Monitoreo en Tiempo Real**: Sensores conectados via MQTT
 - **Alertas Automáticas**: Notificaciones cuando valores exceden límites
 - **Control de Estados**: Activación/desactivación remota
-- **Asociación Espacial**: Vinculación con surcos y lotes específicos
+- **Asociación Espacial**: Vinculación con sublotes y lotes específicos
 - **Configuración Flexible**: Tópicos MQTT personalizables
 
 ## Tipos de Sensores Soportados

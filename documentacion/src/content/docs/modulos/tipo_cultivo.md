@@ -152,9 +152,9 @@ title: "Módulo Tipo Cultivo"
         "id": 1,
         "nombre": "Lote Principal"
       },
-      "surco": {
+      "sublote": {
         "id": 1,
-        "nombre": "Surco Norte"
+        "nombre": "Sublote Norte"
       }
     }
   ]
@@ -188,6 +188,6 @@ Extiende `CreateTipoCultivoDto` con todos los campos opcionales.
 ## Integración con Otros Módulos
 
 - **Cultivos**: Clasificación de cultivos por tipo
-- **Lotes/Surcos**: Organización espacial por tipo de cultivo
+- **Lotes/Sublotes**: Organización espacial por tipo de cultivo
 - **Actividades**: Planificación de actividades por tipo de cultivo
 - **Reportes**: Agrupación de datos por categorías de cultivo
