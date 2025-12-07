@@ -279,7 +279,7 @@ Authorization: Bearer <jwt_token>
   "actividad": {
     "id": 1,
     "titulo": "Siembra de tomates",
-    "descripcion": "Proceso completo de siembra manual en surcos preparados",
+    "descripcion": "Proceso completo de siembra manual en sublotes preparados",
     "fecha": "2024-01-15T08:00:00.000Z",
     "estado": "completado",
     "horas": 4,
