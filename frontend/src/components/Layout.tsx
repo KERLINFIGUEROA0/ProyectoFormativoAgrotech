@@ -30,7 +30,7 @@ export default function Layout() {
         setActiveSection={setActiveSection}
         handleLogout={handleLogout}
       />
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-6 overflow-y-auto border border-green-100 rounded-3xl ml-4 my-4">
         {/* Pasamos handleLogout en el contexto para que la página de perfil pueda usarlo */}
         <Outlet context={{ handleLogout }} />
       </main>

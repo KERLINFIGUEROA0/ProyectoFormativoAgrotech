@@ -121,19 +121,20 @@ export const getCultivosActivosLote = async (loteId: number) => {
 };
 
 export const descargarReporteApi = async (data: {
-  formato: 'pdf' | 'excel' | 'json';
+  formato: 'pdf' | 'csv' | 'json';
   loteId: number;
   subloteId?: number;
+  cultivoId?: number;
   fechaInicio: string;
   fechaFin: string;
 }) => {
   if (data.formato === 'json') {
     // Para testing, devolver JSON directamente
-    const response = await api.post('/sensores/reporte-trazabilidad', data);
+    const response = await api.post('/lotes/reporte-trazabilidad', data);
     return response.data;
   } else {
-    // Para PDF/Excel, descargar como blob
-    const response = await api.post('/sensores/reporte-trazabilidad', data, {
+    // Para PDF/CSV, descargar como blob
+    const response = await api.post('/lotes/reporte-trazabilidad', data, {
       responseType: 'blob',
     });
     return response.data; // Retorna el blob
