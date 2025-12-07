@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
+import { Trash2 } from 'lucide-react';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
 import TransaccionForm from '../components/TransaccionForm';
@@ -10,7 +11,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalFooter,
   Button,
   Select,
   SelectItem,
@@ -285,22 +285,40 @@ export default function GestionTransaccionesPage(): ReactElement {
          </ModalContent>
        </Modal>
 
-       <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete} size="md">
+       <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete}>
          <ModalContent>
-           <ModalHeader>Confirmar Eliminación</ModalHeader>
-           <ModalBody>
-             <p className="text-center">
-               ¿Estás seguro de que quieres eliminar esta {deleteModal.item?.tipo === 'ingreso' ? 'venta' : 'gasto'}?
-             </p>
+           <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+             <div className="flex flex-col items-center gap-3">
+               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                 <Trash2 className="text-red-600" size={20} />
+               </div>
+               <h4 className="text-lg font-semibold text-center">¿Eliminar transacción?</h4>
+             </div>
+           </ModalHeader>
+           <ModalBody className="text-center">
+             <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
+               <div className="font-medium">{deleteModal.item?.tipo === 'ingreso' ? 'Venta' : 'Gasto'}</div>
+               <div className="text-xs text-gray-500 mt-1">Transacción financiera</div>
+             </div>
+             <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer.</p>
+             <div className="flex gap-3 mt-4 w-full justify-center">
+               <Button
+                 onClick={cancelDelete}
+                 color="default"
+                 variant="light"
+                 className="flex-1 max-w-[120px]"
+               >
+                 Cancelar
+               </Button>
+               <Button
+                 onClick={confirmDelete}
+                 color="danger"
+                 className="flex-1 max-w-[120px]"
+               >
+                 Eliminar
+               </Button>
+             </div>
            </ModalBody>
-           <ModalFooter>
-             <Button onClick={cancelDelete} color="default" variant="light">
-               Cancelar
-             </Button>
-             <Button onClick={confirmDelete} color="danger">
-               Eliminar
-             </Button>
-           </ModalFooter>
          </ModalContent>
        </Modal>
    </div>

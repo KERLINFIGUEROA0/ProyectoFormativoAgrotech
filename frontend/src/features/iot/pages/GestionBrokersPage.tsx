@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Globe, MoreVertical, Power, PowerOff } from 'lucide-react';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/react";
 import {
   listarBrokers,
   eliminarBroker,
@@ -9,6 +9,7 @@ import {
 } from '../api/mqttConfigApi';
 import BrokerFormModal from '../components/BrokerFormModal';
 import type { Broker } from '../interfaces/iot';
+import { Button } from "@heroui/react";
 
 // --- Componente de Tarjeta de Broker ---
 interface BrokerCardProps {
@@ -171,36 +172,47 @@ export default function GestionBrokersPage(): ReactElement {
       />
 
       {isDeleteModalOpen && deletingBroker && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 relative border border-gray-200 shadow-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <FaExclamationTriangle className="text-red-600" size={24} />
+        <Modal isOpen={isDeleteModalOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsDeleteModalOpen(false);
+            setDeletingBroker(null);
+          }
+        }}>
+          <ModalContent>
+            <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="text-red-600" size={20} />
+                </div>
+                <h4 className="text-lg font-semibold text-center">¿Eliminar broker?</h4>
               </div>
-              <h4 className="text-lg font-semibold text-gray-900">¿Eliminar broker?</h4>
-              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
-                {deletingBroker.nombre}
+            </ModalHeader>
+            <ModalBody className="text-center">
+              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
+                <div className="font-medium">{deletingBroker.nombre}</div>
+                <div className="text-xs text-gray-500 mt-1">Broker MQTT</div>
               </div>
-              <p className="text-xs text-gray-500">
-                Esta acción no se puede deshacer. Se eliminará permanentemente el broker y todos sus tópicos suscritos.
-              </p>
-              <div className="flex gap-3 mt-4 w-full">
-                <button
+              <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer. Se eliminará permanentemente el broker y todos sus tópicos suscritos.</p>
+              <div className="flex gap-3 mt-4 w-full justify-center">
+                <Button
                   onClick={closeDeleteModal}
-                  className="flex-1 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-gray-700 font-medium"
+                  color="default"
+                  variant="light"
+                  className="flex-1 max-w-[120px]"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={confirmDeleteBroker}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  color="danger"
+                  className="flex-1 max-w-[120px]"
                 >
                   Eliminar
-                </button>
+                </Button>
               </div>
-            </div>
-          </div>
-        </div>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ export default function GestionTratamientosPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTratamiento, setEditingTratamiento] = useState<Partial<Tratamiento> | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: Tratamiento | null }>({ isOpen: false, item: null });
 
   const fetchData = async () => {
     try {
@@ -116,22 +117,29 @@ const handleSave = async (data: Partial<Tratamiento>) => {
 
 
   const handleDelete = (id: number) => {
-    toast.error('¿Estás seguro de que quieres eliminar este tratamiento?', {
-      action: {
-        label: 'Eliminar',
-        onClick: async () => {
-          const toastId = toast.loading("Eliminando...");
-          try {
-            await eliminarTratamiento(id);
-            toast.success('Tratamiento eliminado.', { id: toastId });
-            fetchData();
-          } catch {
-            toast.error('No se pudo eliminar el tratamiento.', { id: toastId });
-          }
-        },
-      },
-      cancel: { label: 'Cancelar', onClick: () => {} },
-    });
+    const tratamiento = tratamientos.find(t => t.id === id);
+    if (tratamiento) {
+      setDeleteModal({ isOpen: true, item: tratamiento });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.item) return;
+
+    const toastId = toast.loading("Eliminando tratamiento...");
+    try {
+      await eliminarTratamiento(deleteModal.item.id);
+      toast.success('Tratamiento eliminado.', { id: toastId });
+      fetchData();
+    } catch {
+      toast.error('No se pudo eliminar el tratamiento.', { id: toastId });
+    } finally {
+      setDeleteModal({ isOpen: false, item: null });
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModal({ isOpen: false, item: null });
   };
 
   const getStatusClass = (status: string) => {
@@ -215,6 +223,45 @@ const handleSave = async (data: Partial<Tratamiento>) => {
               onCancel={handleCloseModal}
               cultivos={cultivos}
             />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="text-red-600" size={20} />
+              </div>
+              <h4 className="text-lg font-semibold text-center">¿Eliminar tratamiento?</h4>
+            </div>
+          </ModalHeader>
+          <ModalBody className="text-center">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
+              <div className="font-medium">{deleteModal.item?.descripcion}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {deleteModal.item?.cultivo?.nombre || 'Tratamiento general'}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3 mt-4 w-full justify-center">
+              <Button
+                onClick={cancelDelete}
+                color="default"
+                variant="light"
+                className="flex-1 max-w-[120px]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                color="danger"
+                className="flex-1 max-w-[120px]"
+              >
+                Eliminar
+              </Button>
+            </div>
           </ModalBody>
         </ModalContent>
       </Modal>

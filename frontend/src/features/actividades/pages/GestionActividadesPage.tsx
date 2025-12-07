@@ -736,31 +736,42 @@ const GestionActividadesPage: React.FC = () => {
       />
 
       {/* Modal de Eliminar Actividad */}
-      <Modal isOpen={showDeleteModal} onOpenChange={handleDeleteCancel} size="md">
+      <Modal isOpen={showDeleteModal} onOpenChange={handleDeleteCancel}>
         <ModalContent>
-          <ModalHeader className="flex flex-col items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-              <Trash2 className="text-red-600" size={20} />
+          <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="text-red-600" size={20} />
+              </div>
+              <h4 className="text-lg font-semibold text-center">¿Eliminar actividad?</h4>
             </div>
-            <h4 className="text-lg font-semibold">¿Eliminar actividad?</h4>
           </ModalHeader>
           <ModalBody className="text-center">
-            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
               <div className="font-medium">{actividadToDelete?.titulo}</div>
               <div className="text-xs text-gray-500 mt-1">
                 {actividadToDelete?.cultivo?.nombre || 'Sin cultivo asignado'}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-4">Esta acción no se puede deshacer.</p>
+            <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3 mt-4 w-full justify-center">
+              <Button
+                onClick={handleDeleteCancel}
+                color="default"
+                variant="light"
+                className="flex-1 max-w-[120px]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                color="danger"
+                className="flex-1 max-w-[120px]"
+              >
+                Eliminar
+              </Button>
+            </div>
           </ModalBody>
-          <ModalFooter>
-            <Button onClick={handleDeleteCancel} variant="light">
-              Cancelar
-            </Button>
-            <Button onClick={handleDeleteConfirm} color="danger">
-              Eliminar
-            </Button>
-          </ModalFooter>
         </ModalContent>
       </Modal>
 
