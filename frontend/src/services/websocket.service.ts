@@ -44,9 +44,15 @@ class WebSocketService {
     this.socket.on('disconnect', (reason) => {
       console.warn('🔴 WebSocket desconectado:', reason);
       if (reason === 'io server disconnect') {
-        // Si el servidor nos echó, no intentamos reconectar automáticamente
-        // para evitar el bucle infinito. El AuthContext se encargará de reconectar cuando sea necesario.
-        console.warn('El servidor desconectó la conexión WebSocket.');
+        console.warn('El servidor desconectó la conexión WebSocket. Intentando reconectar...');
+
+        // Intentar reconectar después de un breve delay
+        setTimeout(() => {
+          if (this.currentToken) {
+            console.log('🔄 Intentando reconectar WebSocket...');
+            this.connect(this.currentToken);
+          }
+        }, 2000); // Esperar 2 segundos antes de reconectar
       }
     });
 

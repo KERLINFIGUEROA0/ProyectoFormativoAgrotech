@@ -11,7 +11,7 @@ interface Props {
 }
 
 const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { register, handleSubmit, setValue } = useForm();
+  const { handleSubmit, setValue } = useForm();
   const [lotes, setLotes] = useState([]);
   const [cultivos, setCultivos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,11 +19,16 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
   const [selectedFormato, setSelectedFormato] = useState('pdf');
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
   const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       // Cargar Lotes al abrir
       obtenerLotes().then(response => setLotes(response.data || []));
+      // Resetear fechas al abrir el modal
+      setFechaInicio('');
+      setFechaFin('');
     }
   }, [isOpen]);
 
@@ -32,7 +37,11 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
       // Cargar cultivos activos del lote
       getCultivosActivosLote(selectedLoteId).then(response => {
         console.log('Cultivos cargados:', response.data);
-        setCultivos(response.data || []);
+        const cultivosData = response.data || [];
+        setCultivos(cultivosData);
+
+        // Para reporte de lote completo, dejar fechas libres (usuario elige el rango)
+        // Solo se configuran automáticamente cuando se selecciona un cultivo específico
       }).catch(error => {
         console.error('Error cargando cultivos:', error);
         setCultivos([]);
@@ -40,8 +49,35 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     } else {
       // Limpiar cuando no hay lote seleccionado
       setCultivos([]);
+      setFechaInicio('');
+      setFechaFin('');
+      setSelectedCultivoId(null);
     }
   }, [selectedLoteId]);
+
+  // Controlar cambios en fecha de inicio
+  useEffect(() => {
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      // Si la fecha de inicio es posterior a la fecha de fin, ajustar fecha de fin
+      setFechaFin(fechaInicio);
+    }
+  }, [fechaInicio, fechaFin]);
+
+  // Manejadores de cambio de fecha
+  const handleFechaInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevaFechaInicio = e.target.value;
+    setFechaInicio(nuevaFechaInicio);
+    setValue('fechaInicio', nuevaFechaInicio);
+  };
+
+  const handleFechaFinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevaFechaFin = e.target.value;
+    // Solo permitir fechas desde la fecha de inicio hacia adelante
+    if (!fechaInicio || nuevaFechaFin >= fechaInicio) {
+      setFechaFin(nuevaFechaFin);
+      setValue('fechaFin', nuevaFechaFin);
+    }
+  };
 
   const onSubmit = async (data: any) => {
     setLoading(true);
@@ -170,7 +206,42 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
             selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys);
-              setSelectedCultivoId(selected.length > 0 ? Number(selected[0]) : null);
+              const cultivoId = selected.length > 0 ? Number(selected[0]) : null;
+              setSelectedCultivoId(cultivoId);
+
+              if (cultivoId) {
+                // Buscar el cultivo seleccionado para obtener su fecha de siembra
+                const cultivoSeleccionado = cultivos.find((c: any) => c.id === cultivoId);
+
+                if (cultivoSeleccionado && (cultivoSeleccionado as any).Fecha_Plantado) {
+                  // Establecer fecha de inicio como fecha de siembra
+                  const fechaSiembraRaw = (cultivoSeleccionado as any).Fecha_Plantado;
+
+                  // Manejar diferentes formatos de fecha
+                  let fechaSiembra: string;
+                  if (typeof fechaSiembraRaw === 'string') {
+                    // Si ya es string, tomar los primeros 10 caracteres (YYYY-MM-DD)
+                    fechaSiembra = fechaSiembraRaw.substring(0, 10);
+                  } else {
+                    // Si es Date object, convertir
+                    fechaSiembra = new Date(fechaSiembraRaw).toISOString().split('T')[0];
+                  }
+
+                  // Establecer fecha fin como hoy (editable por el usuario)
+                  const hoy = new Date().toISOString().split('T')[0];
+
+                  setFechaInicio(fechaSiembra);
+                  setFechaFin(hoy);
+                  setValue('fechaInicio', fechaSiembra);
+                  setValue('fechaFin', hoy);
+                }
+              } else {
+                // Si se deselecciona el cultivo, dejar fechas libres para reporte de lote completo
+                setFechaInicio('');
+                setFechaFin('');
+                setValue('fechaInicio', '');
+                setValue('fechaFin', '');
+              }
             }}
             placeholder="Todos los cultivos del lote"
             fullWidth
@@ -198,14 +269,20 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
           <Input
             label="Fecha Inicio"
             type="date"
-            {...register('fechaInicio', { required: true })}
+            value={fechaInicio}
+            onChange={handleFechaInicioChange}
             fullWidth
+            required
           />
           <Input
             label="Fecha Fin"
             type="date"
-            {...register('fechaFin', { required: true })}
+            value={fechaFin}
+            onChange={handleFechaFinChange}
+            min={fechaInicio || undefined}
             fullWidth
+            required
+            disabled={!fechaInicio}
           />
         </div>
 

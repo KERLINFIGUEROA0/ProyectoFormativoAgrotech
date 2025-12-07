@@ -938,6 +938,7 @@ export class SensoresService {
       .select([
         'cultivo.id',
         'cultivo.nombre',
+        'cultivo.Fecha_Plantado',
         'tipoCultivo.nombre',
         'sublotes.nombre',
         'subloteLote.nombre'

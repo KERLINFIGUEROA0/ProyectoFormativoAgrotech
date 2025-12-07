@@ -1426,7 +1426,6 @@ export class PdfService {
               PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
               ========================================== -->
         <div class="footer">
-            <p>Este reporte es una herramienta de apoyo. Verifique siempre las condiciones en campo antes de aplicar correctivos mayores.</p>
             <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(safeData.fechaGeneracion))}</p>
             <p style="text-align: center; font-size: 10px; color: #666;">Página 1</p>
         </div>
