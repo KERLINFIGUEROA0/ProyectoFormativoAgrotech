@@ -438,6 +438,24 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
           </div>
           <div>
             <Select
+              name="lote"
+              selectedKeys={formData.lote ? [formData.lote] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setFormData(prev => ({ ...prev, lote: selected as string, sublote: '' })); // Reset sublote when lote changes
+              }}
+              label="Lote (Opcional)"
+              placeholder="Seleccionar lote"
+            >
+              {lotesDisponibles.map(l => (
+                <SelectItem key={l.id.toString()}>
+                  {l.nombre}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Select
               name="cultivo"
               selectedKeys={formData.cultivo ? [formData.cultivo] : []}
               onSelectionChange={(keys) => {
@@ -458,24 +476,6 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
               {cultivos.map(c => (
                 <SelectItem key={c.id.toString()}>
                   {c.nombre}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Select
-              name="lote"
-              selectedKeys={formData.lote ? [formData.lote] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, lote: selected as string, sublote: '' })); // Reset sublote when lote changes
-              }}
-              label="Lote (Opcional)"
-              placeholder="Seleccionar lote"
-            >
-              {lotesDisponibles.map(l => (
-                <SelectItem key={l.id.toString()}>
-                  {l.nombre}
                 </SelectItem>
               ))}
             </Select>
