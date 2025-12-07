@@ -221,7 +221,6 @@ const GestionMovimientosPage: React.FC = () => {
               <TableColumn>Descripción</TableColumn>
               <TableColumn>Usuario</TableColumn>
               <TableColumn>Fecha</TableColumn>
-              <TableColumn>Referencia</TableColumn>
             </TableHeader>
             <TableBody emptyContent={"No se encontraron movimientos"}>
               {movimientosFiltrados.map((movimiento) => {
@@ -322,7 +321,6 @@ const GestionMovimientosPage: React.FC = () => {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{movimiento.referencia || 'N/A'}</TableCell>
                 </TableRow>
                 );
               })}

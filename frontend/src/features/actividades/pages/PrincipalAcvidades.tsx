@@ -7,6 +7,7 @@ import {
 
 import { listarActividades, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
 import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
+import { getEstadoTexto } from '../utils/estadoUtils';
 
 import AsignacionActividadForm from '../components/AsignacionActividadForm';
 import { Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
@@ -83,8 +84,11 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
   } else if (actividad.estado === 'pendiente') {
     statusText = 'Pendiente';
     statusColor = 'text-gray-500';
+  } else if (actividad.estado === 'en proceso') {
+    statusText = 'En Proceso';
+    statusColor = 'text-yellow-600';
   } else {
-    statusText = `Asignado a ${actividad.usuario?.nombre || 'N/A'}`;
+    statusText = `Asignado a ${actividad.responsable?.nombre || actividad.usuario?.nombre || 'N/A'}`;
     statusColor = 'text-gray-600';
   }
 

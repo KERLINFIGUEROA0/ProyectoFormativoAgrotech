@@ -328,18 +328,19 @@ export class ActividadesService {
         }
       }
 
-      // --- REGISTRO DE GASTO MANO DE OBRA ---
-      const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
-      if (costoManoDeObra > 0) {
-        const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: parseFloat(costoManoDeObra.toFixed(2)),
-          fecha: saved.fecha,
-          tipo: TipoMovimiento.EGRESO,
-          cultivo: cultivoEntidad ?? undefined,
-        });
-        await queryRunner.manager.save(nuevoGasto);
-      }
+      // --- REGISTRO DE GASTO MANO DE OBRA REMOVIDO ---
+      // Los gastos de mano de obra se registran cuando se pagan los pasantes
+      // const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
+      // if (costoManoDeObra > 0) {
+      //   const nuevoGasto = gastoRepo.create({
+      //     descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+      //     monto: parseFloat(costoManoDeObra.toFixed(2)),
+      //     fecha: saved.fecha,
+      //     tipo: TipoMovimiento.EGRESO,
+      //     cultivo: cultivoEntidad ?? undefined,
+      //   });
+      //   await queryRunner.manager.save(nuevoGasto);
+      // }
 
       await queryRunner.commitTransaction();
       return saved;
@@ -427,6 +428,8 @@ export class ActividadesService {
         'responsable',
         'actividadMaterial',
         'actividadMaterial.material',
+        'respuestas',
+        'respuestas.usuario',
       ],
       select: ['id', 'titulo', 'fecha', 'descripcion', 'img', 'archivoInicial', 'estado', 'horas', 'tarifaHora', 'asignados', 'respuestaTexto', 'respuestaArchivos', 'calificacion', 'comentarioInstructor'],
     });
@@ -606,18 +609,19 @@ export class ActividadesService {
         }
       }
 
-      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA
-      const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
-      if (costoManoDeObra > 0) {
-        const nuevoGasto = gastoRepo.create({
-          descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
-          monto: parseFloat(costoManoDeObra.toFixed(2)),
-          fecha: saved.fecha,
-          tipo: TipoMovimiento.EGRESO,
-          cultivo: cultivoEntidad ?? undefined,
-        });
-        await queryRunner.manager.save(nuevoGasto);
-      }
+      // 5. REGISTRAR NUEVO GASTO MANO DE OBRA REMOVIDO
+      // Los gastos de mano de obra se registran cuando se pagan los pasantes
+      // const costoManoDeObra = (Number(horas) || 0) * (Number(tarifaHora) || 0);
+      // if (costoManoDeObra > 0) {
+      //   const nuevoGasto = gastoRepo.create({
+      //     descripcion: `Mano de obra: ${nombreUsuario} (Act: ${saved.titulo})`,
+      //     monto: parseFloat(costoManoDeObra.toFixed(2)),
+      //     fecha: saved.fecha,
+      //     tipo: TipoMovimiento.EGRESO,
+      //     cultivo: cultivoEntidad ?? undefined,
+      //   });
+      //   await queryRunner.manager.save(nuevoGasto);
+      // }
 
       await queryRunner.commitTransaction();
       return this.findOne(id);
@@ -793,18 +797,8 @@ export class ActividadesService {
                     const precioUnitario = Number(material.precio) || 0;
                     const costoDano = cantMalasUsuario * precioUnitario;
 
-                    // A. TRANSACCIÓN FINANCIERA (GASTO)
-                    const cobroPorDano = gastoRepo.create({
-                        descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo})`,
-                        monto: parseFloat(costoDano.toFixed(2)),
-                        fecha: new Date(),
-                        tipo: TipoMovimiento.EGRESO,
-                        cultivo: actividad.cultivo,
-                        cantidad: cantMalasUsuario,
-                        unidad: unidadParaCalculo,
-                        precioUnitario: precioUnitario
-                    });
-                    await queryRunner.manager.save(cobroPorDano);
+                    // A. TRANSACCIÓN FINANCIERA (GASTO) - Se crea en devolverMaterialesFinal
+                    // No crear gastos aquí para evitar duplicación
 
                     await this.movimientosService.registrarMovimiento(
                         TipoMovimiento.EGRESO,
@@ -932,21 +926,33 @@ export class ActividadesService {
                         console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
                         console.log(`        - factorUnidad: ${factorUnidad}`);
                         console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
-   
-                        // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
-                        const nuevoGasto = gastoRepo.create({
-                              descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
-                              monto: parseFloat(nuevoCostoTotal.toFixed(2)),
-                              fecha: new Date(),
-                              tipo: TipoMovimiento.EGRESO,
-                              cultivo: actividad.cultivo ?? undefined,
-                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
-                              unidad: asignacionOriginal.unidadMedida,
-                              precioUnitario: precioUnitarioGasto
+
+                        // Verificar si ya existe un gasto para este material en esta actividad
+                        const gastoExistente = await gastoRepo.findOne({
+                          where: {
+                            descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                            cultivo: actividad.cultivo ?? undefined
+                          }
                         });
-   
-                        await gastoRepo.save(nuevoGasto);
-                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+
+                        if (!gastoExistente) {
+                          // B. CREAR LA TRANSACCIÓN (GASTO) POR EL CONSUMO REAL
+                          const nuevoGasto = gastoRepo.create({
+                                descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
+                                monto: parseFloat(nuevoCostoTotal.toFixed(2)),
+                                fecha: new Date(),
+                                tipo: TipoMovimiento.EGRESO,
+                                cultivo: actividad.cultivo ?? undefined,
+                                cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
+                                unidad: asignacionOriginal.unidadMedida,
+                                precioUnitario: precioUnitarioGasto
+                          });
+
+                          await gastoRepo.save(nuevoGasto);
+                          console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                        } else {
+                          console.log(`      ℹ️ Gasto ya existe, no se duplica`);
+                        }
                     } else {
                         console.log(`      ℹ️ Consumo fue 0 (Se devolvió todo). No se genera cobro.`);
                         // Actualizar asignación a 0
@@ -1097,6 +1103,9 @@ export class ActividadesService {
     if (actividad.estado !== 'completado') {
       throw new BadRequestException('Los materiales solo pueden devolverse cuando la actividad esté finalizada.');
     }
+
+    // Verificar si todas las respuestas están aprobadas para crear gastos
+    const todasRespuestasAprobadas = actividad.respuestas?.every(r => r.estado === 'aprobado') ?? false;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -1339,27 +1348,7 @@ export class ActividadesService {
 
                         await actMaterialRepo.save(asignacionOriginal);
 
-                        console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
-                        console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
-                        console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
-                        console.log(`        - factorUnidad: ${factorUnidad}`);
-                        console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
-
-                         // B. CREAR LA TRANSACCIÓN (GASTO) POR LOS $5.000
-                         const nuevoGasto = gastoRepo.create({
-                               descripcion: `Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`,
-                              monto: parseFloat(nuevoCostoTotal.toFixed(2)), // Aquí van los 5000
-                              fecha: new Date(),
-                              tipo: TipoMovimiento.EGRESO,
-                              cultivo: actividad.cultivo ?? undefined,
-                              cantidad: Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0'),
-                              unidad: asignacionOriginal.unidadMedida,
-                              precioUnitario: precioUnitarioGasto
-                        });
-
-                        await gastoRepo.save(nuevoGasto);
-                        console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
+                        // Gastos para consumibles se crean en enviarRespuesta con verificación de duplicados
                     }
                     else {
                         // Si devolvió TODO (Consumo 0), actualizamos la asignación a 0 costo
