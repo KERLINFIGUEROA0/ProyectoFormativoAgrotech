@@ -487,6 +487,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
                       variant="light"
                       color="primary"
                       onClick={() => onEdit(bl)}
+                      className="font-bold"
                     >
                       Editar
                     </Button>
@@ -495,6 +496,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
                       variant="light"
                       color="danger"
                       onClick={() => onDelete(bl.id)}
+                      className="font-bold"
                     >
                       Eliminar
                     </Button>
@@ -702,13 +704,14 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
         </div>
 
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-          <Button variant="light" onClick={onClose}>
+          <Button variant="light" color="default" onClick={onClose}>
             Cancelar
           </Button>
           <Button
-            color="primary"
+            color="success"
             onClick={handleSubmit}
             disabled={!selectedBrokerId || topicos.length === 0}
+            className="text-white font-bold"
           >
             {brokerLote ? 'Actualizar' : 'Crear'} Configuración
           </Button>
@@ -733,7 +736,7 @@ function DeleteSensorModal({ isOpen, onClose, onConfirm, sensor, loteNombre }: D
   if (!sensor) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Eliminar Sensor">
       <ModalContent>
         <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
           <div className="flex flex-col items-center gap-3">
@@ -761,7 +764,7 @@ function DeleteSensorModal({ isOpen, onClose, onConfirm, sensor, loteNombre }: D
             <Button
               onClick={onConfirm}
               color="danger"
-              className="flex-1 max-w-[120px]"
+              className="flex-1 max-w-[120px] text-white font-bold"
             >
               Eliminar
             </Button>
@@ -1499,7 +1502,7 @@ export default function GestionSensoresPage(): ReactElement {
             <div className="flex bg-gray-100 p-1 rounded-lg">
               {[
                 { id: 'GENERAL', icon: Layers, label: 'General', color: 'primary' },
-                { id: 'LOTE', icon: Map, label: 'Lote', color: 'warning' }
+                { id: 'LOTE', icon: Map, label: 'Lote', color: 'success' }
               ].map((m) => (
                 <Button
                   key={m.id}
@@ -1507,7 +1510,7 @@ export default function GestionSensoresPage(): ReactElement {
                   variant={modoVista === m.id ? "solid" : "light"}
                   color={m.color as any}
                   size="sm"
-                  className={`text-xs font-medium transition-all ${
+                  className={`text-xs font-bold transition-all ${
                     modoVista === m.id
                       ? 'shadow-md'
                       : 'hover:shadow-sm'
@@ -1553,9 +1556,10 @@ export default function GestionSensoresPage(): ReactElement {
                <Button
                  onClick={() => openBrokerModal()}
                  variant="solid"
-                 color="primary"
+                 color="success"
                  size="sm"
                  startContent={<Server size={14} />}
+                 className="text-white font-bold"
                >
                  Crear Broker
                </Button>
@@ -1564,9 +1568,10 @@ export default function GestionSensoresPage(): ReactElement {
                <Button
                  onClick={() => setIsTrazabilidadModalOpen(true)}
                  variant="solid"
-                 color="success"
+                 color="danger"
                  size="sm"
                  startContent={<Download size={14} />}
+                 className="text-white font-bold"
                >
                  Descargar Reporte
                </Button>
@@ -1575,9 +1580,10 @@ export default function GestionSensoresPage(): ReactElement {
                  <Button
                    onClick={() => openBrokerLoteModal()}
                    variant="solid"
-                   color="warning"
+                   color="success"
                    size="sm"
                    startContent={<Layers size={14} />}
+                   className="text-white font-bold"
                  >
                    Configurar Lote
                  </Button>

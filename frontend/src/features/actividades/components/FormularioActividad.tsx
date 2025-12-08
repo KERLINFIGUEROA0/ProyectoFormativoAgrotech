@@ -522,14 +522,15 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
           <Button
             type="button"
             onClick={onCancel}
-            color="danger"
+            color="default"
+            variant="light"
             startContent="✕"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
-            color="success"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
             startContent="💾"
           >
             {isEditing ? "Guardar Cambios" : "Guardar Actividad"}

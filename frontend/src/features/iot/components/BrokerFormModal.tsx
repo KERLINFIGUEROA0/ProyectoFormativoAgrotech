@@ -355,7 +355,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                     <Button
                       onClick={handleTestConnection}
                       disabled={isTestingConnection || !formData.host || !formData.puerto || !formData.loteId}
-                      color="primary"
+                      className="bg-green-600 text-white font-bold hover:bg-green-700"
                       fullWidth
                       startContent={<Wifi size={14} />}
                     >
@@ -479,8 +479,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                     <Button
                       type="button"
                       onClick={() => setTopicosAdicionales([...topicosAdicionales, {topic: '', min: undefined, max: undefined}])}
-                      color="success"
-                      variant="light"
+                      className="bg-green-600 text-white font-bold hover:bg-green-700"
                       size="sm"
                       startContent="+"
                     >
@@ -525,7 +524,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
                 </Button>
                 <Button
                   type="submit"
-                  color="primary"
+                  className="bg-green-600 text-white font-bold hover:bg-green-700"
                 >
                   {broker ? 'Actualizar' : 'Guardar y Configurar'}
                 </Button>

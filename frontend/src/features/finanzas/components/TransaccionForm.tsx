@@ -1,22 +1,19 @@
-import { useState, useEffect, type ReactElement, type ChangeEvent } from 'react';
-import { Button, Select, SelectItem } from "@heroui/react";
+import { useState, useEffect, type ReactElement } from 'react';
+import {
+  Button,
+  Select,
+  SelectItem,
+  Input,
+  Textarea,
+  Card,
+  CardBody,
+  CardHeader
+} from "@heroui/react";
 import type { TransaccionData } from '../interfaces/finanzas';
 import { toast } from 'sonner';
 import { BookText, Hash, DollarSign, Calendar, Archive } from 'lucide-react';
 import { getAvailableForSale } from '../../cultivos/api/produccionApi';
 import type { Produccion } from '../../cultivos/interfaces/cultivos';
-
-function FormInput({ icon: Icon, label, ...props }: { icon: React.ComponentType<{ size: number, className: string }>, label: string, [key: string]: any }) {
-  return (
-    <div>
-      <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-        <Icon size={16} className="text-green-600" />
-        {label}
-      </label>
-      <input {...props} className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition" />
-    </div>
-  );
-}
 
 interface TransaccionFormProps {
   onSave: (data: TransaccionData) => void;
@@ -24,9 +21,17 @@ interface TransaccionFormProps {
 }
 
 export default function TransaccionForm({ onSave, onCancel }: TransaccionFormProps): ReactElement {
+   const getTodayDate = () => {
+     const today = new Date();
+     const year = today.getFullYear();
+     const month = String(today.getMonth() + 1).padStart(2, '0');
+     const day = String(today.getDate()).padStart(2, '0');
+     return `${year}-${month}-${day}`;
+   };
+
    const [formData, setFormData] = useState<Partial<TransaccionData>>({
-     fecha: new Date().toISOString().split('T')[0],
-     tipo: 'ingreso', // Valor por defecto
+     fecha: getTodayDate(),
+     tipo: 'ingreso', // Todas las ventas son ingresos
    });
    const [productions, setProductions] = useState<Produccion[]>([]);
    const [selectedProduction, setSelectedProduction] = useState<Produccion | null>(null);
@@ -93,121 +98,116 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
   };
 
   return (
-    <div className="p-4">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Agregar Nueva Transacción</h2>
-        <p className="text-gray-500">Ingresa la información de la transacción</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div className="space-y-6 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
-          <FormInput 
-            icon={BookText}
+          <Textarea
             label="Descripción de la Venta"
-            name="descripcion"
-            value={formData.descripcion || ''}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             placeholder="Ej: Venta de aguacates a supermercado local"
+            value={formData.descripcion || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+            variant="bordered"
+            startContent={<BookText size={18} className="text-green-600" />}
+            minRows={2}
+            classNames={{ inputWrapper: "bg-white" }}
           />
         </div>
 
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-            <Hash size={16} className="text-green-600" />
-            Cantidad Vendida (kg)
-          </label>
-          <div className="flex gap-2">
-            <input
-              name="cantidad"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={formData.cantidad || ''}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                const value = Number(e.target.value);
-                if (value >= 0) {
-                  setFormData(prev => ({ ...prev, cantidad: value }));
-                }
-              }}
-              placeholder="Ej: 150"
-              className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-green-500 focus:ring-0 outline-none transition"
-            />
-          </div>
-        </div>
-          <FormInput 
-          icon={DollarSign}
-          label="Precio Unitario"
-          name="monto"
+        <Input
+          label="Cantidad Vendida (kg)"
           type="number"
           min="0.01"
           step="0.01"
-          value={formData.monto || ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          value={formData.cantidad?.toString() || ''}
+          onChange={(e) => {
+            const value = Number(e.target.value);
+            if (value >= 0) {
+              setFormData(prev => ({ ...prev, cantidad: value }));
+            }
+          }}
+          placeholder="Ej: 150"
+          variant="bordered"
+          startContent={<Hash size={18} className="text-green-600" />}
+          classNames={{ inputWrapper: "bg-white" }}
+        />
+
+        <Input
+          label="Precio Unitario"
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={formData.monto?.toString() || ''}
+          onChange={(e) => {
             const value = Number(e.target.value);
             if (value >= 0) {
               setFormData(prev => ({ ...prev, monto: value }));
             }
           }}
           placeholder="Precio por unidad"
+          variant="bordered"
+          startContent={<DollarSign size={18} className="text-green-600" />}
+          classNames={{ inputWrapper: "bg-white" }}
         />
-        <FormInput 
-          icon={Calendar}
+
+        <Input
           label="Fecha de Venta"
-          name="fecha"
           type="date"
+          min={getTodayDate()}
           value={formData.fecha || ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+          onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+          variant="bordered"
+          startContent={<Calendar size={18} className="text-green-600" />}
+          classNames={{ inputWrapper: "bg-white" }}
         />
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-            <Archive size={16} className="text-green-600" />
-            Producción
-          </label>
-          <Select
-            name="produccionId"
-            selectedKeys={formData.produccionId ? [formData.produccionId.toString()] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              const prodId = Number(selected);
-              const prod = productions.find(p => p.id === prodId);
-              setSelectedProduction(prod || null);
-              setFormData(prev => ({ ...prev, produccionId: prodId }));
-            }}
-            placeholder="Seleccione una producción"
-          >
-            {productions.map(prod => (
-              <SelectItem key={prod.id.toString()}>
-                {`${prod.cultivo.nombre} - Disponible: ${prod.cantidad} kg`}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-            <Archive size={16} className="text-green-600" />
-            Tipo de Transacción
-          </label>
-          <Select
-            name="tipo"
-            selectedKeys={[formData.tipo || 'ingreso']}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              setFormData(prev => ({ ...prev, tipo: selected as string }));
-            }}
-          >
-            <SelectItem key="ingreso">Ingreso</SelectItem>
-            <SelectItem key="egreso">Egreso</SelectItem>
-          </Select>
-        </div>
+
+        <Select
+          label="Producción"
+          placeholder="Seleccione una producción"
+          selectedKeys={formData.produccionId ? [formData.produccionId.toString()] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0];
+            const prodId = Number(selected);
+            const prod = productions.find(p => p.id === prodId);
+            setSelectedProduction(prod || null);
+            setFormData(prev => ({ ...prev, produccionId: prodId }));
+          }}
+          variant="bordered"
+          startContent={<Archive size={18} className="text-green-600" />}
+          classNames={{ trigger: "bg-white" }}
+        >
+          {productions.map(prod => (
+            <SelectItem key={prod.id.toString()}>
+              {`${prod.cultivo.nombre} - Disponible: ${prod.cantidad} kg`}
+            </SelectItem>
+          ))}
+        </Select>
       </div>
 
-      <div className="flex justify-center gap-4">
-        <Button onClick={onCancel} color="danger" variant="light" className="w-40">
-          Cancelar
-        </Button>
-        <Button onClick={handleSubmit} color="success" className="w-40">
-          Guardar Transacción
-        </Button>
+      {selectedProduction && formData.cantidad && (
+        <div className={`p-4 rounded-lg border ${
+          formData.cantidad > selectedProduction.cantidad
+            ? 'bg-red-50 border-red-200 text-red-700'
+            : 'bg-green-50 border-green-200 text-green-700'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-full ${
+              formData.cantidad > selectedProduction.cantidad ? 'bg-red-100' : 'bg-green-100'
+            }`}>
+              <Archive size={16} className={formData.cantidad > selectedProduction.cantidad ? "text-red-600" : "text-green-600"} />
+            </div>
+            <div className="text-sm">
+              <p className="font-bold">
+                {formData.cantidad > selectedProduction.cantidad ? 'Cantidad insuficiente' : 'Disponible'}
+              </p>
+              <p>Solicitado: {formData.cantidad} kg • Inventario: {selectedProduction.cantidad} kg</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <Button onClick={onCancel} color="default" variant="light" className="font-normal text-gray-600">Cancelar</Button>
+        <Button onClick={handleSubmit} color="success" className="font-bold text-white shadow-md">Registrar Venta</Button>
       </div>
     </div>
   );

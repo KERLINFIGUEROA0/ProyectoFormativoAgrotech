@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsDateString, IsNotEmpty, IsOptional } from 'class-validator'; // <-- AÑADIR IsOptional
+import { IsString, IsNumber, IsDateString, IsNotEmpty, IsOptional, IsPositive } from 'class-validator'; // <-- AÑADIR IsOptional
 
 export class CreateGastosProduccionDto {
   @IsString()
@@ -7,6 +7,7 @@ export class CreateGastosProduccionDto {
 
   @IsNumber()
   @IsNotEmpty()
+  @IsPositive({ message: 'El monto debe ser un número positivo' })
   monto: number;
 
   @IsDateString()

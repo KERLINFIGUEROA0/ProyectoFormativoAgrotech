@@ -323,8 +323,8 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
                 </Button>
                 <Button
                   onClick={handleSave}
-                  color="primary"
-                  className="font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                  color="success"
+                  className="font-medium  text-white bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                 >
                   Guardar Cambios
                 </Button>
@@ -387,7 +387,8 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
-                    <path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v4a2 2 0 002 2h10a2 2 0 002-2v-4a2 2 0 00-2-2h-1V6a4 4 0 00-4-4z" />
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                    <path d="M10 14a2 2 0 100-4 2 2 0 000 4z" />
                   </svg>
                 </div>
                 <span className="font-medium text-gray-700 text-sm">Cambiar Contraseña</span>

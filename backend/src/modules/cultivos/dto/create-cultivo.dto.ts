@@ -1,5 +1,6 @@
 import { IsString, IsInt, IsOptional, IsNotEmpty, Matches } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { IsNotFutureDate } from '../../../common/validators/is-not-future-date.validator';
 
 export class CreateCultivoDto {
   @IsString()
@@ -43,5 +44,6 @@ export class CreateCultivoDto {
   @IsOptional()
   @Type(() => String)
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe tener el formato YYYY-MM-DD' })
+  @IsNotFutureDate({ message: 'La fecha de plantado no puede ser futura' })
   Fecha_Plantado?: string;
 }

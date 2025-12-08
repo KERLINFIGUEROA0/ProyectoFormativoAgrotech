@@ -138,10 +138,10 @@ export default function GestionFichas(): ReactElement {
           </div>
           <Button
             onClick={handleCreate}
-            color="primary"
+            color="success"
             startContent={<Plus size={16} />}
             size="sm"
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto font-bold text-white"
           >
             Nueva Ficha
           </Button>

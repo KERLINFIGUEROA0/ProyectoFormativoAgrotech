@@ -8,23 +8,11 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, Inject } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGatewayDecorator({
-  cors: {
-    origin: '*', // En producción, especifica tu dominio frontend
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-  namespace: '/', // Namespace raíz para eventos generales
-  // Configuración para estabilidad de conexión
-  pingTimeout: 60000, // 60 segundos para ping timeout
-  pingInterval: 25000, // 25 segundos entre pings
-  connectTimeout: 20000, // 20 segundos para timeout de conexión
-  maxHttpBufferSize: 1e8, // 100MB máximo buffer
-  allowEIO3: true, // Permitir Engine.IO v3
-  transports: ['websocket', 'polling'], // Permitir ambos transportes
+  cors: true, // Habilitar CORS básico
 })
 export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -32,34 +20,38 @@ export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDiscon
 
   private logger: Logger = new Logger('WebSocketGateway');
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService
+  ) {}
 
   async handleConnection(client: Socket, ...args: any[]) {
     try {
-      // 1. Intentar extraer el token de varios lugares posibles
-      let token = client.handshake.auth?.token || client.handshake.headers?.authorization;
+      // ✅ ESTRATEGIA DUAL: Busca en 'auth' (Frontend) o 'headers' (Postman/Otros)
+      let token = client.handshake.auth?.token;
 
-      // 2. Si viene como "Bearer xyz", limpiarlo
-      if (token && token.startsWith('Bearer ')) {
-        token = token.split(' ')[1];
+      // Fallback: Si no viene en auth, busca en headers
+      if (!token && client.handshake.headers.authorization) {
+        token = client.handshake.headers.authorization.split(' ')[1];
       }
 
       if (!token) {
-        this.logger.warn(`⚠️ Cliente ${client.id} intentó conectarse sin token. Desconectando...`);
+        // Lanzamos error para que el cliente reciba 'connect_error' y pare el bucle
+        this.logger.warn(`⛔ Cliente ${client.id} rechazado: Sin token.`);
         client.disconnect();
         return;
       }
 
-      // 3. Verificar el token (esto lanza error si es inválido)
+      // Validar Token
       const payload = this.jwtService.verify(token);
 
-      // 4. (Opcional) Unir al usuario a una sala con su ID o Rol para notificaciones privadas
-      // client.join(`user_${payload.sub}`);
+      // Guardar usuario en el socket para uso futuro
+      client.data.user = payload;
 
-      this.logger.log(`✅ Cliente conectado: ${client.id} (Usuario: ${payload.sub || payload.username})`);
+      this.logger.log(`✅ Cliente conectado: ${client.id} | Usuario: ${payload.nombre || payload.sub}`);
 
     } catch (error) {
-      this.logger.error(`🔴 Error de autenticación en WS para cliente ${client.id}:`, error.message);
+      // Este mensaje de error se envía al cliente en el evento 'connect_error'
+      this.logger.error(`❌ Error Auth WS: ${error.message}`);
       client.disconnect();
     }
   }

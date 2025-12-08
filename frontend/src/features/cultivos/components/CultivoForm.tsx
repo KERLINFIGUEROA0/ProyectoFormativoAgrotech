@@ -271,6 +271,13 @@ export default function CultivoForm({
     }
   };
 
+  const handleCantidadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Solo permitir números positivos (sin signos negativos)
+    const filteredValue = value.replace(/[^0-9]/g, '');
+    setFormData((prev: any) => ({ ...prev, cantidad: filteredValue }));
+  };
+
   const handleSubmit = () => {
     const { nombre, cantidad, Fecha_Plantado, loteId, subloteId } = formData;
     const tipoCultivoId = formData.tipoCultivoId;
@@ -278,6 +285,12 @@ export default function CultivoForm({
     // Validación básica
     if (!nombre || !cantidad || (!tipoCultivoId && !showNewTipoInput) || !Fecha_Plantado || !loteId) {
       toast.error("Nombre, Cantidad, Tipo, Fecha y Lote son obligatorios.");
+      return;
+    }
+
+    const cantidadNum = parseInt(cantidad, 10);
+    if (cantidadNum <= 0) {
+      toast.error("La cantidad de plantas debe ser un número positivo mayor a cero.");
       return;
     }
 
@@ -477,9 +490,9 @@ export default function CultivoForm({
       <Input
         label="Cantidad de Plantas"
         name="cantidad"
-        type="number"
+        type="text"
         value={formData.cantidad || ""}
-        onChange={handleChange}
+        onChange={handleCantidadChange}
         placeholder="0"
         fullWidth
       />
@@ -550,7 +563,7 @@ export default function CultivoForm({
         <Button onPress={onCancel} variant="light" color="default">
           Cancelar
         </Button>
-        <Button onPress={handleSubmit} color="primary">
+        <Button className="bg-green-600 text-white font-bold hover:bg-green-700" onPress={handleSubmit}>
           {initialData?.id ? "Actualizar Cultivo" : "Registrar Cultivo"}
         </Button>
       </div>

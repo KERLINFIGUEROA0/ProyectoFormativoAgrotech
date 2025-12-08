@@ -5,7 +5,6 @@ import {
   ClipboardList,
   Loader2,
   CheckCircle,
-  Edit,
   Calendar,
   User,
   FileText,
@@ -22,7 +21,7 @@ import ModalResponderActividad from '../components/ModalResponderActividad';
 import ModalVerRespuestas from '../components/ModalVerRespuestas';
 import ModalPagoPasante from '../components/ModalPagoPasante';
 import { useAuth } from '../../../context/AuthContext';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button, Select, SelectItem, Card, CardHeader, CardBody } from '@heroui/react';
 import type {
   Actividad,
   UpdateActividadPayload,
@@ -123,139 +122,112 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
 
   return (
     <Modal isOpen={!!actividad} onOpenChange={onClose} size="5xl" scrollBehavior="inside">
-      <ModalContent>
-        <ModalHeader className={`flex justify-between items-center text-white font-bold ${actividad.estado === 'completado' ? 'bg-green-600 shadow-lg' : 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg'}`}>
-          <h2 className="text-xl">{actividad.titulo}</h2>
-          <span className={`px-3 py-1 text-xs font-semibold rounded-full bg-white text-gray-800 shadow-sm`}>
+      <ModalContent className="overflow-hidden rounded-xl shadow-2xl border border-gray-100">
+        <ModalHeader className={`flex justify-between items-center text-white font-bold py-5 px-6
+          ${actividad.estado === 'completado'
+            ? 'bg-green-600'
+            : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+          }`}>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight">{actividad.titulo}</h2>
+          </div>
+          <span className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full bg-white/90 text-gray-800 shadow-sm backdrop-blur-sm">
             {estadoTexto}
           </span>
         </ModalHeader>
-        <ModalBody>
+        <ModalBody className="p-6 bg-gray-50/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Columna Izquierda: Detalles */}
             <div className="space-y-4">
               {/* Información Básica */}
-              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-700">Información Básica</h3>
-                <p className="text-sm flex items-center gap-2">
-                  <ClipboardList size={14} className="text-gray-600" />
-                  <strong>Actividad:</strong> {actividad.titulo}
+              <div className="space-y-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                 <h3 className="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2">Información Básica</h3>
+                <p className="text-sm flex items-center gap-2 text-gray-600">
+                  <ClipboardList size={16} className="text-blue-500" />
+                  <span className="font-semibold text-gray-900">Actividad:</span> {actividad.titulo}
                 </p>
-                <p className="text-sm flex items-center gap-2">
-                  <User size={14} className="text-gray-600" />
-                  <strong>Cultivo/Lote:</strong>{' '}
+                <p className="text-sm flex items-center gap-2 text-gray-600">
+                  <User size={16} className="text-blue-500" />
+                  <span className="font-semibold text-gray-900">Cultivo/Lote:</span>
                   {actividad.cultivo?.nombre || 'No especificado'}
                 </p>
-                <p className="text-sm flex items-center gap-2">
-                  <Calendar size={14} className="text-gray-600" />
-                  <strong>Fecha Programada:</strong> {fechaProgramada}
+                <p className="text-sm flex items-center gap-2 text-gray-600">
+                  <Calendar size={16} className="text-blue-500" />
+                  <span className="font-semibold text-gray-900">Fecha Programada:</span> {fechaProgramada}
                 </p>
               </div>
 
-              {/* Aprendices Asignados - Convertido a tabla */}
-              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <Users size={16} className="text-gray-600" /> Aprendices Asignados
+              {/* Aprendices Asignados */}
+              <div className="space-y-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2 mb-2">
+                  <Users size={18} className="text-blue-500" /> Aprendices Asignados
                 </h3>
                 {aprendicesAsignados.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
-                      <thead className="bg-gray-100">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-gray-500 font-medium">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Nombre</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Apellidos</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Ficha</th>
+                          <th className="px-3 py-2 rounded-tl-lg">Nombre</th>
+                          <th className="px-3 py-2">Apellidos</th>
+                          <th className="px-3 py-2 rounded-tr-lg">Ficha</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-100">
                         {aprendicesAsignados.map((user) => (
-                          <tr key={user.identificacion} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-sm text-gray-700">{user.nombre}</td>
-                            <td className="px-4 py-2 text-sm text-gray-700">{user.apellidos}</td>
-                            <td className="px-4 py-2 text-sm text-gray-700">{user.ficha?.id_ficha || 'N/A'}</td>
+                          <tr key={user.identificacion}>
+                            <td className="px-3 py-2">{user.nombre}</td>
+                            <td className="px-3 py-2">{user.apellidos}</td>
+                            <td className="px-3 py-2">{user.ficha?.id_ficha || 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No asignado</p>
+                  <p className="text-gray-500 text-sm italic">No asignado</p>
                 )}
               </div>
 
-              {/* Materiales Utilizados - Convertido a tabla */}
-              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <Package size={16} className="text-gray-600" /> Materiales Utilizados
+              {/* Materiales Utilizados */}
+              <div className="space-y-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2 mb-2">
+                  <Package size={18} className="text-blue-500" /> Materiales Utilizados
                 </h3>
-                {actividad.actividadMaterial &&
-                  actividad.actividadMaterial.length > 0 ? (
+                 {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
-                      <thead className="bg-gray-100">
+                    <table className="min-w-full text-left text-sm">
+                       <thead className="bg-gray-50 text-gray-500 font-medium">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Material</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Cantidad Usada</th>
+                          <th className="px-3 py-2 rounded-tl-lg">Material</th>
+                          <th className="px-3 py-2 rounded-tr-lg">Cantidad</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {actividad.actividadMaterial.map((item, index) => {
-                          return (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 text-sm text-gray-700">{item.material.nombre}</td>
-                              <td className="px-4 py-2 text-sm text-gray-700 font-medium">{`${Math.round(parseFloat(item.cantidadUsada))} ${String(item.unidadMedida) || 'unidades'}`}</td>
+                      <tbody className="divide-y divide-gray-100">
+                         {actividad.actividadMaterial.map((item, index) => (
+                            <tr key={index}>
+                              <td className="px-3 py-2">{item.material.nombre}</td>
+                              <td className="px-3 py-2 font-medium">{`${Math.round(item.cantidadUsada)} ${String(item.unidadMedida) || 'unidades'}`}</td>
                             </tr>
-                          );
-                        })}
+                         ))}
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">
-                    No se registraron materiales.
-                  </p>
-                )}
+                 ) : <p className="text-gray-500 text-sm italic">No se registraron materiales.</p>}
               </div>
 
-              {/* Costo Mano de Obra - Convertido a tabla */}
-              <div className="space-y-3 p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <DollarSign size={16} className="text-gray-600" /> Costo Mano de Obra
+              {/* Costo Mano de Obra */}
+              <div className="space-y-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2 mb-2">
+                  <DollarSign size={18} className="text-blue-500" /> Costo Mano de Obra
                 </h3>
-                {costoManoDeObra > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white rounded-lg border border-gray-200">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Concepto</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-700">Horas</td>
-                          <td className="px-4 py-2 text-sm text-gray-700">{actividad.totalHoras || actividad.horas}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-700">Tarifa por Hora</td>
-                          <td className="px-4 py-2 text-sm text-gray-700">${new Intl.NumberFormat('es-CO').format(actividad.promedioTarifa || actividad.tarifaHora || 0)}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">Total Mano de Obra</td>
-                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-700 font-medium">Estado de Pago</td>
-                          <td className={`px-4 py-2 text-sm font-medium ${colorEstadoPago}`}>{estadoPago}</td>
-                        </tr>
+                 {costoManoDeObra > 0 ? (
+                    <table className="min-w-full text-left text-sm">
+                      <tbody className="divide-y divide-gray-100">
+                         <tr><td className="px-3 py-2 text-gray-600">Total:</td><td className="px-3 py-2 font-bold">${new Intl.NumberFormat('es-CO').format(costoManoDeObra)}</td></tr>
+                         <tr><td className="px-3 py-2 text-gray-600">Estado:</td><td className={`px-3 py-2 font-bold ${colorEstadoPago}`}>{estadoPago}</td></tr>
                       </tbody>
                     </table>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">
-                    No se registraron costos de mano de obra.
-                  </p>
-                )}
+                 ) : <p className="text-gray-500 text-sm italic">No se registraron costos.</p>}
               </div>
 
             </div>
@@ -263,31 +235,30 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
             {/* Columna Derecha: Descripción e Imágenes */}
             <div className="space-y-4">
               {/* Descripción */}
-              <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-700 mb-2">
+              <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm h-fit">
+                <h3 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2">
                   Descripción Completa
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-sm leading-relaxed">
                   {actividad.descripcion || 'No hay descripción detallada.'}
                 </p>
               </div>
 
               {/* Sección de Imágenes */}
               {imagenes.length > 0 && (
-                <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 shadow-sm">
-                  <h3 className="font-bold text-gray-700 mb-2">
+                <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
+                  <h3 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2">
                     Imágenes de la Actividad
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {imagenes.map((img: string, index: number) => (
-                      <div key={index} className="relative">
+                      <div key={index} className="relative group overflow-hidden rounded-lg border border-gray-100 shadow-sm">
                         <img
                           src={`${import.meta.env.VITE_BACKEND_URL}/uploads/actividades/${img}`}
-                          alt={`Imagen ${index + 1} de ${actividad.titulo}`}
-                          className="w-full h-32 object-cover rounded-lg border shadow-sm"
+                          alt={`Evidencia ${index + 1}`}
+                          className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
-                            e.currentTarget.src =
-                              'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
+                            e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
                           }}
                         />
                       </div>
@@ -298,11 +269,6 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
             </div>
           </div>
         </ModalBody>
-        <ModalFooter>
-          <Button onClick={() => onEdit(actividad)} color="primary" startContent={<Edit size={16} />}>
-            Editar
-          </Button>
-        </ModalFooter>
       </ModalContent>
     </Modal>
   );
@@ -310,15 +276,29 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
 // --- FIN: Componente ModalDetalles ---
 
 // ... (El resto del archivo 'GestionActividadesPage' continúa igual) ...
-// (Componente StatCard sin cambios)
+// Componente StatCard rediseñado: más pequeño y horizontal
 const StatCard = ({ title, value, icon, colorClass }: any) => (
-  <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
-    <div className={`p-3 rounded-full ${colorClass}`}>{icon}</div>
-    <div>
-      <p className="text-gray-500 text-sm">{title}</p>
-      <p className="font-bold text-2xl">{value}</p>
-    </div>
-  </div>
+  <Card className="shadow-sm hover:shadow-md transition-all duration-200 border border-green-200 hover:border-green-400 w-full">
+    <CardBody className="p-4 overflow-visible">
+      <div className="flex items-center gap-4">
+        {/* 1. EL ICONO (Izquierda) */}
+        <div className={`p-3 rounded-full shrink-0 ${colorClass} bg-opacity-20`}>
+          {/* Aseguramos que el ícono tenga un tamaño consistente */}
+          {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2.5 })}
+        </div>
+
+        {/* 2. TEXTO Y NÚMERO (Derecha, uno al lado del otro o apilados compactamente) */}
+        <div className="flex flex-col justify-center">
+          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-0.5">
+            {title}
+          </p>
+          <p className="font-extrabold text-2xl text-gray-800 leading-none">
+            {value}
+          </p>
+        </div>
+      </div>
+    </CardBody>
+  </Card>
 );
 
 const GestionActividadesPage: React.FC = () => {

@@ -39,10 +39,14 @@ export const formatToColombiaTime = (dateString: string | Date): string => {
 // 4. Formatear solo fecha (para reportes)
 export const formatDateOnly = (dateString: string | Date): string => {
   if (!dateString) return '';
+  // Si es una fecha en formato YYYY-MM-DD, formatear directamente sin zona horaria
+  if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  }
   const date = new Date(dateString);
 
   return new Intl.DateTimeFormat('es-CO', {
-    timeZone: 'America/Bogota',
     year: 'numeric',
     month: '2-digit',
     day: 'numeric',

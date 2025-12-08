@@ -82,7 +82,18 @@ export class MaterialesController {
   }))
   async subirImagen(@Param('id', ParseIntPipe) id: number, @UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No se recibió ningún archivo.');
-    
+
+    // Validaciones adicionales del archivo
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Tipo de archivo no permitido. Solo se permiten imágenes JPEG, PNG, GIF y WebP.');
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new BadRequestException('El archivo es demasiado grande. El tamaño máximo permitido es 5MB.');
+    }
+
     const relativePath = `materiales-pic/${file.filename}`;
     const material = await this.materialesService.actualizarImagen(id, relativePath);
     return { success: true, message: 'Imagen del producto actualizada.', data: material };

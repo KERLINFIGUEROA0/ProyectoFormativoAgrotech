@@ -96,7 +96,7 @@ const baseMenuItems: MenuItemType[] = [
     icon: ClipboardList,
     module: "Actividades",
     children: [
-      { id: "gestion-actividades", label: "Tareas", icon: Activity },
+      { id: "gestion-actividades", label: "Gestion de Actividades ", icon: Activity },
       { id: "cronograma", label: "Cronograma", icon: Calendar },
       { id: "pagos-pasante", label: "Mis Pagos", icon: TrendingUp },
     ],
@@ -108,7 +108,7 @@ const baseMenuItems: MenuItemType[] = [
     icon: TrendingUp,
     module: "Finanzas",
     children: [
-      { id: "ingresos", label: "Historial Financiero", icon: TrendingUp },
+      { id: "ingresos", label: "Ingresos y Egresos", icon: TrendingUp },
       { id: "egresos", label: "Transacciones", icon: Package },
     ],
   },

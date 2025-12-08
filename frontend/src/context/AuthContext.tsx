@@ -1,10 +1,16 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import type { ReactNode } from "react";
-import { toast } from 'sonner';
-import { jwtDecode } from 'jwt-decode';
+import { toast } from "sonner";
+import { jwtDecode } from "jwt-decode";
 import { obtenerPerfil } from "../features/auth/api/auth";
 import type { UsuarioData } from "../types/auth";
-import websocketService from '../services/websocket.service';
+import websocketService from "../services/websocket.service";
 
 interface AuthContextType {
   token: string | null;
@@ -21,13 +27,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userPermissions, setUserPermissions] = useState<string[] | null>(null);
-  const [userModules, setUserModules] = useState<Record<string, string[]> | null>(null);
+  const [userModules, setUserModules] = useState<Record<
+    string,
+    string[]
+  > | null>(null);
   const [userData, setUserData] = useState<UsuarioData | null>(null);
 
   const fetchAndSetData = useCallback(async () => {
@@ -54,8 +62,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUserPermissions(userProfile.permisos || []);
         setUserModules(userProfile.modulos || {});
-        localStorage.setItem('permissions', JSON.stringify(userProfile.permisos || []));
-        localStorage.setItem('modules', JSON.stringify(userProfile.modulos || {}));
+        localStorage.setItem(
+          "permissions",
+          JSON.stringify(userProfile.permisos || [])
+        );
+        localStorage.setItem(
+          "modules",
+          JSON.stringify(userProfile.modulos || {})
+        );
       } else {
         console.warn("⚠️ User profile missing identificacion:", userProfile);
       }
@@ -78,23 +92,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const decoded: any = jwtDecode(savedToken);
         if (decoded.nombre) {
-          setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
-            tipo: "CC",
-            identificacion: decoded.identificacion || "",
-            nombres: decoded.nombre,
-            apellidos: "",
-            email: decoded.username || "",
-            telefono: "",
-            fotoUrl: "",
-            rolNombre: decoded.rolNombre || "",
-          });
+          setUserData((prev) =>
+            prev
+              ? { ...prev, nombres: decoded.nombre }
+              : {
+                  tipo: "CC",
+                  identificacion: decoded.identificacion || "",
+                  nombres: decoded.nombre,
+                  apellidos: "",
+                  email: decoded.username || "",
+                  telefono: "",
+                  fotoUrl: "",
+                  rolNombre: decoded.rolNombre || "",
+                }
+          );
         }
       } catch (error) {
         console.error("Error decodificando token guardado:", error);
       }
 
-      const savedPerms = localStorage.getItem('permissions');
-      const savedModules = localStorage.getItem('modules');
+      const savedPerms = localStorage.getItem("permissions");
+      const savedModules = localStorage.getItem("modules");
       setUserPermissions(savedPerms ? JSON.parse(savedPerms) : []);
       setUserModules(savedModules ? JSON.parse(savedModules) : {});
     }
@@ -104,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchAndSetData();
   }, [token, fetchAndSetData]);
-  
+
   useEffect(() => {
     // Solo conectar WebSocket si hay token válido
     if (token) {
@@ -114,30 +132,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Escuchar actualizaciones de permisos
-    const unsubscribePermissions = websocketService.on('permissions_updated', (data: { permisos: string[], modulos: Record<string, string[]>, access_token: string }) => {
-      console.log('✨ Permisos y nuevo token recibidos:', data);
+    const unsubscribePermissions = websocketService.on(
+      "permissions_updated",
+      (data: {
+        permisos: string[];
+        modulos: Record<string, string[]>;
+        access_token: string;
+      }) => {
+        console.log("✨ Permisos y nuevo token recibidos:", data);
 
-      if (data.access_token && data.permisos && data.modulos) {
-        setUserPermissions(data.permisos);
-        setUserModules(data.modulos);
-        localStorage.setItem('permissions', JSON.stringify(data.permisos));
-        localStorage.setItem('modules', JSON.stringify(data.modulos));
+        if (data.access_token && data.permisos && data.modulos) {
+          setUserPermissions(data.permisos);
+          setUserModules(data.modulos);
+          localStorage.setItem("permissions", JSON.stringify(data.permisos));
+          localStorage.setItem("modules", JSON.stringify(data.modulos));
 
-        setToken(data.access_token);
-        localStorage.setItem('token', data.access_token);
+          setToken(data.access_token);
+          localStorage.setItem("token", data.access_token);
 
-        // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
-        window.dispatchEvent(new CustomEvent('permissionsChanged', {
-          detail: { permisos: data.permisos, modulos: data.modulos }
-        }));
+          // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
+          window.dispatchEvent(
+            new CustomEvent("permissionsChanged", {
+              detail: { permisos: data.permisos, modulos: data.modulos },
+            })
+          );
 
-        toast.info('Tus permisos han sido actualizados.');
+          toast.info("Tus permisos han sido actualizados.");
+        }
       }
-    });
+    );
+
+    // Escuchar evento de token expirado
+    const handleTokenExpired = () => {
+      console.warn("🔴 Token expirado detectado. Cerrando sesión...");
+      logout();
+      toast.error(
+        "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+      );
+    };
+
+    window.addEventListener("tokenExpired", handleTokenExpired);
 
     return () => {
       // Limpiar listeners al desmontar
       unsubscribePermissions();
+      window.removeEventListener("tokenExpired", handleTokenExpired);
     };
   }, [token]);
 
@@ -151,16 +190,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const decoded: any = jwtDecode(newToken);
       if (decoded.nombre) {
         // Actualizar userData con el nombre del token
-        setUserData(prev => prev ? { ...prev, nombres: decoded.nombre } : {
-          tipo: "CC",
-          identificacion: decoded.identificacion || "",
-          nombres: decoded.nombre,
-          apellidos: "",
-          email: decoded.username || "",
-          telefono: "",
-          fotoUrl: "",
-          rolNombre: decoded.rolNombre || "",
-        });
+        setUserData((prev) =>
+          prev
+            ? { ...prev, nombres: decoded.nombre }
+            : {
+                tipo: "CC",
+                identificacion: decoded.identificacion || "",
+                nombres: decoded.nombre,
+                apellidos: "",
+                email: decoded.username || "",
+                telefono: "",
+                fotoUrl: "",
+                rolNombre: decoded.rolNombre || "",
+              }
+        );
       }
     } catch (error) {
       console.error("Error decodificando token:", error);
@@ -187,18 +230,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{
-      token,
-      loading,
-      isLoggingOut,
-      userPermissions,
-      userModules,
-      userData,
-      login,
-      logout,
-      refreshPermissions,
-      refreshUserData,
-    }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        loading,
+        isLoggingOut,
+        userPermissions,
+        userModules,
+        userData,
+        login,
+        logout,
+        refreshPermissions,
+        refreshUserData,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsNotEmpty, IsIn, IsNumber ,IsDate} from 'class-validator';
 import { Type } from 'class-transformer'; //
+import { IsDateOrderValid } from '../../../common/validators/is-date-order-valid.validator';
 
 export class CreateTratamientoDto {
   @IsString()
@@ -14,6 +15,7 @@ export class CreateTratamientoDto {
  @Type(() => Date)
   @IsDate()     // <-- AÑADIDO/VERIFICADO
   @IsOptional()
+  @IsDateOrderValid()
   fechaFinal?: Date; // <-- TIPO CAMBIADO A string
   // ... otros campos
 

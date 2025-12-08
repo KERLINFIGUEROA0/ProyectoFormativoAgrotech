@@ -141,8 +141,7 @@ const handleViewLocation = (lote: Lote) => {
         <h1 className="text-3xl font-bold text-gray-900">Gestión Lotes</h1>
         <Button
           onPress={() => openModal()}
-          color="success"
-          className="font-semibold"
+          className="bg-green-600 text-white font-bold hover:bg-green-700"
           size="sm"
           startContent={<Plus size={16} strokeWidth={2.5} />}
         >

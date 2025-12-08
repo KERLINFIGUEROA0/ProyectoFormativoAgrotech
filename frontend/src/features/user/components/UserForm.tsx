@@ -322,9 +322,8 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           </Button>
           <Button
             onClick={validateAndSave}
-            color="primary"
+            className="bg-green-600 text-white font-bold hover:bg-green-700 w-full sm:w-auto"
             size="sm"
-            className="w-full sm:w-auto"
           >
             {editingId != null ? 'Actualizar Usuario' : 'Registrar Usuario'}
           </Button>

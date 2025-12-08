@@ -44,7 +44,7 @@ export class VentasService {
         id: `venta-${v.id}`,
         descripcion: descripcionSegura,
         monto: parseFloat(v.valorTotalVenta as any),
-        fecha: v.fecha,
+        fecha: v.fecha.toISOString().split('T')[0],
         cantidad: v.cantidadVenta,
         precioUnitario: parseFloat(v.precioUnitario as any)
       };

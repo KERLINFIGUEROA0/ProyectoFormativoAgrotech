@@ -113,7 +113,6 @@ const GestionMovimientosPage: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Package className="w-6 h-6" />
           Movimientos de Inventario
         </h1>
       </div>
@@ -225,15 +224,17 @@ const GestionMovimientosPage: React.FC = () => {
             <TableBody emptyContent={"No se encontraron movimientos"}>
               {movimientosFiltrados.map((movimiento) => {
 
-                // 1️⃣ INTENTAR EXTRAER LA UNIDAD DE LA DESCRIPCIÓN (Ej: "Devolución sobrante: 200 cm3 - ...")
+                // 1️⃣ INTENTAR EXTRAER LA CANTIDAD Y UNIDAD DE LA DESCRIPCIÓN (Ej: "Devolución sobrante: 20 kg - ...")
+                let cantidadExtraida = null;
                 let unidadExtraida = null;
                 const descripcion = movimiento.descripcion || '';
-                const matchUnidad = descripcion.match(/Devolución.*?:\s*(\d+(?:\.\d+)?)\s*([a-zA-Z0-9³]+)(?:\s*-)?/);
-                if (matchUnidad) {
-                  unidadExtraida = matchUnidad[2]; // Ej: "cm3", "kg", "L"
-                  console.log('🎯 UNIDAD EXTRAIDA de descripción:', descripcion, '->', unidadExtraida);
+                const matchCantidadUnidad = descripcion.match(/Devolución.*?:\s*(\d+(?:\.\d+)?)\s*([a-zA-Z0-9³]+)(?:\s*-)?/);
+                if (matchCantidadUnidad) {
+                  cantidadExtraida = Number(matchCantidadUnidad[1]); // Ej: 20
+                  unidadExtraida = matchCantidadUnidad[2]; // Ej: "kg", "L"
+                  console.log('🎯 EXTRAIDO de descripción:', descripcion, '-> cantidad:', cantidadExtraida, 'unidad:', unidadExtraida);
                 } else {
-                  console.log('❌ No se pudo extraer unidad de:', descripcion);
+                  console.log('❌ No se pudo extraer cantidad/unidad de:', descripcion);
                 }
 
                 // 2️⃣ SI NO SE EXTRAJO, USAR LA UNIDAD PREFERIDA DEL MATERIAL
@@ -251,9 +252,9 @@ const GestionMovimientosPage: React.FC = () => {
                 // 5️⃣ CÁLCULO DE LA CANTIDAD VISUAL
                 let cantidadVisual = 0;
 
-                // Si extrajimos la unidad de la descripción, significa que la cantidad ya está en la unidad correcta
-                if (unidadExtraida) {
-                  cantidadVisual = Number(movimiento.cantidad);
+                // Si extrajimos la cantidad de la descripción, usamos esa cantidad directamente
+                if (cantidadExtraida !== null) {
+                  cantidadVisual = cantidadExtraida;
                 }
                 // Si no, convertimos la cantidad base a la unidad visual
                 else {
@@ -267,10 +268,8 @@ const GestionMovimientosPage: React.FC = () => {
                   }
                 }
 
-                // Formateo para quitar decimales innecesarios (ej: 50.00 -> 50, pero 0.5 -> 0.5)
-                const cantidadFinal = Number.isInteger(cantidadVisual)
-                    ? cantidadVisual
-                    : parseFloat(cantidadVisual.toFixed(4)); // Máximo 4 decimales
+                // Formateo como entero (redondear al entero más cercano)
+                const cantidadFinal = Math.round(cantidadVisual);
 
                 return (
                 <TableRow key={movimiento.id}>

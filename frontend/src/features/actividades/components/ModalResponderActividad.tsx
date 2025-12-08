@@ -399,7 +399,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                   </Button>
                   <Button
                     type="submit"
-                    color={existingRespuesta?.estado === 'rechazado' ? 'warning' : (puedeDevolverMateriales ? 'success' : 'primary')}
+                    className="bg-green-600 text-white font-bold hover:bg-green-700"
                     isLoading={isSubmitting}
                   >
                     {isSubmitting

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Calendar, Clock, FileText, TrendingUp, Edit, RefreshCw } from 'lucide-react';
+import { DollarSign, Clock, FileText, TrendingUp, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
 import { obtenerPagosUsuario, obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Card, CardHeader, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 
 interface Pago {
   id: number;
@@ -211,33 +211,29 @@ const PagosPasantePage: React.FC = () => {
         <div className="flex items-center gap-3 mb-2">
           {(isAdmin || isInstructor) && (
             <>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <DollarSign className="w-8 h-8 text-blue-600" />
-              </div>
+            
+                <DollarSign className="w-8 h-8 text-green-600" />
+              
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
                 <p className="text-blue-600 font-medium">
-                  {isAdmin ? 'Administración completa del sistema' : 'Actividades que has asignado'}
+                  {isAdmin ? '' : 'Actividades que has asignado'}
                 </p>
               </div>
             </>
           )}
           {!isAdmin && !isInstructor && (
             <>
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="w-8 h-8 text-green-600" />
-              </div>
-              <div>
+                 <div>
                 <h1 className="text-3xl font-bold text-gray-800">Mis Pagos</h1>
-                <p className="text-green-600 font-medium">Historial personal</p>
               </div>
             </>
           )}
         </div>
         <p className="text-gray-600 mt-2">
           {(isAdmin || isInstructor)
-            ? 'Vista completa de pagos para gestión y edición. Puedes modificar pagos en caso de errores.'
-            : 'Historial de pagos por actividades realizadas. Revisa tus compensaciones económicas.'
+            ? 'Vista completa de pagos para gestión y edición.'
+            : 'Historial de pagos por actividades realizadas.'
           }
         </p>
       </div>
@@ -284,7 +280,7 @@ const PagosPasantePage: React.FC = () => {
           <div className="rounded-lg shadow-md p-6 bg-green-50 border border-green-200">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-100">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
+                <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Promedio/Hora</p>
@@ -296,160 +292,156 @@ const PagosPasantePage: React.FC = () => {
       )}
 
       {/* Tabla de pagos */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {(isAdmin || isInstructor)
-                  ? 'Mostrando pagos para gestión y edición'
-                  : 'Mostrando tus pagos personales'
-                }
-              </p>
-            </div>
-            {(isAdmin || isInstructor) && (
-              <button
-                onClick={cargarPagos}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <RefreshCw size={16} />
-                Actualizar
-              </button>
-            )}
-          </div>
-        </div>
-
-        {pagos.length === 0 ? (
-          <div className="text-center py-12">
-            <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">
+      <>
+      <Card className="shadow-lg">
+        <CardHeader className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
+            <p className="text-sm text-gray-600 mt-1">
               {(isAdmin || isInstructor)
-                ? 'No hay pagos para gestionar'
-                : 'No hay pagos registrados'
-              }
-            </h3>
-            <p className="text-gray-500">
-              {(isAdmin || isInstructor)
-                ? 'Los pagos aparecerán aquí cuando se registren actividades completadas.'
-                : 'Cuando completes actividades, aparecerán aquí tus pagos.'
+                ? 'Mostrando pagos para gestión y edición'
+                : 'Mostrando tus pagos personales'
               }
             </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  {(isAdmin || isInstructor) && (
-                    <>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Instructor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pasante
-                      </th>
-                    </>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actividad
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Horas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tarifa/Hora
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Descripción
-                  </th>
-                  {(isAdmin || isInstructor) && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {pagos.map((pago) => (
-                  <tr key={pago.id} className="hover:bg-gray-50">
-                    {(isAdmin || isInstructor) && (
-                      <>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {pago.actividad?.usuario ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}` : 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {pago.usuario?.tipoUsuario.nombre}
-                          </div>
-                        </td>
-                      </>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {pago.actividad.titulo}
+        </CardHeader>
+
+        <CardBody>
+          <Table aria-label="Tabla de pagos" className="min-h-[400px]">
+            <TableHeader>
+              {isAdmin || isInstructor ? (
+                <>
+                  <TableColumn>Instructor</TableColumn>
+                  <TableColumn>Pasante</TableColumn>
+                  <TableColumn>Actividad</TableColumn>
+                  <TableColumn>Fecha</TableColumn>
+                  <TableColumn>Horas</TableColumn>
+                  <TableColumn>Tarifa/Hora</TableColumn>
+                  <TableColumn>Monto</TableColumn>
+                  <TableColumn>Descripción</TableColumn>
+                  <TableColumn>Acciones</TableColumn>
+                </>
+              ) : (
+                <>
+                  <TableColumn>Actividad</TableColumn>
+                  <TableColumn>Fecha</TableColumn>
+                  <TableColumn>Horas</TableColumn>
+                  <TableColumn>Tarifa/Hora</TableColumn>
+                  <TableColumn>Monto</TableColumn>
+                  <TableColumn>Descripción</TableColumn>
+                </>
+              )}
+            </TableHeader>
+            <TableBody emptyContent={(isAdmin || isInstructor) ? "No hay pagos para gestionar" : "No hay pagos registrados"}>
+              {pagos.map((pago) => (
+                isAdmin || isInstructor ? (
+                  <TableRow key={pago.id}>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {pago.actividad?.usuario ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}` : 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {pago.usuario?.tipoUsuario.nombre}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        ID: {pago.actividad.id}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {pago.actividad.titulo}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {pago.actividad.id}
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">
-                          {formatDate(pago.fechaPago)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">
-                          {pago.horasTrabajadas}h
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(pago.tarifaHora)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {formatDate(pago.fechaPago)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {pago.horasTrabajadas}h
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(pago.tarifaHora)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <span className="text-sm font-medium text-green-600">
                         {formatCurrency(pago.monto)}
                       </span>
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell>
                       <span className="text-sm text-gray-900">
                         {pago.descripcion}
                       </span>
-                    </td>
-                    {(isAdmin || isInstructor) && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEditarPago(pago)}
-                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded p-1 transition-colors"
-                          title="Editar pago"
-                        >
-                          <Edit size={16} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => handleEditarPago(pago)}
+                        title="Editar pago"
+                      >
+                        <Edit size={16} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <TableRow key={pago.id}>
+                    <TableCell>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {pago.actividad.titulo}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {pago.actividad.id}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {formatDate(pago.fechaPago)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {pago.horasTrabajadas}h
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(pago.tarifaHora)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium text-green-600">
+                        {formatCurrency(pago.monto)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {pago.descripcion}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                )
+              ))}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
         {/* Modal de edición de pago */}
         {showEditModal && editingPago && (
@@ -523,7 +515,7 @@ const PagosPasantePage: React.FC = () => {
                   Cancelar
                 </Button>
                 <Button
-                  color="primary"
+                  className="bg-green-600 text-white font-bold hover:bg-green-700"
                   onPress={() => handleSaveEdit(editingPago)}
                 >
                   Guardar Cambios
@@ -532,7 +524,7 @@ const PagosPasantePage: React.FC = () => {
             </ModalContent>
           </Modal>
         )}
-      </div>
+      </>
     </div>
   );
 };

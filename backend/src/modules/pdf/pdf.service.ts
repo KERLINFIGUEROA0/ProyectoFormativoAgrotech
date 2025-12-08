@@ -36,40 +36,215 @@ export class PdfService {
     return date.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
   }
   async generarFacturaPdf(venta: Venta): Promise<string> {
-    
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Incrustamos la plantilla HTML directamente en el código para evitar errores de lectura de archivos.
+
+    // --- LOGO PARA LA FACTURA ---
+    const logoPath = path.join(process.cwd(), '..', 'frontend', 'src', 'assets', 'logo.png');
+    const logoBase64 = getImageAsBase64(logoPath);
+
+    // --- PLANTILLA HTML MODERNA PARA LA FACTURA ---
     const htmlTemplate = `
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
         <style>
-            body { font-family: sans-serif; margin: 40px; color: #333; }
-            .container { border: 1px solid #eee; padding: 30px; }
-            .header { text-align: center; margin-bottom: 40px; }
-            .header h1 { margin: 0; color: #2E7D32; }
-            .header p { margin: 5px 0; color: #777; }
-            .details { margin-bottom: 30px; }
-            .details table { width: 100%; border-collapse: collapse; }
-            .details th, .details td { text-align: left; padding: 8px 0; }
-            .details th { color: #555; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            .items-table th, .items-table td { border-bottom: 1px solid #ddd; padding: 12px; text-align: right; }
-            .items-table th { background-color: #f9f9f9; text-align: right; color: #555; font-weight: bold; }
-            .items-table th:first-child, .items-table td:first-child { text-align: left; }
-            .total { text-align: right; font-size: 1.2em; font-weight: bold; }
-            .total td { padding-top: 20px; }
-            .footer { text-align: center; margin-top: 50px; font-size: 0.9em; color: #888; }
+            body {
+                font-family: 'Arial', sans-serif;
+                color: #333;
+                font-size: 12px;
+                margin: 0;
+                padding: 0;
+                line-height: 1.4;
+            }
+
+            .container {
+                border: 1px solid #dee2e6;
+                padding: 30px;
+                margin: 20px;
+                background-color: #fff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #2E7D32;
+            }
+
+            .header-info h1 {
+                margin: 0 0 5px 0;
+                color: #1b5e20;
+                font-size: 28px;
+                font-weight: bold;
+            }
+
+            .header-info p {
+                margin: 5px 0;
+                color: #2E7D32;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .header-logo {
+                flex-shrink: 0;
+                margin-left: 20px;
+            }
+
+            .header-logo img {
+                height: 60px;
+                width: auto;
+            }
+
+            .invoice-details {
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 30px;
+                border: 1px solid #dee2e6;
+            }
+
+            .invoice-details table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .invoice-details th,
+            .invoice-details td {
+                text-align: left;
+                padding: 10px 15px;
+                border-bottom: 1px solid #dee2e6;
+            }
+
+            .invoice-details th {
+                background-color: #2E7D32;
+                color: white;
+                font-weight: bold;
+                width: 30%;
+            }
+
+            .items-section {
+                margin-bottom: 30px;
+            }
+
+            .items-section h3 {
+                color: #2E7D32;
+                font-size: 18px;
+                margin-bottom: 15px;
+                border-bottom: 2px solid #2E7D32;
+                padding-bottom: 5px;
+            }
+
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+
+            .items-table th,
+            .items-table td {
+                border: 1px solid #dee2e6;
+                padding: 12px;
+                text-align: left;
+            }
+
+            .items-table th {
+                background-color: #f8f9fa;
+                color: #495057;
+                font-weight: bold;
+                font-size: 11px;
+            }
+
+            .items-table td {
+                background-color: #fff;
+            }
+
+            .items-table td:nth-child(2),
+            .items-table td:nth-child(3),
+            .items-table td:nth-child(4) {
+                text-align: right;
+            }
+
+            .total-section {
+                background-color: #E8F5E9;
+                padding: 20px;
+                border-radius: 8px;
+                border: 2px solid #2E7D32;
+                text-align: right;
+            }
+
+            .total-section table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .total-section td {
+                padding: 8px 15px;
+                font-size: 16px;
+            }
+
+            .total-section .total-label {
+                font-weight: bold;
+                color: #2E7D32;
+                text-align: left;
+            }
+
+            .total-section .total-amount {
+                font-weight: bold;
+                font-size: 20px;
+                color: #1b5e20;
+            }
+
+            .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #2E7D32;
+                text-align: center;
+                font-size: 11px;
+                color: #6c757d;
+            }
+
+            .footer p {
+                margin: 5px 0;
+            }
+
+            .thank-you {
+                background-color: #E8F5E9;
+                padding: 15px;
+                border-radius: 8px;
+                margin-top: 20px;
+                text-align: center;
+                border: 1px solid #2E7D32;
+            }
+
+            .thank-you p {
+                margin: 0;
+                font-size: 14px;
+                color: #2E7D32;
+                font-weight: bold;
+            }
         </style>
     </head>
     <body>
         <div class="container">
+            <!-- HEADER CON LOGO -->
             <div class="header">
-                <h1>AgroTECH Yamboró</h1>
-                <p>Factura de Venta</p>
+                <div class="header-info">
+                    <h1>AgroTECH Yamboró</h1>
+                    <p>Factura de Venta</p>
+                </div>
+                ${logoBase64 ? `
+                <div class="header-logo">
+                    <img src="${logoBase64}" alt="Logo AgroTech" />
+                </div>
+                ` : ''}
             </div>
-            <div class="details">
+
+            <!-- DETALLES DE LA FACTURA -->
+            <div class="invoice-details">
                 <table>
                     <tr>
                         <th>Número de Factura:</th>
@@ -79,45 +254,64 @@ export class PdfService {
                     </tr>
                 </table>
             </div>
-            <table class="items-table">
-                <thead>
+
+            <!-- DETALLE DE PRODUCTOS -->
+            <div class="items-section">
+                <h3>Detalle de Productos</h3>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{descripcion}}</td>
+                            <td>{{cantidad}}</td>
+                            <td>{{precioUnitario}}</td>
+                            <td>{{valorTotal}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TOTAL A PAGAR -->
+            <div class="total-section">
+                <table>
                     <tr>
-                        <th>Descripción</th>
-                        <th>Cantidad</th>
-                        <th>Precio Unit.</th>
-                        <th>Valor Total</th>
+                        <td class="total-label">Total a Pagar:</td>
+                        <td class="total-amount">{{valorTotal}}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{{descripcion}}</td>
-                        <td>{{cantidad}}</td>
-                        <td>{{precioUnitario}}</td>
-                        <td>{{valorTotal}}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <table class="total">
-                <tr>
-                    <td>Total a Pagar:</td>
-                    <td>{{valorTotal}}</td>
-                </tr>
-            </table>
+                </table>
+            </div>
+
+            <!-- MENSAJE DE AGRADECIMIENTO -->
+            <div class="thank-you">
+                <p>¡Gracias por su compra!</p>
+                <p>AgroTECH Yamboró - Sistema de Gestión Agrícola</p>
+            </div>
+
+            <!-- FOOTER -->
             <div class="footer">
-                <p>Gracias por su compra.</p>
+                <p>Factura generada automáticamente por el sistema AgroTECH</p>
+                <p>Fecha de generación: {{fechaGeneracion}}</p>
             </div>
         </div>
     </body>
     </html>
     `;
-    // --- FIN DE LA CORRECCIÓN ---
 
     let html = htmlTemplate;
 
     // Reemplazamos los datos
     const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+    const fechaActual = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
     html = html.replace('{{facturaId}}', String(venta.id).padStart(4, '0'));
-    html = html.replace('{{fecha}}', new Date(venta.fecha).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }));
+    html = html.replace('{{fecha}}', fechaActual);
+    html = html.replace('{{fechaGeneracion}}', fechaActual);
     html = html.replace('{{descripcion}}', venta.descripcion);
     html = html.replace('{{cantidad}}', String(venta.cantidadVenta));
     html = html.replace('{{precioUnitario}}', currencyFormatter.format(Number(venta.precioUnitario)));
@@ -127,16 +321,26 @@ export class PdfService {
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
-    
+
     const pdfPath = path.join('uploads', 'facturas', `factura-${venta.id}.pdf`);
-    
+
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
 
     await page.pdf({
       path: pdfPath,
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+      displayHeaderFooter: true,
+      footerTemplate: `
+        <div style="font-size: 10px; text-align: center; width: 100%; margin: 0; padding: 8px 20px; border-top: 2px solid #2E7D32; background: linear-gradient(to right, #E8F5E9, #F1F8E9, #E8F5E9); color: #2E7D32;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 11px;">AgroTech Yamboró</span>
+            <span style="font-weight: bold; background: #2E7D32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 9px;">Factura FV-${String(venta.id).padStart(4, '0')}</span>
+            <span style="font-weight: bold; font-size: 11px;">Sistema de Gestión y Monitoreo</span>
+          </div>
+        </div>
+      `,
+      margin: { top: '20px', right: '20px', bottom: '40px', left: '20px' }
     });
 
     await browser.close();

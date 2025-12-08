@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Filter, Plus, Bell, Edit, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Filter, Plus, Edit, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search } from 'lucide-react';
 
 import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial } from '../api/inventarioApi';
 import MaterialForm from '../components/MaterialForm';
 import { type Material, type MaterialData } from '../interfaces/inventario';
-import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Switch, Pagination } from '@heroui/react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -108,17 +108,18 @@ const formatarContenido = (peso: number | string | null, tipoMedida: string | nu
 
 export default function GestionInventarioPage() {
   const [materiales, setMateriales] = useState<Material[]>([]);
+  const [materialesFiltrados, setMaterialesFiltrados] = useState<Material[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const navigate = useNavigate();
 
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
-  const [filtroTipoCategoria, setFiltroTipoCategoria] = useState('Todas');
-  const [filtroUbicacion, setFiltroUbicacion] = useState('Todas');
-  const [filtroEstadoStock, setFiltroEstadoStock] = useState('Todos');
-  const [filtroProveedor, setFiltroProveedor] = useState('Todos');
-  const [filtroEstadoMaterial, setFiltroEstadoMaterial] = useState('Todos');
-  const [showFilters, setShowFilters] = useState(false);
+  const [filtroTipoCategoria, setFiltroTipoCategoria] = useState<string | null>(null);
+  const [filtroUbicacion, setFiltroUbicacion] = useState<string | null>(null);
+  const [filtroEstadoStock, setFiltroEstadoStock] = useState<'Todos' | 'Normal' | 'Stock Bajo' | 'Crítico'>('Todos');
+  const [filtroProveedor, setFiltroProveedor] = useState<string | null>(null);
+  const [filtroEstadoMaterial, setFiltroEstadoMaterial] = useState<'Todos' | 'Activo' | 'Inactivo'>('Todos');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); 
@@ -128,7 +129,9 @@ export default function GestionInventarioPage() {
   const fetchData = async () => {
     try {
       const resMateriales = await listarMateriales();
-      setMateriales(resMateriales.data || []);
+      const materials = resMateriales.data || [];
+      setMateriales(materials);
+      applyFilter(materials);
     } catch (error) {
       toast.error("Error al cargar los materiales.");
     }
@@ -140,7 +143,11 @@ export default function GestionInventarioPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroBusqueda, filtroTipoCategoria, filtroUbicacion, filtroEstadoStock, filtroProveedor, filtroEstadoMaterial, sortConfig]);
+    const delayDebounceFn = setTimeout(() => {
+      applyFilter(materiales);
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [filtroBusqueda, filtroTipoCategoria, filtroUbicacion, filtroEstadoStock, filtroProveedor, filtroEstadoMaterial, sortConfig, materiales]);
 
 
   const openModal = (material: Material | null = null) => {
@@ -212,54 +219,140 @@ export default function GestionInventarioPage() {
     });
   }, [materiales]);
 
-  const materialesFiltrados = useMemo(() => {
-    let filtrados = [...materiales].filter(mat => {
-      const busquedaLower = filtroBusqueda.toLowerCase();
-      const coincideBusqueda = busquedaLower === '' ||
-        mat.nombre.toLowerCase().includes(busquedaLower) ||
-        (mat.descripcion && mat.descripcion.toLowerCase().includes(busquedaLower));
+  const applyFilter = (materialsToFilter: Material[]) => {
+    let filtered = materialsToFilter;
+    const newActiveFilters: string[] = [];
 
-      const coincideCategoria = filtroTipoCategoria === 'Todas' || mat.tipoCategoria === filtroTipoCategoria;
-      const coincideUbicacion = filtroUbicacion === 'Todas' || mat.ubicacion === filtroUbicacion;
-      const coincideProveedor = filtroProveedor === 'Todos' || mat.proveedor === filtroProveedor;
+    if (filtroBusqueda.trim() !== "") {
+      const lowercasedTerm = filtroBusqueda.toLowerCase();
+      filtered = filtered.filter((mat) => {
+        const nombre = mat.nombre.toLowerCase();
+        const descripcion = mat.descripcion?.toLowerCase() || "";
+        const categoria = mat.tipoCategoria?.toLowerCase() || "";
+        const ubicacion = mat.ubicacion?.toLowerCase() || "";
+        const proveedor = mat.proveedor?.toLowerCase() || "";
+        return (
+          nombre.includes(lowercasedTerm) ||
+          descripcion.includes(lowercasedTerm) ||
+          categoria.includes(lowercasedTerm) ||
+          ubicacion.includes(lowercasedTerm) ||
+          proveedor.includes(lowercasedTerm)
+        );
+      });
+      newActiveFilters.push(`Búsqueda: "${filtroBusqueda}"`);
+    }
 
-      const estadoStock = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
-      const coincideEstadoStock = filtroEstadoStock === 'Todos' ||
-        (filtroEstadoStock === 'Crítico' && (estadoStock === 'Crítico' || estadoStock === 'Stock Bajo')) ||
-        estadoStock === filtroEstadoStock;
+    if (filtroTipoCategoria !== null) {
+      filtered = filtered.filter((mat) => mat.tipoCategoria === filtroTipoCategoria);
+      newActiveFilters.push(`Categoría: ${filtroTipoCategoria}`);
+    }
 
-      const coincideEstadoMaterial = filtroEstadoMaterial === 'Todos' ||
-        (filtroEstadoMaterial === 'Activo' && mat.estado) ||
-        (filtroEstadoMaterial === 'Inactivo' && !mat.estado);
+    if (filtroUbicacion !== null) {
+      filtered = filtered.filter((mat) => mat.ubicacion === filtroUbicacion);
+      newActiveFilters.push(`Ubicación: ${filtroUbicacion}`);
+    }
 
-      return coincideBusqueda && coincideCategoria && coincideUbicacion && coincideProveedor && coincideEstadoStock && coincideEstadoMaterial;
-    });
+    if (filtroProveedor !== null) {
+      filtered = filtered.filter((mat) => mat.proveedor === filtroProveedor);
+      newActiveFilters.push(`Proveedor: ${filtroProveedor}`);
+    }
 
+    if (filtroEstadoStock !== 'Todos') {
+      const estadoStock = getStatusInfo(filtered[0]?.cantidad || 0, filtered[0]?.pesoPorUnidad || 0).text;
+      filtered = filtered.filter((mat) => {
+        const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
+        if (filtroEstadoStock === 'Crítico') {
+          return status === 'Crítico' || status === 'Stock Bajo';
+        }
+        return status === filtroEstadoStock;
+      });
+      newActiveFilters.push(`Stock: ${filtroEstadoStock}`);
+    }
+
+    if (filtroEstadoMaterial !== 'Todos') {
+      filtered = filtered.filter((mat) =>
+        filtroEstadoMaterial === 'Activo' ? mat.estado : !mat.estado
+      );
+      newActiveFilters.push(`Estado: ${filtroEstadoMaterial}`);
+    }
+
+    // Aplicar ordenamiento
     if (sortConfig.key) {
-      filtrados.sort((a, b) => {
-        const aValue = a[sortConfig.key!];
-        const bValue = b[sortConfig.key!];
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any, bValue: any;
 
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
+        switch (sortConfig.key) {
+          case 'nombre':
+            aValue = a.nombre.toLowerCase();
+            bValue = b.nombre.toLowerCase();
+            break;
+          case 'tipoCategoria':
+            aValue = a.tipoCategoria?.toLowerCase() || '';
+            bValue = b.tipoCategoria?.toLowerCase() || '';
+            break;
+          case 'cantidad':
+            aValue = a.cantidad;
+            bValue = b.cantidad;
+            break;
+          case 'ubicacion':
+            aValue = a.ubicacion?.toLowerCase() || '';
+            bValue = b.ubicacion?.toLowerCase() || '';
+            break;
+          case 'precio':
+            aValue = a.precio;
+            bValue = b.precio;
+            break;
+          default:
+            return 0;
+        }
 
-        if (aValue < bValue) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
+        if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
       });
     }
 
-    return filtrados;
-  }, [materiales, filtroBusqueda, filtroTipoCategoria, filtroUbicacion, filtroEstadoStock, filtroProveedor, filtroEstadoMaterial, sortConfig]);
+    setMaterialesFiltrados(filtered);
+    setActiveFilters(newActiveFilters);
+  };
+
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentMateriales = materialesFiltrados.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(materialesFiltrados.length / itemsPerPage);
+
+  const clearFilter = (filterType: string) => {
+    switch (filterType) {
+      case "search":
+        setFiltroBusqueda("");
+        break;
+      case "categoria":
+        setFiltroTipoCategoria(null);
+        break;
+      case "ubicacion":
+        setFiltroUbicacion(null);
+        break;
+      case "proveedor":
+        setFiltroProveedor(null);
+        break;
+      case "stock":
+        setFiltroEstadoStock("Todos");
+        break;
+      case "estado":
+        setFiltroEstadoMaterial("Todos");
+        break;
+    }
+  };
+
+  const clearAllFilters = () => {
+    setFiltroBusqueda("");
+    setFiltroTipoCategoria(null);
+    setFiltroUbicacion(null);
+    setFiltroProveedor(null);
+    setFiltroEstadoStock("Todos");
+    setFiltroEstadoMaterial("Todos");
+  };
 
   const tiposCategoriaUnicos = useMemo(() => [...new Set(materiales.map(m => m.tipoCategoria).filter(Boolean))], [materiales]);
   const ubicacionesUnicas = useMemo(() => [...new Set(materiales.map(m => m.ubicacion).filter(Boolean))], [materiales]);
@@ -294,10 +387,7 @@ export default function GestionInventarioPage() {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800">Gestión De Inventario</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <Button isIconOnly variant="light">
-            <Bell size={20} />
-          </Button>
-          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />}>
+          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />} className="text-white font-bold">
             Añadir Producto
           </Button>
         </div>
@@ -316,142 +406,229 @@ export default function GestionInventarioPage() {
           </div>
           <Button
             onClick={() => setFiltroEstadoStock(filtroEstadoStock === 'Crítico' ? 'Todos' : 'Crítico')}
-            color="danger"
-            className="flex-shrink-0"
+            className="bg-green-600 text-white font-bold hover:bg-green-700 flex-shrink-0"
           >
             {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Stock Bajo'}
           </Button>
         </div>
       )}
 
-      <div className="flex items-center gap-4 mb-6 flex-shrink-0">
-        <Input
-          type="text"
-          placeholder="Buscar productos..."
-          className="w-full max-w-xs"
-          value={filtroBusqueda}
-          onChange={(e) => setFiltroBusqueda(e.target.value)}
-        />
-        <div className="relative">
-          <Button
-            onClick={() => setShowFilters(!showFilters)}
-            color="primary"
-            startContent={<Filter size={18} />}
+      <div className="flex flex-col gap-2 mb-3">
+        {/* Filtros principales */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+          <Input
+            type="text"
+            placeholder="Buscar..."
+            startContent={<Search className="text-gray-400 h-3 w-3" />}
+            className="w-full"
+            size="sm"
+            value={filtroBusqueda}
+            onChange={(e) => setFiltroBusqueda(e.target.value)}
+          />
+
+          <Select
+            placeholder="Categorías"
+            className="w-full"
+            size="sm"
+            selectedKeys={filtroTipoCategoria ? new Set([filtroTipoCategoria]) : new Set()}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFiltroTipoCategoria(selected as string || null);
+            }}
           >
-            Filtros
-          </Button>
+            {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
+          </Select>
 
-          {showFilters && (
-            <div className="absolute left-0 mt-2 w-72 bg-white border rounded-lg shadow-lg p-4 z-20">
-              <div className="flex flex-col gap-3">
-                <Select className="w-full" selectedKeys={[filtroTipoCategoria]} onSelectionChange={(keys) => setFiltroTipoCategoria(Array.from(keys)[0] as string)}>
-                  <SelectItem key="Todas">Todas las categorías</SelectItem>
-                  {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
-                </Select>
+          <Select
+            placeholder="Ubicaciones"
+            className="w-full"
+            size="sm"
+            selectedKeys={filtroUbicacion ? new Set([filtroUbicacion]) : new Set()}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFiltroUbicacion(selected as string || null);
+            }}
+          >
+            {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
+          </Select>
 
-                <Select className="w-full" selectedKeys={[filtroUbicacion]} onSelectionChange={(keys) => setFiltroUbicacion(Array.from(keys)[0] as string)}>
-                  <SelectItem key="Todas">Todas las ubicaciones</SelectItem>
-                  {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
-                </Select>
+          <Select
+            placeholder="Proveedores"
+            className="w-full"
+            size="sm"
+            selectedKeys={filtroProveedor ? new Set([filtroProveedor]) : new Set()}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setFiltroProveedor(selected as string || null);
+            }}
+          >
+            {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
+          </Select>
 
-                <Select className="w-full" selectedKeys={[filtroProveedor]} onSelectionChange={(keys) => setFiltroProveedor(Array.from(keys)[0] as string)}>
-                  <SelectItem key="Todos">Todos los proveedores</SelectItem>
-                  {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
-                </Select>
+          <Select
+            placeholder="Estado"
+            className="w-full"
+            size="sm"
+            selectedKeys={new Set([filtroEstadoMaterial])}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as "Todos" | "Activo" | "Inactivo";
+              setFiltroEstadoMaterial(selected);
+            }}
+          >
+            <SelectItem key="Estado">Todos</SelectItem>
+            <SelectItem key="Activo">Activos</SelectItem>
+            <SelectItem key="Inactivo">Inactivos</SelectItem>
+          </Select>
 
-                <Select className="w-full" selectedKeys={[filtroEstadoStock]} onSelectionChange={(keys) => setFiltroEstadoStock(Array.from(keys)[0] as string)}>
-                  <SelectItem key="Todos">Todos los estados de stock</SelectItem>
-                  <SelectItem key="Normal">Normal</SelectItem>
-                  <SelectItem key="Stock Bajo">Stock Bajo</SelectItem>
-                  <SelectItem key="Crítico">Crítico</SelectItem>
-                </Select>
-
-                <Select className="w-full" selectedKeys={[filtroEstadoMaterial]} onSelectionChange={(keys) => setFiltroEstadoMaterial(Array.from(keys)[0] as string)}>
-                  <SelectItem key="Todos">Activos e Inactivos</SelectItem>
-                  <SelectItem key="Activo">Solo Activos</SelectItem>
-                  <SelectItem key="Inactivo">Solo Inactivos</SelectItem>
-                </Select>
-
-              </div>
-            </div>
-          )}
+          <Select
+            placeholder="Stock"
+            className="w-full"
+            size="sm"
+            selectedKeys={new Set([filtroEstadoStock])}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as "Todos" | "Normal" | "Stock Bajo" | "Crítico";
+              setFiltroEstadoStock(selected);
+            }}
+          >
+            <SelectItem key="Todos">Stock</SelectItem>
+            <SelectItem key="Normal">Normal</SelectItem>
+            <SelectItem key="Stock Bajo">Bajo</SelectItem>
+            <SelectItem key="Crítico">Crítico</SelectItem>
+          </Select>
         </div>
+
+        {/* Chips de filtros activos */}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-xs text-gray-600 font-medium">
+              Filtros:
+            </span>
+            {activeFilters.map((filter, index) => (
+              <Chip
+                key={index}
+                color="primary"
+                variant="flat"
+                size="sm"
+                onClose={() => {
+                  if (filter.includes("Búsqueda:")) setFiltroBusqueda("");
+                  else if (filter.includes("Categoría:")) setFiltroTipoCategoria(null);
+                  else if (filter.includes("Ubicación:")) setFiltroUbicacion(null);
+                  else if (filter.includes("Proveedor:")) setFiltroProveedor(null);
+                  else if (filter.includes("Stock:")) setFiltroEstadoStock("Todos");
+                  else if (filter.includes("Estado:")) setFiltroEstadoMaterial("Todos");
+                }}
+                className="text-xs px-2 py-1 h-6"
+              >
+                {filter}
+              </Chip>
+            ))}
+            <Button
+              onClick={() => {
+                setFiltroBusqueda("");
+                setFiltroTipoCategoria(null);
+                setFiltroUbicacion(null);
+                setFiltroProveedor(null);
+                setFiltroEstadoStock("Todos");
+                setFiltroEstadoMaterial("Todos");
+              }}
+              color="default"
+              variant="light"
+              size="sm"
+              className="text-xs h-6 px-2"
+            >
+              Limpiar
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex-grow min-h-0 overflow-auto border border-gray-200 rounded-lg">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10">
-            <tr>
-              <th className="px-6 py-3 text-left font-medium cursor-pointer" onClick={() => requestSort('nombre')}>
-                <div className="flex items-center gap-1">Producto <SortIcon columnKey="nombre" /></div>
-              </th>
-              <th className="px-6 py-3 text-center font-medium cursor-pointer" onClick={() => requestSort('tipoCategoria')}>
-                <div className="flex items-center justify-center gap-1">Categoría <SortIcon columnKey="tipoCategoria" /></div>
-              </th>
-              <th className="px-6 py-3 text-left font-medium cursor-pointer" onClick={() => requestSort('cantidad')}>
-                <div className="flex items-center gap-1">Cantidad <SortIcon columnKey="cantidad" /></div>
-              </th>
-              <th className="px-6 py-3 text-left font-medium cursor-pointer" onClick={() => requestSort('ubicacion')}>
-                <div className="flex items-center gap-1">Ubicación <SortIcon columnKey="ubicacion" /></div>
-              </th>
-              <th className="px-6 py-3 text-left font-medium cursor-pointer" onClick={() => requestSort('precio')}>
-                <div className="flex items-center gap-1">Valor Unit. <SortIcon columnKey="precio" /></div>
-              </th>
-              <th className="px-6 py-3 text-left font-medium">Stock</th>
-              <th className="px-6 py-3 text-center font-medium">Estado</th>
-              <th className="px-6 py-3 text-center font-medium">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
+        <Table aria-label="Tabla de inventario" className="min-h-full">
+          <TableHeader>
+            <TableColumn className="cursor-pointer" onClick={() => requestSort('nombre')}>
+              <div className="flex items-center gap-1">
+                Producto <SortIcon columnKey="nombre" />
+              </div>
+            </TableColumn>
+            <TableColumn align="center" className="cursor-pointer" onClick={() => requestSort('tipoCategoria')}>
+              <div className="flex items-center justify-center gap-1">
+                Categoría <SortIcon columnKey="tipoCategoria" />
+              </div>
+            </TableColumn>
+            <TableColumn className="cursor-pointer" onClick={() => requestSort('cantidad')}>
+              <div className="flex items-center gap-1">
+                Cantidad <SortIcon columnKey="cantidad" />
+              </div>
+            </TableColumn>
+            <TableColumn className="cursor-pointer" onClick={() => requestSort('ubicacion')}>
+              <div className="flex items-center gap-1">
+                Ubicación <SortIcon columnKey="ubicacion" />
+              </div>
+            </TableColumn>
+            <TableColumn className="cursor-pointer" onClick={() => requestSort('precio')}>
+              <div className="flex items-center gap-1">
+                Valor Unit. <SortIcon columnKey="precio" />
+              </div>
+            </TableColumn>
+            <TableColumn>Stock</TableColumn>
+            <TableColumn align="center">Estado</TableColumn>
+            <TableColumn align="center">Acciones</TableColumn>
+          </TableHeader>
+          <TableBody>
             {currentMateriales.map((mat) => {
               const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
-              const textoContenido = formatarContenido(mat.pesoPorUnidad, mat.medidasDeContenido || null);
+              const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
 
               return (
-                <tr key={mat.id} className={`hover:bg-gray-50 ${!mat.estado ? 'bg-red-50 text-red-400' : ''}`}>
-                  <td className="px-6 py-4 flex items-center gap-3">
-                    <img
-                      className={`w-10 h-10 object-cover rounded-md ${!mat.estado ? 'filter grayscale' : ''}`}
-                      src={mat.img ? `${API_URL}/uploads/${mat.img}` : 'https://via.placeholder.com/40'}
-                      alt={mat.nombre}
-                    />
-                    <div onClick={() => mat.estado && navigate(`/stock/${mat.id}`)} className={mat.estado ? "cursor-pointer" : ""}>
-                      <p className={`font-semibold ${mat.estado ? 'text-gray-800' : ''}`}>{mat.nombre}</p>
-                      <p className="text-xs text-gray-500">CÓDIGO: MAT-{String(mat.id).padStart(3, '0')}</p>
+                <TableRow key={mat.id || `mat-${Math.random()}`} className={!mat.estado ? 'bg-red-50' : ''}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <img
+                        className={`w-10 h-10 object-cover rounded-md ${!mat.estado ? 'filter grayscale' : ''}`}
+                        src={mat.img ? `${API_URL}/uploads/${mat.img}` : 'https://via.placeholder.com/40'}
+                        alt={mat.nombre}
+                      />
+                      <div onClick={() => mat.estado && navigate(`/stock/${mat.id}`)} className={mat.estado ? "cursor-pointer" : ""}>
+                        <p className={`font-semibold ${mat.estado ? 'text-gray-800' : 'text-red-400'}`}>{mat.nombre}</p>
+                        <p className="text-xs text-gray-500">CÓDIGO: MAT-{String(mat.id).padStart(3, '0')}</p>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
+                  </TableCell>
+                  <TableCell>
                     <div className="text-xs font-semibold flex flex-col items-center text-center gap-1">
-                      <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                      <Chip size="sm" variant="flat" color="primary">
                         {mat.tipoCategoria}
-                      </span>
+                      </Chip>
                       <span className="text-gray-600">{mat.tipoMaterial}</span>
                     </div>
-                  </td>
-
-                  <td className="px-6 py-4">
-                    {/* --- ✅ CORRECCIÓN 4: Pasamos mat.medidasDeContenido --- */}
+                  </TableCell>
+                  <TableCell>
                     {renderCantidadAmigable(mat.cantidad, mat.pesoPorUnidad, mat.tipoEmpaque, mat.medidasDeContenido)}
-                  </td>
-                  <td className="px-6 py-4">{mat.ubicacion}</td>
-                  <td className="px-6 py-4">${Number(mat.precio).toLocaleString('es-CO')}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${status.bg} ${status.text_color}`}>
-                        {status.text}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <label className="flex items-center justify-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative">
-                        <input type="checkbox" className="sr-only" checked={mat.estado} onChange={() => handleToggleEstado(mat)} />
-                        <div className={`block w-10 h-6 rounded-full ${mat.estado ? 'bg-green-400' : 'bg-red-300'}`}></div>
-                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${mat.estado ? 'transform translate-x-full' : ''}`}></div>
-                      </div>
-                    </label>
-                  </td>
-                  <td className="px-6 py-4">
+                  </TableCell>
+                  <TableCell>{mat.ubicacion}</TableCell>
+                  <TableCell>${Number(mat.precio).toLocaleString('es-CO')}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      color={
+                        status.text === 'Crítico' ? 'danger' :
+                        status.text === 'Stock Bajo' ? 'warning' : 'success'
+                      }
+                    >
+                      {status.text}
+                    </Chip>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch
+                      size="sm"
+                      color="success"
+                      isSelected={mat.estado}
+                      onValueChange={() => handleToggleEstado(mat)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
                         <Edit size={16} />
@@ -470,40 +647,39 @@ export default function GestionInventarioPage() {
                         </Button>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
-        <span className="text-sm text-gray-600">
-          Mostrando {Math.min(indexOfLastItem, materialesFiltrados.length)} de {materialesFiltrados.length} materiales
-        </span>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              variant="bordered"
-              isIconOnly
-            >
-              <ChevronLeft size={16} />
-            </Button>
-            <span className="text-sm text-gray-600">
-              Página {currentPage} de {totalPages}
+      <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-center mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-200 gap-3 md:gap-4 bg-gray-50/50 px-3 md:px-4 py-2 md:py-3 rounded-lg">
+        <div className="text-xs md:text-sm text-gray-600 text-center sm:text-left">
+          <span className="font-medium">
+            Mostrando {Math.min(indexOfLastItem, materialesFiltrados.length)} de{" "}
+            {materialesFiltrados.length} materiales
+          </span>
+          {activeFilters.length > 0 && (
+            <span className="ml-2 text-blue-600 font-medium">
+              ({activeFilters.length} filtro
+              {activeFilters.length !== 1 ? "s" : ""} activo
+              {activeFilters.length !== 1 ? "s" : ""})
             </span>
-            <Button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              variant="bordered"
-              isIconOnly
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
+          )}
+        </div>
+        {totalPages > 1 && (
+          <Pagination
+            total={totalPages}
+            page={currentPage}
+            onChange={setCurrentPage}
+            showControls
+            showShadow
+            color="primary"
+            size="sm"
+            className="justify-center sm:justify-end"
+          />
         )}
       </div>
 

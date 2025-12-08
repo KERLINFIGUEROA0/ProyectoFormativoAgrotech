@@ -36,6 +36,11 @@ export class PagosController {
     return this.pagosService.findByUsuario(id);
   }
 
+  @Get('cultivo/:id')
+  findByCultivo(@Param('id', ParseIntPipe) id: number) {
+    return this.pagosService.findByCultivo(id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);

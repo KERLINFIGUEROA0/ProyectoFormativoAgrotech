@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DollarSign, BarChart, Edit, Trash2, Plus, ArrowLeft } from 'lucide-react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Card, CardBody } from '@heroui/react';
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, Card, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from '@heroui/react';
 import { getProduccionesPorCultivo, getStatsPorCultivo, deleteProduccion, createProduccion, updateProduccion } from '../api/produccionApi';
-import { listarCultivos } from '../api/cultivosApi';
+import { getPagosByCultivo } from '../../pagos/api/pagosApi';
+import { getMaterialCosts } from '../api/cultivosApi';
 import ProduccionForm from '../components/ProduccionForm';
 import type { Produccion, Stats} from '../interfaces/cultivos';
 import { formatDateOnly } from '../../../utils/dateUtils';
@@ -33,6 +34,8 @@ export default function DashboardProduccion() {
   const { cultivoId } = useParams<{ cultivoId: string }>();
   const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [totalLaborCosts, setTotalLaborCosts] = useState<number>(0);
+  const [totalMaterialCosts, setTotalMaterialCosts] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduccion, setEditingProduccion] = useState<Produccion | null>(null);
 
@@ -40,13 +43,22 @@ export default function DashboardProduccion() {
     if (!cultivoId) return;
     try {
       const id = parseInt(cultivoId);
-      const [produccionesRes, statsRes, cultivosRes] = await Promise.all([
+      const [produccionesRes, statsRes, pagosRes, materialCostsRes] = await Promise.all([
         getProduccionesPorCultivo(id),
         getStatsPorCultivo(id),
-        listarCultivos()
+        getPagosByCultivo(id),
+        getMaterialCosts(id)
       ]);
       setProducciones(produccionesRes.data || []);
       setStats(statsRes.data);
+
+      // Calcular total de costos de mano de obra (pagos a pasantes)
+      const laborCosts = pagosRes.data ? pagosRes.data.reduce((sum: number, pago: any) => sum + Number(pago.monto), 0) : 0;
+      setTotalLaborCosts(laborCosts);
+
+      // Calcular total de costos de materiales
+      const materialCosts = materialCostsRes.data?.totalMaterialCosts || 0;
+      setTotalMaterialCosts(materialCosts);
     } catch (error) {
       toast.error("Error al cargar los datos de producción.");
     }
@@ -55,15 +67,6 @@ export default function DashboardProduccion() {
   useEffect(() => {
     fetchData();
   }, [cultivoId]);
-  
-  const getStatusColor = (estado: string) => {
-      switch (estado) {
-          case 'Cosechado': return 'bg-green-100 text-green-800';
-          case 'En Proceso': return 'bg-yellow-100 text-yellow-800';
-          case 'Programado': return 'bg-blue-100 text-blue-800';
-          default: return 'bg-gray-100 text-gray-800';
-      }
-  };
 
   const handleOpenModal = (produccion: Produccion | null = null) => {
       setEditingProduccion(produccion);
@@ -120,7 +123,7 @@ export default function DashboardProduccion() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <Button onClick={() => handleOpenModal()} color="primary" startContent={<Plus />}>
+        <Button onClick={() => handleOpenModal()} className="bg-green-600 text-white font-bold hover:bg-green-700" startContent={<Plus />}>
            Registrar Cosecha
         </Button>
       </div>
@@ -128,67 +131,74 @@ export default function DashboardProduccion() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Cosechado" value={stats?.totalCosechado || 0} icon={<BarChart/>} isCurrency={false}/>
         <StatCard title="Ingresos Totales" value={stats?.ingresosTotales || 0} icon={<DollarSign/>}/>
-        <StatCard title="Gastos Totales" value={stats?.gastosTotales || 0} icon={<DollarSign/>}/>
+        <StatCard title="Gastos Totales" value={(stats?.gastosTotales || 0) + totalLaborCosts + totalMaterialCosts} icon={<DollarSign/>}/>
         <StatCard title="Cosecha Vendida" value={stats?.cosechaVendida || 0} icon={<DollarSign/>} isCurrency={false}/>
       </div>
 
       <div className="bg-white shadow-xl rounded-xl p-6 w-full">
         <h2 className="text-lg font-semibold text-gray-600 mb-4">Historial de Cosechas</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3 text-left">ID Registro</th>
-                <th className="px-4 py-3 text-left">Fecha Cosecha</th>
-                <th className="px-4 py-3 text-center">Estado</th>
-                <th className="px-4 py-3 text-right">Cosecha Total (kg)</th>
-                <th className="px-4 py-3 text-right">Cosecha Vendida (kg)</th>
-                <th className="px-4 py-3 text-right">Disponible (kg)</th>
-                <th className="px-4 py-3 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {producciones.map((p) => {
-                const cosechaVendida = (p.cantidadOriginal || 0) - p.cantidad;
-                const disponible = p.cantidad;
-                const isSoldOut = disponible === 0;
+        <Table aria-label="Historial de cosechas">
+          <TableHeader>
+            <TableColumn>ID Registro</TableColumn>
+            <TableColumn>Fecha Cosecha</TableColumn>
+            <TableColumn align="center">Estado</TableColumn>
+            <TableColumn align="end">Cosecha Total (kg)</TableColumn>
+            <TableColumn align="end">Cosecha Vendida (kg)</TableColumn>
+            <TableColumn align="end">Disponible (kg)</TableColumn>
+            <TableColumn align="center">Acciones</TableColumn>
+          </TableHeader>
+          <TableBody>
+            {producciones.map((p) => {
+              const cosechaVendida = (p.cantidadOriginal || 0) - p.cantidad;
+              const disponible = p.cantidad;
+              const isSoldOut = disponible === 0;
 
-                return (
-                  <tr key={p.id} className={`border-t hover:bg-gray-50 ${isSoldOut ? 'bg-red-50' : ''}`}>
-                    <td className="px-4 py-3 font-medium">PROD-{p.id}</td>
-                    <td className="px-4 py-3">{(() => {
-                      if (!p.fecha) return '';
-                      const fechaStr = p.fecha.toString();
-                      // Si no incluye tiempo, agregamos mediodía para evitar cambio de día
-                      const fechaCompleta = fechaStr.includes('T') || fechaStr.includes(' ') ?
-                        fechaStr : `${fechaStr}T12:00:00.000Z`;
-                      const date = new Date(fechaCompleta);
-                      return date.toLocaleDateString('es-CO', {
-                        timeZone: 'America/Bogota',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                      });
-                    })()}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estado)}`}>
-                          {p.estado}
-                      </span>
-                      {isSoldOut && <span className="ml-2 text-red-600 text-xs">VENDIDO</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold">{(p.cantidadOriginal || p.cantidad).toLocaleString('es-CO')} kg</td>
-                    <td className="px-4 py-3 text-right font-semibold">{cosechaVendida.toLocaleString('es-CO')} kg</td>
-                    <td className="px-4 py-3 text-right font-semibold">{disponible.toLocaleString('es-CO')} kg</td>
-                    <td className="px-4 py-3 text-center flex justify-center items-center gap-4">
-                      <button onClick={() => handleOpenModal(p)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                      <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <TableRow key={p.id} className={isSoldOut ? 'bg-red-50' : ''}>
+                  <TableCell className="font-medium">PROD-{p.id}</TableCell>
+                  <TableCell>{formatDateOnly(p.fecha)}</TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        color={p.estado === 'Cosechado' ? 'success' : p.estado === 'En Proceso' ? 'warning' : 'default'}
+                      >
+                        {p.estado}
+                      </Chip>
+                      {isSoldOut && <span className="text-red-600 text-xs font-medium">VENDIDO</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">{(p.cantidadOriginal || p.cantidad).toLocaleString('es-CO')} kg</TableCell>
+                  <TableCell className="text-right font-semibold">{cosechaVendida.toLocaleString('es-CO')} kg</TableCell>
+                  <TableCell className="text-right font-semibold">{disponible.toLocaleString('es-CO')} kg</TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center items-center gap-2">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        color="primary"
+                        onClick={() => handleOpenModal(p)}
+                      >
+                        <Edit size={16} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        color="danger"
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
        <Modal isOpen={isModalOpen} onOpenChange={handleCloseModal} size="2xl">
          <ModalContent>

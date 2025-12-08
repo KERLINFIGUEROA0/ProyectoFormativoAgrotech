@@ -3,44 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: sans-serif; margin: 40px; color: #333; }
-        .container { border: 1px solid #eee; padding: 30px; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .header h1 { margin: 0; color: #2E7D32; }
-        .header p { margin: 5px 0; color: #777; }
-        .section { margin-bottom: 40px; page-break-inside: avoid; }
-        .section h2 { color: #2E7D32; border-bottom: 2px solid #2E7D32; padding-bottom: 5px; }
-        .details { margin-bottom: 30px; }
-        .details table { width: 100%; border-collapse: collapse; }
-        .details th, .details td { text-align: left; padding: 8px 0; }
-        .details th { color: #555; font-weight: bold; }
-        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .table th { background-color: #f9f9f9; color: #555; font-weight: bold; }
-        .table td { text-align: right; }
-        .table td:first-child { text-align: left; }
-        .total-row { font-weight: bold; background-color: #f0f0f0; }
-        .footer { text-align: center; margin-top: 50px; font-size: 0.9em; color: #888; }
-        .financial-summary { background-color: #f9f9f9; padding: 20px; border-radius: 5px; }
-        .financial-summary h3 { margin-top: 0; color: #2E7D32; }
-        .financial-item { display: flex; justify-content: space-between; margin: 10px 0; }
-        .financial-item.positive { color: green; }
-        .financial-item.negative { color: red; }
+        body {
+            font-family: 'Arial', sans-serif;
+            color: #333;
+            font-size: 11px;
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+        }
+
+        .container {
+            border: 1px solid #eee;
+            padding: 30px;
+            margin: 20px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0 0 5px 0;
+            color: #1b5e20;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .header p {
+            margin: 5px 0;
+            color: #777;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+
+        .section h2 {
+            color: #2E7D32;
+            border-bottom: 2px solid #2E7D32;
+            padding-bottom: 5px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .details {
+            margin-bottom: 30px;
+        }
+
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .details th, .details td {
+            text-align: left;
+            padding: 8px 0;
+        }
+
+        .details th {
+            color: #555;
+            font-weight: bold;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 8px;
+        }
+
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: bold;
+            font-size: 7px;
+        }
+
+        .table td {
+            text-align: right;
+        }
+
+        .table td:first-child {
+            text-align: left;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .financial-summary {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .financial-summary h3 {
+            margin-top: 0;
+            color: #2E7D32;
+        }
+
+        .financial-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .financial-item.positive {
+            color: green;
+        }
+
+        .financial-item.negative {
+            color: red;
+        }
+
         @media print {
-            .container { border: none; }
-            body { margin: 20px; }
+            .container {
+                border: none;
+            }
+            body {
+                margin: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Portada -->
-        <div class="header">
-            <h1>AgroTECH Yamboró</h1>
-            <p>Reporte de Trazabilidad de Cultivo</p>
-            <h2>{{cultivo.nombre}}</h2>
-            <p>Generado el: {{fechaGeneracion}}</p>
-            <p>{{periodo}}</p>
+        <!-- HEADER GRANDE SOLO EN PRIMERA PÁGINA -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; padding: 0;">
+           <div style="flex: 1;">
+             <h1 style="margin: 0 0 5px 0; color: #1b5e20; font-size: 24px; font-weight: bold;">REPORTE DE TRAZABILIDAD DE CULTIVO - AGROTECH</h1>
+             <p style="margin: 0 0 5px 0; color: #2E7D32; font-size: 14px; font-weight: 600;">Cultivo: {{cultivo.nombre}} | Lote: {{cultivo.lote.nombre}}</p>
+             <p style="margin: 0; color: #666; font-size: 10px;">{{periodo}} | Generado: {{fechaGeneracion}}</p>
+           </div>
+           {{logo}}
         </div>
 
         <!-- Información General del Cultivo -->
