@@ -4,14 +4,14 @@ import {
   Bell, Clock, AlertTriangle, LineChart as ChartIcon, Power, PowerOff,
   TrendingUp, MoreVertical, Filter, Map, Layers,
   RefreshCw, Pause, Download, X,
-  ChevronLeft, ChevronRight, Server, Activity
+  ChevronLeft, ChevronRight, Server, Activity, Trash2
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 // Hero UI Components
-import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Input } from "@heroui/react";
+import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Input,ModalContent, ModalHeader, ModalBody } from "@heroui/react";
 
 // --- APIS ---
 import {
@@ -733,41 +733,41 @@ function DeleteSensorModal({ isOpen, onClose, onConfirm, sensor, loteNombre }: D
   if (!sensor) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Eliminar Sensor del Lote" size="sm">
-      <div className="p-6">
-        <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <X className="h-6 w-6 text-red-600" />
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalContent>
+        <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+              <Trash2 className="text-red-600" size={20} />
+            </div>
+            <h4 className="text-lg font-semibold text-center">¿Eliminar sensor?</h4>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            ¿Desea eliminar el sensor del lote?
-          </h3>
-          <div className="mt-2 px-4 py-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Sensor:</span> {sensor.nombre}
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              <span className="font-medium">Lote:</span> {loteNombre}
-            </p>
+        </ModalHeader>
+        <ModalBody className="text-center">
+          <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
+            <div className="font-medium">{sensor.nombre}</div>
+            <div className="text-xs text-gray-500 mt-1">Lote: {loteNombre}</div>
           </div>
-          <p className="text-sm text-gray-500 mt-4">
-            Esta acción no se puede deshacer.
-          </p>
-        </div>
-
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="light" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            color="danger"
-            onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            Eliminar
-          </Button>
-        </div>
-      </div>
+          <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer.</p>
+          <div className="flex gap-3 mt-4 w-full justify-center">
+            <Button
+              onClick={onClose}
+              color="default"
+              variant="light"
+              className="flex-1 max-w-[120px]"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={onConfirm}
+              color="danger"
+              className="flex-1 max-w-[120px]"
+            >
+              Eliminar
+            </Button>
+          </div>
+        </ModalBody>
+      </ModalContent>
     </Modal>
   );
 }

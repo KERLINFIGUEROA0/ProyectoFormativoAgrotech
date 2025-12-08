@@ -402,7 +402,7 @@ export default function CultivoForm({
       {formData.loteId && tieneSublotes && !formData.subloteId && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700 flex items-center gap-2">
-             ⚠️ <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.
+             <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.
              Por favor selecciona un <b>Sublote</b> específico.
           </p>
         </div>
@@ -411,7 +411,7 @@ export default function CultivoForm({
       {formData.loteId && tieneSublotes && formData.subloteId && (
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-700">
-            📍 <b>Modo Específico:</b> El cultivo se asignará únicamente al
+            <b>Modo Específico:</b> El cultivo se asignará únicamente al
             sublote seleccionado. El resto de sublotes seguirán disponibles y el
             lote principal pasará a "Parcialmente ocupado".
           </p>
@@ -421,7 +421,7 @@ export default function CultivoForm({
       {formData.loteId && !tieneSublotes && (
         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-sm text-green-700">
-            🌱 <b>Lote sin subdivisiones:</b> Este lote no tiene sublotes
+            <b>Lote sin subdivisiones:</b> Este lote no tiene sublotes
             definidos, por lo que el cultivo se aplicará a todo el lote.
           </p>
         </div>

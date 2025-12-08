@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Input, Select, SelectItem, Button } from "@heroui/react";
+import { Input, Select, SelectItem, Button, Progress } from "@heroui/react";
 import Modal from '../../../components/Modal'; // Ajustar ruta según tu estructura
 import { obtenerLotes } from '../../cultivos/api/lotesApi';
-import { obtenerSublotesPorLote } from '../../cultivos/api/sublotesApi';
 import { descargarReporteApi, getCultivosActivosLote } from '../api/sensoresApi';
 
 interface Props {
@@ -12,64 +11,120 @@ interface Props {
 }
 
 const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { register, handleSubmit, setValue } = useForm();
+  const { handleSubmit, setValue } = useForm();
   const [lotes, setLotes] = useState([]);
-  const [sublotes, setSublotes] = useState([]);
   const [cultivos, setCultivos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [selectedFormato, setSelectedFormato] = useState('pdf');
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
-  const [selectedSubloteId, setSelectedSubloteId] = useState<number | null>(null);
   const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       // Cargar Lotes al abrir
       obtenerLotes().then(response => setLotes(response.data || []));
+      // Resetear fechas al abrir el modal
+      setFechaInicio('');
+      setFechaFin('');
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (selectedLoteId) {
-      // Cargar sublotes si selecciona lote
-      obtenerSublotesPorLote(selectedLoteId).then(response => setSublotes(response.data?.data || []));
       // Cargar cultivos activos del lote
       getCultivosActivosLote(selectedLoteId).then(response => {
         console.log('Cultivos cargados:', response.data);
-        setCultivos(response.data || []);
+        const cultivosData = response.data || [];
+        setCultivos(cultivosData);
+
+        // Para reporte de lote completo, dejar fechas libres (usuario elige el rango)
+        // Solo se configuran automáticamente cuando se selecciona un cultivo específico
       }).catch(error => {
         console.error('Error cargando cultivos:', error);
         setCultivos([]);
       });
     } else {
       // Limpiar cuando no hay lote seleccionado
-      setSublotes([]);
       setCultivos([]);
+      setFechaInicio('');
+      setFechaFin('');
+      setSelectedCultivoId(null);
     }
   }, [selectedLoteId]);
 
+  // Controlar cambios en fecha de inicio
+  useEffect(() => {
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      // Si la fecha de inicio es posterior a la fecha de fin, ajustar fecha de fin
+      setFechaFin(fechaInicio);
+    }
+  }, [fechaInicio, fechaFin]);
+
+  // Manejadores de cambio de fecha
+  const handleFechaInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevaFechaInicio = e.target.value;
+    setFechaInicio(nuevaFechaInicio);
+    setValue('fechaInicio', nuevaFechaInicio);
+  };
+
+  const handleFechaFinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevaFechaFin = e.target.value;
+    // Solo permitir fechas desde la fecha de inicio hacia adelante
+    if (!fechaInicio || nuevaFechaFin >= fechaInicio) {
+      setFechaFin(nuevaFechaFin);
+      setValue('fechaFin', nuevaFechaFin);
+    }
+  };
+
   const onSubmit = async (data: any) => {
     setLoading(true);
+    setProgress(0);
+
     try {
       // Preparar datos para enviar
       const payload = {
         formato: selectedFormato as "pdf"  | "json",
         loteId: selectedLoteId!,
-        subloteId: selectedSubloteId || undefined,
         cultivoId: selectedCultivoId || undefined,
         fechaInicio: data.fechaInicio,
         fechaFin: data.fechaFin,
       };
 
-      // Remover subloteId si es undefined
-      if (payload.subloteId === undefined) {
-        delete payload.subloteId;
-      }
-
       console.log("Enviando datos:", payload);
 
-      // Llamada a la API
+      // Simular progreso gradual durante la recolección de datos
+      setProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setProgress(20);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setProgress(30);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setProgress(40);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setProgress(50);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Llamada a la API (aquí es donde realmente se procesa)
       const result = await descargarReporteApi(payload);
+
+      setProgress(60);
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      setProgress(70);
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      setProgress(80);
+      // Esperar un poco más en 80% para simular procesamiento final
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setProgress(90);
 
       // Descargar archivo
       const url = window.URL.createObjectURL(new Blob([result]));
@@ -80,15 +135,24 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
         : `trazabilidad_lote_${payload.loteId}.${payload.formato}`;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
+
       link.click();
       link.remove();
-      onClose();
+
+      setProgress(100);
+
+      // Pequeño delay para mostrar el 100%
+      setTimeout(() => {
+        onClose();
+      }, 500);
+
     } catch (error: any) {
       console.error("Error generando reporte", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Error desconocido";
       alert("Error al generar el reporte: " + errorMessage);
     } finally {
       setLoading(false);
+      setProgress(0);
     }
   };
 
@@ -122,7 +186,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
               const selected = Array.from(keys);
               const value = selected.length > 0 ? Number(selected[0]) : null;
               setSelectedLoteId(value);
-              setSelectedSubloteId(null); // Reset sublote
               setSelectedCultivoId(null); // Reset cultivo
             }}
             placeholder="Seleccione un lote..."
@@ -135,51 +198,69 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
           </Select>
         </div>
 
-        {/* Sublote Opcional */}
-        <div>
-          <Select
-            label="Sublote (Opcional)"
-            selectedKeys={selectedSubloteId ? [selectedSubloteId.toString()] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys);
-              setSelectedSubloteId(selected.length > 0 ? Number(selected[0]) : null);
-            }}
-            placeholder="Todo el lote"
-            fullWidth
-          >
-            {sublotes.map((s: any) => (
-              <SelectItem key={s.id.toString()}>{s.nombre}</SelectItem>
-            ))}
-          </Select>
-        </div>
 
         {/* CULTIVO ESPECÍFICO - ESTE ES EL INPUT QUE BUSCAS */}
         <div className="border-2 border-blue-200 bg-blue-50 p-4 rounded-lg">
           <Select
-            label="🎯 Cultivo Específico (Opcional)"
+            label="Cultivo Específico (Opcional)"
             selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys);
-              setSelectedCultivoId(selected.length > 0 ? Number(selected[0]) : null);
+              const cultivoId = selected.length > 0 ? Number(selected[0]) : null;
+              setSelectedCultivoId(cultivoId);
+
+              if (cultivoId) {
+                // Buscar el cultivo seleccionado para obtener su fecha de siembra
+                const cultivoSeleccionado = cultivos.find((c: any) => c.id === cultivoId);
+
+                if (cultivoSeleccionado && (cultivoSeleccionado as any).Fecha_Plantado) {
+                  // Establecer fecha de inicio como fecha de siembra
+                  const fechaSiembraRaw = (cultivoSeleccionado as any).Fecha_Plantado;
+
+                  // Manejar diferentes formatos de fecha
+                  let fechaSiembra: string;
+                  if (typeof fechaSiembraRaw === 'string') {
+                    // Si ya es string, tomar los primeros 10 caracteres (YYYY-MM-DD)
+                    fechaSiembra = fechaSiembraRaw.substring(0, 10);
+                  } else {
+                    // Si es Date object, convertir
+                    fechaSiembra = new Date(fechaSiembraRaw).toISOString().split('T')[0];
+                  }
+
+                  // Establecer fecha fin como hoy (editable por el usuario)
+                  const hoy = new Date().toISOString().split('T')[0];
+
+                  setFechaInicio(fechaSiembra);
+                  setFechaFin(hoy);
+                  setValue('fechaInicio', fechaSiembra);
+                  setValue('fechaFin', hoy);
+                }
+              } else {
+                // Si se deselecciona el cultivo, dejar fechas libres para reporte de lote completo
+                setFechaInicio('');
+                setFechaFin('');
+                setValue('fechaInicio', '');
+                setValue('fechaFin', '');
+              }
             }}
-            placeholder="📊 Todos los cultivos del lote"
+            placeholder="Todos los cultivos del lote"
             fullWidth
             disabled={!selectedLoteId}
             className="bg-white"
           >
             {cultivos.length > 0 ? cultivos.map((c: any) => (
               <SelectItem key={c.id.toString()}>
-                🌱 {c.nombre} {c.tipoCultivo?.nombre ? `(${c.tipoCultivo.nombre})` : ''}
-                {c.sublotes?.nombre ? ` - 📍 Sublote: ${c.sublotes.nombre}` : ''}
+                {c.nombre} {c.tipoCultivo?.nombre ? `(${c.tipoCultivo.nombre})` : ''}
+                {c.sublotes?.nombre ? ` - Sublote: ${c.sublotes.nombre}` : ''}
               </SelectItem>
             )) : (
-              <SelectItem key="loading" isDisabled>⏳ Cargando cultivos...</SelectItem>
+              <SelectItem key="loading" isDisabled>Cargando cultivos...</SelectItem>
             )}
           </Select>
           <small className="text-blue-600 mt-2 block font-medium">
-            💡 Solo muestra cultivos activos (no finalizados) con producción pendiente.
+            Solo muestra cultivos activos (no finalizados) con producción pendiente.
             <br />
-            📈 {cultivos.length} cultivo(s) encontrado(s) en este lote.
+            {cultivos.length} cultivo(s) encontrado(s) en este lote.
           </small>
         </div>
 
@@ -188,16 +269,35 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
           <Input
             label="Fecha Inicio"
             type="date"
-            {...register('fechaInicio', { required: true })}
+            value={fechaInicio}
+            onChange={handleFechaInicioChange}
             fullWidth
+            required
           />
           <Input
             label="Fecha Fin"
             type="date"
-            {...register('fechaFin', { required: true })}
+            value={fechaFin}
+            onChange={handleFechaFinChange}
+            min={fechaInicio || undefined}
             fullWidth
+            required
+            disabled={!fechaInicio}
           />
         </div>
+
+        {/* Barra de Progreso */}
+        {loading && (
+          <div className="mt-4">
+            <Progress
+              value={progress}
+              color="success"
+              size="md"
+              className="w-full"
+              label={`Generando reporte... ${progress}%`}
+            />
+          </div>
+        )}
 
         <div className="mt-6 flex justify-end">
           <Button

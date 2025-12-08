@@ -323,6 +323,9 @@ export class UsuariosController {
         data: usuario,
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         {
           success: false,

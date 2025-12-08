@@ -1,21 +1,24 @@
 ---
-title: "Módulo Surcos"
+title: "Módulo Sublotes"
 ---
 
-# Módulo Surcos
+# Módulo Sublotes
 
 ## Endpoints
 
-### POST /surcos/crear
-**Descripción**: Crea un nuevo surco dentro de un lote.
+### POST /sublotes/crear
+**Descripción**: Crea un nuevo sublote dentro de un lote.
 
-**URL completa:** `http://localhost:3000/surcos/crear`
+**URL completa:** `http://localhost:3000/sublotes/crear`
 
 **Request Body:**
 ```json
 {
-  "nombre": "Surco Norte - Sección A",
-  "descripcion": "Surco principal para cultivo de tomates",
+  "nombre": "Sublote Norte - Sección A",
+  "coordenadas": {
+    "type": "point",
+    "coordinates": { "lat": 4.6097, "lng": -74.0817 }
+  },
   "loteId": 1,
   "cultivoId": 1,
   "brokerId": 1,
@@ -27,11 +30,14 @@ title: "Módulo Surcos"
 ```json
 {
   "success": true,
-  "message": "El surco \"Surco Norte - Sección A\" se creó correctamente",
+  "message": "El sublote \"Sublote Norte - Sección A\" se creó correctamente",
   "data": {
     "id": 1,
-    "nombre": "Surco Norte - Sección A",
-    "descripcion": "Surco principal para cultivo de tomates",
+    "nombre": "Sublote Norte - Sección A",
+    "coordenadas": {
+      "type": "point",
+      "coordinates": { "lat": 4.6097, "lng": -74.0817 }
+    },
     "loteId": 1,
     "cultivoId": 1,
     "brokerId": 1,
@@ -42,10 +48,10 @@ title: "Módulo Surcos"
 }
 ```
 
-### GET /surcos/listar
-**Descripción**: Lista todos los surcos del sistema con sus relaciones.
+### GET /sublotes/listar
+**Descripción**: Lista todos los sublotes del sistema con sus relaciones.
 
-**URL completa:** `http://localhost:3000/surcos/listar`
+**URL completa:** `http://localhost:3000/sublotes/listar`
 
 **Response:**
 ```json
@@ -55,8 +61,7 @@ title: "Módulo Surcos"
   "data": [
     {
       "id": 1,
-      "nombre": "Surco Norte - Sección A",
-      "descripcion": "Surco principal para cultivo de tomates",
+      "nombre": "Sublote Norte - Sección A",
       "estado": "Disponible",
       "activo_mqtt": true,
       "lote": {
@@ -81,10 +86,10 @@ title: "Módulo Surcos"
 }
 ```
 
-### GET /surcos/lotes/:loteId/surcos
-**Descripción**: Lista todos los surcos de un lote específico.
+### GET /sublotes/lotes/:loteId/sublotes
+**Descripción**: Lista todos los sublotes de un lote específico.
 
-**URL completa:** `http://localhost:3000/surcos/lotes/:loteId/surcos`
+**URL completa:** `http://localhost:3000/sublotes/lotes/:loteId/sublotes`
 
 **Parámetros URL:**
 - `loteId` (number): ID del lote
@@ -97,7 +102,7 @@ title: "Módulo Surcos"
   "data": [
     {
       "id": 1,
-      "nombre": "Surco Norte - Sección A",
+      "nombre": "Sublote Norte - Sección A",
       "estado": "Disponible",
       "cultivo": {
         "id": 1,
@@ -108,13 +113,36 @@ title: "Módulo Surcos"
 }
 ```
 
-### GET /surcos/:id
-**Descripción**: Obtiene un surco específico por ID con todas sus relaciones.
+### GET /sublotes/lotes/:loteId/disponibles
+**Descripción**: Lista todos los sublotes disponibles de un lote específico.
 
-**URL completa:** `http://localhost:3000/surcos/:id`
+**URL completa:** `http://localhost:3000/sublotes/lotes/:loteId/disponibles`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `loteId` (number): ID del lote
+
+**Response:**
+```json
+{
+  "success": true,
+  "total": 2,
+  "data": [
+    {
+      "id": 1,
+      "nombre": "Sublote Norte - Sección A",
+      "estado": "Disponible"
+    }
+  ]
+}
+```
+
+### GET /sublotes/:id
+**Descripción**: Obtiene un sublote específico por ID con todas sus relaciones.
+
+**URL completa:** `http://localhost:3000/sublotes/:id`
+
+**Parámetros URL:**
+- `id` (number): ID del sublote
 
 **Response:**
 ```json
@@ -122,8 +150,7 @@ title: "Módulo Surcos"
   "success": true,
   "data": {
     "id": 1,
-    "nombre": "Surco Norte - Sección A",
-    "descripcion": "Surco principal para cultivo de tomates",
+    "nombre": "Sublote Norte - Sección A",
     "estado": "Disponible",
     "activo_mqtt": true,
     "lote": {
@@ -134,29 +161,23 @@ title: "Módulo Surcos"
       "id": 1,
       "nombre": "Tomates cherry",
       "sensores": [...]
-    },
-    "broker": {
-      "id": 1,
-      "nombre": "Broker Principal",
-      "host": "192.168.1.100"
     }
   }
 }
 ```
 
-### PUT /surcos/actualizar/:id
-**Descripción**: Actualiza la información completa de un surco.
+### PUT /sublotes/actualizar/:id
+**Descripción**: Actualiza la información completa de un sublote.
 
-**URL completa:** `http://localhost:3000/surcos/actualizar/:id`
+**URL completa:** `http://localhost:3000/sublotes/actualizar/:id`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `id` (number): ID del sublote
 
 **Request Body:**
 ```json
 {
-  "nombre": "Surco Norte - Sección A - Actualizado",
-  "descripcion": "Surco principal actualizado",
+  "nombre": "Sublote Norte - Sección A - Actualizado",
   "cultivoId": 2
 }
 ```
@@ -165,39 +186,38 @@ title: "Módulo Surcos"
 ```json
 {
   "success": true,
-  "message": "El surco con ID 1 se actualizó correctamente",
+  "message": "El sublote con ID 1 se actualizó correctamente",
   "data": {
     "id": 1,
-    "nombre": "Surco Norte - Sección A - Actualizado",
-    "descripcion": "Surco principal actualizado",
+    "nombre": "Sublote Norte - Sección A - Actualizado",
     "cultivoId": 2
   }
 }
 ```
 
-### DELETE /surcos/eliminar/:id
-**Descripción**: Elimina un surco del sistema.
+### DELETE /sublotes/eliminar/:id
+**Descripción**: Elimina un sublote del sistema.
 
-**URL completa:** `http://localhost:3000/surcos/eliminar/:id`
+**URL completa:** `http://localhost:3000/sublotes/eliminar/:id`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `id` (number): ID del sublote
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "El surco con ID 1 fue eliminado correctamente"
+  "message": "El sublote con ID 1 fue eliminado correctamente"
 }
 ```
 
-### PATCH /surcos/actualizar/:id/estado
-**Descripción**: Actualiza el estado operativo de un surco.
+### PATCH /sublotes/actualizar/:id/estado
+**Descripción**: Actualiza el estado operativo de un sublote.
 
-**URL completa:** `http://localhost:3000/surcos/actualizar/:id/estado`
+**URL completa:** `http://localhost:3000/sublotes/actualizar/:id/estado`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `id` (number): ID del sublote
 
 **Request Body:**
 ```json
@@ -210,7 +230,7 @@ title: "Módulo Surcos"
 ```json
 {
   "success": true,
-  "message": "El estado del surco se actualizó a \"En siembra\"",
+  "message": "El estado del sublote se actualizó a \"En siembra\"",
   "data": {
     "id": 1,
     "estado": "En siembra"
@@ -218,13 +238,13 @@ title: "Módulo Surcos"
 }
 ```
 
-### PATCH /surcos/actualizar/:id/mqtt
-**Descripción**: Activa o desactiva la recepción de datos MQTT para el surco.
+### PATCH /sublotes/actualizar/:id/mqtt
+**Descripción**: Activa o desactiva la recepción de datos MQTT para el sublote.
 
-**URL completa:** `http://localhost:3000/surcos/actualizar/:id/mqtt`
+**URL completa:** `http://localhost:3000/sublotes/actualizar/:id/mqtt`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `id` (number): ID del sublote
 
 **Request Body:**
 ```json
@@ -237,7 +257,7 @@ title: "Módulo Surcos"
 ```json
 {
   "success": true,
-  "message": "La recepción de datos MQTT del surco se desactivó",
+  "message": "La recepción de datos MQTT del sublote se desactivó",
   "data": {
     "id": 1,
     "activo_mqtt": false
@@ -245,13 +265,13 @@ title: "Módulo Surcos"
 }
 ```
 
-### POST /surcos/:id/sincronizar
-**Descripción**: Sincroniza los sensores asociados al surco.
+### POST /sublotes/:id/sincronizar
+**Descripción**: Sincroniza los sensores asociados al sublote.
 
-**URL completa:** `http://localhost:3000/surcos/:id/sincronizar`
+**URL completa:** `http://localhost:3000/sublotes/:id/sincronizar`
 
 **Parámetros URL:**
-- `id` (number): ID del surco
+- `id` (number): ID del sublote
 
 **Response:**
 ```json
@@ -265,19 +285,19 @@ title: "Módulo Surcos"
 }
 ```
 
-## Entidad Surco
+## Entidad Sublote
 
 **Ejemplo en formato JSON:**
 ```json
 {
   "id": 1,
-  "nombre": "Surco Norte - Sección A",
-  "descripcion": "Surco principal para cultivo de tomates",
-  "loteId": 1,
-  "cultivoId": 1,
-  "brokerId": 1,
-  "activo_mqtt": true,
+  "nombre": "Sublote Norte - Sección A",
   "estado": "Disponible",
+  "coordenadas": {
+    "type": "point",
+    "coordinates": { "lat": 4.6097, "lng": -74.0817 }
+  },
+  "activo_mqtt": true,
   "lote": {
     "id": 1,
     "nombre": "Lote Principal",
@@ -293,70 +313,63 @@ title: "Módulo Surcos"
       "id": 1,
       "nombre": "Sensor Temperatura",
       "estado": "Activo",
-      "topic": "agrotech/surco1/temp"
+      "topic": "agrotech/sublote1/temp"
     }
   ],
-  "broker": {
-    "id": 1,
-    "nombre": "Broker Principal",
-    "host": "192.168.1.100",
-    "puerto": 1883
-  },
   "created_at": "2024-01-15T10:30:00.000Z",
   "updated_at": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-## Estados de Surco
+## Estados de Sublote
 
-- **Disponible**: Surco listo para asignar cultivo
+- **Disponible**: Sublote listo para asignar cultivo
 - **En siembra**: Proceso de plantación activo
 - **En cosecha**: Cultivo maduro listo para cosecha
-- **Mantenimiento**: Surco en mantenimiento o reparación
+- **Mantenimiento**: Sublote en mantenimiento o reparación
 
 ## DTOs y Validaciones
 
-###  CreateSurcoDto
+###  CreateSubloteDto
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsString, @IsNotEmpty` | - |
-| `descripcion` | `string` | `@IsString, @IsOptional` | - |
+| `coordenadas` | `object` | `@IsOptional, @IsObject` | - |
 | `loteId` | `number` | `@IsNumber, @IsNotEmpty, @Type(() => Number)` | - |
 | `cultivoId` | `number` | `@IsOptional, @ValidateIf, @IsNumber` | `cultivoId debe ser un número válido` |
 | `brokerId` | `number` | `@IsOptional, @ValidateIf, @IsNumber` | `brokerId debe ser un número válido` |
 | `activo_mqtt` | `boolean` | `@IsBoolean, @IsOptional, @Transform` | - |
 
-###  UpdateSurcoDto
+###  UpdateSubloteDto
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `nombre` | `string` | `@IsOptional, @IsString` | - |
-| `descripcion` | `string` | `@IsOptional, @IsString` | - |
 | `cultivoId` | `number` | `@IsOptional, @IsNumber` | - |
 | `brokerId` | `number` | `@IsOptional, @IsNumber` | - |
 | `activo_mqtt` | `boolean` | `@IsOptional, @IsBoolean` | - |
 
-###  UpdateSurcoEstadoDto
+###  UpdateSubloteEstadoDto
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `estado` | `string` | `@IsString, @IsNotEmpty, @IsIn(['Disponible', 'En siembra', 'En cosecha', 'Mantenimiento'])` | El estado proporcionado no es válido. |
 
-###  UpdateSurcoMqttDto
+###  UpdateSubloteMqttDto
 | Campo | Tipo |  Validaciones |  Mensaje de Error |
 |-------|------|----------------|-------------------|
 | `activo_mqtt` | `boolean` | `@IsBoolean, @IsNotEmpty` | - |
 
 ## Funcionalidades Avanzadas
 
-- **Control de Estados**: Seguimiento del ciclo de vida del surco
+- **Control de Estados**: Seguimiento del ciclo de vida del sublote
 - **Integración IoT**: Control de recepción de datos MQTT
 - **Asociación Dinámica**: Cambio de cultivos y brokers en tiempo real
 - **Sincronización**: Alineación automática de sensores asociados
 - **Monitoreo Espacial**: Vinculación directa con coordenadas de lotes
 
-## Ciclo de Vida de un Surco
+## Ciclo de Vida de un Sublote
 
-1. **Creación**: Surco registrado en sistema con coordenadas
-2. **Asignación**: Cultivo asignado al surco
+1. **Creación**: Sublote registrado en sistema con coordenadas
+2. **Asignación**: Cultivo asignado al sublote
 3. **Siembra**: Estado cambia a "En siembra"
 4. **Monitoreo**: Sensores activos recolectando datos
 5. **Cosecha**: Estado cambia a "En cosecha"
@@ -364,4 +377,4 @@ title: "Módulo Surcos"
 
 ## Integración con IoT
 
-Los surcos sirven como puente entre el mundo físico (terreno) y digital (sistema). Cada surco puede tener múltiples sensores que reportan datos ambientales críticos para el monitoreo y control automatizado de cultivos.
+Los sublotes sirven como puente entre el mundo físico (terreno) y digital (sistema). Cada sublote puede tener múltiples sensores que reportan datos ambientales críticos para el monitoreo y control automatizado de cultivos.

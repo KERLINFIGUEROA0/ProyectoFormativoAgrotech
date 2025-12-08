@@ -29,6 +29,12 @@ export class PdfService {
     if (!date) return '';
     return date.toLocaleString('es-CO', { timeZone: 'America/Bogota' });
   }
+
+  // Helper function to format dates only (without time) for display in Bogota time zone
+  private formatDateOnlyForDisplay(date: Date | null): string {
+    if (!date) return '';
+    return date.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+  }
   async generarFacturaPdf(venta: Venta): Promise<string> {
     
     // --- INICIO DE LA CORRECCIÓN ---
@@ -279,6 +285,16 @@ export class PdfService {
 
   async generarReporteTrazabilidad(data: any): Promise<Buffer> {
 
+    // ✅ VALIDACIÓN PREVIA: Asegurar que data tiene las propiedades mínimas
+    const safeData = {
+        lote: data.lote || 'Sin Nombre',
+        rango: data.rango || '',
+        fechaGeneracion: data.fechaGeneracion || new Date(),
+        cultivos: data.cultivos || [], // Asegura array
+        sensores: data.sensores || {}, // Asegura objeto
+        pagos: data.pagos || []        // Asegura array
+    };
+
     // ==========================================
     // ESTRUCTURA DEL PDF GENERADO:
     // ==========================================
@@ -292,8 +308,14 @@ export class PdfService {
     //    - Footer 10%: Info sistema + paginación
     // ==========================================
 
+    // --- FILTRADO DE PAGOS POR CULTIVO SI ES NECESARIO ---
+    let pagosFiltrados = safeData.pagos || [];
+    if (data.cultivoFiltrado) {
+      pagosFiltrados = pagosFiltrados.filter(p => p.cultivo === data.cultivoFiltrado);
+    }
+
     // --- LOGO PARA PRIMERA PÁGINA ---
-    const logoPath = path.join(process.cwd(), 'uploads', 'logos', 'logo.png');
+    const logoPath = path.join(process.cwd(), '..', 'frontend', 'src', 'assets', 'logo.png');
     const logoBase64 = getImageAsBase64(logoPath);
 
     // --- 🧠 FUNCIÓN DE DIAGNÓSTICO INTELIGENTE ---
@@ -470,7 +492,7 @@ export class PdfService {
                 color: #333;
                 font-size: 11px;
                 margin: 0;
-                padding: 5px 0 0 0;
+                padding: 0;
                 line-height: 1.4;
             }
 
@@ -678,122 +700,113 @@ export class PdfService {
     <body>
 
         <!-- HEADER GRANDE SOLO EN PRIMERA PÁGINA -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; border: 2px solid #2E7D32;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; padding: 0;">
            <div style="flex: 1;">
-             <h1 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 28px; font-weight: bold;">REPORTE DE TRAZABILIDAD - AGROTECH</h1>
-             <p style="margin: 0 0 8px 0; color: #2E7D32; font-size: 16px; font-weight: 600;">Lote: ${data.lote} | Rango: ${data.rango}</p>
-             <p style="margin: 0; color: #666; font-size: 12px;">Cultivos: ${data.cultivos.length} | Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
+             <h1 style="margin: 0 0 5px 0; color: #1b5e20; font-size: 24px; font-weight: bold;">REPORTE DE TRAZABILIDAD - AGROTECH</h1>
+             <p style="margin: 0 0 5px 0; color: #2E7D32; font-size: 14px; font-weight: 600;">Lote: ${safeData.lote} | Rango: ${safeData.rango}</p>
+             <p style="margin: 0; color: #666; font-size: 10px;">${safeData.cultivos.length > 1 ? `Cultivos Activos: ${safeData.cultivos.filter(c => c.estadoActual === 'activo' || c.estadoActual === 'en cosecha').length}` : safeData.cultivos.length === 1 ? `Cultivo Activo: ${safeData.cultivos[0].nombre}` : 'Sin cultivos activos'} | Generado: ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(safeData.fechaGeneracion))}</p>
            </div>
            ${logoBase64 ? `
-           <div style="flex-shrink: 0; margin-left: 20px;">
-             <img src="${logoBase64}" alt="Logo AgroTech" style="height: 60px; width: auto;" />
+           <div style="flex-shrink: 0; margin-left: 15px;">
+             <img src="${logoBase64}" alt="Logo TIC" style="height: 50px; width: auto;" />
            </div>
            ` : ''}
         </div>
 
+    
         <!-- ==========================================
-             SECCIÓN 1: RESUMEN EJECUTIVO DEL LOTE
-             ========================================== -->
-        <div class="card" style="margin-bottom: 20px; background-color: #f8f9fa; page-break-inside: avoid;">
-            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">📊 Resumen Ejecutivo del Lote</h2>
-            <div class="kpi-grid" style="margin-bottom: 15px;">
-                <div class="kpi-card">
-                    Total Cultivos
-                    <span class="kpi-value">${data.cultivos.length}</span>
-                </div>
-                <div class="kpi-card">
-                    Producción Total
-                    <span class="kpi-value">${data.cultivos.reduce((sum, c) => sum + (c.produccionTotalKg + c.resumenFinanciero.detalleVentas.reduce((sumV, v) => sumV + v.cantidadVendida, 0)), 0).toLocaleString()} Kg</span>
-                </div>
-                <div class="kpi-card">
-                    Inversión Total
-                    <span class="kpi-value" style="color: #dc3545">${formatCurrency(
-                        data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
-                        (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0)
-                    )}</span>
-                </div>
-                <div class="kpi-card">
-                    Ventas Totales
-                    <span class="kpi-value" style="color: #28a745">${formatCurrency(data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0))}</span>
-                </div>
-                <div class="kpi-card">
-                    Mano de Obra (Pasantes)
-                    <span class="kpi-value" style="color: #dc3545">${formatCurrency(data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0)}</span>
-                </div>
-                <div class="kpi-card">
-                    Rentabilidad Neta
-                    <span class="kpi-value ${(
-                        data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0) -
-                        (data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
-                         (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0))
-                    ) >= 0 ? 'profit' : 'loss'}">
-                        ${formatCurrency(
-                            data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalVentas, 0) -
-                            (data.cultivos.reduce((sum, c) => sum + c.resumenFinanciero.totalInversion, 0) +
-                             (data.pagos ? data.pagos.reduce((sum, p) => sum + Number(p.monto), 0) : 0))
-                        )}
-                    </span>
-                </div>
-                <div class="kpi-card">
-                    Inventario Pendiente
-                    <span class="kpi-value">${data.cultivos.reduce((sum, c) => sum + (c.cosechas ? c.cosechas.reduce((sumCo, co) => sumCo + co.cantidadRestante, 0) : 0), 0).toLocaleString()} Kg</span>
-                </div>
-            </div>
-            <div style="text-align: center; font-size: 12px; color: #6c757d;">
-                <strong>Este reporte incluye todos los cultivos del lote, tanto los cultivados directamente como los de sublotes asociados.</strong>
-                <br><small>Los pagos a pasantes están incluidos en la inversión total y afectan el cálculo de rentabilidad neta.</small>
-            </div>
-        </div>
-
-        <!-- ==========================================
-             SECCIÓN 2: PAGOS A PASANTES
+             SECCIÓN 2: INFORMACIÓN GENERAL DEL LOTE
              ========================================== -->
         <div class="card" style="margin-bottom: 20px; page-break-inside: avoid;">
-            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">💰 Pagos a Pasantes</h2>
+            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">Información General del Lote</h2>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Cultivos</span>
+                    <span class="kpi-value">${safeData.cultivos.length}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Sensores IoT</span>
+                    <span class="kpi-value">${Object.keys(safeData.sensores).length}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Pagos Registrados</span>
+                    <span class="kpi-value">${safeData.pagos.length}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Estado del Reporte</span>
+                    <span class="kpi-value" style="color: ${safeData.cultivos.length > 0 || Object.keys(safeData.sensores).length > 0 ? '#28a745' : '#6c757d'}">${safeData.cultivos.length > 0 || Object.keys(safeData.sensores).length > 0 ? 'Con Datos' : 'Sin Datos Activos'}</span>
+                </div>
+            </div>
+            ${safeData.cultivos.length === 0 ? `
+            <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #6c757d; text-align: center;">
+                <strong style="color: #6c757d;">ℹ️ Este lote no tiene cultivos activos registrados en el período seleccionado.</strong>
+                <br><small>Si el lote tiene cultivos finalizados o fuera del rango de fechas, no aparecerán en este reporte.</small>
+            </div>
+            ` : ''}
+        </div>
+
+        ${safeData.cultivos.length > 1 ? `
+        <!-- ==========================================
+              SECCIÓN 3: PAGOS A PASANTES - ACTIVIDADES DE LOTE
+              ========================================== -->
+        <div class="card" style="margin-bottom: 10px; page-break-inside: avoid;">
+            <h2 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">Pagos a Pasantes - Actividades de Lote</h2>
             <table class="table">
                 <thead>
                     <tr>
                         <th>Fecha</th>
                         <th>Pasante</th>
                         <th>Actividad</th>
-                        <th>Cultivo</th>
                         <th>Horas</th>
                         <th>Tarifa/Hora</th>
                         <th>Total</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${data.pagos && data.pagos.length > 0 ? data.pagos.map(p => `
+                    ${(() => {
+                        const pagosLote = safeData.pagos.filter(p => !p.cultivo || p.cultivo === '');
+                        return pagosLote.length > 0 ? pagosLote.map(p => `
                         <tr>
-                            <td>${this.formatDateForDisplay(this.transformDateForDisplay(p.fecha))}</td>
+                            <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(p.fecha))}</td>
                             <td>${p.pasante}</td>
                             <td>${p.actividad}</td>
-                            <td>${p.cultivo}</td>
                             <td class="text-center">${p.horasTrabajadas}</td>
                             <td class="text-right">${formatCurrency(p.tarifaHora)}</td>
                             <td class="text-right">${formatCurrency(p.monto)}</td>
                         </tr>
-                    `).join('') : '<tr><td colspan="7" style="text-align: center; color: #6c757d;">No hay pagos registrados en este período</td></tr>'}
+                    `).join('') : '<tr><td colspan="6" style="text-align: center; color: #6c757d;">No hay pagos por actividades de lote registrados</td></tr>';
+                    })()}
                 </tbody>
-                ${data.pagos && data.pagos.length > 0 ? `
+                ${(() => {
+                    const pagosLote = safeData.pagos.filter(p => !p.cultivo || p.cultivo === '');
+                    return pagosLote.length > 0 ? `
                 <tfoot>
                     <tr style="border-top: 2px solid #2E7D32; background-color: #E8F5E9;">
-                        <td colspan="6" style="text-align: center; font-weight: bold; color: #2E7D32;">TOTAL PAGOS A PASANTES</td>
-                        <td class="text-right" style="font-weight: bold; color: #2E7D32;">${formatCurrency(data.pagos.reduce((sum, p) => sum + Number(p.monto), 0))}</td>
+                        <td colspan="5" style="text-align: center; font-weight: bold; color: #2E7D32;">TOTAL PAGOS A PASANTES - LOTE</td>
+                        <td class="text-right" style="font-weight: bold; color: #2E7D32;">${formatCurrency(pagosLote.reduce((sum, p) => sum + Number(p.monto), 0))}</td>
                     </tr>
                 </tfoot>
-                ` : ''}
+                ` : '';
+                })()}
             </table>
         </div>
+        ` : ''}
 
         <!-- ==========================================
-             SECCIÓN 3: DETALLE DE CULTIVOS INDIVIDUALES
-             ========================================== -->
-        ${data.cultivos.map(c => `
+              SECCIÓN ${safeData.cultivos.length > 1 ? '4' : '3'}: DETALLE DE CULTIVOS INDIVIDUALES
+              ========================================== -->
+        ${safeData.cultivos.length > 0 ? safeData.cultivos.map(c => `
             <!-- === CULTIVO: ${c.nombre} === -->
+            ${(() => {
+                const pagosCultivo = data.pagos ? data.pagos.filter(p => p.cultivo === c.nombre) : [];
+                const manoDeObraCultivo = pagosCultivo.reduce((sum, p) => sum + Number(p.monto), 0);
+                const insumos = c.resumenFinanciero.detalleMateriales.reduce((sum, m) => sum + m.costoTotal, 0);
+                const egresosTotales = insumos + manoDeObraCultivo;
+                const rentabilidadAjustada = c.resumenFinanciero.totalVentas - egresosTotales;
+                return `
             <div class="card" style="page-break-inside: avoid;">
                 <div class="card-title">
-                    🌱 ${c.nombre} (${c.tipo})
+                    ${c.nombre} (${c.tipo})
                     <span class="badge">${c.diasSembrado} días</span>
                     <span class="badge">${c.estadoActual}</span>
                 </div>
@@ -805,7 +818,7 @@ export class PdfService {
                     </div>
                     <div class="kpi-card">
                         Inversión Total
-                        <span class="kpi-value" style="color: #dc3545">${formatCurrency(c.resumenFinanciero.totalInversion)}</span>
+                        <span class="kpi-value" style="color: #dc3545">${formatCurrency(egresosTotales)}</span>
                     </div>
                     <div class="kpi-card">
                         Ventas Totales
@@ -813,13 +826,43 @@ export class PdfService {
                     </div>
                     <div class="kpi-card">
                         Rentabilidad Neta
-                        <span class="kpi-value ${c.resumenFinanciero.gananciaNeta >= 0 ? 'profit' : 'loss'}">
-                            ${formatCurrency(c.resumenFinanciero.gananciaNeta)}
+                        <span class="kpi-value ${rentabilidadAjustada >= 0 ? 'profit' : 'loss'}">
+                            ${formatCurrency(rentabilidadAjustada)}
                         </span>
                     </div>
                 </div>
 
-                <h4 style="color: #2E7D32; margin-bottom: 10px;">🌾 Inventario de Cosechas (Pendiente por Vender)</h4>
+                <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                    <h4 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">Balance Financiero Detallado</h4>
+                    <table style="width: 100%; margin-bottom: 10px;">
+                        <tr style="background-color: #28a745; color: white;">
+                            <td style="padding: 10px; font-weight: bold; text-align: center;">INGRESOS</td>
+                            <td style="padding: 10px; font-weight: bold; text-align: center;">EGRESOS</td>
+                            <td style="padding: 10px; font-weight: bold; text-align: center;">RESULTADO</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; text-align: center; font-size: 16px; color: #28a745; font-weight: bold;">
+                                ${formatCurrency(c.resumenFinanciero.totalVentas)}
+                            </td>
+                            <td style="padding: 10px; text-align: center; font-size: 16px; color: #dc3545; font-weight: bold;">
+                                ${formatCurrency(egresosTotales)}
+                            </td>
+                            <td style="padding: 10px; text-align: center; font-size: 16px; font-weight: bold; ${rentabilidadAjustada >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">
+                                ${formatCurrency(rentabilidadAjustada)}
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="font-size: 12px; color: #6c757d; text-align: center; margin-top: 10px;">
+                        <strong>Desglose de Egresos:</strong><br>
+                        Insumos: ${formatCurrency(insumos)} |
+                        Mano de Obra (Pasantes): ${formatCurrency(manoDeObraCultivo)}
+                        <br><br>
+                    </div>
+                </div>
+                `;
+            })()}
+
+                <h4 style="color: #2E7D32; margin-bottom: 10px;">Inventario de Cosechas (Pendiente por Vender)</h4>
                 <table>
                     <thead>
                         <tr>
@@ -831,7 +874,7 @@ export class PdfService {
                     <tbody>
                         ${c.cosechas && c.cosechas.length > 0 ? c.cosechas.map(co => `
                             <tr>
-                                <td>${this.formatDateForDisplay(this.transformDateForDisplay(co.fecha))}</td>
+                                <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(co.fecha))}</td>
                                 <td class="text-right ${co.cantidadRestante > 0 ? 'warning' : ''}">${co.cantidadRestante.toLocaleString()} Kg</td>
                                 <td class="text-center">
                                     <span class="${co.estado === 'Pendiente' ? 'status-pending' : 'status-completed'}">
@@ -852,7 +895,7 @@ export class PdfService {
                 ${c.cosechas && c.cosechas.length > 0 ? `
                     <div style="margin-top: 10px; padding: 10px; background-color: #E8F5E9; border-radius: 5px; text-align: center;">
                         <strong style="color: #2E7D32;">
-                            📦 Inventario Pendiente: ${c.cosechas.reduce((sum, co) => sum + co.cantidadRestante, 0).toLocaleString()} Kg sin vender
+                            Inventario Pendiente: ${c.cosechas.reduce((sum, co) => sum + co.cantidadRestante, 0).toLocaleString()} Kg sin vender
                             <br><small>(Estas cantidades aparecen detalladas en la sección de ventas)</small>
                         </strong>
                     </div>
@@ -860,7 +903,7 @@ export class PdfService {
 
                 <div class="grid-2">
                     <div class="col">
-                        <h4 style="color: #2E7D32; margin-bottom: 10px;">📦 Insumos Aplicados (Egresos)</h4>
+                        <h4 style="color: #2E7D32; margin-bottom: 10px;">Insumos Aplicados (Egresos)</h4>
                         <table>
                             <thead>
                                 <tr>
@@ -874,7 +917,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleMateriales.map(m => `
                                     <tr>
-                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(m.fecha))}</td>
+                                        <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(m.fecha))}</td>
                                         <td>${m.nombre}</td>
                                         <td class="text-right">${m.cantidad} ${m.unidad || 'unidad'}</td>
                                         <td class="text-right">${formatCurrency(m.precioUnitario)} <span style="font-size:8px; color:#888;">/${m.unidad || 'ud'}</span></td>
@@ -894,7 +937,7 @@ export class PdfService {
                         ${c.resumenFinanciero.detalleMateriales.length > 0 ? `
                             <div style="margin-top: 10px; padding: 10px; background-color: #f8d7da; border-radius: 5px; text-align: center; border-left: 4px solid #dc3545;">
                                 <strong style="color: #dc3545;">
-                                    💸 Costos de Insumos: ${formatCurrency(c.resumenFinanciero.detalleMateriales.reduce((sum, m) => sum + m.costoTotal, 0))}
+                                    Costos de Insumos: ${formatCurrency(c.resumenFinanciero.detalleMateriales.reduce((sum, m) => sum + m.costoTotal, 0))}
                                     <br><small>(Estos costos se descuentan de la ganancia total)</small>
                                 </strong>
                             </div>
@@ -902,7 +945,7 @@ export class PdfService {
                     </div>
 
                     <div class="col">
-                        <h4 style="color: #2E7D32; margin-bottom: 10px;">💰 Ventas Realizadas</h4>
+                        <h4 style="color: #2E7D32; margin-bottom: 10px;">Ventas Realizadas</h4>
                         <table>
                             <thead>
                                 <tr>
@@ -916,7 +959,7 @@ export class PdfService {
                             <tbody>
                                 ${c.resumenFinanciero.detalleVentas.map(v => `
                                     <tr>
-                                        <td>${this.formatDateForDisplay(this.transformDateForDisplay(v.fecha))}</td>
+                                        <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(v.fecha))}</td>
                                         <td>${v.descripcion}</td>
                                         <td class="text-right">${v.cantidadVendida} Kg</td>
                                         <td class="text-right">${formatCurrency(Number(v.precioUnitario))}</td>
@@ -940,75 +983,49 @@ export class PdfService {
                         ${c.resumenFinanciero.detalleVentas.length > 0 ? `
                             <div style="margin-top: 10px; padding: 10px; background-color: #E8F5E9; border-radius: 5px; text-align: center;">
                                 <strong style="color: #2E7D32;">
-                                    📊 Resumen: ${c.resumenFinanciero.detalleVentas.length} venta(s) | Total vendido: ${c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.cantidadVendida, 0)} Kg | Ingresos totales: ${formatCurrency(c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.valorTotal, 0))}
+                                    Resumen: ${c.resumenFinanciero.detalleVentas.length} venta(s) | Total vendido: ${c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.cantidadVendida, 0)} Kg | Ingresos totales: ${formatCurrency(c.resumenFinanciero.detalleVentas.reduce((sum, v) => sum + v.valorTotal, 0))}
                                 </strong>
                             </div>
                         ` : ''}
                     </div>
                 </div>
 
-                <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
-                    <h4 style="color: #2E7D32; margin-bottom: 15px; text-align: center;">💰 Balance Financiero Detallado</h4>
-                    <table style="width: 100%; margin-bottom: 10px;">
-                        <tr style="background-color: #28a745; color: white;">
-                            <td style="padding: 10px; font-weight: bold; text-align: center;">INGRESOS</td>
-                            <td style="padding: 10px; font-weight: bold; text-align: center;">EGRESOS</td>
-                            <td style="padding: 10px; font-weight: bold; text-align: center;">RESULTADO</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px; text-align: center; font-size: 16px; color: #28a745; font-weight: bold;">
-                                ${formatCurrency(c.resumenFinanciero.totalVentas)}
-                            </td>
-                            <td style="padding: 10px; text-align: center; font-size: 16px; color: #dc3545; font-weight: bold;">
-                                ${formatCurrency(c.resumenFinanciero.totalInversion)}
-                            </td>
-                            <td style="padding: 10px; text-align: center; font-size: 16px; font-weight: bold; ${c.resumenFinanciero.gananciaNeta >= 0 ? 'color: #28a745;' : 'color: #dc3545;'}">
-                                ${formatCurrency(c.resumenFinanciero.gananciaNeta)}
-                            </td>
-                        </tr>
-                    </table>
-                    <div style="font-size: 12px; color: #6c757d; text-align: center; margin-top: 10px;">
-                        <strong>Desglose de Egresos:</strong><br>
-                        Insumos: ${formatCurrency(c.resumenFinanciero.detalleMateriales.reduce((sum, m) => sum + m.costoTotal, 0))} |
-                        Mano de Obra: ${formatCurrency(c.actividadesLog.reduce((sum, a) => sum + a.costoManoObra, 0))} |
-                        Otros Gastos: ${formatCurrency(c.resumenFinanciero.detalleGastos.reduce((sum, g) => sum + Number(g.monto), 0))}
-                        <br><br>
-                        <strong style="color: #2E7D32;">Fórmula de Ganancia Neta:</strong><br>
-                        <em>Ingresos Totales - (Insumos + Mano de Obra + Otros Gastos) = ${formatCurrency(c.resumenFinanciero.gananciaNeta)}</em>
-                    </div>
-                </div>
-
-                <h4 style="color: #2E7D32; margin-bottom: 10px;">📋 Auditoría de Actividades</h4>
+                ${(() => {
+                     const pagosCultivo = safeData.pagos.filter(p => p.cultivo === c.nombre);
+                     return pagosCultivo.length > 0 ? `
+                <h4 style="color: #2E7D32; margin-bottom: 10px;">Pagos a Pasantes - Actividades de Cultivo</h4>
                 <table>
                     <thead>
                         <tr>
                             <th>Fecha</th>
-                            <th>Tarea</th>
-                            <th>Responsable</th>
+                            <th>Pasante</th>
+                            <th>Actividad</th>
                             <th>Horas</th>
-                            <th>Costo Mano Obra</th>
-                            <th>Estado</th>
+                            <th>Tarifa/Hora</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${c.actividadesLog.map(a => `
-                            <tr>
-                                <td>${this.formatDateForDisplay(this.transformDateForDisplay(a.fecha))}</td>
-                                <td>${a.tarea}</td>
-                                <td>${a.responsable}</td>
-                                <td class="text-center">${a.horasTrabajadas}h</td>
-                                <td class="text-right">${formatCurrency(a.costoManoObra)}</td>
-                                <td class="text-center">
-                                    <span class="${a.cumplida ? 'status-completed' : 'status-pending'}">
-                                        ${a.estado}
-                                    </span>
-                                </td>
-                            </tr>
+                        ${pagosCultivo.map(p => `
+                        <tr>
+                            <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(p.fecha))}</td>
+                            <td>${p.pasante}</td>
+                            <td>${p.actividad}</td>
+                            <td class="text-center">${p.horasTrabajadas}</td>
+                            <td class="text-right">${formatCurrency(p.tarifaHora)}</td>
+                            <td class="text-right">${formatCurrency(p.monto)}</td>
+                        </tr>
                         `).join('')}
+                        <tr style="border-top: 2px solid #2E7D32; background-color: #E8F5E9;">
+                            <td colspan="5" style="text-align: center; font-weight: bold; color: #2E7D32;">TOTAL PAGOS A PASANTES - ${c.nombre.toUpperCase()}</td>
+                            <td class="text-right" style="font-weight: bold; color: #2E7D32;">${formatCurrency(pagosCultivo.reduce((sum, p) => sum + Number(p.monto), 0))}</td>
+                        </tr>
                     </tbody>
                 </table>
+                ` : '';
+                })()}
             </div>
-        `).join('')}
+        `).join('') : '<div class="card"><h3 style="text-align: center; color: #6c757d;">No hay cultivos activos registrados en este lote</h3></div>'}
 
         <!-- ==========================================
              SECCIÓN 4: MONITOREO Y ANÁLISIS DE SENSORES IoT
@@ -1016,13 +1033,13 @@ export class PdfService {
         <div class="section-break"></div>
 
         <h2 style="color: #1B5E20; margin-top: 30px; text-align: center; border-bottom: 2px solid #2E7D32; padding-bottom: 10px;">
-            📊 Monitoreo y Análisis de Sensores IoT
+            Monitoreo y Análisis de Sensores IoT
         </h2>
         <p style="font-size: 10px; color: #666; margin-bottom: 15px; text-align: center;">
             Sistema de monitoreo continuo para la toma de decisiones preventivas y gestión agrícola.
         </p>
 
-        ${Object.entries(data.sensores).map(([sensor, info]: [string, any], sensorIndex) => {
+        ${Object.entries(safeData.sensores).map(([sensor, info]: [string, any], sensorIndex) => {
             // 1. OBTENER EL ÚLTIMO VALOR REAL (TIEMPO REAL - Inyectado desde backend)
             let ultimoRegistro = null;
             let ultimoValor = 0;
@@ -1075,7 +1092,7 @@ export class PdfService {
             return `
             <div class="card">
                 <div class="card-title">
-                    ${info.esBomba ? '💧' : '📡'} ${sensor} ${info.esBomba ? '<span style="font-size:12px; color:#666;">(Actuador de Riego)</span>' : ''}
+                    ${sensor} ${info.esBomba ? '<span style="font-size:12px; color:#666;">(Actuador de Riego)</span>' : ''}
                     <span style="font-size: 12px; color: #555;">${info.stats.totalRegistros} registros</span>
                 </div>
 
@@ -1122,7 +1139,7 @@ export class PdfService {
                 ${!info.esBomba ? `
                 <div class="diagnosis-box diagnosis-${diagnosis.nivel}">
                     <div style="display: flex; gap: 10px; align-items: start;">
-                        <div style="font-size: 20px;">${diagnosis.nivel === 'critico' ? '🚨' : (diagnosis.nivel === 'alerta' ? '⚠️' : '✅')}</div>
+                        <div style="font-size: 20px;">${diagnosis.nivel === 'critico' ? 'CRITICO' : (diagnosis.nivel === 'alerta' ? 'ALERTA' : 'NORMAL')}</div>
                         <div>
                             <span style="font-weight: bold; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 2px;">ANÁLISIS Y ACCIÓN REQUERIDA:</span>
                             <strong>Conclusión:</strong> ${diagnosis.mensaje}<br>
@@ -1131,18 +1148,21 @@ export class PdfService {
                     </div>
                 </div>` : ''}
 
+                ${!info.esBomba ? `
                 <!-- GRÁFICA DE DATOS CRUDOS -->
                 <div style="margin-top: 15px; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px; background-color: #f8f9fa;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 11px; color: #2E7D32;">📈 Evolución de Datos Crudos (Historial Completo)</h4>
+                    <h4 style="margin: 0 0 8px 0; font-size: 11px; color: #2E7D32;">Evolución de Datos Crudos (Historial Completo)</h4>
                     <p style="font-size: 8px; color: #666; margin: 0 0 10px 0;">Visualización de todos los registros del sensor para análisis detallado.</p>
                     <div class="chart-container">
                         <canvas id="${chartId}"></canvas>
                     </div>
                 </div>
+                ` : ''}
 
+                ${!info.esBomba ? `
                 <div class="grid-2" style="margin-top: 15px;">
                     <div class="col">
-                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #d32f2f;">⚠️ Valores sobre Umbral Máximo ${info.umbralMaximo ? `(${info.umbralMaximo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #d32f2f;">Valores sobre Umbral Máximo ${info.umbralMaximo ? `(${info.umbralMaximo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
                         <table>
                             <thead><tr><th>Fecha</th><th class="text-right">Valor</th></tr></thead>
                             <tbody>
@@ -1155,7 +1175,7 @@ export class PdfService {
                             </tbody>
                         </table>
 
-                        <h4 style="margin: 10px 0 5px 0; font-size: 11px; color: #1976d2;">⚠️ Valores bajo Umbral Mínimo ${info.umbralMinimo ? `(${info.umbralMinimo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
+                        <h4 style="margin: 10px 0 5px 0; font-size: 11px; color: #1976d2;">Valores bajo Umbral Mínimo ${info.umbralMinimo ? `(${info.umbralMinimo}${info.unidad})` : '(Sin umbral configurado)'}</h4>
                         <table>
                             <thead><tr><th>Fecha</th><th class="text-right">Valor</th></tr></thead>
                             <tbody>
@@ -1168,9 +1188,11 @@ export class PdfService {
                             </tbody>
                         </table>
                     </div>
+                </div>
+                ` : ''}
 
                     <div class="col">
-                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #2E7D32;">📅 Últimos 10 Registros</h4>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #2E7D32;">Últimos 10 Registros</h4>
                         <p style="font-size: 9px; color: #777; margin: 0 0 5px 0;">Los registros más recientes para monitoreo en tiempo real.</p>
                         <table>
                             <thead>
@@ -1215,18 +1237,17 @@ export class PdfService {
                 </div>
 
                 <div style="margin-top: 15px;">
-                    <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #2E7D32;">📈 Evolución Diaria (Promedios)</h4>
+                    <h4 style="margin: 0 0 5px 0; font-size: 11px; color: #2E7D32;">Evolución Diaria (Promedios)</h4>
                     <p style="font-size: 9px; color: #777; margin: 0 0 5px 0;">Resumen día a día para análisis de tendencias.</p>
                     <table>
                         <thead>
                             <tr>
                                 <th>Fecha</th>
-                                <th class="text-center">Promedio</th>
+                                <th class="text-center">${info.esBomba ? 'Estado' : 'Promedio (Mín - Máx)'}</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${info.muestreoDiario.map((d, index, arr) => {
-                                // Calcular promedio simple de los datos del día
                                 let prom = 0;
                                 if (d.promedioCalculado) {
                                     prom = d.promedioCalculado;
@@ -1234,12 +1255,24 @@ export class PdfService {
                                     prom = d.datos.reduce((acc, curr) => acc + Number(curr.valor), 0) / d.datos.length;
                                 }
 
-                                return `
-                                <tr>
-                                     <td>${this.formatDateForDisplay(this.transformDateForDisplay(d.dia))}</td>
-                                     <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad}</strong></td>
-                                 </tr>
-                                `;
+                                if (info.esBomba) {
+                                    const estado = prom > 0.5 ? 'ACTIVA' : 'INACTIVA';
+                                    return `
+                                    <tr>
+                                          <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(d.dia))}</td>
+                                          <td class="text-center"><strong>${estado}</strong></td>
+                                      </tr>
+                                    `;
+                                } else {
+                                    const minDia = d.datos && d.datos.length > 0 ? Math.min(...d.datos.map(dd => Number(dd.valor))) : prom;
+                                    const maxDia = d.datos && d.datos.length > 0 ? Math.max(...d.datos.map(dd => Number(dd.valor))) : prom;
+                                    return `
+                                    <tr>
+                                          <td>${this.formatDateOnlyForDisplay(this.transformDateForDisplay(d.dia))}</td>
+                                          <td class="text-center"><strong>${prom.toFixed(1)} ${info.unidad} (Mín: ${minDia.toFixed(1)}, Máx: ${maxDia.toFixed(1)})</strong></td>
+                                      </tr>
+                                    `;
+                                }
                             }).join('')}
                         </tbody>
                     </table>
@@ -1247,7 +1280,7 @@ export class PdfService {
 
                 <div style="margin-top: 25px; border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #455a64; text-transform: uppercase;">
-                        📋 Historial Detallado de Mediciones (${info.stats.totalRegistros} registros)
+                        Historial Detallado de Mediciones (${info.stats.totalRegistros} registros)
                     </h4>
 
                     <table style="width: 100%; font-size: 9px;">
@@ -1289,8 +1322,8 @@ export class PdfService {
                                             ${info.esBomba ? (r.valor == 1 ? 'Encendido' : 'Apagado') : r.valor + ' ' + info.unidad}
                                         </td>
                                         <td style="padding: 3px; text-align: center; border-bottom: 1px solid #eee;">
-                                            ${colorStyle ? '⚠️' : 'OK'}
-                                        </td>
+                                             ${colorStyle ? 'ALERTA' : 'OK'}
+                                         </td>
                                     </tr>
                                     `;
                                 }).join('');
@@ -1302,6 +1335,7 @@ export class PdfService {
                         : ''}
                 </div>
 
+                ${!info.esBomba ? `
                 <script>
                   (function() {
                     const ctx = document.getElementById('${chartId}').getContext('2d');
@@ -1310,15 +1344,14 @@ export class PdfService {
                         data: {
                             labels: ${JSON.stringify(etiquetasFechas)},
                             datasets: [{
-                                label: '${info.esBomba ? 'Estado de la Bomba' : 'Medición (${info.unidad})'}',
+                                label: 'Medición (${info.unidad})',
                                 data: ${JSON.stringify(valoresDatos)},
-                                borderColor: '${info.esBomba ? '#0288d1' : '#2E7D32'}',
-                                backgroundColor: '${info.esBomba ? 'rgba(2, 136, 209, 0.2)' : 'rgba(46, 125, 50, 0.1)'}',
+                                borderColor: '#2E7D32',
+                                backgroundColor: 'rgba(46, 125, 50, 0.1)',
                                 borderWidth: 2,
                                 pointRadius: 0,
                                 fill: true,
-                                stepper: ${info.esBomba ? 'true' : 'false'},
-                                tension: ${info.esBomba ? 0 : 0.1}
+                                tension: 0.1
                             }]
                         },
                         options: {
@@ -1327,8 +1360,7 @@ export class PdfService {
                             maintainAspectRatio: false,
                             elements: {
                                 line: {
-                                    tension: 0,
-                                    stepped: ${info.esBomba}
+                                    tension: 0.1
                                 }
                             },
                             plugins: {
@@ -1342,7 +1374,6 @@ export class PdfService {
                                 },
                                 y: {
                                     beginAtZero: true,
-                                    ${info.esBomba ? 'max: 1.5, ticks: { stepSize: 1, callback: function(value) { return value === 1 ? "Encendido" : "Apagado"; } }' : ''}
                                     grid: { color: '#f0f0f0' }
                                 }
                             }
@@ -1350,11 +1381,12 @@ export class PdfService {
                     });
                   })();
                 </script>
+                ` : ''}
 
                 ${info.esBomba && info.ciclosRiego && info.ciclosRiego.length > 0 ? `
                     <div style="margin-top: 20px;">
                         <h4 style="margin: 0 0 10px 0; font-size: 11px; color: #0277bd; text-transform: uppercase;">
-                            🚿 Bitácora de Riego (Encendidos detectados)
+                            Bitácora de Riego (Encendidos detectados)
                         </h4>
                         <table style="width: 100%; border: 1px solid #b3e5fc;">
                             <thead>
@@ -1371,7 +1403,7 @@ export class PdfService {
                                         <td>${this.transformDateForDisplay(ciclo.inicio)?.toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</td>
                                         <td>${this.transformDateForDisplay(ciclo.fin)?.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' })}</td>
                                         <td style="font-weight:bold;">${ciclo.duracion}</td>
-                                        <td style="color: green;">✅ Completado</td>
+                                        <td style="color: green;">Completado</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1381,14 +1413,21 @@ export class PdfService {
                 ` : ''}
             </div>
             `;
-       }).join('')}
+        }).join('')}
+
+        ${Object.keys(safeData.sensores).length === 0 ? `
+        <div class="card">
+            <h3 style="text-align: center; color: #6c757d;">No hay sensores configurados o activos en este lote</h3>
+            <p style="text-align: center; color: #6c757d;">Los sensores IoT permiten monitoreo continuo de variables ambientales como temperatura, humedad y luz.</p>
+        </div>
+        ` : ''}
 
         <!-- ==========================================
-             PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
-             ========================================== -->
+              PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
+              ========================================== -->
         <div class="footer">
-            <p>⚠️ Este reporte es una herramienta de apoyo. Verifique siempre las condiciones en campo antes de aplicar correctivos mayores.</p>
-            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</p>
+            <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(safeData.fechaGeneracion))}</p>
+            <p style="text-align: center; font-size: 10px; color: #666;">Página 1</p>
         </div>
     </body>
     </html>
@@ -1409,26 +1448,21 @@ export class PdfService {
       format: 'Letter',
       printBackground: true,
       displayHeaderFooter: true,
-      margin: {
-        top: '10px',    // Margen mínimo para maximizar espacio del body en páginas 2+
-        right: '20px',
-        bottom: '40px', // 5% para footer en todas las páginas
-        left: '20px'
-      },
-      headerTemplate: `<div></div>`, // Header vacío para páginas siguientes (2+)
       footerTemplate: `
-        <div style="width: 100%; height: 40px; padding: 4px 15px; font-family: Arial, sans-serif; display: flex; justify-content: space-between; align-items: flex-start; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 2px solid #2E7D32;">
-          <div style="flex: 1; text-align: left; font-size: 8px; color: #666;">
-            <div style="margin-bottom: 2px;"><strong>AgroTech - Sistema de Gestión y Monitoreo</strong></div>
-            <div style="margin-bottom: 1px;">Reporte General de Lote: ${data.lote}</div>
-            <div style="font-size: 7px; color: #888;">Generado: ${this.formatDateForDisplay(this.transformDateForDisplay(data.fechaGeneracion))}</div>
-          </div>
-          <div style="flex-shrink: 0; text-align: center; font-size: 10px; color: #2E7D32; font-weight: bold;">
-            <div style="font-size: 12px; margin-bottom: 2px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>
-            <div style="font-size: 8px; color: #666;">Agrotech</div>
+        <div style="font-size: 10px; text-align: center; width: 100%; margin: 0; padding: 8px 20px; border-top: 2px solid #2E7D32; background: linear-gradient(to right, #E8F5E9, #F1F8E9, #E8F5E9); color: #2E7D32;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 11px;">AgroTech 2025</span>
+            <span style="font-weight: bold; background: #2E7D32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 9px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+            <span style="font-weight: bold; font-size: 11px;">Sistema de Gestión y Monitoreo</span>
           </div>
         </div>
-      `
+      `,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '40px',
+        left: '20px'
+      }
     });
 
     await browser.close();

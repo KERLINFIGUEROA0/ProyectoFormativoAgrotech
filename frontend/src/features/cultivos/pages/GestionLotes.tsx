@@ -20,10 +20,18 @@ export default function GestionLotesPage(): ReactElement {
     total: 0,
     enPreparacion: 0,
     parcialmenteOcupado: 0,
-    enCultivo: 0,
-    enMantenimiento: 0
+    enCultivo: 0
   });
-  const [filterStatus, setFilterStatus] = useState<'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento'>('all');
+
+  const getStatKey = (estado: string) => {
+    switch (estado) {
+      case 'En preparación': return 'enPreparacion';
+      case 'Parcialmente ocupado': return 'parcialmenteOcupado';
+      case 'En cultivación': return 'enCultivo';
+      default: return 'enPreparacion';
+    }
+  };
+  const [filterStatus, setFilterStatus] = useState<'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const location = useLocation(); 
@@ -42,11 +50,6 @@ export default function GestionLotesPage(): ReactElement {
   useEffect(() => {
     fetchData();
   }, [location]);
-
-  useEffect(() => {
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -73,15 +76,27 @@ const handleSave = async (data: LoteData) => {
        updatedLote = await actualizarLote(editingLote.id, data);
        // Actualizar el lote en el estado local inmediatamente
        setLotes(prevLotes => prevLotes.map(lote => lote.id === editingLote.id ? updatedLote.data : lote));
+       // Actualizar estadísticas localmente si el estado cambió
+       if (editingLote.estado !== updatedLote.data.estado) {
+         setStats(prevStats => ({
+           ...prevStats,
+           [getStatKey(editingLote.estado)]: prevStats[getStatKey(editingLote.estado)] - 1,
+           [getStatKey(updatedLote.data.estado)]: prevStats[getStatKey(updatedLote.data.estado)] + 1
+         }));
+       }
        toast.success("Lote actualizado con éxito.", { id: toastId });
      } else {
        updatedLote = await crearLote(data);
        // Agregar el nuevo lote al estado local inmediatamente
        setLotes(prevLotes => [...prevLotes, updatedLote.data]);
+       // Actualizar estadísticas localmente
+       setStats(prevStats => ({
+         ...prevStats,
+         total: prevStats.total + 1,
+         [getStatKey(updatedLote.data.estado)]: prevStats[getStatKey(updatedLote.data.estado)] + 1
+       }));
        toast.success("Lote creado con éxito.", { id: toastId });
      }
-     // Refrescar datos en segundo plano para asegurar consistencia
-     fetchData();
      // Seleccionamos el lote recién creado o editado en el mapa
      setSelectedLote(updatedLote.data);
      closeModal();
@@ -136,7 +151,7 @@ const handleViewLocation = (lote: Lote) => {
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 md:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
         <Card className="border-l-4 border-l-green-500">
           <CardBody className="p-3 md:p-4">
             <div className="flex items-center justify-between">
@@ -225,27 +240,6 @@ const handleViewLocation = (lote: Lote) => {
           </CardBody>
         </Card>
 
-        <Card className="border-l-4 border-l-red-500">
-          <CardBody className="p-3 md:p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">En Mantenimiento</p>
-                <p className="text-lg md:text-xl font-bold text-gray-900">{stats.enMantenimiento}</p>
-                <p className="text-xs text-gray-500">requieren atención</p>
-              </div>
-              <div className="p-1.5 md:p-2 bg-red-100 rounded-full">
-                <FaTools className="h-5 w-5 md:h-6 md:w-6 text-red-600" />
-              </div>
-            </div>
-            <Progress
-              value={(stats.enMantenimiento / Math.max(stats.total, 1)) * 100}
-              className="mt-2 md:mt-3"
-              color="danger"
-              size="sm"
-              aria-label={`Progreso de lotes en mantenimiento: ${stats.enMantenimiento}`}
-            />
-          </CardBody>
-        </Card>
       </div>
 
       
@@ -257,7 +251,7 @@ const handleViewLocation = (lote: Lote) => {
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Select
                   selectedKeys={[filterStatus]}
-                  onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación' | 'En mantenimiento')}
+                  onSelectionChange={(keys) => setFilterStatus(Array.from(keys)[0] as 'all' | 'En preparación' | 'Parcialmente ocupado' | 'En cultivación')}
                   className="w-full sm:w-48"
                   placeholder="Filtrar por estado"
                 >
@@ -265,7 +259,6 @@ const handleViewLocation = (lote: Lote) => {
                   <SelectItem key="En preparación">En Preparación</SelectItem>
                   <SelectItem key="Parcialmente ocupado">Parcialmente Ocupado</SelectItem>
                   <SelectItem key="En cultivación">En Cultivación</SelectItem>
-                  <SelectItem key="En mantenimiento">En Mantenimiento</SelectItem>
                 </Select>
               </div>
             </CardHeader>
@@ -290,7 +283,6 @@ const handleViewLocation = (lote: Lote) => {
                             lote.estado === 'En preparación' ? 'warning' :
                             lote.estado === 'Parcialmente ocupado' ? 'primary' :
                             lote.estado === 'En cultivación' ? 'success' :
-                            lote.estado === 'En mantenimiento' ? 'danger' :
                             'default'
                           }
                           variant="flat"
@@ -346,7 +338,7 @@ const handleViewLocation = (lote: Lote) => {
         
         <div className="w-full lg:flex-1 xl:flex-[2] flex flex-col gap-2 min-w-0 max-w-full">
           <h2 className="text-lg font-semibold text-gray-600 flex-shrink-0">Ubicación: <span className="text-green-700">{selectedLote ? selectedLote.nombre : 'General'}</span></h2>
-          <div className="shadow-xl rounded-2xl flex-grow min-h-[400px] md:min-h-[500px]">
+          <div className="shadow-xl rounded-2xl flex-grow min-h-[300px] md:min-h-[350px]">
             <LotesMap
               lotes={lotes}
               selectedLote={selectedLote}

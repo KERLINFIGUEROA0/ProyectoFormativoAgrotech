@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { Input, Button } from "@heroui/react";
+import { toast } from 'sonner';
 import type { FichaForm } from '../interfaces/fichas';
 
 interface FichaFormProps {
@@ -11,7 +12,6 @@ interface FichaFormProps {
 
 export default function FichaFormComponent({ initialData, onSave, onCancel, editingId }: FichaFormProps): ReactElement {
   const [form, setForm] = useState(initialData);
-  const [errors, setErrors] = useState<string[]>([]);
 
   useEffect(() => {
     setForm(initialData);
@@ -20,33 +20,32 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
   const handleFormChange = (k: keyof FichaForm, v: string) => {
     if (k === "id_ficha") {
       const digits = String(v).replace(/\D+/g, "");
-      setForm((s) => ({ ...s, [k]: digits }));
+      // Only allow 6-8 digits
+      if (digits.length <= 8) {
+        setForm((s) => ({ ...s, [k]: digits }));
+      }
       return;
     }
     setForm((s) => ({ ...s, [k]: v }));
   };
 
   const validateAndSave = async () => {
-    const errs: string[] = [];
-
     if (!form.nombre || form.nombre.trim().length === 0) {
-      errs.push("El nombre de la ficha es requerido");
+      toast.error("El nombre de la ficha es requerido");
+      return;
     }
 
     if (!form.id_ficha || form.id_ficha.trim().length === 0) {
-      errs.push("El ID de ficha es requerido");
-    } else {
-      const idFichaDigits = String(form.id_ficha).replace(/\D+/g, "");
-      if (idFichaDigits.length < 6 || idFichaDigits.length > 8) {
-        errs.push("El ID de ficha debe tener entre 6 y 8 dígitos");
-      }
-    }
-
-    if (errs.length > 0) {
-      setErrors(errs);
+      toast.error("El ID de ficha es requerido");
       return;
     }
-    setErrors([]);
+
+    const idFichaDigits = String(form.id_ficha).replace(/\D+/g, "");
+    if (idFichaDigits.length < 6 || idFichaDigits.length > 8) {
+      toast.error("El ID de ficha debe tener entre 6 y 8 dígitos");
+      return;
+    }
+
     await onSave(form as FichaForm);
   };
 
@@ -82,6 +81,7 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
                 value={String(form.id_ficha ?? "")}
                 onChange={(e) => handleFormChange('id_ficha', e.target.value)}
                 maxLength={8}
+                minLength={6}
                 className="w-full"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -90,18 +90,6 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
             </div>
           </div>
         </div>
-
-        {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span className="text-sm font-medium">Errores de validación:</span>
-            </div>
-            <ul className="list-disc pl-5 space-y-1">
-              {errors.map((err, i) => <li key={i} className="text-sm">{err}</li>)}
-            </ul>
-          </div>
-        )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 pt-3 border-t border-gray-200">
           <Button

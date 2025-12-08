@@ -184,7 +184,13 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4 p-4 bg-gray-50">
+    <div className="h-full flex flex-col space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-lg relative overflow-hidden">
+      {/* Agricultural background pattern */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="w-full h-full" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23059669' fill-opacity='0.1'%3E%3Cpath d='M0 0h80v80H0V0zm20 20h40v40H20V20zM30 30h20v20H30V30z'/%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
       {/* Welcome Banner */}
       <div className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">

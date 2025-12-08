@@ -9,16 +9,25 @@ import {
   Body,
   ParseIntPipe,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { LotesService } from './lotes.service';
 import { CreateLoteDto } from './dto/create-lote.dto';
 import { UpdateLoteDto } from './dto/update-lote.dto';
 import { UpdateLoteEstadoDto } from './dto/update-lote-estado.dto';
+import { PdfService } from '../pdf/pdf.service';
+import { SensoresService } from '../sensores/sensores.service';
+import { GenerarReporteTrazabilidadDto } from '../sensores/dto/generar-reporte.dto';
 
 @Controller('lotes')
 export class LotesController {
-  constructor(private readonly lotesService: LotesService) {}
+  constructor(
+    private readonly lotesService: LotesService,
+    private readonly pdfService: PdfService,
+    private readonly sensoresService: SensoresService,
+  ) {}
 
   @Get('estadisticas')
   @UseInterceptors(CacheInterceptor)
@@ -115,6 +124,51 @@ export class LotesController {
       message: `El estado del lote con ID ${id} se actualizó a "${actualizado.estado}"`,
       data: actualizado,
     };
+  }
+
+  @Post('reporte-trazabilidad')
+  async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
+    try {
+      // 1. Obtener datos (El servicio ahora garantizará que no sean null)
+      const datos = await this.sensoresService.getFullTraceabilityData(dto);
+
+      if (dto.formato === 'pdf') {
+
+        // 2. Generar Buffer
+        const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
+
+        // 3. Configurar cabeceras CRÍTICAS para evitar "PDF corrupto" y caché
+        const filename = `trazabilidad_lote_${dto.loteId}_${new Date().getTime()}.pdf`;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', buffer.length.toString());
+
+        // Evitar caché del navegador (Soluciona el "Actualizar no sirve")
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        // 4. Enviar el archivo
+        res.end(buffer);
+
+      } else if (dto.formato === 'csv') {
+        // ... lógica CSV existente ...
+        const csvContent = await this.pdfService.generarReporteTrazabilidadCSV(datos);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=trazabilidad_${dto.loteId}.csv`);
+        res.send('\uFEFF' + csvContent);
+      } else {
+        res.json(datos);
+      }
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      // En caso de error fatal, enviar un JSON claro en vez de un PDF roto
+      res.status(500).json({
+        message: 'Error generando el reporte. Posiblemente faltan datos críticos.',
+        error: error.message
+      });
+    }
   }
 
   // ✅ ELIMINADOS: Endpoints de eliminación y archivado

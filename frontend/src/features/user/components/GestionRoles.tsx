@@ -1,7 +1,8 @@
 // s/features/user/components/GestionRoles.tsx
 
 import { useState, type ReactElement, useEffect } from "react";
-import { FaPlus, FaSearch, FaEdit, FaTrash, FaUserCog, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
+import { FaPlus, FaSearch, FaEdit, FaTrash, FaUserCog, FaUsers, FaShieldAlt } from "react-icons/fa";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getRoles, createRole, updateRole, deleteRole } from "../api/roles";
 import { getUsuariosTodos as getUsuarios } from "../../auth/api/auth";
@@ -331,7 +332,7 @@ export default function GestionRoles(): ReactElement {
             <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
               <div className="flex flex-col items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <FaExclamationTriangle className="text-red-600" />
+                  <Trash2 className="text-red-600" size={20} />
                 </div>
                 <h4 className="text-lg font-semibold text-center">¿Eliminar rol?</h4>
               </div>

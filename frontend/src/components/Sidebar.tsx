@@ -55,8 +55,7 @@ const baseMenuItems: MenuItemType[] = [
     children: [
       // { id: "sensores", label: "Sensores", icon: Cpu }, // <-- ELIMINADO
       { id: "gestion-sensores", label: "Monitor de Sensores", icon: Activity },
-      { id: "reportes-sensores", label: "Reportes Avanzados", icon: TrendingUp },
-{ id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
+      { id: "gestion-brokers", label: "Configuración Bróker", icon: WorkflowIcon  },
     ],
   },
   {
@@ -109,7 +108,7 @@ const baseMenuItems: MenuItemType[] = [
     icon: TrendingUp,
     module: "Finanzas",
     children: [
-      { id: "ingresos", label: "Inicio", icon: TrendingUp },
+      { id: "ingresos", label: "Historial Financiero", icon: TrendingUp },
       { id: "egresos", label: "Transacciones", icon: Package },
     ],
   },
@@ -195,7 +194,36 @@ export default function Sidebar({
                     setActiveSection("gestion-sensores");
                     navigate("/gestion-sensores");
                   } else if (item.children) {
-                    toggleMenu(item.id);
+                    if (collapsed) {
+                      // When collapsed, navigate to main view instead of toggling menu
+                      let mainView = "";
+                      switch (item.id) {
+                        case "cultivos":
+                          mainView = "gestion-cultivos";
+                          break;
+                        case "inventario":
+                          mainView = "stock";
+                          break;
+                        case "fitosanitario":
+                          mainView = "fitosanitario";
+                          break;
+                        case "actividades-menu":
+                          mainView = "gestion-actividades";
+                          break;
+                        case "finanzas":
+                          mainView = "ingresos";
+                          break;
+                        case "usuarios":
+                          mainView = "gestion-usuarios";
+                          break;
+                        default:
+                          mainView = item.children[0]?.id || item.id;
+                      }
+                      setActiveSection(mainView);
+                      navigate(`/${mainView}`);
+                    } else {
+                      toggleMenu(item.id);
+                    }
                   } else {
                     setActiveSection(item.id);
                     navigate(`/${item.id}`);

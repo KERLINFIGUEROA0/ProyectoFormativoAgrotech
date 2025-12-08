@@ -27,6 +27,49 @@ El proyecto **AgroTech** es una aplicación web completa que consta de tres comp
 - **5433**: PostgreSQL (mapeado desde 5432)
 - **6379**: Redis
 - **4321**: Documentación (Starlight)
+## Configuración de Docker para Backend
+
+### Dockerfile Multi-Stage Build
+
+El backend utiliza un Dockerfile multi-stage para optimizar el tamaño de la imagen final y mejorar la seguridad:
+
+```dockerfile
+# --- Etapa de Build ---
+FROM node:20-alpine AS builder
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+RUN npx tsc --build tsconfig.build.json --force
+
+# --- Etapa de Producción ---
+FROM node:20-alpine
+
+RUN apk add --no-cache tzdata
+
+WORKDIR /usr/src/app
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+COPY package*.json ./
+RUN npm install --only=production
+
+COPY --from=builder /usr/src/app/dist ./dist
+
+EXPOSE 3000
+
+CMD ["node", "dist/src/main.js"]
+```
+
+**Características principales:**
+- **Builder stage**: Utiliza Node.js 20 Alpine para instalar dependencias y compilar el proyecto con `npm install` y `npm run build`
+- **Production stage**: Utiliza Node.js 20 Alpine optimizada para ejecutar la aplicación con `npm run start:prod`
+- **PUPPETEER_SKIP_DOWNLOAD=true**: Configuración para evitar descargar Chromium de Puppeteer en producción
+- **Multi-stage**: Reduce el tamaño final de la imagen al no incluir dependencias de desarrollo
 
 ##  Despliegue Completo del Sistema
 
@@ -44,7 +87,7 @@ Crear archivo `backend/.env`:
 # Base de Datos
 DB_HOST=localhost
 DB_PORT=5433
-DB_USERNAME=myuser
+DB_USER=myuser
 DB_PASSWORD=mypassword
 DB_NAME=bdproyectoformativo
 
@@ -57,6 +100,24 @@ REDIS_URL=redis://localhost:6379
 # Servidor
 PORT=3000
 NODE_ENV=development
+
+# Usuario Administrador (para seed)
+ADMIN_TIPO_IDENTIFICACION=CC
+ADMIN_IDENTIFICACION=1000000000
+ADMIN_NOMBRE=Administrador
+ADMIN_APELLIDOS=Del Sistema
+ADMIN_EMAIL=admin@admin.com
+ADMIN_TELEFONO=0000000000
+ADMIN_PASSWORD=@dmin123
+
+# Configuración de Correo
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=tu_correo@gmail.com
+MAIL_PASS=tu_password_app
+
+# URL del Frontend
+FRONTEND_URL=http://localhost:5173
 ```
 
 #### Ejecutar Backend con Docker
@@ -118,46 +179,62 @@ npm run dev
 **Verificación**: `http://localhost:4321` debería mostrar la documentación completa.
 
 
-  # Cache
-  redis:
-    image: redis:alpine
+```yaml
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: prod_user
+      POSTGRES_PASSWORD: prod_password
+      POSTGRES_DB: agrotech_prod
+      TZ: "America/Bogota"
+      PGTZ: "America/Bogota"
     volumes:
-      - redis_prod_data:/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "6379:6379"
+      - "5432:5432"
 
-  # Backend
   backend:
     image: agrotech-backend:latest
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=db
       - DB_PORT=5432
-      - DB_USERNAME=prod_user
+      - DB_USER=prod_user
       - DB_PASSWORD=prod_password
       - DB_NAME=agrotech_prod
       - JWT_SECRET=tu_jwt_secret_prod
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=production
+      - TZ=America/Bogota
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USER=tu_correo@gmail.com
+      - MAIL_PASS=tu_password_app
+      - FRONTEND_URL=https://tu-dominio.com
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      - db
       - redis
 
-  # Frontend
-  frontend:
-    image: agrotech-frontend:latest
-    environment:
-      - VITE_BACKEND_URL=http://backend:3000
-      - VITE_FRONTEND_URL=http://localhost:80
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
     ports:
-      - "80:80"
-    depends_on:
-      - backend
+      - "6379:6379"
+
+  documentacion:
+    image: agrotech-documentacion:latest
+    ports:
+      - "4321:4321"
+    environment:
+      - TZ=America/Bogota
 
 volumes:
-  postgres_prod_data:
-  redis_prod_data:
+  postgres_data:
+  redis_data:
+```
 ```
 
 ### Ejecutar Producción
@@ -244,9 +321,22 @@ graph TB
 ### Backend
 ```bash
 cd backend
-npm run start:dev          # Desarrollo con hot reload
-npm run build             # Build de producción
-npm run seed              # Poblar base de datos
+npm run build              # Compilar TypeScript a JavaScript (nest build)
+npm run start              # Iniciar servidor en modo producción (nest start)
+npm run start:dev          # Desarrollo con hot reload (nest start --watch)
+npm run start:debug        # Desarrollo con debugger (nest start --debug --watch)
+npm run start:prod         # Ejecutar desde dist/ (node dist/main)
+npm run test               # Ejecutar tests con Jest
+npm run test:watch         # Tests en modo watch
+npm run test:cov           # Tests con cobertura
+npm run test:e2e           # Tests end-to-end
+npm run lint               # Verificar y corregir código con ESLint
+npm run format             # Formatear código con Prettier
+npm run typeorm            # CLI de TypeORM para migraciones y entidades
+npm run migration:generate # Generar nueva migración
+npm run migration:run      # Ejecutar migraciones pendientes
+npm run migration:revert   # Revertir última migración
+npm run seed               # Poblar base de datos con datos iniciales
 ```
 
 ### Frontend
