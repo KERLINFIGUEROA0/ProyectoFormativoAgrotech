@@ -131,8 +131,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         <div className="flex gap-2 mb-2">
           <Button
             onClick={() => setIsDrawModalOpen(true)}
-            color="primary"
-            variant="flat"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
             size="sm"
           >
             Dibujar en Mapa

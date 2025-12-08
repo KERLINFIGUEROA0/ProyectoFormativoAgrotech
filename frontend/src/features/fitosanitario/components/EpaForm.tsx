@@ -166,7 +166,8 @@ export default function EpaForm({
         </Button>
         <Button
           onClick={handleSubmit}
-          color="primary"
+          color="success"
+          className="text-white font-bold"
         >
           {initialData?.id ? 'Actualizar EPA' : 'Registrar EPA'}
         </Button>

@@ -562,10 +562,10 @@ export default function GestionUsuarios(): ReactElement {
               <PermissionWrapper module="Usuarios" permission="Crear">
                 <Button
                   onClick={openModal}
-                  color="primary"
+                  color="success"
                   startContent={<UserPlus size={16} />}
                   size="sm"
-                  className="text-sm"
+                  className="text-sm font-bold text-white"
                 >
                   <span className="hidden sm:inline">Nuevo Usuario</span>
                   <span className="sm:hidden">Nuevo</span>
@@ -577,7 +577,7 @@ export default function GestionUsuarios(): ReactElement {
                   color="success"
                   startContent={<FileSpreadsheet size={16} />}
                   size="sm"
-                  className="text-sm"
+                  className="text-sm font-bold text-white"
                 >
                   <span className="hidden sm:inline">Cargar Excel</span>
                   <span className="sm:hidden">Excel</span>

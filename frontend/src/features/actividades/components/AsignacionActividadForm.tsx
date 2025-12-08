@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-// --- AÑADIR IMPORTS ---
 import {
   ClipboardList,
   UserCheck,
@@ -12,12 +11,27 @@ import {
   Hash,
   Plus,
   X,
+  Trash2,
 } from 'lucide-react';
-import { Input, Select, SelectItem, Button, Textarea, Checkbox } from '@heroui/react';
-// --- MODIFICAR IMPORT ---
+// Importamos componentes de Hero UI para un diseño limpio
+import {
+  Input,
+  Select,
+  SelectItem,
+  Button,
+  Textarea,
+  Checkbox,
+  Card,
+  CardBody,
+  CardHeader,
+  ScrollShadow,
+  Chip,
+  Avatar
+} from '@heroui/react';
+
 import {
    asignarActividad,
-   obtenerMaterialesDisponibles, // <-- AÑADIR
+   obtenerMaterialesDisponibles,
    obtenerLotesParaActividades,
    obtenerSublotesParaActividades,
 } from '../api/actividadesapi';
@@ -27,10 +41,8 @@ import type {
    CultivoSimple,
    LoteSimple,
    SubloteSimple,
-   // --- AÑADIR IMPORT ---
    MaterialUsado,
 } from '../interfaces/actividades';
-// --- AÑADIR IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
 import { UnidadMedida } from '../../inventario/interfaces/inventario';
 import { obtenerUnidadesDisponibles, esUnidadEmpaque, FACTORES_CONVERSION } from '../../../utils/unitConversion';
@@ -416,434 +428,349 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Columna 1: Nueva Asignación (Formulario) */}
-        <div className="space-y-4 p-4 border rounded-lg bg-gray-50 max-h-[70vh] overflow-y-auto">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-green-600" /> Nueva Asignación
-          </h2>
+    <form onSubmit={handleSubmit} className="h-full flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-6 h-full">
 
-          {/* Input de Título */}
-          <div>
+        {/* === COLUMNA IZQUIERDA: FORMULARIO === */}
+        <div className="flex-1 space-y-5 overflow-y-auto pr-2 scrollbar-hide">
+            <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-green-100 rounded-lg text-green-700">
+                    <ClipboardList size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Detalles de la Tarea</h3>
+            </div>
+
             <Input
               type="text"
               name="titulo"
-              placeholder="Ej: Riego por goteo - Lote A"
+              variant="bordered"
+              label="Nombre de la Actividad"
+              placeholder="Ej: Riego por goteo"
               value={formData.titulo}
               onChange={handleChange}
-              label="Nombre de la Actividad"
               isRequired
+              classNames={{ inputWrapper: "bg-white" }}
             />
-          </div>
-          <div>
-            <Select
-              name="lote"
-              selectedKeys={formData.lote ? [formData.lote] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, lote: selected as string, sublote: '' })); // Reset sublote when lote changes
-              }}
-              label="Lote (Opcional)"
-              placeholder="Seleccionar lote"
-            >
-              {lotesDisponibles.map(l => (
-                <SelectItem key={l.id.toString()}>
-                  {l.nombre}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Select
-              name="cultivo"
-              selectedKeys={formData.cultivo ? [formData.cultivo] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                const cultivoSeleccionado = cultivos.find(c => c.id === Number(selected));
-                const loteId = cultivoSeleccionado?.loteId;
-                setFormData(prev => ({
-                  ...prev,
-                  cultivo: selected as string,
-                  lote: loteId ? loteId.toString() : prev.lote,
-                  sublote: ''
-                }));
-              }}
-              label="Cultivo"
-              placeholder="Seleccionar cultivo"
-              isRequired
-            >
-              {cultivos.map(c => (
-                <SelectItem key={c.id.toString()}>
-                  {c.nombre}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Select
-              name="sublote"
-              selectedKeys={formData.sublote ? [formData.sublote] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, sublote: selected as string }));
-              }}
-              label="Sublote (Opcional)"
-              placeholder="Seleccionar sublote"
-              isDisabled={!formData.lote}
-            >
-              {sublotesDisponibles.map(s => (
-                <SelectItem key={s.id.toString()}>
-                  {s.nombre}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-          <div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select
+                  label="Cultivo"
+                  variant="bordered"
+                  placeholder="Seleccionar"
+                  selectedKeys={formData.cultivo ? [formData.cultivo] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    const cultivoSeleccionado = cultivos.find(c => c.id === Number(selected));
+                    setFormData(prev => ({
+                      ...prev,
+                      cultivo: selected,
+                      lote: cultivoSeleccionado?.loteId ? cultivoSeleccionado.loteId.toString() : prev.lote,
+                      sublote: ''
+                    }));
+                  }}
+                  isRequired
+                  classNames={{ trigger: "bg-white" }}
+                >
+                  {cultivos.map(c => <SelectItem key={c.id.toString()}>{c.nombre}</SelectItem>)}
+                </Select>
+
+                <Input
+                  type="date"
+                  name="fecha"
+                  variant="bordered"
+                  label="Fecha"
+                  value={formData.fecha}
+                  onChange={handleChange}
+                  isRequired
+                  classNames={{ inputWrapper: "bg-white" }}
+                />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <Select
+                  label="Lote (Opcional)"
+                  variant="bordered"
+                  placeholder="Seleccionar lote"
+                  selectedKeys={formData.lote ? [formData.lote] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setFormData(prev => ({ ...prev, lote: selected, sublote: '' }));
+                  }}
+                  classNames={{ trigger: "bg-white" }}
+                >
+                  {lotesDisponibles.map(l => <SelectItem key={l.id.toString()}>{l.nombre}</SelectItem>)}
+                </Select>
+
+                <Select
+                  label="Sublote (Opcional)"
+                  variant="bordered"
+                  placeholder="Seleccionar"
+                  selectedKeys={formData.sublote ? [formData.sublote] : []}
+                  onSelectionChange={(keys) => setFormData(prev => ({ ...prev, sublote: Array.from(keys)[0] as string }))}
+                  isDisabled={!formData.lote}
+                  classNames={{ trigger: "bg-white" }}
+                >
+                  {sublotesDisponibles.map(s => <SelectItem key={s.id.toString()}>{s.nombre}</SelectItem>)}
+                </Select>
+            </div>
+
             <Textarea
               name="descripcion"
-              placeholder="Describe la tarea a realizar..."
+              variant="bordered"
+              label="Descripción"
+              placeholder="Instrucciones detalladas..."
               value={formData.descripcion}
               onChange={handleChange}
-              label="Descripción de la Actividad"
-              isRequired
               minRows={3}
+              classNames={{ inputWrapper: "bg-white" }}
             />
-          </div>
-          <div>
-            <Input
-              type="date"
-              name="fecha"
-              value={formData.fecha}
-              onChange={handleChange}
-              label="Fecha de Realización"
-              isRequired
-            />
-          </div>
 
-          {/* --- AÑADIR CAMPO PARA ARCHIVOS INICIALES --- */}
-          <div>
-            <label htmlFor="archivosIniciales" className="block text-sm font-medium text-gray-700">
-              Archivo Inicial (PDF, Excel, Imagen, etc.) - Opcional
-            </label>
-            <input
-              type="file"
-              name="archivosIniciales"
-              id="archivosIniciales"
-              multiple
-              accept=".pdf,.xlsx,.xls,.doc,.docx,.jpg,.jpeg,.png,.gif"
-              onChange={(e) => setFormData(prev => ({ ...prev, archivosIniciales: e.target.files }))}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Sube un archivo que los aprendices puedan descargar y usar como referencia para su respuesta.
-            </p>
-          </div>
-          {/* --- FIN CAMPO ARCHIVOS --- */}
+            {/* SECCIÓN MATERIALES (Card limpia) */}
+            <Card shadow="sm" className="border border-gray-100 bg-gray-50/50">
+                <CardBody className="p-4 space-y-3">
+                    <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <Package size={16}/> Materiales Necesarios
+                    </span>
 
-          {/* --- AÑADIR SECCIÓN DE MATERIALES --- */}
-          <div className="space-y-3 pt-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Materiales a Utilizar (cantidad total)
-            </label>
-            <div className="p-4 border rounded-lg bg-white space-y-3">
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <Select
-                    selectedKeys={formData.materialActual ? [formData.materialActual] : []}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0];
-                      setFormData(prev => ({ ...prev, materialActual: selected as string }));
-                    }}
-                    placeholder="Seleccionar..."
-                    label="Material"
-                    startContent={<Package size={14} />}
-                  >
-                    {materialesDisponibles.map((m) => {
-                      const stockTotal = calcularStockDisponible(m);
-                      const unidadTexto = m.tipoConsumo === 'consumible' && m.cantidadPorUnidad ? (m.medidasDeContenido || 'unidades') : m.tipoEmpaque;
-                      return (
-                        <SelectItem key={m.id.toString()}>
-                          {m.nombre} (Disp: {stockTotal} {unidadTexto})
-                        </SelectItem>
-                      );
-                    })}
-                  </Select>
-                </div>
-                <div className="w-1/4">
-                  <Input
-                    type="number"
-                    value={formData.cantidadMaterial.toString()}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
-                    min="1"
-                    label="Cantidad"
-                    startContent={<Hash size={14} />}
-                  />
-                </div>
-                <div className="w-1/4">
-                  <Select
-                    selectedKeys={[formData.unidadSeleccionada]}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as UnidadMedida;
-                      setFormData(prev => ({ ...prev, unidadSeleccionada: selected }));
-                    }}
-                    label="Unidad"
-                    placeholder="Unidad"
-                  >
-                    {unidadesDisponibles.map((unidad) => (
-                      <SelectItem key={unidad}>
-                        {unidad}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </div>
-                <Button
-                  type="button"
-                  onClick={handleAddMaterial}
-                  color="success"
-                  isIconOnly
-                >
-                  <Plus size={20} />
-                </Button>
-              </div>
-
-              {/* --- ZONA DE INFORMACIÓN DE STOCK DINÁMICO --- */}
-              {materialSeleccionado && (
-                <div className="w-full mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col gap-1">
-                   <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 font-medium">Stock Disponible:</span>
-                      <span className={`text-sm font-bold ${
-                         Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada
-                         ? 'text-red-600'
-                         : 'text-blue-600'
-                      }`}>
-                         {stockEnUnidadSeleccionada.toLocaleString('es-CO', { maximumFractionDigits: 2 })} {formData.unidadSeleccionada}
-                      </span>
-                   </div>
-
-                   {/* Barra de progreso visual */}
-                   <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                      <div
-                        className={`h-1.5 rounded-full transition-all ${
-                           Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada ? 'bg-red-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${Math.min((Number(formData.cantidadMaterial) / (stockEnUnidadSeleccionada || 1)) * 100, 100)}%` }}
-                      ></div>
-                   </div>
-
-                   <p className="text-xs text-gray-400 mt-1">
-                     Total en inventario: {calcularStockDisponible(materialSeleccionado).toFixed(2)} {materialSeleccionado.unidadBase || 'g/ml'} (Base Unificada)
-                   </p>
-                </div>
-              )}
-
-              {/* --- FEEDBACK VISUAL PARA UNIDADES DE EMPAQUE --- */}
-              {esUnidadEmpaque(formData.unidadSeleccionada) && materialSeleccionado?.pesoPorUnidad && (
-                <div className="mt-2 p-2 bg-blue-50 text-blue-700 text-sm rounded border border-blue-200">
-                  💡 <strong>Nota:</strong> Estás usando <strong>{formData.unidadSeleccionada}</strong>.
-                  El sistema convertirá automáticamente a la unidad base para descontar del stock unificado.
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {formData.materiales.map((m) => (
-                  <div
-                    key={m.materialId}
-                    className="flex justify-between items-center bg-gray-100 p-2 border rounded-md"
-                  >
-                    <div className="text-sm">
-                      <p className="font-medium text-gray-800">{m.nombre}</p>
-                      <div className="flex gap-4 text-xs text-gray-600">
-                         <span>Cant: <strong>{m.cantidadUsada} {m.unidadMedida}</strong></span>
-                         {/* Mostramos el costo estimado */}
-                         <span className="text-green-700 font-semibold">
-                           Costo aprox: ${(m as any).costoEstimado?.toLocaleString('es-CO') || 0}
-                         </span>
-                      </div>
+                    <div className="flex gap-2 items-end">
+                         <Select
+                            className="flex-1"
+                            label="Material"
+                            size="sm"
+                            selectedKeys={formData.materialActual ? [formData.materialActual] : []}
+                            onSelectionChange={(k) => setFormData(prev => ({ ...prev, materialActual: Array.from(k)[0] as string }))}
+                         >
+                            {materialesDisponibles.map((m) => (
+                                <SelectItem key={m.id.toString()} textValue={m.nombre}>
+                                    {m.nombre} (Disp: {Math.round(m.cantidad)})
+                                </SelectItem>
+                            ))}
+                         </Select>
+                         <Input
+                            className="w-24"
+                            type="number"
+                            label="Cant."
+                            size="sm"
+                            value={formData.cantidadMaterial.toString()}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cantidadMaterial: Number(e.target.value) }))}
+                         />
+                         <Select
+                            className="w-28"
+                            label="Unidad"
+                            size="sm"
+                            selectedKeys={[formData.unidadSeleccionada]}
+                            onSelectionChange={(k) => setFormData(prev => ({ ...prev, unidadSeleccionada: Array.from(k)[0] as UnidadMedida }))}
+                         >
+                            {unidadesDisponibles.map(u => <SelectItem key={u}>{u}</SelectItem>)}
+                         </Select>
+                         <Button isIconOnly color="success" size="lg" onClick={handleAddMaterial}>
+                            <Plus size={20} />
+                         </Button>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={() => handleRemoveMaterial(m.materialId)}
-                      color="danger"
-                      variant="light"
-                      isIconOnly
-                      size="sm"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          {/* --- FIN DE SECCIÓN DE MATERIALES --- */}
 
-          <div className="pt-2">
-            <h3 className="text-sm font-medium text-gray-700">
-              Asignar a Aprendices
-            </h3>
-            {formData.aprendices.length === 0 ? (
-              <p className="text-sm text-red-500 mt-1">
-                Debe seleccionar al menos un aprendiz.
-              </p>
-            ) : (
-              <p className="text-sm text-green-600 mt-1">
-                {formData.aprendices.length} Aprendiz(es) seleccionado(s).
-              </p>
-            )}
-          </div>
+                    {/* Información de Stock y Costo */}
+                    {materialSeleccionado && (
+                        <div className="w-full mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                           <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm text-blue-700 font-medium">Stock Disponible:</span>
+                              <span className={`text-sm font-bold ${
+                                 Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada
+                                 ? 'text-red-600'
+                                 : 'text-blue-600'
+                              }`}>
+                                 {stockEnUnidadSeleccionada.toLocaleString('es-CO', { maximumFractionDigits: 2 })} {formData.unidadSeleccionada}
+                              </span>
+                           </div>
 
-          {formData.aprendices.length > 1 && (
-            <div>
-              <Select
-                name="responsable"
-                selectedKeys={formData.responsable ? [formData.responsable] : []}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as string;
-                  setFormData(prev => ({ ...prev, responsable: selected }));
-                }}
-                label="Persona Responsable (Obligatorio cuando hay múltiples aprendices)"
-                placeholder="Seleccionar responsable"
-                isRequired={formData.aprendices.length > 1}
-              >
-                {usuarios
-                  .filter(u => formData.aprendices.includes(Number(u.identificacion)))
-                  .map(u => (
-                    <SelectItem key={u.identificacion.toString()}>
-                      {u.nombre} {u.apellidos}
-                    </SelectItem>
-                  ))}
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                Esta persona podrá devolver materiales no utilizados al finalizar la actividad.
-              </p>
-            </div>
-          )}
+                           {/* Barra de progreso visual */}
+                           <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                              <div
+                                className={`h-2 rounded-full transition-all ${
+                                   Number(formData.cantidadMaterial) > stockEnUnidadSeleccionada ? 'bg-red-500' : 'bg-blue-500'
+                                }`}
+                                style={{ width: `${Math.min((Number(formData.cantidadMaterial) / (stockEnUnidadSeleccionada || 1)) * 100, 100)}%` }}
+                              ></div>
+                           </div>
 
-          <div className="flex justify-start gap-4 pt-4">
-              <Button
-                type="submit"
-                disabled={isSubmitting || formData.aprendices.length === 0 || (formData.aprendices.length > 1 && !formData.responsable)}
-                color="success"
-                startContent={isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
-              >
-                {isSubmitting ? "Asignando..." : "Asignar Actividad"}
-              </Button>
-              <Button
-                type="button"
-                onClick={onCancel}
-                color="danger"
-              >
-                Cancelar
-              </Button>
-          </div>
-        </div>
-
-        {/* Columna 2: Aprendices Disponibles (Lista de selección) */}
-        <div className="p-4 border rounded-lg shadow-inner bg-white max-h-[70vh] overflow-y-auto">
-          {/* ... (Controles de búsqueda y filtrado sin cambios) ... */}
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Aprendices Disponibles ({usuariosFiltrados.length} de {usuarios.length})
-          </h2>
-          
-          <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-            <Input
-              type="text"
-              placeholder="Buscar por nombre o identificación..."
-              value={formData.searchTerm}
-              onChange={(e) => setFormData(prev => ({ ...prev, searchTerm: e.target.value }))}
-              startContent={<Search className="w-4 h-4" />}
-            />
-
-            <Select
-              selectedKeys={formData.selectedFicha ? [formData.selectedFicha] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, selectedFicha: selected as string }));
-              }}
-              placeholder="Todas las fichas"
-              startContent={<Filter className="w-4 h-4" />}
-            >
-              {fichasUnicas.map(ficha => (
-                <SelectItem key={ficha.id_ficha}>
-                  {ficha.nombre} ({ficha.id_ficha})
-                </SelectItem>
-              ))}
-            </Select>
-
-            {formData.selectedFicha && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  onClick={() => seleccionarTodosDeFicha(formData.selectedFicha)}
-                  color="success"
-                  variant="light"
-                  size="sm"
-                  className="flex-1"
-                >
-                  Seleccionar Todo
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => deseleccionarTodosDeFicha(formData.selectedFicha)}
-                  color="danger"
-                  variant="light"
-                  size="sm"
-                  className="flex-1"
-                >
-                  Deseleccionar Todo
-                </Button>
-              </div>
-            )}
-          </div>
-          
-          {/* ... (Lista de aprendices filtrados sin cambios) ... */}
-          <div className="space-y-2">
-            {usuariosFiltrados.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No se encontraron aprendices con los filtros aplicados.
-              </p>
-            ) : (
-              usuariosFiltrados
-                .sort((a, b) => {
-                  const fichaA = a.ficha?.nombre || '';
-                  const fichaB = b.ficha?.nombre || '';
-                  if (fichaA !== fichaB) {
-                    return fichaA.localeCompare(fichaB);
-                  }
-                  return a.nombre.localeCompare(b.nombre);
-                })
-                .map(u => (
-                  <div key={u.identificacion} className="border rounded-lg">
-                    {u.ficha && (
-                      <div className="bg-blue-50 px-3 py-2 border-b">
-                        <p className="text-sm font-medium text-blue-800">
-                          {u.ficha.nombre} ({u.ficha.id_ficha})
-                        </p>
-                      </div>
-                    )}
-                    
-                    <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-blue-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          isSelected={formData.aprendices.includes(Number(u.identificacion))}
-                          onValueChange={(isSelected) => handleAprendicesChange(Number(u.identificacion), isSelected)}
-                        />
-                        <div>
-                          <p className="font-medium text-gray-800">{u.nombre} {u.apellidos}</p>
-                          <p className="text-xs text-gray-500">ID: {u.identificacion}</p>
+                           <div className="flex justify-between text-xs text-blue-600">
+                              <span>Total en inventario: {calcularStockDisponible(materialSeleccionado).toFixed(2)} {materialSeleccionado.unidadBase || 'g/ml'}</span>
+                              {Number(formData.cantidadMaterial) > 0 && (
+                                 <span className="font-semibold text-green-600">
+                                    Costo aprox: ${calcularCostoEstimado(materialSeleccionado, Number(formData.cantidadMaterial), formData.unidadSeleccionada).toLocaleString('es-CO')}
+                                 </span>
+                              )}
+                           </div>
                         </div>
-                      </div>
-                      {formData.aprendices.includes(Number(u.identificacion)) && (
-                          <UserCheck className="w-4 h-4 text-green-500" />
-                      )}
-                    </label>
-                  </div>
-                ))
-            )}
-          </div>
+                    )}
+
+                    {/* Nota para unidades de empaque */}
+                    {esUnidadEmpaque(formData.unidadSeleccionada) && materialSeleccionado?.pesoPorUnidad && (
+                        <div className="mt-2 p-2 bg-amber-50 text-amber-700 text-sm rounded border border-amber-200">
+                          💡 <strong>Nota:</strong> Estás usando <strong>{formData.unidadSeleccionada}</strong>.
+                          El sistema convertirá automáticamente a la unidad base para descontar del stock unificado.
+                        </div>
+                    )}
+
+                    {/* Lista Materiales Agregados */}
+                    <div className="space-y-2 mt-3">
+                        {formData.materiales.map((m) => (
+                            <div key={m.materialId} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-800">{m.nombre}</p>
+                                    <div className="flex items-center gap-4 text-xs text-gray-600 mt-1">
+                                        <span>Cantidad: <strong>{m.cantidadUsada} {m.unidadMedida}</strong></span>
+                                        <span className="text-green-600 font-semibold">
+                                            Costo: ${(m as any).costoEstimado?.toLocaleString('es-CO') || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                                <Button
+                                    isIconOnly
+                                    color="danger"
+                                    variant="light"
+                                    size="sm"
+                                    onClick={() => handleRemoveMaterial(m.materialId)}
+                                >
+                                    <X size={16} />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </CardBody>
+            </Card>
+
+             {/* Archivos */}
+             <div className="p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-white transition-colors">
+                <label className="cursor-pointer flex items-center gap-3 w-full">
+                    <span className="p-2 bg-blue-100 text-blue-600 rounded-full"><ClipboardList size={18}/></span>
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">Adjuntar Archivo Guía</p>
+                        <p className="text-xs text-gray-500">PDF, Excel o Imagen (Opcional)</p>
+                    </div>
+                    <input type="file" className="hidden" onChange={(e) => setFormData(prev => ({ ...prev, archivosIniciales: e.target.files }))} />
+                </label>
+                {formData.archivosIniciales && <p className="text-xs text-green-600 mt-2 ml-12">Archivo seleccionado</p>}
+             </div>
         </div>
+
+        {/* === COLUMNA DERECHA: SELECCIÓN DE APRENDICES === */}
+        <Card className="flex-1 h-full shadow-sm border border-gray-200">
+            <CardHeader className="px-4 py-3 border-b border-gray-100 bg-gray-50/30 flex flex-col gap-3">
+                <div className="flex justify-between items-center w-full">
+                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                        <Users size={18} className="text-blue-500"/> Aprendices
+                    </h3>
+                    <Chip size="sm" variant="flat" color={formData.aprendices.length > 0 ? "success" : "default"}>
+                        {formData.aprendices.length} Seleccionados
+                    </Chip>
+                </div>
+
+                <div className="flex gap-2 w-full">
+                     <Input
+                        size="sm"
+                        placeholder="Buscar..."
+                        startContent={<Search size={14}/>}
+                        value={formData.searchTerm}
+                        onChange={(e) => setFormData(prev => ({...prev, searchTerm: e.target.value}))}
+                        classNames={{ inputWrapper: "bg-white" }}
+                     />
+                     <Select
+                        size="sm"
+                        placeholder="Ficha"
+                        className="w-32"
+                        selectedKeys={formData.selectedFicha ? [formData.selectedFicha] : []}
+                        onSelectionChange={(k) => setFormData(prev => ({...prev, selectedFicha: Array.from(k)[0] as string}))}
+                     >
+                        {fichasUnicas.map(f => <SelectItem key={f.id_ficha}>{f.id_ficha}</SelectItem>)}
+                     </Select>
+                </div>
+                {formData.selectedFicha && (
+                     <div className="flex gap-2 w-full">
+                        <Button size="sm" fullWidth color="primary" variant="flat" onClick={() => seleccionarTodosDeFicha(formData.selectedFicha)}>Todos</Button>
+                        <Button size="sm" fullWidth color="danger" variant="flat" onClick={() => deseleccionarTodosDeFicha(formData.selectedFicha)}>Ninguno</Button>
+                     </div>
+                )}
+            </CardHeader>
+
+            <CardBody className="p-0 overflow-hidden">
+                <ScrollShadow className="h-[400px] lg:h-[500px] w-full p-2">
+                    <div className="space-y-1">
+                        {usuariosFiltrados.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+                                <Users size={32} strokeWidth={1.5} />
+                                <p className="text-sm mt-2">No hay aprendices</p>
+                            </div>
+                        ) : (
+                            usuariosFiltrados.map((u) => {
+                                const isSelected = formData.aprendices.includes(Number(u.identificacion));
+                                return (
+                                    <div
+                                        key={u.identificacion}
+                                        onClick={() => handleAprendicesChange(Number(u.identificacion), !isSelected)}
+                                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${
+                                            isSelected
+                                            ? "bg-green-50 border-green-200"
+                                            : "bg-white border-transparent hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        <Checkbox isSelected={isSelected} color="success" className="pointer-events-none" />
+                                        <div className="flex-1">
+                                            <p className={`text-sm font-medium ${isSelected ? "text-green-800" : "text-gray-700"}`}>
+                                                {u.nombre} {u.apellidos}
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                {u.ficha?.id_ficha || "Sin ficha"} • ID: {u.identificacion}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </ScrollShadow>
+            </CardBody>
+
+            {/* Footer de Responsable (Si hay múltiples) */}
+            {formData.aprendices.length > 1 && (
+                <div className="p-3 bg-yellow-50 border-t border-yellow-100 animate-in slide-in-from-bottom-2">
+                     <Select
+                        label="Responsable del Grupo"
+                        placeholder="¿Quién entrega materiales?"
+                        size="sm"
+                        color="warning"
+                        variant="flat"
+                        selectedKeys={formData.responsable ? [formData.responsable] : []}
+                        onSelectionChange={(k) => setFormData(prev => ({ ...prev, responsable: Array.from(k)[0] as string }))}
+                        startContent={<UserCheck size={16}/>}
+                     >
+                        {usuarios
+                          .filter(u => formData.aprendices.includes(Number(u.identificacion)))
+                          .map(u => <SelectItem key={u.identificacion.toString()}>{u.nombre} {u.apellidos}</SelectItem>)
+                        }
+                     </Select>
+                </div>
+            )}
+        </Card>
+      </div>
+
+      {/* === ACCIONES FINALES === */}
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+         <Button
+            variant="light"
+            color="default"
+            onClick={onCancel}
+            className="font-semibold text-gray-600 hover:bg-gray-100"
+         >
+            Cancelar
+         </Button>
+         <Button
+            color="success"
+            className="font-bold text-white shadow-lg shadow-green-200"
+            isLoading={isSubmitting}
+            onClick={handleSubmit}
+         >
+            Asignar Actividad
+         </Button>
       </div>
     </form>
   );

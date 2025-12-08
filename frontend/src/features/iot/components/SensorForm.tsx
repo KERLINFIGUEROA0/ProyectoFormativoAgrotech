@@ -298,8 +298,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         <div className="mt-4 flex gap-2">
           <Button
             onClick={handleTestConnection}
-            color="primary"
-            variant="bordered"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
             isLoading={isTestingConnection}
             disabled={isTestingConnection}
           >
@@ -313,7 +312,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
       </div>
       
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-        <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
+        <Button onClick={onCancel} color="default" variant="light">Cancelar</Button>
         <Button onClick={handleSubmit} className="bg-green-600 text-white font-bold hover:bg-green-700">Guardar Sensor y Broker</Button>
       </div>
     </div>

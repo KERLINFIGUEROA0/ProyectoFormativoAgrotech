@@ -120,7 +120,7 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
           setMedidaContenido(esLiquido ? 'ml' : 'g');
         } else {
           setCantidadContenido(String(pesoNum));
-          setMedidaContenido(esLiquido ? 'l' : 'kg'); // Ajustado a abreviaturas
+          setMedidaContenido(esLiquido ? 'L' : 'kg'); // Ajustado a abreviaturas
         }
       } else {
         setCantidadContenido('');
@@ -416,10 +416,10 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       </label>
 
       <div className="flex justify-center gap-4">
-        <Button onClick={onCancel} color="danger" variant="light" className="w-40">
+        <Button onClick={onCancel} variant="light" color="default" className="w-40">
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} color="success" className="w-40">
+        <Button onClick={handleSubmit} color="success" className="w-40 text-white font-bold">
           Guardar Material
         </Button>
       </div>

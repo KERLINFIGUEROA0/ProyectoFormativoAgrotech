@@ -387,7 +387,7 @@ export default function GestionInventarioPage() {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800">Gestión De Inventario</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />}>
+          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />} className="text-white font-bold">
             Añadir Producto
           </Button>
         </div>
@@ -406,8 +406,7 @@ export default function GestionInventarioPage() {
           </div>
           <Button
             onClick={() => setFiltroEstadoStock(filtroEstadoStock === 'Crítico' ? 'Todos' : 'Crítico')}
-            color="danger"
-            className="flex-shrink-0"
+            className="bg-green-600 text-white font-bold hover:bg-green-700 flex-shrink-0"
           >
             {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Stock Bajo'}
           </Button>
@@ -532,7 +531,7 @@ export default function GestionInventarioPage() {
                 setFiltroEstadoStock("Todos");
                 setFiltroEstadoMaterial("Todos");
               }}
-              color="danger"
+              color="default"
               variant="light"
               size="sm"
               className="text-xs h-6 px-2"
@@ -578,7 +577,7 @@ export default function GestionInventarioPage() {
           <TableBody>
             {currentMateriales.map((mat) => {
               const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
-              const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | null);
+              const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
 
               return (
                 <TableRow key={mat.id || `mat-${Math.random()}`} className={!mat.estado ? 'bg-red-50' : ''}>
@@ -623,6 +622,7 @@ export default function GestionInventarioPage() {
                   <TableCell className="text-center">
                     <Switch
                       size="sm"
+                      color="success"
                       isSelected={mat.estado}
                       onValueChange={() => handleToggleEstado(mat)}
                       onClick={(e) => e.stopPropagation()}

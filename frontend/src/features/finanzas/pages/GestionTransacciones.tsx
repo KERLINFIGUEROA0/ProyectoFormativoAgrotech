@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
-import { Trash2 } from 'lucide-react';
+import { Trash2, FileSpreadsheet, Plus, Search, Filter } from 'lucide-react';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
 import TransaccionForm from '../components/TransaccionForm';
@@ -15,6 +15,21 @@ import {
   Select,
   SelectItem,
   Input,
+  Card,
+  CardBody,
+  CardHeader,
+  Table,
+  TableHeader,
+  TableBody,
+  TableColumn,
+  TableRow,
+  TableCell,
+  Chip,
+  Spinner,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem
 } from "@heroui/react";
 // ✅ IMPORTAR HELPER DE FECHAS
 import { formatToTable } from '../../../utils/dateUtils.ts';
@@ -138,189 +153,243 @@ export default function GestionTransaccionesPage(): ReactElement {
   );
 
   return (
-    <div className="bg-white shadow-xl rounded-xl p-6 w-full flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
-        <div className="flex gap-4">
-          <Button
-            onClick={async () => {
-              if (selectedCultivoId) {
-                try {
-                  await exportarExcelCultivo(selectedCultivoId);
-                  toast.success('Reporte Excel generado con éxito');
-                } catch (error) {
-                  toast.error('Error al generar el reporte Excel');
+    <div className="p-2 sm:p-6 bg-gray-50 min-h-full">
+      {/* Header separado del card */}
+      <div className="flex flex-col gap-6 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={async () => {
+                if (selectedCultivoId) {
+                  try {
+                    await exportarExcelCultivo(selectedCultivoId);
+                    toast.success('Reporte Excel generado con éxito');
+                  } catch (error) {
+                    toast.error('Error al generar el reporte Excel');
+                  }
+                } else {
+                  toast.error("Por favor seleccione un cultivo primero");
                 }
-              } else {
-                toast.error("Por favor seleccione un cultivo primero");
-              }
+              }}
+              color="default"
+              variant="solid"
+              startContent={<FaFileExcel />}
+              className="font-semibold"
+            >
+              Exportar Excel por Cultivo
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await exportarExcelGeneral();
+                  toast.success('Reporte Excel general generado con éxito');
+                } catch (error) {
+                  toast.error('Error al generar el reporte Excel general');
+                }
+              }}
+              color="default"
+              variant="solid"
+              startContent={<FaFileExcel />}
+              className="font-semibold"
+            >
+              Exportar Excel General
+            </Button>
+            <Button
+              onClick={openModal}
+              color="success"
+              variant="solid"
+              className="font-bold text-white shadow-lg shadow-green-200"
+            >
+              Nueva Venta
+            </Button>
+          </div>
+        </div>
+
+        {/* Filtros arriba */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Select
+            placeholder="Seleccionar Cultivo"
+            className="w-full sm:w-64"
+            selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0];
+              setSelectedCultivoId(selected ? Number(selected) : null);
             }}
-            color="success"
-            startContent={<FaFileExcel />}
+            variant="bordered"
+            startContent={<Filter size={18} className="text-green-600" />}
+            classNames={{ trigger: "bg-white" }}
           >
-            Exportar Excel por Cultivo
-          </Button>
-          <Button
-            onClick={async () => {
-              try {
-                await exportarExcelGeneral();
-                toast.success('Reporte Excel general generado con éxito');
-              } catch (error) {
-                toast.error('Error al generar el reporte Excel general');
-              }
-            }}
-            color="success"
-            startContent={<FaFileExcel />}
-          >
-            Exportar Excel General
-          </Button>
-          <Button
-            onClick={openModal}
-            color="success"
-            startContent={<FaPlus />}
-          >
-            Nueva Venta
-          </Button>
+            {cultivos.map(cultivo => (
+              <SelectItem key={cultivo.id.toString()}>
+                {cultivo.nombre}
+              </SelectItem>
+            ))}
+          </Select>
+
+          <Input
+            type="text"
+            placeholder="Buscar por descripción..."
+            className="w-full sm:w-72"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            variant="bordered"
+            startContent={<Search size={18} className="text-green-600" />}
+            classNames={{ inputWrapper: "bg-white" }}
+          />
         </div>
       </div>
-      <div className="flex gap-4 mb-4">
-        <Select
-          placeholder="Seleccionar Cultivo"
-          className="w-64"
-          selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0];
-            setSelectedCultivoId(selected ? Number(selected) : null);
-          }}
-        >
-          {cultivos.map(cultivo => (
-            <SelectItem key={cultivo.id.toString()}>
-              {cultivo.nombre}
-            </SelectItem>
-          ))}
-        </Select>
 
-        <Input
-          type="text"
-          placeholder="Buscar por descripción..."
-          className="w-72"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </div>
-      <div className="overflow-auto flex-grow">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
-            <tr>
-              <th className="px-4 py-3 text-left">Fecha</th>
-              <th className="px-4 py-3 text-left">Tipo</th>
-              <th className="px-4 py-3 text-left w-1/3">Descripción</th>
-              <th className="px-4 py-3 text-right">Cantidad</th>
-              <th className="px-4 py-3 text-center">Unidad</th> {/* ✅ Nueva columna */}
-              <th className="px-4 py-3 text-right">Precio Unitario</th>
-              <th className="px-4 py-3 text-right">Valor Total</th>
-              <th className="px-4 py-3 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransacciones.map((t, index) => (
-              <tr key={t.id} className={`border-t transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 hover:shadow-sm`}>
-                <td className="px-4 py-3">{formatToTable(t.fecha)}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    t.tipo === 'ingreso' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {t.tipo === 'ingreso' ? <FaArrowUp size={10} /> : <FaArrowDown size={10} />}
-                    {t.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-medium truncate max-w-xs" title={t.descripcion}>
-                  {t.descripcion}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {t.cantidad}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-500"> {/* ✅ Nueva celda */}
-                  {t.unidad || '-'}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-gray-600">
-                  {currencyFormatter.format(t.precioUnitario || 0)}
-                </td>
-                <td className={`px-4 py-3 font-semibold text-right ${t.tipo === 'egreso' ? 'text-red-600' : 'text-green-600'}`}>
-                  {t.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(t.monto)}
-                </td>
-                <td className="px-4 py-3 text-center flex justify-center gap-4">
-                  {t.rutaFacturaPdf && (
-                    <a
-                      href={`${API_URL}/ventas/${t.id}/factura`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Descargar Factura"
+      {/* Tabla en card separado */}
+      <Card className="shadow-lg border border-green-200">
+        <CardBody className="p-0">
+          <Table
+            aria-label="Transacciones"
+            className="border-collapse"
+            bottomContent={
+              <div className="flex justify-center py-4">
+                <p className="text-sm text-gray-500">
+                  {filteredTransacciones.length} transacción{filteredTransacciones.length !== 1 ? 'es' : ''} encontrada{filteredTransacciones.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            }
+          >
+            <TableHeader>
+              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Tipo</TableColumn>
+              <TableColumn>Descripción</TableColumn>
+              <TableColumn align="end">Cantidad</TableColumn>
+              <TableColumn align="center">Unidad</TableColumn>
+              <TableColumn align="end">Precio Unitario</TableColumn>
+              <TableColumn align="end">Valor Total</TableColumn>
+              <TableColumn align="center">Acciones</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent={"No hay transacciones que coincidan con los filtros"}>
+              {filteredTransacciones.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-gray-600">
+                    {formatToTable(t.fecha)}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      color={t.tipo === 'ingreso' ? 'success' : 'danger'}
+                      startContent={t.tipo === 'ingreso' ? <FaArrowUp size={12} /> : <FaArrowDown size={12} />}
                     >
-                      <FaDownload />
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleDelete(t.id, t.tipo)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 transition-colors"
-                    title={`Eliminar ${t.tipo === 'ingreso' ? 'venta' : 'gasto'}`}
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-       <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="4xl" scrollBehavior="inside">
-         <ModalContent>
-           <ModalBody>
-             <TransaccionForm
-               onSave={handleSave}
-               onCancel={closeModal}
-             />
-           </ModalBody>
-         </ModalContent>
-       </Modal>
+                      {t.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                    </Chip>
+                  </TableCell>
+                  <TableCell className="font-medium text-gray-800 max-w-xs truncate" title={t.descripcion}>
+                    {t.descripcion}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-gray-600">
+                    {t.cantidad}
+                  </TableCell>
+                  <TableCell className="text-center text-gray-500">
+                    {t.unidad || '-'}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-gray-600">
+                    {currencyFormatter.format(t.precioUnitario || 0)}
+                  </TableCell>
+                  <TableCell className={`text-right font-bold ${t.tipo === 'egreso' ? 'text-red-600' : 'text-green-600'}`}>
+                    {t.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(t.monto)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center gap-2">
+                      {t.rutaFacturaPdf && (
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          color="primary"
+                          size="sm"
+                          as="a"
+                          href={`${API_URL}/ventas/${t.id}/factura`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Descargar Factura"
+                        >
+                          <FaDownload />
+                        </Button>
+                      )}
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        color="danger"
+                        size="sm"
+                        onClick={() => handleDelete(t.id, t.tipo)}
+                        title={`Eliminar ${t.tipo === 'ingreso' ? 'venta' : 'gasto'}`}
+                      >
+                        <FaTrash />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
+     {/* Modal Nueva Transacción */}
+     <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="2xl" scrollBehavior="inside">
+       <ModalContent>
+         {(onClose) => (
+           <>
+             <ModalHeader className="flex flex-col gap-1 text-gray-800">
+               Registrar Nueva Venta
+               <span className="text-sm font-normal text-gray-500">Ingresa la información de la venta (tipo: Ingreso)</span>
+             </ModalHeader>
+             <ModalBody>
+               <TransaccionForm
+                 onSave={handleSave}
+                 onCancel={onClose}
+               />
+             </ModalBody>
+           </>
+         )}
+       </ModalContent>
+     </Modal>
 
-       <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete}>
-         <ModalContent>
-           <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
-             <div className="flex flex-col items-center gap-3">
-               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                 <Trash2 className="text-red-600" size={20} />
-               </div>
-               <h4 className="text-lg font-semibold text-center">¿Eliminar transacción?</h4>
+     {/* Modal Confirmación Eliminar */}
+     <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete} size="sm">
+       <ModalContent>
+         <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+           <div className="flex flex-col items-center gap-3">
+             <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+               <Trash2 className="text-red-600" size={24} />
              </div>
-           </ModalHeader>
-           <ModalBody className="text-center">
-             <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 mx-auto max-w-xs">
-               <div className="font-medium">{deleteModal.item?.tipo === 'ingreso' ? 'Venta' : 'Gasto'}</div>
-               <div className="text-xs text-gray-500 mt-1">Transacción financiera</div>
-             </div>
-             <p className="text-xs text-gray-500 mt-3">Esta acción no se puede deshacer.</p>
-             <div className="flex gap-3 mt-4 w-full justify-center">
-               <Button
-                 onClick={cancelDelete}
-                 color="default"
-                 variant="light"
-                 className="flex-1 max-w-[120px]"
-               >
-                 Cancelar
-               </Button>
-               <Button
-                 onClick={confirmDelete}
-                 color="danger"
-                 className="flex-1 max-w-[120px]"
-               >
-                 Eliminar
-               </Button>
-             </div>
-           </ModalBody>
-         </ModalContent>
-       </Modal>
+             <h4 className="text-lg font-semibold text-center">¿Eliminar transacción?</h4>
+           </div>
+         </ModalHeader>
+         <ModalBody className="text-center">
+           <Card className="border border-gray-100 bg-gray-50/50">
+             <CardBody className="py-4">
+               <div className="font-medium text-gray-800">{deleteModal.item?.tipo === 'ingreso' ? 'Venta' : 'Gasto'}</div>
+               <div className="text-sm text-gray-500 mt-1">Transacción financiera</div>
+             </CardBody>
+           </Card>
+           <p className="text-sm text-gray-500 mt-4">Esta acción no se puede deshacer.</p>
+           <div className="flex gap-3 mt-6 w-full justify-center">
+             <Button
+               onClick={cancelDelete}
+               color="default"
+               variant="light"
+               className="flex-1 max-w-[120px] font-semibold"
+             >
+               Cancelar
+             </Button>
+             <Button
+               onClick={confirmDelete}
+               color="danger"
+               className="flex-1 max-w-[120px] font-semibold"
+             >
+               Eliminar
+             </Button>
+           </div>
+         </ModalBody>
+       </ModalContent>
+     </Modal>
    </div>
  );
 }

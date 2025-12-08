@@ -4,7 +4,6 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw";
 import { Search, MapPin } from "lucide-react";
-import Modal from "./Modal"; // Asegúrate de que este Modal exista en la misma carpeta
 
 // --- Configuración de íconos (Tu código) ---
 delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;

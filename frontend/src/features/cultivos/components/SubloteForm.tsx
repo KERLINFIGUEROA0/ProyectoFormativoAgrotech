@@ -266,10 +266,8 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
           <Button
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
-            color="primary"
-            variant="flat"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
             startContent={<MapPin size={20} />}
-            className="font-medium"
           >
             {coordenadasPunto ? 'Cambiar Ubicación' : 'Seleccionar en el Mapa'}
           </Button>
@@ -334,7 +332,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
             <Button
               type="button"
               onClick={() => setIsLocationModalOpen(false)}
-              color="primary"
+              className="bg-green-600 text-white font-bold hover:bg-green-700"
             >
               Confirmar Ubicación
             </Button>

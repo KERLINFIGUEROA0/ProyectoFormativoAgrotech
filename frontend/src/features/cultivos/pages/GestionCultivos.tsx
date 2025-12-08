@@ -172,12 +172,18 @@ export default function GestionCultivosPage(): ReactElement {
     setShowCosechaModal(true);
   };
 
+  const handleCantidadCosechaChange = (value: string) => {
+    // Solo permitir números positivos (sin signos negativos ni letras)
+    const filteredValue = value.replace(/[^0-9.]/g, '');
+    setCantidadCosecha(filteredValue);
+  };
+
   const handleConfirmarCosecha = async () => {
     if (!cultivoCosecha) return;
 
     const cantidad = parseFloat(cantidadCosecha);
-    if (isNaN(cantidad) || cantidad < 0) {
-      toast.error("La cantidad debe ser un número válido mayor o igual a cero.");
+    if (isNaN(cantidad) || cantidad <= 0) {
+      toast.error("La cantidad debe ser un número positivo mayor a cero.");
       return;
     }
 
@@ -275,11 +281,11 @@ export default function GestionCultivosPage(): ReactElement {
   return (
     <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión Cultivos</h1>
+        <h1 className="text-3xl font-bold text-black-900">Gestión Cultivos</h1>
         <Button
           onPress={() => openModal()}
           color="success"
-          className="font-semibold shadow-md shadow-green-500/30"
+          className="text-white font-bold shadow-md shadow-green-500/30"
           size="md"
           startContent={<Plus size={20} strokeWidth={2.5} />}
         >
@@ -490,7 +496,24 @@ export default function GestionCultivosPage(): ReactElement {
                           {/* Gradiente sutil para que el texto se lea bien */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                          {/* Estado (Chip pequeño arriba) */}
+                          {/* Botón Ubicación (Arriba a la izquierda) */}
+                          <div className="absolute top-2 left-2">
+                            <Tooltip content="Ver ubicación exacta">
+                              <Button
+                                isIconOnly
+                                className="bg-blue-500/90 backdrop-blur-sm text-white hover:bg-blue-600 min-w-8 w-8 h-8"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => handleVerUbicacion(cultivo)}
+                                aria-label="Ver ubicación"
+                              >
+                                <MapPin size={14} />
+                              </Button>
+                            </Tooltip>
+                          </div>
+
+                          {/* Estado (Chip pequeño arriba a la derecha) */}
                           <div className="absolute top-2 right-2">
                             <Chip
                               color={
@@ -585,20 +608,6 @@ export default function GestionCultivosPage(): ReactElement {
                             </Tooltip>
                           )}
 
-                          {/* Botón Ubicación (Morado con icono blanco) */}
-                          <Tooltip content="Ver ubicación exacta">
-                            <Button
-                              isIconOnly
-                              className="bg-purple-600 text-white hover:bg-purple-700 min-w-9 w-9 h-9"
-                              size="sm"
-                              variant="solid"
-                              radius="md"
-                              onPress={() => handleVerUbicacion(cultivo)}
-                              aria-label="Ver ubicación"
-                            >
-                              <MapPin size={16} />
-                            </Button>
-                          </Tooltip>
 
                           {/* Botón Editar (Azul con icono blanco) */}
                           <Tooltip content="Editar cultivo">
@@ -723,15 +732,13 @@ export default function GestionCultivosPage(): ReactElement {
                 isRequired
               />
               <Input
-                type="number"
+                type="text"
                 label="Cantidad Cosechada"
                 placeholder="0.00"
                 value={cantidadCosecha}
-                onValueChange={setCantidadCosecha}
+                onValueChange={handleCantidadCosechaChange}
                 endContent={<span className="text-gray-500 text-sm">kg/unidades</span>}
                 isRequired
-                min="0"
-                step="0.01"
               />
               <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <div>
@@ -755,13 +762,14 @@ export default function GestionCultivosPage(): ReactElement {
             <Button
               color="default"
               variant="light"
+              className="bg-gray-200 text-white hover:bg-gray-600"
               onPress={() => setShowCosechaModal(false)}
             >
               Cancelar
             </Button>
             <Button
               color="success"
-              className="text-white"
+              className="text-white font-bold"
               onPress={handleConfirmarCosecha}
             >
               Registrar Cosecha

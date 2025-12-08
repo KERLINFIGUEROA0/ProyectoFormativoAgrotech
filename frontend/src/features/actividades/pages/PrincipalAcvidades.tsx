@@ -24,19 +24,19 @@ interface QuickAccessCardProps {
 const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, icon, action, link }) => (
   <div
     onClick={action ? action : (link ? () => window.location.href = link : undefined)}
-    className={`bg-white p-6 rounded-xl shadow-md flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
+    className={`bg-white p-6 rounded-xl shadow-md border border-green-200 hover:border-green-400 flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
   >
     <div className="flex justify-between items-start">
-      <div className="p-3 rounded-full bg-white shadow-sm">
+      <div className="p-3 rounded-full bg-green-50 shadow-sm border border-green-100">
         {icon}
       </div>
-      <ArrowRight className="text-gray-400 w-5 h-5" />
+      <ArrowRight className="text-green-300 w-5 h-5" />
     </div>
     <div className="mt-4">
-      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
       <p className="text-sm text-gray-500 mt-1">{description}</p>
       {link && (
-        <a href={link} className="flex items-center text-sm font-medium text-green-600 hover:text-green-700 mt-2">
+        <a href={link} className="flex items-center text-sm font-bold text-green-600 hover:text-green-700 mt-2">
           Acceder <ArrowRight className="w-4 h-4 ml-1" />
         </a>
       )}
@@ -236,9 +236,9 @@ const ActividadesPrincipal: React.FC = () => {
         size="5xl"
         scrollBehavior="inside"
       >
-        <ModalContent>
+        <ModalContent className="border-l-4 border-r-4 border-gray-200">
           <ModalHeader>Asignación de Actividades</ModalHeader>
-          <ModalBody>
+          <ModalBody className="border-l border-r border-gray-100">
             <AsignacionActividadForm
               usuarios={usuarios}
               cultivos={cultivos}

@@ -39,29 +39,42 @@ export default function ProduccionForm({ onSave, onCancel, initialData = {}, cul
   }, [cantidad, fecha, estado]);
   // ✅ --- FIN DE LA CORRECCIÓN --- ✅
 
+  const handleCantidadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Solo permitir números positivos (sin signos negativos)
+    const filteredValue = value.replace(/[^0-9]/g, '');
+    setFormData(prev => ({ ...prev, cantidad: filteredValue }));
+  };
+
   const handleSubmit = () => {
     if (!formData.cantidad || !formData.fecha) {
       toast.error("La cantidad y la fecha son requeridas.");
       return;
     }
-    
+
+    const cantidadNum = parseInt(String(formData.cantidad), 10);
+    if (cantidadNum <= 0) {
+      toast.error("La cantidad debe ser un número positivo mayor a cero.");
+      return;
+    }
+
     const payload = {
-      cantidad: parseInt(String(formData.cantidad), 10),
+      cantidad: cantidadNum,
       fecha: formData.fecha,
       estado: formData.estado,
       cultivoId: initialData.cultivo?.id || cultivoId,
     };
-    
+
     onSave(payload);
   };
 
   return (
     <div className="p-4 flex flex-col gap-4">
       <input
-        type="number"
+        type="text"
         placeholder="Cantidad (kg)"
         value={formData.cantidad}
-        onChange={(e) => setFormData(prev => ({ ...prev, cantidad: e.target.value }))}
+        onChange={handleCantidadChange}
         className="w-full border-2 border-gray-200 rounded-lg p-2"
       />
       <input
@@ -81,7 +94,7 @@ export default function ProduccionForm({ onSave, onCancel, initialData = {}, cul
         <option value="Cosechado">Cosechado</option>
       </select>
       <div className="flex justify-end gap-3 mt-4">
-        <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
+        <Button onClick={onCancel} className="bg-gray-200 text-gray-800 font-light hover:bg-gray-300">Cancelar</Button>
         <Button onClick={handleSubmit} className="bg-green-600 text-white font-bold hover:bg-green-700">Guardar</Button>
       </div>
     </div>

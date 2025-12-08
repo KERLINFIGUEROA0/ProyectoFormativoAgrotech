@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+  import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@heroui/react';
 import { Thermometer, Droplets, Wind, Sun, Activity, Wifi, WifiOff } from 'lucide-react';
@@ -32,12 +32,6 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
   }
 
   const currentSensor = sensors[currentIndex];
-  const nextSensor = sensors[(currentIndex + 1) % sensors.length];
-  const prevSensor = sensors[(currentIndex - 1 + sensors.length) % sensors.length];
-
-  // 🔴 AQUÍ ESTÁ LA LÓGICA QUE FALTABA:
-  // Detectar si el sensor está caído
-  const isOffline = currentSensor.estado === 'Desconectado';
 
   // --- Helpers de visualización ---
   const getSensorUnit = (sensor: LatestSensorData) => {
@@ -115,7 +109,7 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
     return 50; // Default
   };
 
-  const SensorCard: React.FC<{ sensor: LatestSensorData; isActive: boolean }> = ({ sensor, isActive }) => {
+  const SensorCard: React.FC<{ sensor: LatestSensorData }> = ({ sensor }) => {
     const offline = sensor.estado === 'Desconectado';
     const colors = getSensorColor(sensor, offline);
     const unit = getSensorUnit(sensor);
@@ -255,7 +249,7 @@ export const SensorCarousel: React.FC<SensorCarouselProps> = ({ sensors }) => {
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="absolute"
         >
-          <SensorCard sensor={currentSensor} isActive={true} />
+          <SensorCard sensor={currentSensor} />
         </motion.div>
       </AnimatePresence>
     </div>

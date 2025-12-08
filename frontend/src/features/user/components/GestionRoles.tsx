@@ -151,10 +151,10 @@ export default function GestionRoles(): ReactElement {
         </div>
         <Button
           onClick={() => { setEditingId(null); setForm({}); setIsModalOpen(true); }}
-          color="primary"
+          color="success"
           startContent={<FaPlus size={16} />}
           size="sm"
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto font-bold text-white"
         >
           Nuevo Rol
         </Button>
@@ -309,12 +309,14 @@ export default function GestionRoles(): ReactElement {
               onClick={closeModal}
               color="default"
               variant="light"
+              className="font-normal text-gray-600"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
-              color="primary"
+              color="success"
+              className="font-bold text-white"
             >
               {editingId ? 'Actualizar Rol' : 'Crear Rol'}
             </Button>

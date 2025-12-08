@@ -67,15 +67,6 @@ export default function DashboardProduccion() {
   useEffect(() => {
     fetchData();
   }, [cultivoId]);
-  
-  const getStatusColor = (estado: string) => {
-      switch (estado) {
-          case 'Cosechado': return 'bg-green-100 text-green-800';
-          case 'En Proceso': return 'bg-yellow-100 text-yellow-800';
-          case 'Programado': return 'bg-blue-100 text-blue-800';
-          default: return 'bg-gray-100 text-gray-800';
-      }
-  };
 
   const handleOpenModal = (produccion: Produccion | null = null) => {
       setEditingProduccion(produccion);
@@ -132,7 +123,7 @@ export default function DashboardProduccion() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <Button onClick={() => handleOpenModal()} color="primary" startContent={<Plus />}>
+        <Button onClick={() => handleOpenModal()} className="bg-green-600 text-white font-bold hover:bg-green-700" startContent={<Plus />}>
            Registrar Cosecha
         </Button>
       </div>

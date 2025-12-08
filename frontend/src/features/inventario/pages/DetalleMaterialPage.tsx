@@ -7,7 +7,7 @@ import { obtenerMaterialPorId, actualizarMaterial, subirImagenMaterial, listarMo
 import type { Material, MaterialData, MovimientoData } from '../interfaces/inventario';
 import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
 import MaterialForm from '../components/MaterialForm';
-import { convertirStockAUnidad, esUnidadVolumen, esUnidadMasa, formatearCantidadInteligente } from '../../../utils/unitConversion';
+import { convertirStockAUnidad, esUnidadVolumen, esUnidadMasa } from '../../../utils/unitConversion';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -211,7 +211,7 @@ export default function DetalleMaterialPage() {
             {esSolido && <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-800">Sólido</span>}
           </div>
         </div>
-        <Button onClick={() => setIsEditModalOpen(true)} color="success" startContent={<Edit size={16} />}>
+        <Button onClick={() => setIsEditModalOpen(true)} color="success" startContent={<Edit size={16} />} className="text-white font-bold">
           Editar Producto
         </Button>
       </div>

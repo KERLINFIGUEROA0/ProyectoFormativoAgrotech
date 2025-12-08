@@ -522,7 +522,8 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
           <Button
             type="button"
             onClick={onCancel}
-            color="danger"
+            color="default"
+            variant="light"
             startContent="✕"
           >
             Cancelar

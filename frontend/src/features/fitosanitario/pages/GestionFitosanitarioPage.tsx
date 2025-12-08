@@ -196,6 +196,7 @@ export default function GestionFitosanitarioPage() {
           onClick={() => handleOpenFormModal()}
           color="success"
           startContent={<Plus />}
+          className="text-white font-bold"
         >
           Nuevo EPA
         </Button>
@@ -294,7 +295,7 @@ export default function GestionFitosanitarioPage() {
                             e.stopPropagation();
                             handleOpenFormModal(epa);
                           }}
-                          color="primary"
+                          color="success"
                           variant="light"
                           size="sm"
                           isIconOnly
