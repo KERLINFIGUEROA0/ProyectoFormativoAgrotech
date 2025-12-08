@@ -10,7 +10,7 @@ export class Venta {
   @Column({ name: 'Descripcion', type: 'varchar', length: 255, nullable: true })
   descripcion: string;
 
-  @Column({ name: 'Fecha', type: 'date', transformer: dateColumnTransformer })
+  @Column({ name: 'Fecha', type: 'date' })
   fecha: Date;
 
   // --- CORRECCIÓN ---

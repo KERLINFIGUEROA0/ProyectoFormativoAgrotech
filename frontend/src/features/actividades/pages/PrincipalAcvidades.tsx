@@ -7,10 +7,9 @@ import {
 
 import { listarActividades, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
 import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
-import { getEstadoTexto } from '../utils/estadoUtils';
 
 import AsignacionActividadForm from '../components/AsignacionActividadForm';
-import { Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, Card, CardBody } from '@heroui/react';
 
 // --- Componente de Tarjeta de Acceso Rápido (sin cambios) ---
 interface QuickAccessCardProps {
@@ -22,13 +21,13 @@ interface QuickAccessCardProps {
   link?: string;
 }
 
-const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, icon, colorClass, action, link }) => (
+const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, icon, action, link }) => (
   <div
-    onClick={action ? action : (link ? () => window.location.href = link : undefined)} 
-    className={`bg-white p-6 rounded-xl shadow-md border-t-4 ${colorClass} flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
+    onClick={action ? action : (link ? () => window.location.href = link : undefined)}
+    className={`bg-white p-6 rounded-xl shadow-md flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300 ${action || link ? 'cursor-pointer' : ''}`}
   >
     <div className="flex justify-between items-start">
-      <div className={`p-3 rounded-full ${colorClass.replace('border-t-4', '').replace('border-', 'bg-')} bg-opacity-10`}>
+      <div className="p-3 rounded-full bg-white shadow-sm">
         {icon}
       </div>
       <ArrowRight className="text-gray-400 w-5 h-5" />
@@ -119,9 +118,11 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
       : getScheduledText(actividad.fecha);
 
   return (
-    <div className="flex justify-between items-start py-3 border-b last:border-b-0">
+    <div className="flex justify-between items-start py-4 px-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors duration-200 mb-2 last:mb-0">
       <div className="flex items-center space-x-3">
-        {icon}
+        <div className="p-2 bg-white rounded-full shadow-sm">
+          {icon}
+        </div>
         <div>
           <p className="font-medium text-gray-800">{actividad.titulo}</p>
           <p className={`text-sm ${statusColor}`}>{statusText}</p>
@@ -211,20 +212,22 @@ const ActividadesPrincipal: React.FC = () => {
           </a>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          {cargando && (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-              <p className="ml-2 text-gray-500">Cargando...</p>
-            </div>
-          )}
-          {!cargando && actividadesRecientes.length === 0 && (
-            <p className="text-center text-gray-500 py-8">No hay actividades recientes para mostrar.</p>
-          )}
-          {!cargando && actividadesRecientes.map((act) => (
-            <RecentActivityItem key={act.id} actividad={act} />
-          ))}
-        </div>
+        <Card className="shadow-lg">
+          <CardBody className="p-6">
+            {cargando && (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+                <p className="ml-2 text-gray-500">Cargando...</p>
+              </div>
+            )}
+            {!cargando && actividadesRecientes.length === 0 && (
+              <p className="text-center text-gray-500 py-8">No hay actividades recientes para mostrar.</p>
+            )}
+            {!cargando && actividadesRecientes.map((act) => (
+              <RecentActivityItem key={act.id} actividad={act} />
+            ))}
+          </CardBody>
+        </Card>
       </div>
 
       <Modal

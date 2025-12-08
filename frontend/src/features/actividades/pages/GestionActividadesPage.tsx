@@ -22,7 +22,7 @@ import ModalResponderActividad from '../components/ModalResponderActividad';
 import ModalVerRespuestas from '../components/ModalVerRespuestas';
 import ModalPagoPasante from '../components/ModalPagoPasante';
 import { useAuth } from '../../../context/AuthContext';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem, Card, CardHeader, CardBody } from '@heroui/react';
 import type {
   Actividad,
   UpdateActividadPayload,
@@ -310,15 +310,17 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
 // --- FIN: Componente ModalDetalles ---
 
 // ... (El resto del archivo 'GestionActividadesPage' continúa igual) ...
-// (Componente StatCard sin cambios)
+// (Componente StatCard mejorado con Hero UI)
 const StatCard = ({ title, value, icon, colorClass }: any) => (
-  <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
-    <div className={`p-3 rounded-full ${colorClass}`}>{icon}</div>
-    <div>
-      <p className="text-gray-500 text-sm">{title}</p>
-      <p className="font-bold text-2xl">{value}</p>
-    </div>
-  </div>
+  <Card className="p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <CardHeader className="flex items-center gap-4 pb-2">
+      <div className={`p-3 rounded-full ${colorClass}`}>{icon}</div>
+      <p className="text-gray-500 text-sm font-medium">{title}</p>
+    </CardHeader>
+    <CardBody className="pt-0">
+      <p className="font-bold text-3xl text-gray-800">{value}</p>
+    </CardBody>
+  </Card>
 );
 
 const GestionActividadesPage: React.FC = () => {

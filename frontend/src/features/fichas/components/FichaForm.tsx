@@ -103,9 +103,8 @@ export default function FichaFormComponent({ initialData, onSave, onCancel, edit
           </Button>
           <Button
             onClick={validateAndSave}
-            color="primary"
+            className="bg-green-600 text-white font-bold hover:bg-green-700 w-full sm:w-auto"
             size="sm"
-            className="w-full sm:w-auto"
           >
             {editingId != null ? 'Actualizar Ficha' : 'Crear Ficha'}
           </Button>

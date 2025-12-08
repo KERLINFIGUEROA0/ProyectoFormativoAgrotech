@@ -24,9 +24,17 @@ interface TransaccionFormProps {
 }
 
 export default function TransaccionForm({ onSave, onCancel }: TransaccionFormProps): ReactElement {
+   const getTodayDate = () => {
+     const today = new Date();
+     const year = today.getFullYear();
+     const month = String(today.getMonth() + 1).padStart(2, '0');
+     const day = String(today.getDate()).padStart(2, '0');
+     return `${year}-${month}-${day}`;
+   };
+
    const [formData, setFormData] = useState<Partial<TransaccionData>>({
-     fecha: new Date().toISOString().split('T')[0],
-     tipo: 'ingreso', // Valor por defecto
+     fecha: getTodayDate(),
+     tipo: 'ingreso', // Todas las ventas son ingresos
    });
    const [productions, setProductions] = useState<Produccion[]>([]);
    const [selectedProduction, setSelectedProduction] = useState<Produccion | null>(null);
@@ -95,8 +103,8 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
   return (
     <div className="p-4">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Agregar Nueva Transacción</h2>
-        <p className="text-gray-500">Ingresa la información de la transacción</p>
+        <h2 className="text-2xl font-bold text-gray-800">Registrar Nueva Venta</h2>
+        <p className="text-gray-500">Ingresa la información de la venta (tipo: Ingreso)</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -150,11 +158,12 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
           }}
           placeholder="Precio por unidad"
         />
-        <FormInput 
+        <FormInput
           icon={Calendar}
           label="Fecha de Venta"
           name="fecha"
           type="date"
+          min={getTodayDate()}
           value={formData.fecha || ''}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
         />
@@ -182,23 +191,6 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
             ))}
           </Select>
         </div>
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">
-            <Archive size={16} className="text-green-600" />
-            Tipo de Transacción
-          </label>
-          <Select
-            name="tipo"
-            selectedKeys={[formData.tipo || 'ingreso']}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              setFormData(prev => ({ ...prev, tipo: selected as string }));
-            }}
-          >
-            <SelectItem key="ingreso">Ingreso</SelectItem>
-            <SelectItem key="egreso">Egreso</SelectItem>
-          </Select>
-        </div>
       </div>
 
       <div className="flex justify-center gap-4">
@@ -206,7 +198,7 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
           Cancelar
         </Button>
         <Button onClick={handleSubmit} color="success" className="w-40">
-          Guardar Transacción
+          Registrar Venta
         </Button>
       </div>
     </div>

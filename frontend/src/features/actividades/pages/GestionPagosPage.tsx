@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Calendar, Clock, Edit, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Card, CardHeader, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
 
 // Actualizamos la interfaz para incluir 'responsable' en la actividad
 interface Pago {
@@ -132,144 +132,119 @@ const GestionPagosPage: React.FC = () => {
       </div>
 
       {/* Tabla de pagos */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Mostrando todos los pagos del sistema
-              </p>
-            </div>
-            <button
-              onClick={cargarPagos}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              <RefreshCw size={16} />
-              Actualizar
-            </button>
-          </div>
-        </div>
-
-        {pagos.length === 0 ? (
-          <div className="text-center py-12">
-            <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">
-              No hay pagos registrados
-            </h3>
-            <p className="text-gray-500">
-              Los pagos aparecerán aquí cuando se registren en el sistema.
+      <Card className="shadow-lg">
+        <CardHeader className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Historial de Pagos</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Mostrando todos los pagos del sistema
             </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Instructor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pasante
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actividad
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Horas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tarifa/Hora
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Descripción
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {pagos.map((pago) => {
-                  // El instructor es siempre quien creó/asignó la actividad (usuario)
-                  const instructorDisplay = pago.actividad?.usuario
-                    ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}`
-                    : 'No asignado';
+          <Button
+            color="primary"
+            startContent={<RefreshCw size={16} />}
+            onPress={cargarPagos}
+          >
+            Actualizar
+          </Button>
+        </CardHeader>
 
-                  return (
-                    <tr key={pago.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {instructorDisplay}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+        <CardBody>
+          <Table aria-label="Tabla de pagos" className="min-h-[400px]">
+            <TableHeader>
+              <TableColumn>Instructor</TableColumn>
+              <TableColumn>Pasante</TableColumn>
+              <TableColumn>Actividad</TableColumn>
+              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Horas</TableColumn>
+              <TableColumn>Tarifa/Hora</TableColumn>
+              <TableColumn>Monto</TableColumn>
+              <TableColumn>Descripción</TableColumn>
+              <TableColumn>Acciones</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent={"No hay pagos registrados"}>
+              {pagos.map((pago) => {
+                // El instructor es siempre quien creó/asignó la actividad (usuario)
+                const instructorDisplay = pago.actividad?.usuario
+                  ? `${pago.actividad.usuario.nombre} ${pago.actividad.usuario.apellidos}`
+                  : 'No asignado';
+
+                return (
+                  <TableRow key={pago.id}>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {instructorDisplay}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
                         <div className="text-sm font-medium text-gray-900">
                           {pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : 'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
                           {pago.usuario?.tipoUsuario.nombre}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
                         <div className="text-sm font-medium text-gray-900">
                           {pago.actividad.titulo}
                         </div>
                         <div className="text-sm text-gray-500">
                           ID: {pago.actividad.id}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">
-                            {formatDate(pago.fechaPago)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">
-                            {pago.horasTrabajadas}h
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(pago.tarifaHora)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-green-600">
-                          {formatCurrency(pago.monto)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-900">
-                          {pago.descripcion}
+                          {formatDate(pago.fechaPago)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEditarPago(pago)}
-                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded p-1 transition-colors"
-                          title="Editar pago"
-                        >
-                          <Edit size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">
+                          {pago.horasTrabajadas}h
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(pago.tarifaHora)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium text-green-600">
+                        {formatCurrency(pago.monto)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-900">
+                        {pago.descripcion}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => handleEditarPago(pago)}
+                        title="Editar pago"
+                      >
+                        <Edit size={16} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
         {/* Modal de edición de pago */}
         {showEditModal && editingPago && (
@@ -343,7 +318,7 @@ const GestionPagosPage: React.FC = () => {
                   Cancelar
                 </Button>
                 <Button
-                  color="primary"
+                  className="bg-green-600 text-white font-bold hover:bg-green-700"
                   onPress={() => handleSaveEdit(editingPago)}
                 >
                   Guardar Cambios
@@ -353,7 +328,6 @@ const GestionPagosPage: React.FC = () => {
           </Modal>
         )}
       </div>
-    </div>
   );
 };
 

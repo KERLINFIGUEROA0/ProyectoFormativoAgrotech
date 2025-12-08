@@ -160,7 +160,7 @@ export default function LoteForm({ initialData, onSave, onCancel }: LoteFormProp
         </Button>
         <Button
           onClick={handleSubmit}
-          color="primary"
+          className="bg-green-600 text-white font-bold hover:bg-green-700"
         >
           {initialData?.id ? 'Actualizar Lote' : 'Registrar Lote'}
         </Button>

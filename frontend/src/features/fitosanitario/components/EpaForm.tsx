@@ -26,7 +26,7 @@ export default function EpaForm({
     tipoEnfermedad: initialData.tipoEnfermedad || 'Plaga',
     fechaEncuentro: initialData.fechaEncuentro
       ? new Date(initialData.fechaEncuentro).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0],
+      : new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }),
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -97,8 +97,7 @@ export default function EpaForm({
         </div>
       </div>
 
-      {/* Fila 2: Fecha (sin cambios) */}
-      {/* ... (Input de Fecha) ... */}
+      {/* Fila 2: Fecha (con restricción de fecha mínima) */}
       <div>
         <Input
           name="fechaEncuentro"
@@ -106,6 +105,7 @@ export default function EpaForm({
           value={formData.fechaEncuentro}
           onChange={handleChange}
           label="Fecha de Encuentro/Registro *"
+          min={new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' })}
         />
       </div>
 

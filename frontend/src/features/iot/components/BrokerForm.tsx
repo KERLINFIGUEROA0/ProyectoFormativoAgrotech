@@ -109,7 +109,7 @@ export default function BrokerForm({ initialData = {}, onSave, onCancel }: Broke
 
             <div className="flex justify-end gap-3 mt-4">
                 <Button onClick={onCancel} color="danger" variant="light">Cancelar</Button>
-                <Button onClick={handleSubmit} color="success">Guardar Broker</Button>
+                <Button onClick={handleSubmit} className="bg-green-600 text-white font-bold hover:bg-green-700">Guardar Broker</Button>
             </div>
         </div>
     );

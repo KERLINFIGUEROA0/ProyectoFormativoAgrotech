@@ -550,7 +550,7 @@ export default function CultivoForm({
         <Button onPress={onCancel} variant="light" color="default">
           Cancelar
         </Button>
-        <Button onPress={handleSubmit} color="primary">
+        <Button className="bg-green-600 text-white font-bold hover:bg-green-700" onPress={handleSubmit}>
           {initialData?.id ? "Actualizar Cultivo" : "Registrar Cultivo"}
         </Button>
       </div>

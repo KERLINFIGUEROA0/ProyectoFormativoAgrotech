@@ -175,4 +175,14 @@ export class CultivosController {
 
     res.send(pdfBuffer);
   }
+
+  @Get(':id/material-costs')
+  async getMaterialCosts(@Param('id', ParseIntPipe) id: number, @Query('fechaInicio') fechaInicio?: string, @Query('fechaFin') fechaFin?: string) {
+    const actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
+    const totalMaterialCosts = actividades.reduce((total, actividad) => {
+      const actividadCost = actividad.actividadMaterial?.reduce((sum, am) => sum + Number(am.costo), 0) || 0;
+      return total + actividadCost;
+    }, 0);
+    return { success: true, data: { totalMaterialCosts } };
+  }
 }

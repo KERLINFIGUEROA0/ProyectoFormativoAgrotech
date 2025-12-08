@@ -297,4 +297,25 @@ export class PagosService {
       order: { fechaPago: 'ASC' },
     });
   }
+
+  async findByCultivo(cultivoId: number) {
+    // First get all activities for this cultivo
+    const actividades = await this.actividadRepository.find({
+      where: { cultivo: { id: cultivoId } },
+      select: ['id']
+    });
+
+    const actividadIds = actividades.map(act => act.id);
+
+    if (actividadIds.length === 0) {
+      return [];
+    }
+
+    // Then get all payments for these activities
+    return this.pagoRepository.find({
+      where: { idActividad: In(actividadIds) },
+      relations: ['usuario', 'actividad'],
+      order: { fechaPago: 'DESC' },
+    });
+  }
 }

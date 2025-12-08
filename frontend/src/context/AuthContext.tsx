@@ -135,9 +135,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    // Escuchar evento de token expirado
+    const handleTokenExpired = () => {
+      console.warn('🔴 Token expirado detectado. Cerrando sesión...');
+      logout();
+      toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+    };
+
+    window.addEventListener('tokenExpired', handleTokenExpired);
+
     return () => {
       // Limpiar listeners al desmontar
       unsubscribePermissions();
+      window.removeEventListener('tokenExpired', handleTokenExpired);
     };
   }, [token]);
 

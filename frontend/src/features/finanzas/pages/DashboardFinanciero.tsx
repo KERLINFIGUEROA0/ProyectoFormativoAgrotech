@@ -1,11 +1,11 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Search, Bell, ArrowUp, ArrowDown } from 'lucide-react';
+import {ArrowUp, ArrowDown } from 'lucide-react';
 import { obtenerTransacciones, obtenerFlujoMensual } from '../api/transaccionesApi';
 import FlujoMensualChart from '../components/FlujoMensualChart';
 import type { Transaccion } from '../interfaces/finanzas';
-import { Input, Button } from "@heroui/react";
+import {  Button } from "@heroui/react";
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
@@ -49,17 +49,6 @@ export default function DashboardFinanciero(): ReactElement {
     <div className="p-2 sm:p-6 bg-gray-50 min-h-full font-sans">
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Finanzas</h1>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <Input
-            type="text"
-            placeholder="Buscar..."
-            startContent={<Search size={20} />}
-            className="flex-grow"
-          />
-          <Button isIconOnly variant="light">
-            <Bell size={20} />
-          </Button>
-        </div>
       </header>
 
       {loading ? (

@@ -13,6 +13,18 @@ import { Pago } from '../pagos/entities/pago.entity';
 import { CultivosService } from './cultivos.service';
 import { PagosService } from '../pagos/pagos.service';
 
+// Función helper para convertir imagen a base64
+const getImageAsBase64 = (imagePath: string): string => {
+  try {
+    const imageBuffer = fs.readFileSync(imagePath);
+    const mimeType = path.extname(imagePath).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+    return `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error.message);
+    return '';
+  }
+};
+
 @Injectable()
 export class PdfService {
   constructor(
@@ -103,7 +115,7 @@ export class PdfService {
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
         if (fecha instanceof Date && !isNaN(fecha.getTime())) {
           fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
-          return fecha.toLocaleString('es-CO');
+          return fecha.toLocaleDateString('es-CO');
         }
         return '';
       })(),
@@ -124,7 +136,7 @@ export class PdfService {
         if (fecha && typeof fecha === 'string') fecha = new Date(fecha);
         if (fecha instanceof Date && !isNaN(fecha.getTime())) {
           fecha = new Date(fecha.getTime() - 5 * 60 * 60 * 1000);
-          return fecha.toLocaleString('es-CO');
+          return fecha.toLocaleDateString('es-CO');
         }
         return '';
       })(),
@@ -143,7 +155,7 @@ export class PdfService {
       const precioUnitario = cantidadVendida > 0 ? totalVentas / cantidadVendida : 0;
 
       return {
-        fecha: produccion.fecha ? produccion.fecha.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '',
+        fecha: produccion.fecha ? produccion.fecha.toLocaleDateString('es-CO') : '',
         cantidadProducida,
         cantidadVendida,
         precioUnitario: precioUnitario.toFixed(2),
@@ -279,6 +291,10 @@ export class PdfService {
     const data = await this.getCultivoData(id, fechaInicio, fechaFin);
     const analisis = this.calculateFinancials(data);
 
+    // --- LOGO PARA PRIMERA PÁGINA ---
+    const logoPath = path.join(process.cwd(), '..', 'frontend', 'src', 'assets', 'logo.png');
+    const logoBase64 = getImageAsBase64(logoPath);
+
     // Leer template HTML
     const templatePath = path.join(process.cwd(), 'src/templates/trazabilidad-cultivo.html');
     let html = fs.readFileSync(templatePath, 'utf8');
@@ -308,7 +324,8 @@ export class PdfService {
       'analisis.ingresos': analisis.ingresos.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
       'analisis.costos': analisis.costos.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
       'analisis.rentabilidad': analisis.rentabilidad.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }),
-      'analisis.rentabilidadClass': analisis.rentabilidadClass
+      'analisis.rentabilidadClass': analisis.rentabilidadClass,
+      'logo': logoBase64 ? `<div style="flex-shrink: 0; margin-left: 15px;"><img src="${logoBase64}" alt="Logo AgroTech" style="height: 50px; width: auto;" /></div>` : ''
     };
 
     // Reemplazar placeholders simples
@@ -339,7 +356,7 @@ export class PdfService {
     // Para pagos a pasantes
     const pagosHtml = data.pagos.map(pago => `
       <tr>
-        <td>${pago.fechaPago ? pago.fechaPago.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : ''}</td>
+        <td>${pago.fechaPago ? pago.fechaPago.toLocaleDateString('es-CO') : ''}</td>
         <td>${pago.usuario ? `${pago.usuario.nombre} ${pago.usuario.apellidos}` : ''}</td>
         <td>${pago.actividad ? pago.actividad.titulo : ''}</td>
         <td>${pago.horasTrabajadas}</td>
@@ -399,6 +416,16 @@ export class PdfService {
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
+      displayHeaderFooter: true,
+      footerTemplate: `
+        <div style="font-size: 10px; text-align: center; width: 100%; margin: 0; padding: 8px 20px; border-top: 2px solid #2E7D32; background: linear-gradient(to right, #E8F5E9, #F1F8E9, #E8F5E9); color: #2E7D32;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 11px;">AgroTech Yamboró</span>
+            <span style="font-weight: bold; background: #2E7D32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 9px;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+            <span style="font-weight: bold; font-size: 11px;">Sistema de Gestión y Monitoreo</span>
+          </div>
+        </div>
+      `,
       margin: {
         top: '20px',
         right: '20px',

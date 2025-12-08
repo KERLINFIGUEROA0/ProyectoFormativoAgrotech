@@ -566,7 +566,7 @@ export class CultivosService {
           'ID Cultivo': cultivo.id,
           'Nombre Cultivo': cultivo.nombre,
           'ID Producción': p.id,
-          'Fecha': new Date(p.fecha).toLocaleDateString('es-CO'),
+          'Fecha': new Date(p.fecha).toISOString().split('T')[0],
           'Cantidad Original': cantidadOriginal,
           'Cantidad Vendida': cantidadVendida,
           'Cantidad Disponible': cantidadOriginal - cantidadVendida,
@@ -593,7 +593,7 @@ export class CultivosService {
           'Nombre Cultivo': cultivo.nombre,
           'ID Producción': p.id,
           'ID Venta': v.id,
-          'Fecha': new Date(v.fecha).toLocaleDateString('es-CO'),
+          'Fecha': new Date(v.fecha).toISOString().split('T')[0],
           'Descripción': v.descripcion,
           'Cantidad': v.cantidadVenta,
           'Precio Unitario ($)': Number(v.precioUnitario).toLocaleString('es-CO'),
@@ -619,7 +619,7 @@ export class CultivosService {
           'Nombre Cultivo': cultivo.nombre,
           'ID Producción': p.id.toString(),
           'ID Gasto': g.id,
-          'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+          'Fecha': new Date(g.fecha).toISOString().split('T')[0],
           'Descripción': g.descripcion,
           'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
           'Estado Producción': p.estado
@@ -630,7 +630,7 @@ export class CultivosService {
         'Nombre Cultivo': cultivo.nombre,
         'ID Producción': 'Directo',
         'ID Gasto': g.id,
-        'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+        'Fecha': new Date(g.fecha).toISOString().split('T')[0],
         'Descripción': g.descripcion,
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': 'Directo'
@@ -717,7 +717,7 @@ export class CultivosService {
 
       return {
         'ID Producción': p.id,
-        'Fecha': new Date(p.fecha).toLocaleDateString('es-CO'),
+        'Fecha': new Date(p.fecha).toISOString().split('T')[0],
         'Cantidad Original': cantidadOriginal,
         'Cantidad Vendida': cantidadVendida,
         'Cantidad Disponible': cantidadOriginal - cantidadVendida,
@@ -739,7 +739,7 @@ export class CultivosService {
       .flatMap(p => p.ventas.map(v => ({
         'ID Venta': v.id,
         'ID Producción': p.id,
-        'Fecha': new Date(v.fecha).toLocaleDateString('es-CO'),
+        'Fecha': new Date(v.fecha).toISOString().split('T')[0],
         'Descripción': v.descripcion,
         'Cantidad': v.cantidadVenta,
         'Precio Unitario ($)': Number(v.precioUnitario).toLocaleString('es-CO'),
@@ -759,7 +759,7 @@ export class CultivosService {
       .flatMap(p => p.gastos.map(g => ({
         'ID Gasto': g.id,
         'ID Producción': p.id.toString(),
-        'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+        'Fecha': new Date(g.fecha).toISOString().split('T')[0],
         'Descripción': g.descripcion,
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': p.estado
@@ -767,7 +767,7 @@ export class CultivosService {
       .concat(directGastos.map(g => ({
         'ID Gasto': g.id,
         'ID Producción': 'Directo',
-        'Fecha': new Date(g.fecha).toLocaleDateString('es-CO'),
+        'Fecha': new Date(g.fecha).toISOString().split('T')[0],
         'Descripción': g.descripcion,
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': 'Directo'

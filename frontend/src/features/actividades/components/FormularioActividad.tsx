@@ -529,7 +529,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
           </Button>
           <Button
             type="submit"
-            color="success"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
             startContent="💾"
           >
             {isEditing ? "Guardar Cambios" : "Guardar Actividad"}

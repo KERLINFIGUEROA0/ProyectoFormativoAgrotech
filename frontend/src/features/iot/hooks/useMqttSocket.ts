@@ -18,12 +18,6 @@ interface SensorData {
   data: any;
 }
 
-interface LecturaNueva {
-  topic: string;
-  data: any;
-  loteId: number;
-  timestamp: string;
-}
 
 export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => {
   const [isConnected, setIsConnected] = useState(false);
@@ -33,12 +27,16 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Crear conexión socket
+    const token = localStorage.getItem('token'); // Obtener el token
+
+    if (!token) return; // No conectar si no hay token
+
     const socket = io(apiUrl, {
       transports: ['websocket', 'polling'],
+      // ✅ AGREGAR ESTO:
       auth: {
-        token: localStorage.getItem('token') || '', // Asumiendo que guardas el token aquí
-      },
+        token: token
+      }
     });
 
     socketRef.current = socket;
@@ -83,8 +81,9 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
       setLatestReadings(prev => {
         const updated = [...prev];
         payload.datos.forEach((lectura: any) => {
-          // Buscar por sensorKey (clave dinámica del JSON)
-          const existingIndex = updated.findIndex(r => r.sensorKey === lectura.sensorKey);
+          // Buscar por nombre del sensor (usando el sensorKey como identificador)
+          const sensorName = `Sensor ${lectura.sensorKey}`;
+          const existingIndex = updated.findIndex(r => r.nombre === sensorName);
           if (existingIndex >= 0) {
             // Actualizar existente
             updated[existingIndex] = {
@@ -97,8 +96,7 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
             // Agregar nuevo sensor dinámico
             updated.push({
               id: Date.now() + Math.random(), // ID temporal para frontend
-              nombre: `Sensor ${lectura.sensorKey}`,
-              sensorKey: lectura.sensorKey,
+              nombre: sensorName,
               topic: '',
               valorMinimo: 0,
               valorMaximo: 100,

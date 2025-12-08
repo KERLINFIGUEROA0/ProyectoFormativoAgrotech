@@ -208,7 +208,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
           </Button>
           <Button
             onClick={handleSubmit}
-            color="primary"
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
           >
             Crear Punto
           </Button>
@@ -304,7 +304,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
         </Button>
         <Button
           onClick={handleSubmit}
-          color="primary"
+          className="bg-green-600 text-white font-bold hover:bg-green-700"
         >
           {isEditing ? 'Actualizar Sublote' : 'Registrar Sublote'}
         </Button>

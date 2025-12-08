@@ -29,12 +29,25 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.headers.authorization?.split(' ')[1];
-      if (!token) return client.disconnect();
+      // ✅ ESTRATEGIA DUAL: Busca en 'auth' (Frontend) o 'headers' (Postman/Otros)
+      let token = client.handshake.auth?.token;
+
+      // Fallback: Si no viene en auth, busca en headers
+      if (!token && client.handshake.headers.authorization) {
+        token = client.handshake.headers.authorization.split(' ')[1];
+      }
+
+      if (!token) {
+        this.logger.warn(`⛔ Cliente ${client.id} rechazado: Sin token.`);
+        client.disconnect();
+        return;
+      }
+
       const payload = this.jwtService.verify(token);
       this.connectedUsers.set(payload.sub, client.id);
       this.logger.log(`✅ Usuario conectado [ID: ${payload.sub}, Socket: ${client.id}]`);
     } catch (error) {
+      this.logger.error(`❌ Error Auth WS: ${error.message}`);
       client.disconnect();
     }
   }

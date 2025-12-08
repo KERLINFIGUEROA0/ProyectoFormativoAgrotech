@@ -451,23 +451,21 @@ export default function GestionFitosanitarioPage() {
       {/* Modal de Eliminar */}
       <Modal isOpen={isDeleteModalOpen} onOpenChange={closeDeleteModal} size="md">
         <ModalContent>
-          <ModalHeader>
-            <div className="flex flex-col items-center gap-3 text-center">
+          <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+            <div className="flex flex-col items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                 <FaExclamationTriangle className="text-red-600" size={24} />
               </div>
               <h4 className="text-lg font-semibold text-gray-900">¿Eliminar EPA?</h4>
             </div>
           </ModalHeader>
-          <ModalBody>
-            <div className="text-center">
-              <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold text-center mb-4">{deletingEpa?.nombre}</div>
-              <p className="text-xs text-gray-500">
-                Esta acción no se puede deshacer. Se eliminará permanentemente el EPA.
-              </p>
-            </div>
+          <ModalBody className="text-center">
+            <div className="w-full bg-gray-50 border border-gray-100 rounded px-3 py-2 text-sm text-gray-700 font-bold mb-4">{deletingEpa?.nombre}</div>
+            <p className="text-xs text-gray-500">
+              Esta acción no se puede deshacer. Se eliminará permanentemente el EPA.
+            </p>
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter className="flex justify-center gap-3">
             <Button onClick={closeDeleteModal} color="default" variant="light">
               Cancelar
             </Button>

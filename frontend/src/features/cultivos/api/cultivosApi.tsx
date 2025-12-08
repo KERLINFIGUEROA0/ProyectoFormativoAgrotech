@@ -89,3 +89,12 @@ export const generarPdfTrazabilidad = async (cultivoId: number, fechaInicio?: st
   });
   return response.data;
 };
+
+export const getMaterialCosts = async (cultivoId: number, fechaInicio?: string, fechaFin?: string) => {
+  const params = new URLSearchParams();
+  if (fechaInicio) params.append('fechaInicio', fechaInicio);
+  if (fechaFin) params.append('fechaFin', fechaFin);
+
+  const response = await api.get(`/cultivos/${cultivoId}/material-costs?${params.toString()}`);
+  return response.data;
+};
