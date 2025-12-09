@@ -5,11 +5,12 @@ import { VentasController } from './ventas.controller';
 import { Venta } from './entities/venta.entity';
 import { Produccion } from '../producciones/entities/produccione.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 import { PdfModule } from '../pdf/pdf.module'; // <-- Importar
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Venta, Produccion, Gasto]),
+    TypeOrmModule.forFeature([Venta, Produccion, Gasto, Pago]),
     PdfModule, // <-- Añadir
   ],
   controllers: [VentasController],

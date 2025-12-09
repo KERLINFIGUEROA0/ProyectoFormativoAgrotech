@@ -5,6 +5,7 @@ import { Venta } from './entities/venta.entity';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { Produccion } from '../producciones/entities/produccione.entity';
 import { Gasto } from '../gastos_produccion/entities/gastos_produccion.entity';
+import { Pago } from '../pagos/entities/pago.entity';
 import { PdfService } from '../pdf/pdf.service';
 import { TipoMovimiento } from '../../common/enums/tipo-movimiento.enum';
 import * as fs from 'fs';
@@ -19,6 +20,8 @@ export class VentasService {
     private readonly produccionRepository: Repository<Produccion>,
     @InjectRepository(Gasto)
     private readonly gastoRepository: Repository<Gasto>,
+    @InjectRepository(Pago)
+    private readonly pagoRepository: Repository<Pago>,
     private readonly pdfService: PdfService,
   ) {}
 
@@ -132,7 +135,17 @@ export class VentasService {
       LIMIT 6;
     `);
 
-    const egresosData: any[] = await this.gastoRepository.query(`
+    const egresosData: any[] = await this.pagoRepository.query(`
+      SELECT
+        TO_CHAR("fecha_pago", 'YYYY-MM') as mes,
+        SUM("monto") as egresos
+      FROM pagos
+      GROUP BY mes
+      ORDER BY mes DESC
+      LIMIT 6;
+    `);
+
+    const gastosData: any[] = await this.gastoRepository.query(`
       SELECT
         TO_CHAR("Fecha", 'YYYY-MM') as mes,
         SUM("Monto") as egresos
@@ -142,15 +155,29 @@ export class VentasService {
       LIMIT 6;
     `);
 
+    // Combine pagos and gastos egresos
+    const combinedEgresos: Record<string, number> = {};
+    egresosData.forEach(item => {
+      combinedEgresos[item.mes] = parseFloat(item.egresos) || 0;
+    });
+    gastosData.forEach(item => {
+      combinedEgresos[item.mes] = (combinedEgresos[item.mes] || 0) + (parseFloat(item.egresos) || 0);
+    });
+
+    const finalEgresosData = Object.entries(combinedEgresos).map(([mes, egresos]) => ({
+      mes,
+      egresos
+    })).sort((a, b) => b.mes.localeCompare(a.mes)).slice(0, 6);
+
     const combined: Record<string, { mes: string, ingresos: number, egresos: number }> = {};
     ingresosData.forEach(item => {
       combined[item.mes] = { mes: item.mes, ingresos: parseFloat(item.ingresos) || 0, egresos: 0 };
     });
-    egresosData.forEach(item => {
+    finalEgresosData.forEach(item => {
       if (combined[item.mes]) {
-        combined[item.mes].egresos = parseFloat(item.egresos) || 0;
+        combined[item.mes].egresos = item.egresos;
       } else {
-        combined[item.mes] = { mes: item.mes, ingresos: 0, egresos: parseFloat(item.egresos) || 0 };
+        combined[item.mes] = { mes: item.mes, ingresos: 0, egresos: item.egresos };
       }
     });
 

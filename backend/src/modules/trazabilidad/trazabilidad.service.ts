@@ -18,7 +18,7 @@ export class TrazabilidadService {
     private readonly movimientosService: MovimientosService,
   ) {}
 
-  // Función auxiliar para formatear fechas con zona horaria America/Bogota
+  // Función auxiliar para formatear fechas consistentemente
   private formatDate(date: Date | string): string {
     // Si es string en formato YYYY-MM-DD, lo tratamos como fecha local en America/Bogota
     let d: Date;
@@ -31,8 +31,8 @@ export class TrazabilidadService {
     return new Intl.DateTimeFormat('es-ES', {
       timeZone: 'America/Bogota',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      month: '2-digit',
+      day: '2-digit'
     }).format(d);
   }
 
