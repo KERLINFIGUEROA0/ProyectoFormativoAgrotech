@@ -68,6 +68,13 @@ export const registrarMovimiento = async (data: MovimientoData) => {
 };
 
 // --- ✅ FUNCIÓN AÑADIDA ---
+// API para actualizar stock (agregar empaques)
+export const actualizarStock = async (materialId: number, cantidadEmpaques: number) => {
+  const response = await api.post(`/materiales/${materialId}/actualizar-stock`, { cantidadEmpaques });
+  return response.data;
+};
+
+// --- ✅ FUNCIÓN AÑADIDA ---
 // API para Reportes
 export const listarMaterialesConStockBajo = async (limite: number = 5) => {
     const response = await api.get(`/materiales/reportes/stock-bajo?limite=${limite}`);

@@ -120,4 +120,20 @@ export class MaterialesController {
       data: material,
     };
   }
+
+  // --- ACTUALIZAR STOCK (AGREGAR EMPAQUES) ---
+  @Post(':id/actualizar-stock')
+  @Permission('Inventario.Editar')
+  async actualizarStock(@Param('id', ParseIntPipe) id: number, @Body() body: { cantidadEmpaques: number }) {
+    const { cantidadEmpaques } = body;
+    if (cantidadEmpaques <= 0) {
+      throw new BadRequestException('La cantidad de empaques debe ser mayor a 0.');
+    }
+    const result = await this.materialesService.actualizarStock(id, cantidadEmpaques);
+    return {
+      success: true,
+      message: `Stock actualizado. Se agregaron ${cantidadEmpaques} empaques.`,
+      data: result,
+    };
+  }
 }

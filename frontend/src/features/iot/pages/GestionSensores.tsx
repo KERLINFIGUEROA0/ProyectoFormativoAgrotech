@@ -911,11 +911,11 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
                 else if (topic.includes('current') || topic.includes('amp')) unit = 'A';
                 else if (topic.includes('power') || topic.includes('watt')) unit = 'W';
                 else if (topic.includes('level') || topic.includes('distance')) unit = 'cm';
+                else if (topic.includes('wind') && topic.includes('speed')) unit = 'm/s';
                 else if (topic.includes('speed') || topic.includes('velocity')) unit = 'km/h';
                 else if (topic.includes('ph') || topic.includes('acidity')) unit = 'pH';
                 else if (topic.includes('conductivity') || topic.includes('ec')) unit = 'µS/cm';
                 else if (topic.includes('soil') && topic.includes('moisture')) unit = '%';
-                else if (topic.includes('wind') && topic.includes('speed')) unit = 'm/s';
                 else if (topic.includes('rain') || topic.includes('precipitation')) unit = 'mm';
                 else if (topic.includes('uv') || topic.includes('radiation')) unit = 'UV';
                 // Si no se detecta ninguna unidad específica, se muestra sin unidad

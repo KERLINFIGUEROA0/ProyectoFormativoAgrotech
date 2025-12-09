@@ -55,7 +55,7 @@ const SelectorUbicacionMap = ({ coordenadasLotePadre, alSeleccionarPunto, puntoI
 
         {/* 2. El marcador del punto seleccionado */}
         {posicion && (
-          // @ts-ignore
+          // @ts-expect-error: La librería espera otro formato de coordenadas pero este funciona
           <Marker position={posicion} icon={icon}>
             <Popup>Punto de referencia del Sublote</Popup>
           </Marker>

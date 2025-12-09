@@ -1,5 +1,5 @@
 declare module 'jspdf' {
-  export const jsPDF: any;
-  const _default: any;
+  export const jsPDF: unknown;
+  const _default: unknown;
   export default _default;
 }

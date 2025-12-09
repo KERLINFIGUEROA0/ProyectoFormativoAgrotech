@@ -1,17 +1,23 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket, type ManagerOptions, type SocketOptions } from 'socket.io-client';
 import { jwtDecode } from 'jwt-decode';
+
+interface JwtPayload {
+  exp?: number;
+  iat?: number;
+  sub?: string;
+}
 
 class WebSocketService {
   private socket: Socket | null = null;
-  private listeners: Map<string, any[]> = new Map();
+  private listeners: Map<string, ((data: unknown) => void)[]> = new Map();
   private currentToken: string | undefined;
 
   // Método para verificar si un token es válido (no expirado)
   private isTokenValid(token: string): boolean {
     try {
-      const decoded: any = jwtDecode(token);
+      const decoded: JwtPayload = jwtDecode(token);
       const currentTime = Date.now() / 1000;
-      return decoded.exp > currentTime;
+      return decoded.exp ? decoded.exp > currentTime : false;
     } catch (error) {
       console.error('Error decodificando token:', error);
       return false;
@@ -42,7 +48,7 @@ class WebSocketService {
     const API_URL = import.meta.env.VITE_BACKEND_URL;
 
     // --- CONFIGURACIÓN BLINDADA ---
-    const options: any = {
+    const options: Partial<ManagerOptions & SocketOptions> = {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -105,7 +111,7 @@ class WebSocketService {
   }
 
   // Método optimizado para suscribirse a eventos
-  on(event: string, callback: (data: any) => void) {
+  on(event: string, callback: (data: unknown) => void) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
@@ -125,7 +131,7 @@ class WebSocketService {
   }
 
   // Emitir eventos al servidor si fuera necesario
-  emit(event: string, data?: any) {
+  emit(event: string, data?: unknown) {
     if (this.socket?.connected) {
       this.socket.emit(event, data);
     } else {
@@ -175,7 +181,7 @@ class WebSocketService {
     });
   }
 
-  private triggerCallbacks(eventName: string, data: any) {
+  private triggerCallbacks(eventName: string, data: unknown) {
     if (this.listeners.has(eventName)) {
       this.listeners.get(eventName)?.forEach(callback => {
         try {

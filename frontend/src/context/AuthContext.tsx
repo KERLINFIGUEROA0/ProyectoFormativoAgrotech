@@ -131,29 +131,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       websocketService.disconnect();
     }
 
-    // Escuchar actualizaciones de permisos
+    // Escuchar actualizaciones de permisos (aceptamos `unknown` y lo estrechamos localmente)
     const unsubscribePermissions = websocketService.on(
       "permissions_updated",
-      (data: {
-        permisos: string[];
-        modulos: Record<string, string[]>;
-        access_token: string;
-      }) => {
-        console.log("✨ Permisos y nuevo token recibidos:", data);
+      (data: unknown) => {
+        const payload = data as {
+          permisos: string[];
+          modulos: Record<string, string[]>;
+          access_token: string;
+        };
+        console.log("✨ Permisos y nuevo token recibidos:", payload);
 
-        if (data.access_token && data.permisos && data.modulos) {
-          setUserPermissions(data.permisos);
-          setUserModules(data.modulos);
-          localStorage.setItem("permissions", JSON.stringify(data.permisos));
-          localStorage.setItem("modules", JSON.stringify(data.modulos));
+        if (payload?.access_token && payload?.permisos && payload?.modulos) {
+          setUserPermissions(payload.permisos);
+          setUserModules(payload.modulos);
+          localStorage.setItem("permissions", JSON.stringify(payload.permisos));
+          localStorage.setItem("modules", JSON.stringify(payload.modulos));
 
-          setToken(data.access_token);
-          localStorage.setItem("token", data.access_token);
+          setToken(payload.access_token);
+          localStorage.setItem("token", payload.access_token);
 
           // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
           window.dispatchEvent(
             new CustomEvent("permissionsChanged", {
-              detail: { permisos: data.permisos, modulos: data.modulos },
+              detail: { permisos: payload.permisos, modulos: payload.modulos },
             })
           );
 

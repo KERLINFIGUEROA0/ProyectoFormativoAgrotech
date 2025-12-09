@@ -111,17 +111,15 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
       setImageFile(null);
       setErrors({});
 
-      // ... (El resto de tu lógica de contenido/medida sigue igual) ...
+      // Convertir pesoPorUnidad de base (g/ml) a unidades humanas (kg/L)
       if (initialData?.id && initialData.medidasDeContenido && initialData.pesoPorUnidad) {
         const pesoNum = Number(initialData.pesoPorUnidad);
-        const esLiquido = ['L', 'ml', 'l', 'ml', 'cm3'].includes(initialData.medidasDeContenido); // Agregué minúsculas
-        if (pesoNum < 1) {
-          setCantidadContenido(String(pesoNum * 1000));
-          setMedidaContenido(esLiquido ? 'ml' : 'g');
-        } else {
-          setCantidadContenido(String(pesoNum));
-          setMedidaContenido(esLiquido ? 'L' : 'kg'); // Ajustado a abreviaturas
-        }
+        const esLiquido = ['L', 'ml', 'l', 'ml', 'cm3'].includes(initialData.medidasDeContenido.toLowerCase());
+
+        // Convertir de g/ml a kg/L
+        const cantidadHumana = pesoNum / 1000;
+        setCantidadContenido(String(cantidadHumana));
+        setMedidaContenido(esLiquido ? 'L' : 'kg');
       } else {
         setCantidadContenido('');
         setMedidaContenido('kg');
@@ -227,11 +225,23 @@ export default function MaterialForm({ initialData = {}, onSave, onCancel }: Mat
         payload.cantidadPorUnidad = cantContenidoNum; // Visual (50)
 
         // 2. IMPORTANTE: Calculamos el Stock Total para la BD
-        // 50 Bultos * 50,000g = 2,500,000g
-        if (pesoFinalEnBase) {
-            payload.cantidad = cantPaquetes * pesoFinalEnBase;
+        // Para edición, usar el pesoPorUnidad existente si no cambió el contenido
+        const esEdicion = !!initialData?.id;
+        const contenidoCambio = esEdicion && (
+          cantidadContenido !== String(Number(initialData.pesoPorUnidad) / 1000) ||
+          medidaContenido !== (['L', 'ml', 'l', 'cm3'].includes(initialData.medidasDeContenido?.toLowerCase() || '') ? 'L' : 'kg')
+        );
+
+        if (esEdicion && !contenidoCambio) {
+          // Usar pesoPorUnidad existente para calcular nueva cantidad
+          payload.cantidad = cantPaquetes * Number(initialData.pesoPorUnidad);
         } else {
+          // Calcular con el nuevo peso
+          if (pesoFinalEnBase) {
+            payload.cantidad = cantPaquetes * pesoFinalEnBase;
+          } else {
             payload.cantidad = cantPaquetes; // Fallback
+          }
         }
 
       } else {
