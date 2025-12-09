@@ -39,7 +39,7 @@ export class Material {
   @Column({
     name: 'Cantidad',
     type: 'numeric',
-    precision: 14, // Aumentamos precisión total
+    precision: 18, // Aumentamos precisión total para manejar valores grandes
     scale: 6,      // 6 decimales: 0.000001 para soportar miligramos exactos
     default: 0,
     transformer: numericTransformer
@@ -61,7 +61,7 @@ export class Material {
   @Column({
     name: 'peso_por_unidad_kg',
     type: 'numeric',
-    precision: 12,
+    precision: 18,
     scale: 6, // También aumentamos aquí por si el paquete pesa miligramos
     nullable: true,
     transformer: numericTransformer
@@ -81,16 +81,16 @@ export class Material {
   })
   tipoConsumo: TipoConsumo;
 
-  @Column({ name: 'cantidad_por_unidad', type: 'numeric', precision: 10, scale: 3, nullable: true })
+  @Column({ name: 'cantidad_por_unidad', type: 'numeric', precision: 14, scale: 3, nullable: true })
   cantidadPorUnidad: number | null;
 
-  @Column({ name: 'cantidad_restante_unidad_actual', type: 'numeric', precision: 10, scale: 3, nullable: true })
+  @Column({ name: 'cantidad_restante_unidad_actual', type: 'numeric', precision: 14, scale: 3, nullable: true })
   cantidadRestanteEnUnidadActual: number | null;
 
   @Column({ name: 'usos_totales', type: 'integer', nullable: true })
   usosTotales: number | null;
 
-  @Column({ name: 'usos_actuales', type: 'numeric', precision: 10, scale: 3, default: 0 })
+  @Column({ name: 'usos_actuales', type: 'numeric', precision: 14, scale: 3, default: 0 })
   usosActuales: number;
 
   // --- NUEVAS COLUMNAS ---

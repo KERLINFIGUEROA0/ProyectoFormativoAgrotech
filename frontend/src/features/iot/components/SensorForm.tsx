@@ -72,11 +72,14 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         return;
       }
 
+      // Normalizar protocolo para que coincida con el DTO del backend
+      const normalizedProtocolo = (brokerProtocolo || '').replace('://', '');
+
       const brokerData = {
         nombre: brokerNombre,
         host: brokerHost,
         puerto: parseInt(String(brokerPuerto), 10),
-        protocolo: brokerProtocolo,
+        protocolo: normalizedProtocolo as any,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
         loteId,
@@ -126,7 +129,9 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
     }
 
     // Creamos el payload "limpio" que espera el backend
-    const payload = {
+      const normalizedProtocolo = (brokerProtocolo || '').replace('://', '');
+
+      const payload = {
       nombre,
       surcoId: parseInt(String(surcoId), 10),
       fecha_instalacion,
@@ -140,7 +145,7 @@ export default function SensorForm({ initialData = {}, surcos, onSave, onCancel 
         nombre: brokerNombre,
         host: brokerHost,
         puerto: parseInt(String(brokerPuerto), 10),
-        protocolo: brokerProtocolo,
+        protocolo: normalizedProtocolo as any,
         usuario: brokerUsuario || undefined,
         password: brokerPassword || undefined,
         loteId: (() => {

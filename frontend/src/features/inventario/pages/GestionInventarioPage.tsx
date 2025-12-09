@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Filter, Plus, Edit, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search } from 'lucide-react';
+import { Plus, Edit, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Search, PlusCircle } from 'lucide-react';
 
-import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial } from '../api/inventarioApi';
+import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMaterial, desactivarMaterial, reactivarMaterial, actualizarStock } from '../api/inventarioApi';
 import MaterialForm from '../components/MaterialForm';
 import { type Material, type MaterialData } from '../interfaces/inventario';
 import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Switch, Pagination } from '@heroui/react';
@@ -53,8 +53,8 @@ const renderCantidadAmigable = (
         {paquetesVisual} {tipoEmpaque}s
       </div>
       <div className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full mt-1">
-        {/* Si es líquido muestra L, si no kg */}
-        Total: {totalVisual} {esLiquido ? 'L' : 'kg'}
+        {/* Mostrar total disponible en kg */}
+        Total: {esLiquido ? (Number(totalVisual) * 1).toFixed(2) : totalVisual} kg
       </div>
     </div>
   );
@@ -74,7 +74,7 @@ const getStatusInfo = (cantidad: number | null | undefined, pesoPorUnidad: numbe
 };
 
 // --- ✅ CORRECCIÓN 3: Mejoramos la detección en el formateo ---
-const formatarContenido = (peso: number | string | null, tipoMedida: string | null | undefined): string | null => {
+const formatarContenido = (peso: number | string | null | undefined, tipoMedida: string | number | null | undefined): string | null => {
   const pesoNumerico = Number(peso);
   if (!pesoNumerico || pesoNumerico <= 0) return null;
 
@@ -111,6 +111,9 @@ export default function GestionInventarioPage() {
   const [materialesFiltrados, setMaterialesFiltrados] = useState<Material[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [selectedMaterialForStock, setSelectedMaterialForStock] = useState<Material | null>(null);
+  const [cantidadEmpaquesStock, setCantidadEmpaquesStock] = useState('');
   const navigate = useNavigate();
 
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
@@ -160,6 +163,18 @@ export default function GestionInventarioPage() {
     setEditingMaterial(null);
   };
 
+  const openStockModal = (material: Material) => {
+    setSelectedMaterialForStock(material);
+    setCantidadEmpaquesStock('');
+    setIsStockModalOpen(true);
+  };
+
+  const closeStockModal = () => {
+    setIsStockModalOpen(false);
+    setSelectedMaterialForStock(null);
+    setCantidadEmpaquesStock('');
+  };
+
   const handleSave = async (data: MaterialData) => {
     const { imageFile, ...materialData } = data;
     const toastId = toast.loading("Guardando material...");
@@ -206,6 +221,28 @@ export default function GestionInventarioPage() {
       fetchData();
     } catch {
       toast.error("No se pudo cambiar el estado.", { id: toastId });
+    }
+  };
+
+  const handleUpdateStock = async () => {
+    if (!selectedMaterialForStock || !cantidadEmpaquesStock) return;
+
+    const cantidad = parseInt(cantidadEmpaquesStock);
+    if (cantidad <= 0) {
+      toast.error("La cantidad debe ser mayor a 0.");
+      return;
+    }
+
+    const toastId = toast.loading("Actualizando stock...");
+
+    try {
+      await actualizarStock(selectedMaterialForStock.id, cantidad);
+      toast.success(`Stock actualizado. Se agregaron ${cantidad} empaques.`, { id: toastId });
+      fetchData();
+      closeStockModal();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "No se pudo actualizar el stock.";
+      toast.error(errorMessage, { id: toastId });
     }
   };
 
@@ -258,7 +295,6 @@ export default function GestionInventarioPage() {
     }
 
     if (filtroEstadoStock !== 'Todos') {
-      const estadoStock = getStatusInfo(filtered[0]?.cantidad || 0, filtered[0]?.pesoPorUnidad || 0).text;
       filtered = filtered.filter((mat) => {
         const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad).text;
         if (filtroEstadoStock === 'Crítico') {
@@ -322,37 +358,7 @@ export default function GestionInventarioPage() {
   const currentMateriales = materialesFiltrados.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(materialesFiltrados.length / itemsPerPage);
 
-  const clearFilter = (filterType: string) => {
-    switch (filterType) {
-      case "search":
-        setFiltroBusqueda("");
-        break;
-      case "categoria":
-        setFiltroTipoCategoria(null);
-        break;
-      case "ubicacion":
-        setFiltroUbicacion(null);
-        break;
-      case "proveedor":
-        setFiltroProveedor(null);
-        break;
-      case "stock":
-        setFiltroEstadoStock("Todos");
-        break;
-      case "estado":
-        setFiltroEstadoMaterial("Todos");
-        break;
-    }
-  };
-
-  const clearAllFilters = () => {
-    setFiltroBusqueda("");
-    setFiltroTipoCategoria(null);
-    setFiltroUbicacion(null);
-    setFiltroProveedor(null);
-    setFiltroEstadoStock("Todos");
-    setFiltroEstadoMaterial("Todos");
-  };
+  // filter helpers removed — inline actions are used in the UI instead
 
   const tiposCategoriaUnicos = useMemo(() => [...new Set(materiales.map(m => m.tipoCategoria).filter(Boolean))], [materiales]);
   const ubicacionesUnicas = useMemo(() => [...new Set(materiales.map(m => m.ubicacion).filter(Boolean))], [materiales]);
@@ -577,7 +583,7 @@ export default function GestionInventarioPage() {
           <TableBody>
             {currentMateriales.map((mat) => {
               const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
-              const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
+                          const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
 
               return (
                 <TableRow key={mat.id || `mat-${Math.random()}`} className={!mat.estado ? 'bg-red-50' : ''}>
@@ -591,6 +597,7 @@ export default function GestionInventarioPage() {
                       <div onClick={() => mat.estado && navigate(`/stock/${mat.id}`)} className={mat.estado ? "cursor-pointer" : ""}>
                         <p className={`font-semibold ${mat.estado ? 'text-gray-800' : 'text-red-400'}`}>{mat.nombre}</p>
                         <p className="text-xs text-gray-500">CÓDIGO: MAT-{String(mat.id).padStart(3, '0')}</p>
+                        {textoContenido && <p className="text-xs text-gray-400">{textoContenido}</p>}
                       </div>
                     </div>
                   </TableCell>
@@ -633,6 +640,12 @@ export default function GestionInventarioPage() {
                       <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
                         <Edit size={16} />
                       </Button>
+
+                      {mat.estado && (
+                        <Button onClick={() => openStockModal(mat)} color="success" variant="light" isIconOnly title="Actualizar Stock">
+                          <PlusCircle size={16} />
+                        </Button>
+                      )}
 
                       {mat.estado && mat.cantidad <= 10 && (
                         <Button
@@ -690,6 +703,42 @@ export default function GestionInventarioPage() {
           </ModalHeader>
           <ModalBody>
             <MaterialForm initialData={formInitialData} onSave={handleSave} onCancel={closeModal} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isStockModalOpen} onOpenChange={closeStockModal}>
+        <ModalContent>
+          <ModalHeader>
+            Actualizar Stock - {selectedMaterialForStock?.nombre}
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Agregar {selectedMaterialForStock?.tipoEmpaque || 'unidades'} al stock existente.
+                {selectedMaterialForStock?.tipoConsumo === 'consumible' && selectedMaterialForStock?.pesoPorUnidad
+                  ? ` Cada ${selectedMaterialForStock.tipoEmpaque} contiene ${selectedMaterialForStock.pesoPorUnidad / 1000} ${selectedMaterialForStock.medidasDeContenido === 'L' || selectedMaterialForStock.medidasDeContenido === 'ml' ? 'L' : 'kg'}.`
+                  : ''
+                }
+              </p>
+              <Input
+                label={`Cantidad de ${selectedMaterialForStock?.tipoEmpaque || 'unidades'} a agregar`}
+                type="number"
+                value={cantidadEmpaquesStock}
+                onChange={(e) => setCantidadEmpaquesStock(e.target.value)}
+                placeholder={`Ej: ${selectedMaterialForStock?.tipoEmpaque === 'Unidad' ? '10' : '40'}`}
+                min="1"
+                fullWidth
+              />
+              <div className="flex justify-end gap-3">
+                <Button onClick={closeStockModal} variant="light">
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateStock} disabled={!cantidadEmpaquesStock || parseInt(cantidadEmpaquesStock) <= 0} className="bg-green-600 text-white font-bold hover:bg-green-700">
+                  Actualizar Stock
+                </Button>
+              </div>
+            </div>
           </ModalBody>
         </ModalContent>
       </Modal>

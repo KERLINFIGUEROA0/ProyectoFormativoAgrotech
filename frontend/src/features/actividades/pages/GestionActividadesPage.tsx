@@ -21,7 +21,7 @@ import ModalResponderActividad from '../components/ModalResponderActividad';
 import ModalVerRespuestas from '../components/ModalVerRespuestas';
 import ModalPagoPasante from '../components/ModalPagoPasante';
 import { useAuth } from '../../../context/AuthContext';
-import { Modal, ModalContent, ModalHeader, ModalBody, Button, Select, SelectItem, Card, CardHeader, CardBody } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button, Select, SelectItem, Card,CardBody } from '@heroui/react';
 import type {
   Actividad,
   UpdateActividadPayload,
@@ -51,12 +51,12 @@ interface ModalDetallesProps {
 const ModalDetalles: React.FC<ModalDetallesProps> = ({
   actividad,
   onClose,
-  onEdit,
 }) => {
-  if (!actividad) return null;
-
   // Lógica de 'aprendicesAsignados' usando el campo asignados
   const aprendicesAsignados: UsuarioSimple[] = useMemo(() => {
+    if (!actividad) return [];
+
+    // Crear un mapa de usuarios por nombre completo para acceder a la ficha
     if (!actividad) return [];
 
     // Crear un mapa de usuarios por nombre completo para acceder a la ficha
@@ -92,6 +92,8 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
     // Fallback: usar respuestas si no hay asignados
     return actividad.respuestas?.map(r => r.usuario) || [];
   }, [actividad]);
+
+  if (!actividad) return null;
 
   // (Lógica de parsear 'imagenes' sin cambios)
   let imagenes: string[] = [];
@@ -284,7 +286,7 @@ const StatCard = ({ title, value, icon, colorClass }: any) => (
         {/* 1. EL ICONO (Izquierda) */}
         <div className={`p-3 rounded-full shrink-0 ${colorClass} bg-opacity-20`}>
           {/* Aseguramos que el ícono tenga un tamaño consistente */}
-          {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2.5 })}
+          {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2.5 } as any)}
         </div>
 
         {/* 2. TEXTO Y NÚMERO (Derecha, uno al lado del otro o apilados compactamente) */}

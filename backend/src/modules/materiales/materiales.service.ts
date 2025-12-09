@@ -144,4 +144,38 @@ export class MaterialesService {
       .orderBy('material.cantidad', 'ASC')
       .getMany();
   }
+
+  // --- MÉTODO PARA ACTUALIZAR STOCK (AGREGAR EMPAQUES) ---
+  async actualizarStock(id: number, cantidadEmpaques: number): Promise<Material> {
+    const material = await this.findOne(id);
+
+    let cantidadAAgregar: number;
+
+    // Para consumibles: agregar cantidadEmpaques * pesoPorUnidad
+    // Para no consumibles: agregar cantidadEmpaques (unidades individuales)
+    if (material.tipoConsumo === TipoConsumo.CONSUMIBLE) {
+      if (!material.pesoPorUnidad || material.pesoPorUnidad <= 0) {
+        throw new NotFoundException('El material consumible no tiene definido el peso por unidad.');
+      }
+      cantidadAAgregar = cantidadEmpaques * material.pesoPorUnidad;
+    } else {
+      // No consumibles: cada "empaque" es una unidad
+      cantidadAAgregar = cantidadEmpaques;
+    }
+
+    material.cantidad += cantidadAAgregar;
+
+    const updatedMaterial = await this.materialRepository.save(material);
+
+    // Registrar movimiento de entrada
+    await this.movimientosService.registrarMovimiento(
+      TipoMovimiento.INGRESO,
+      cantidadAAgregar,
+      id,
+      `Actualización de stock: +${cantidadEmpaques} ${material.tipoEmpaque || 'unidades'}`,
+      `stock-update-${id}-${Date.now()}`
+    );
+
+    return updatedMaterial;
+  }
 }

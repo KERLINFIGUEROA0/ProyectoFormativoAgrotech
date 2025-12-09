@@ -20,7 +20,14 @@ export class TrazabilidadService {
 
   // Función auxiliar para formatear fechas con zona horaria America/Bogota
   private formatDate(date: Date | string): string {
-    const d = new Date(date);
+    // Si es string en formato YYYY-MM-DD, lo tratamos como fecha local en America/Bogota
+    let d: Date;
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      // Crear fecha a mediodía local para evitar cambios de día por zona horaria
+      d = new Date(date + 'T12:00:00-05:00'); // -05:00 es UTC-5 para Colombia
+    } else {
+      d = new Date(date);
+    }
     return new Intl.DateTimeFormat('es-ES', {
       timeZone: 'America/Bogota',
       year: 'numeric',

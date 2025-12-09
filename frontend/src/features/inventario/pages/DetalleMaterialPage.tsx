@@ -266,10 +266,10 @@ export default function DetalleMaterialPage() {
 
             <StockBar
               label="Contenido Total Disponible"
-              valorActual={Number(stockTotalVisual.toFixed(2))}
-              valorMinimo={Number(stockMinimoVisual.toFixed(2))}
-              valorObjetivo={Number(stockObjetivoVisual.toFixed(2))}
-              unidad={unidadVisual}
+              valorActual={esLiquido ? Number((stockTotalVisual * 1).toFixed(2)) : Number(stockTotalVisual.toFixed(2))}
+              valorMinimo={esLiquido ? Number((stockMinimoVisual * 1).toFixed(2)) : Number(stockMinimoVisual.toFixed(2))}
+              valorObjetivo={esLiquido ? Number((stockObjetivoVisual * 1).toFixed(2)) : Number(stockObjetivoVisual.toFixed(2))}
+              unidad="kg"
             />
           </div>
 

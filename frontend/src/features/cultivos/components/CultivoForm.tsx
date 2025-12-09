@@ -218,6 +218,7 @@ export default function CultivoForm({
       setTieneSublotes(sublotesData.length > 0);
 
       if (sublotesData.length === 0) {
+        // No hay sublotes disponibles para este lote
       }
     } catch (error) {
       setSublotes([]); // En caso de error, asegurar array vacío
