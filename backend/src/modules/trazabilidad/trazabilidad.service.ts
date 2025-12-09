@@ -18,14 +18,21 @@ export class TrazabilidadService {
     private readonly movimientosService: MovimientosService,
   ) {}
 
-  // Función auxiliar para formatear fechas con zona horaria America/Bogota
+  // Función auxiliar para formatear fechas consistentemente
   private formatDate(date: Date | string): string {
+    // Si es un string en formato YYYY-MM-DD, mantenerlo como está
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    // Para otros formatos, usar el mismo formato que la gestión de transacciones
     const d = new Date(date);
-    return new Intl.DateTimeFormat('es-ES', {
+    return new Intl.DateTimeFormat('es-CO', {
       timeZone: 'America/Bogota',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      month: '2-digit',
+      day: '2-digit'
     }).format(d);
   }
 

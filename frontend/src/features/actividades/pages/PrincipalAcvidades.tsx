@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield
 } from 'lucide-react';
+import { getColombiaDate } from '../../../utils/dateUtils';
 
 import { listarActividades, obtenerUsuariosParaActividades, obtenerCultivosParaActividades } from '../api/actividadesapi';
 import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/actividades';
@@ -92,11 +93,16 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
   }
 
   const getTimeElapsed = (date: string) => {
-    const diff = Math.abs(new Date().getTime() - new Date(date).getTime());
+    // Usar la función de zona horaria consistente con el resto de la aplicación
+    const now = getColombiaDate();
+    const activityDate = new Date(date);
+
+    const diff = Math.abs(now.getTime() - activityDate.getTime());
     const hours = Math.floor(diff / (1000 * 60 * 60));
+
     if (hours === 0) return 'Hace un momento';
     if (hours < 24) return `Hace ${hours} horas`;
-    return new Date(date).toLocaleDateString();
+    return activityDate.toLocaleDateString('es-ES');
   };
 
   const getScheduledText = (fecha: string) => {

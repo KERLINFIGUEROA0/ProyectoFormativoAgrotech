@@ -391,6 +391,7 @@ export class ActividadesService {
     }
 
     // Calcular costoManoObra, totalHoras y promedioTarifa para cada actividad desde tabla pagos
+    // También incluir información de usuarios asignados con ficha para actividades pendientes
     const actividadesWithCosto = await Promise.all(actividades.map(async (act) => {
       let costoManoObra = 0;
       let totalHoras = 0;
@@ -410,7 +411,28 @@ export class ActividadesService {
         costoManoObra = Number(act.horas) * Number(act.tarifaHora);
       }
 
-      return { ...act, costoManoObra, totalHoras, promedioTarifa };
+      // Para actividades pendientes, incluir información de usuarios asignados con ficha
+      let usuariosAsignados: any[] = [];
+      if (act.asignados) {
+        try {
+          const nombresAsignados = JSON.parse(act.asignados);
+          if (Array.isArray(nombresAsignados) && nombresAsignados.length > 0) {
+            // Buscar usuarios por nombre completo
+            const usuarios = await this.usuarioRepository.find({
+              where: nombresAsignados.map(nombre => ({
+                nombre: nombre.split(' ')[0],
+                apellidos: nombre.split(' ').slice(1).join(' ')
+              })),
+              relations: ['ficha', 'tipoUsuario']
+            });
+            usuariosAsignados = usuarios;
+          }
+        } catch (error) {
+          console.error('Error al parsear asignados:', error);
+        }
+      }
+
+      return { ...act, costoManoObra, totalHoras, promedioTarifa, usuariosAsignados };
     }));
 
     return actividadesWithCosto;
@@ -554,7 +576,7 @@ export class ActividadesService {
             const gastoDepreciacion = gastoRepo.create({
               descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${saved.titulo}`,
               monto: parseFloat(costoDepreciacion.toFixed(2)),
-              fecha: saved.fecha,
+              fecha: new Date(),
               tipo: TipoMovimiento.EGRESO,
               cultivo: cultivoEntidad ?? undefined,
               cantidad: 1,
@@ -1454,7 +1476,7 @@ export class ActividadesService {
             const gastoDepreciacion = gastoRepo.create({
               descripcion: `Depreciación: ${material.nombre} (agotó ${material.usosTotales} usos) - ${titulo}`,
               monto: parseFloat(costoDepreciacion.toFixed(2)),
-              fecha: new Date(fecha),
+              fecha: new Date(),
               tipo: TipoMovimiento.EGRESO,
               cultivo: cultivo ?? undefined,
               cantidad: 1,
