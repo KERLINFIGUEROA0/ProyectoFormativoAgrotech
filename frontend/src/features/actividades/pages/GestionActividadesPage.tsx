@@ -38,7 +38,7 @@ import {
 } from '../api/actividadesapi';
 import { getEstadoTexto } from '../utils/estadoUtils';
 // ✅ IMPORTAR HELPER DE FECHAS
-import { formatToTable, formatDateOnly, formatDateDisplay } from '../../../utils/dateUtils.ts';
+import { formatDateOnly } from '../../../utils/dateUtils.ts';
 
 // --- INICIO: Componente ModalDetalles (MODIFICADO) ---
 interface ModalDetallesProps {
@@ -516,14 +516,13 @@ const GestionActividadesPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800">
           Gestión de Actividades
         </h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
-            color="warning"
-            startContent={<Bell size={16} />}
+            className="bg-transparent p-3 border-none"
             onClick={mostrarNotificacionesPendientes}
             title="Mostrar notificaciones de actividades pendientes"
           >
-            Notificaciones
+            <Bell className="w-6 h-6 text-black animate-bounce" />
           </Button>
         </div>
       </div>
@@ -697,8 +696,10 @@ const GestionActividadesPage: React.FC = () => {
             setShowPagoModal(false);
             setActividadPago(null);
             setPasantesPago([]);
+            // Forzar recarga del modal de respuestas para mostrar estado actualizado de pagos
+            setRespuestasKey(prev => prev + 1);
             cargarDatos(); // Recargar para actualizar estados
-            toast.success('El proceso de pago ha finalizado correctamente.');
+            toast.success('Pago registrado exitosamente. Puedes continuar pagando a otros pasantes.');
           }}
         />
       )}

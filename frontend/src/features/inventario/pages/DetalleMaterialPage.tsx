@@ -161,7 +161,6 @@ export default function DetalleMaterialPage() {
   // Ej: 'L' para Glifosato, 'kg' para Abono.
   const unidadPreferidaRaw = material.medidasDeContenido || material.unidadBase || 'Unidad';
   const unidadCalculo = normalizarUnidad(unidadPreferidaRaw); // 'l', 'kg', 'ml'
-  const unidadVisual = mostrarUnidad(unidadPreferidaRaw);      // 'L', 'kg', 'ml'
 
   // 2. Detectamos si es Líquido o Sólido para adaptar la interfaz
   const esLiquido = esUnidadVolumen(unidadCalculo) || unidadCalculo === 'l' || unidadCalculo === 'ml';

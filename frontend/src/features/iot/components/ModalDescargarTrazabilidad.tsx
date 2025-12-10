@@ -16,7 +16,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
   const [cultivos, setCultivos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [selectedFormato, setSelectedFormato] = useState('pdf');
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
   const [selectedCultivoId, setSelectedCultivoId] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState('');
@@ -86,7 +85,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     try {
       // Preparar datos para enviar
       const payload = {
-        formato: selectedFormato as "pdf"  | "json",
+        formato: 'pdf' as "pdf" | "csv" | "json",
         loteId: selectedLoteId!,
         cultivoId: selectedCultivoId || undefined,
         fechaInicio: data.fechaInicio,
@@ -161,21 +160,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Descargar Reporte de Trazabilidad">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4">
-
-        {/* Formato */}
-        <div>
-          <Select
-            label="Formato"
-            selectedKeys={[selectedFormato]}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys);
-              setSelectedFormato(String(selected[0]));
-            }}
-            fullWidth
-          >
-            <SelectItem key="pdf">PDF (Reporte Completo)</SelectItem>
-          </Select>
-        </div>
 
         {/* Selección de Lote */}
         <div>
@@ -304,6 +288,7 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
             type="submit"
             color="success"
             disabled={loading}
+            className="text-white font-bold"
           >
             {loading ? 'Generando Reporte...' : 'Generar Reporte'}
           </Button>

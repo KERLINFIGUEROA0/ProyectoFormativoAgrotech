@@ -238,3 +238,11 @@ export const actualizarPago = async (id: number, updateData: {
   const response = await api.put(`/pagos/${id}`, updateData);
   return response.data;
 };
+
+/**
+ * Obtiene los pagos de una actividad específica.
+ */
+export const obtenerPagosPorActividad = async (actividadId: number) => {
+  const response = await api.get(`/pagos/actividad/${actividadId}`);
+  return response.data;
+};

@@ -41,6 +41,11 @@ export class PagosController {
     return this.pagosService.findByCultivo(id);
   }
 
+  @Get('actividad/:id')
+  findByActividad(@Param('id', ParseIntPipe) id: number) {
+    return this.pagosService.findByActividad(id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
