@@ -501,11 +501,18 @@ export class CultivosService {
       ]
     });
 
-    // Obtener gastos directos para cada cultivo
+    // Obtener gastos directos y pagos para cada cultivo
     const directGastosMap = new Map<number, Gasto[]>();
+    const pagosMap = new Map<number, Pago[]>();
     for (const cultivo of cultivos) {
       const directGastos = await this.getGastosDirectos(cultivo.id);
       directGastosMap.set(cultivo.id, directGastos);
+
+      const pagos = await this.pagoRepository.find({
+        where: { actividad: { cultivo: { id: cultivo.id } } },
+        relations: ['actividad', 'usuario']
+      });
+      pagosMap.set(cultivo.id, pagos);
     }
 
   // Crear libro de Excel con múltiples hojas
@@ -520,10 +527,12 @@ export class CultivosService {
         .reduce((sum, v) => sum + (Number(v.valorTotalVenta) || 0), 0);
 
       const directGastos = directGastosMap.get(cultivo.id) || [];
+      const pagos = pagosMap.get(cultivo.id) || [];
       const totalDirectGastos = directGastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+      const totalPagos = pagos.reduce((sum, p) => sum + (Number(p.monto) || 0), 0);
       const totalGastos = cultivo.producciones
         .flatMap(p => p.gastos)
-        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos;
+        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos + totalPagos;
 
       const cantidadTotalVendida = cultivo.producciones
         .flatMap(p => p.ventas)
@@ -613,6 +622,7 @@ export class CultivosService {
     // 4. Hoja de Gastos
     const gastosData: any[] = cultivos.flatMap(cultivo => {
       const directGastos = directGastosMap.get(cultivo.id) || [];
+      const pagos = pagosMap.get(cultivo.id) || [];
       const prodGastos = cultivo.producciones.flatMap(p =>
         p.gastos.map(g => ({
           'ID Cultivo': cultivo.id,
@@ -635,7 +645,17 @@ export class CultivosService {
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': 'Directo'
       }));
-      return [...prodGastos, ...dirGastos];
+      const pagosGastos = pagos.map(p => ({
+        'ID Cultivo': cultivo.id,
+        'Nombre Cultivo': cultivo.nombre,
+        'ID Producción': 'Pago',
+        'ID Gasto': p.id,
+        'Fecha': new Date(p.fechaPago).toISOString().split('T')[0],
+        'Descripción': p.descripcion,
+        'Monto ($)': Number(p.monto).toLocaleString('es-CO'),
+        'Estado Producción': 'Pago'
+      }));
+      return [...prodGastos, ...dirGastos, ...pagosGastos];
     }).sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
 
     const gastosSheet = workbook.addWorksheet('Gastos');
@@ -672,15 +692,22 @@ export class CultivosService {
   const workbook = new ExcelJS.Workbook();
 
 
+    // Obtener pagos para el cultivo
+    const pagos = await this.pagoRepository.find({
+      where: { actividad: { cultivo: { id: cultivo.id } } },
+      relations: ['actividad', 'usuario']
+    });
+
     // Calcular totales y estadísticas
     const totalVentas = cultivo.producciones
       .flatMap(p => p.ventas)
       .reduce((sum, v) => sum + (Number(v.valorTotalVenta) || 0), 0);
 
     const totalDirectGastos = directGastos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+    const totalPagos = pagos.reduce((sum, p) => sum + (Number(p.monto) || 0), 0);
     const totalGastos = cultivo.producciones
       .flatMap(p => p.gastos)
-      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos;
+      .reduce((sum, g) => sum + (Number(g.monto) || 0), 0) + totalDirectGastos + totalPagos;
 
     const cantidadTotalVendida = cultivo.producciones
       .flatMap(p => p.ventas)
@@ -771,6 +798,14 @@ export class CultivosService {
         'Descripción': g.descripcion,
         'Monto ($)': Number(g.monto).toLocaleString('es-CO'),
         'Estado Producción': 'Directo'
+      })))
+      .concat(pagos.map(p => ({
+        'ID Gasto': p.id,
+        'ID Producción': 'Pago',
+        'Fecha': new Date(p.fechaPago).toISOString().split('T')[0],
+        'Descripción': p.descripcion,
+        'Monto ($)': Number(p.monto).toLocaleString('es-CO'),
+        'Estado Producción': 'Pago'
       })))
       .sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
     const gastosSheet = workbook.addWorksheet('Gastos');

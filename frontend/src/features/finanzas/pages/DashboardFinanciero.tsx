@@ -116,7 +116,14 @@ export default function DashboardFinanciero(): ReactElement {
                   {recentMovs.map((mov) => (
                     <TableRow key={mov.id}>
                       <TableCell className="text-gray-600">
-                        {new Date(mov.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        {mov.fecha && !isNaN(new Date(mov.fecha).getTime())
+                          ? new Date(mov.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+                              timeZone: 'America/Bogota',
+                              day: 'numeric',
+                              month: 'short'
+                            })
+                          : 'Fecha no disponible'
+                        }
                       </TableCell>
                       <TableCell>
                         <Chip
