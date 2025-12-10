@@ -102,3 +102,57 @@ export function PermissionGate({
     </PermissionWrapper>
   );
 }
+
+// Componente inteligente que verifica permisos por acción en cualquier módulo
+export function ActionPermissionWrapper({
+  action,
+  fallback = null,
+  children
+}: {
+  action: string;
+  fallback?: ReactNode;
+  children: ReactNode;
+}) {
+  const { hasPermissionByAction, loading } = useModulePermissions();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!hasPermissionByAction(action)) {
+    return <>{fallback}</>;
+  }
+
+  return <>{children}</>;
+}
+
+// Componente que verifica si el usuario tiene una acción específica en un módulo específico
+export function SmartPermissionWrapper({
+  module,
+  action,
+  fallback = null,
+  children
+}: {
+  module: string;
+  action: string;
+  fallback?: ReactNode;
+  children: ReactNode;
+}) {
+  const { hasPermissionInModule, hasPermissionByAction, loading } = useModulePermissions();
+
+  if (loading) {
+    return null;
+  }
+
+  // Si tiene el permiso específico del módulo, mostrar
+  if (hasPermissionInModule(module, action)) {
+    return <>{children}</>;
+  }
+
+  // Si tiene la acción en cualquier módulo, también mostrar
+  if (hasPermissionByAction(action)) {
+    return <>{children}</>;
+  }
+
+  return <>{fallback}</>;
+}

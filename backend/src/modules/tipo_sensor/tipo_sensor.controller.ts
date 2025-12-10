@@ -1,10 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, NotFoundException, UseGuards } from '@nestjs/common';
 import { TipoSensorService } from './tipo_sensor.service';
 // --- CORRECCIÓN AQUÍ: Cambia el guion bajo (_) por un guion medio (-) ---
 import { CreateTipoSensorDto } from './dto/create-tipo_sensor.dto';
 import { UpdateTipoSensorDto } from './dto/update-tipo_sensor.dto';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('tipo-sensor')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class TipoSensorController {
   constructor(private readonly tipoSensorService: TipoSensorService) {}
 

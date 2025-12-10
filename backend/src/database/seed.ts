@@ -12,17 +12,17 @@ dotenv.config({ path: '.env' });
 
 async function seed() {
   await AppDataSource.initialize();
-  console.log('🌱 Iniciando el seeder...');
+  console.log('🌱 Iniciando el seeder de usuarios...');
 
-  // 1. Crear/Verificar Roles (sin cambios)
+  // 1. Crear/Verificar Roles
   console.log('Verificando y creando roles...');
   const tipoUsuarioRepo = AppDataSource.getRepository(TipoUsuario);
   const roleDefinitions = [
     { nombre: 'Admin', descripcion: 'Administrador con todos los permisos' },
-    { nombre: 'Pasante', descripcion: 'Rol pasante' },
     { nombre: 'Instructor', descripcion: 'Rol instructor' },
-    { nombre: 'Invitado', descripcion: 'Rol invitado' },
+    { nombre: 'Pasante', descripcion: 'Rol pasante' },
     { nombre: 'Aprendiz', descripcion: 'Rol aprendiz' },
+    { nombre: 'Invitado', descripcion: 'Rol invitado' },
   ];
   const existingRoles = await tipoUsuarioRepo.find();
   const existingRolesMap = new Map(existingRoles.map((r) => [r.nombre, r]));
@@ -40,108 +40,87 @@ async function seed() {
   }
   console.log('Roles verificados.');
 
-  // 2. Crear/Verificar Módulos (sin cambios)
-  console.log('Verificando y creando módulos...');
+  // 2. Crear/Verificar Módulo Usuarios
+  console.log('Verificando y creando módulo Usuarios...');
   const moduloRepo = AppDataSource.getRepository(Modulo);
-  const moduleDefinitions = [
-    { nombre: 'Perfil', descripcion: 'Gestión del perfil del usuario' },
-    { nombre: 'Usuarios', descripcion: 'Gestión de usuarios' },
-    { nombre: 'Iot', descripcion: 'Gestión de dispositivos IoT' },
-    { nombre: 'Finanzas', descripcion: 'Gestión financiera' },
-    { nombre: 'Fitosanitario', descripcion: 'Gestión fitosanitaria' },
-    { nombre: 'Inventario', descripcion: 'Gestión de inventario' },
-    { nombre: 'Actividades', descripcion: 'Gestión de actividades' },
-    { nombre: 'Inicio', descripcion: 'Pantalla inicial / Dashboard' },
-    { nombre: 'Cultivos', descripcion: 'Gestión de cultivos' },
-  ];
-  const existingModules = await moduloRepo.find();
-  const existingModulesMap = new Map(existingModules.map((m) => [m.nombre, m]));
-  const modulos: Modulo[] = [];
-  const modulosByName: Record<string, Modulo> = {};
-
-  for (const def of moduleDefinitions) {
-    let newModule: Modulo;
-    if (existingModulesMap.has(def.nombre)) {
-      newModule = existingModulesMap.get(def.nombre)!;
-    } else {
-      console.log(`  - Creando nuevo módulo: ${def.nombre}`);
-      newModule = await moduloRepo.save(def);
-    }
-    modulos.push(newModule);
-    modulosByName[def.nombre] = newModule;
+  const moduloUsuariosDef = { nombre: 'Usuarios', descripcion: 'Gestión de usuarios' };
+  let moduloUsuarios = await moduloRepo.findOne({ where: { nombre: 'Usuarios' } });
+  if (!moduloUsuarios) {
+    console.log('  - Creando módulo Usuarios');
+    moduloUsuarios = await moduloRepo.save(moduloUsuariosDef);
   }
-  console.log('Módulos verificados.');
+  console.log('Módulo Usuarios verificado.');
 
-  // 3. Crear/Verificar Permisos (con ajustes)
-  console.log('Verificando y creando permisos...');
+  // 2.1. Crear/Verificar Módulo Sensores
+  console.log('Verificando y creando módulo Sensores...');
+  const moduloSensoresDef = { nombre: 'Sensores', descripcion: 'Gestión de sensores IoT' };
+  let moduloSensores = await moduloRepo.findOne({ where: { nombre: 'Sensores' } });
+  if (!moduloSensores) {
+    console.log('  - Creando módulo Sensores');
+    moduloSensores = await moduloRepo.save(moduloSensoresDef);
+  }
+  console.log('Módulo Sensores verificado.');
+
+  // 3. Crear/Verificar Permisos de Usuarios
+  console.log('Verificando y creando permisos de usuarios...');
   const permisosRepo = AppDataSource.getRepository(Permiso);
-  const allPermissions = await permisosRepo.find();
-  const permissionsMap = new Map(allPermissions.map((p) => [p.nombre, p]));
-  const permissionsToCreate: Partial<Permiso>[] = [];
-
-  // Permisos CRUD estándar
-  for (const modulo of modulos) {
-    const acciones = ['Crear', 'Ver', 'Editar', 'Eliminar'];
-    for (const accion of acciones) {
-      const nombre = `${modulo.nombre}.${accion}`;
-      if (!permissionsMap.has(nombre)) {
-        permissionsToCreate.push({
-          nombre,
-          descripcion: `Puede ${accion.toLowerCase()} en ${modulo.nombre}`,
-          modulo,
-        });
-      }
-    }
-  }
-
-  // Permisos específicos para Perfil
-  const permisosPerfil = [
-    {
-      nombre: 'Perfil.Editar',
-      descripcion: 'Permite editar la información del perfil del usuario',
-      modulo: modulosByName['Perfil'],
-    },
-    {
-      nombre: 'Perfil.Foto',
-      descripcion: 'Permite subir y actualizar la foto de perfil',
-      modulo: modulosByName['Perfil'],
-    },
+  const permisosUsuarios = [
+    { nombre: 'Usuarios.Crear', descripcion: 'Puede crear usuarios' },
+    { nombre: 'Usuarios.Ver', descripcion: 'Puede ver usuarios' },
+    { nombre: 'Usuarios.Editar', descripcion: 'Puede editar usuarios' },
+    { nombre: 'Usuarios.Desactivar', descripcion: 'Puede desactivar usuarios' },
+    { nombre: 'Usuarios.Asignar', descripcion: 'Puede asignar permisos a usuarios' },
+    { nombre: 'Usuarios.DescargarExcel', descripcion: 'Puede descargar Excel de usuarios' },
+    { nombre: 'Usuarios.EliminarRol', descripcion: 'Puede eliminar roles y usuarios' },
+    { nombre: 'Usuarios.EliminarFichas', descripcion: 'Puede eliminar fichas' },
   ];
 
-  for (const perm of permisosPerfil) {
-    if (!permissionsMap.has(perm.nombre)) {
-      permissionsToCreate.push(perm);
+  const existingPermisos = await permisosRepo.find();
+  const permisosMap = new Map(existingPermisos.map((p) => [p.nombre, p]));
+  const permisosToCreate: Partial<Permiso>[] = [];
+
+  for (const perm of permisosUsuarios) {
+    if (!permisosMap.has(perm.nombre)) {
+      permisosToCreate.push({
+        ...perm,
+        modulo: moduloUsuarios,
+      });
     }
   }
 
-  // Permisos específicos que no son CRUD
-  const permisosEspecificos = [
-    {
-      nombre: 'Usuarios.Asignar',
-      descripcion: 'Permite asignar o quitar permisos a un rol o usuario.',
-      modulo: modulosByName['Usuarios'], // Asignado al módulo 'Usuarios'
-    },
-    {
-      nombre: 'Usuarios.VerPermisos',
-      descripcion: 'Permite ver la lista de permisos de un rol o usuario.',
-      modulo: modulosByName['Usuarios'], // Asignado al módulo 'Usuarios'
-    },
-  ];
-
-  for (const perm of permisosEspecificos) {
-    if (!permissionsMap.has(perm.nombre)) {
-      permissionsToCreate.push(perm);
-    }
-  }
-
-  if (permissionsToCreate.length > 0) {
-    console.log(`  - Creando ${permissionsToCreate.length} nuevos permisos...`);
-    const newPermissions = await permisosRepo.save(permissionsToCreate);
-    newPermissions.forEach((p) => permissionsMap.set(p.nombre, p));
+  if (permisosToCreate.length > 0) {
+    console.log(`  - Creando ${permisosToCreate.length} nuevos permisos...`);
+    const newPermisos = await permisosRepo.save(permisosToCreate);
+    newPermisos.forEach((p) => permisosMap.set(p.nombre, p));
   }
   console.log('Permisos verificados.');
 
-  // 4. Asignar todos los permisos al Admin (sin cambios, el código ya lo hace)
+  // 3.1. Crear/Verificar Permisos de Sensores
+  console.log('Verificando y creando permisos de sensores...');
+  const permisosSensores = [
+    { nombre: 'Sensores.Crear', descripcion: 'Puede crear sensores' },
+    { nombre: 'Sensores.Ver', descripcion: 'Puede ver sensores' },
+    { nombre: 'Sensores.Editar', descripcion: 'Puede editar sensores' },
+    { nombre: 'Sensores.Eliminar', descripcion: 'Puede eliminar sensores' },
+  ];
+
+  for (const perm of permisosSensores) {
+    if (!permisosMap.has(perm.nombre)) {
+      permisosToCreate.push({
+        ...perm,
+        modulo: moduloSensores,
+      });
+    }
+  }
+
+  if (permisosToCreate.length > 0) {
+    console.log(`  - Creando ${permisosToCreate.length} nuevos permisos de sensores...`);
+    const newPermisos = await permisosRepo.save(permisosToCreate);
+    newPermisos.forEach((p) => permisosMap.set(p.nombre, p));
+  }
+  console.log('Permisos de sensores verificados.');
+
+  // 4. Asignar permisos a roles
   console.log('Verificando y asignando permisos a roles...');
   const rolPermisoRepo = AppDataSource.getRepository(RolPermiso);
   const existingRolPermisos = await rolPermisoRepo.find({ relations: ['tipoUsuario', 'permiso'] });
@@ -150,104 +129,48 @@ async function seed() {
   );
   const rolPermisosToCreate: Partial<RolPermiso>[] = [];
 
-  // Admin -> todos los permisos
-  for (const permiso of permissionsMap.values()) {
-    const key = `${roles.admin.id}-${permiso.id}`;
-    if (!existingRolPermisosSet.has(key)) {
-      rolPermisosToCreate.push({
-        tipoUsuario: roles.admin,
-        permiso,
-      });
-    }
-  }
-
-  // ... (código para asignar permisos a otros roles, sin cambios)
-      const assignPermissions = (role: TipoUsuario, permissionNames: string[]) => {
+  const assignPermissions = (role: TipoUsuario, permissionNames: string[]) => {
     for (const nombre of permissionNames) {
-      if (permissionsMap.has(nombre)) {
-        const permiso = permissionsMap.get(nombre)!;
+      if (permisosMap.has(nombre)) {
+        const permiso = permisosMap.get(nombre)!;
         const key = `${role.id}-${permiso.id}`;
         if (!existingRolPermisosSet.has(key)) {
           rolPermisosToCreate.push({
             tipoUsuario: role,
-            permiso: permiso,
-            // estado: true, <-- SE ELIMINA ESTA LÍNEA
+            permiso,
           });
         }
       } else {
-        console.warn(
-          `  - ADVERTENCIA: El permiso "${nombre}" no fue encontrado y no será asignado.`,
-        );
+        console.warn(`  - ADVERTENCIA: El permiso "${nombre}" no fue encontrado.`);
       }
     }
   };
 
-  // ... (código de asignación para otros roles sin cambios, ya usan la función `assignPermissions` corregida)
-    const permisosInstructor = [
-    'Usuarios.Crear',
-    'Usuarios.Ver',
-    'Actividades.Crear',
-    'Actividades.Ver',
-    'Actividades.Editar',
-    'Actividades.Eliminar',
-    'Cultivos.Crear',
-    'Cultivos.Ver',
-    'Cultivos.Editar',
-    'Cultivos.Eliminar',
-    'Perfil.Ver',
-    'Perfil.Editar',
-    'Inicio.Ver',
-  ];
-  assignPermissions(roles.instructor, permisosInstructor);
+  // Admin: Puede realizar todo
+  const allPermissions = Array.from(permisosMap.keys());
+  assignPermissions(roles.admin, allPermissions);
 
-  // Pasante -> puede ver en casi todos los módulos, y crear en actividades
-  const permisosPasante = [
-    'Actividades.Crear',
-    'Actividades.Ver',
-    'Perfil.Ver',
-    'Perfil.Editar',
-    'Perfil.Foto',
-    'Usuarios.Ver',
-    'Iot.Ver',
-    'Finanzas.Ver',
-    'Fitosanitario.Ver',
-    'Inventario.Ver',
-    'Inicio.Ver',
-    'Cultivos.Ver',
-  ];
-  assignPermissions(roles.pasante, permisosPasante);
+  // Instructor: Puede realizar todo
+  assignPermissions(roles.instructor, allPermissions);
 
-  // Aprendiz -> solo ver perfil, cultivos y actividades
-  const permisosAprendiz = [
-    'Perfil.Ver',
-    'Perfil.Editar',
-    'Perfil.Foto',
-    'Cultivos.Ver',
-    'Actividades.Ver',
-    'Inicio.Ver',
-  ];
-  assignPermissions(roles.aprendiz, permisosAprendiz);
+  // Pasante: solo puede ver los aprendices (Usuarios.Ver)
+  assignPermissions(roles.pasante, ['']);
 
-  // Invitado -> solo ver inicio y perfil
-  const permisosInvitado = [
-    'Inicio.Ver',
-    'Perfil.Ver',
-    'Perfil.Editar',
-    'Perfil.Foto',
-  ];
-  assignPermissions(roles.invitado, permisosInvitado);
+  // Aprendiz: No puede ver nada (sin permisos)
+  assignPermissions(roles.aprendiz, ['']);
+
+
+  // Invitado: No puede ver nada (sin permisos)
+  assignPermissions(roles.invitado, ['']);
 
 
   if (rolPermisosToCreate.length > 0) {
-    console.log(
-      `  - Asignando ${rolPermisosToCreate.length} nuevos permisos a roles...`,
-    );
+    console.log(`  - Asignando ${rolPermisosToCreate.length} nuevos permisos a roles...`);
     await rolPermisoRepo.save(rolPermisosToCreate);
   }
   console.log('Asignaciones de rol-permiso verificadas.');
 
-
-  // 5. Crear/Verificar usuario administrador (sin cambios)
+  // 5. Crear/Verificar usuario administrador
   console.log('Verificando usuario administrador...');
   const usuarioRepo = AppDataSource.getRepository(Usuario);
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@admin.com';
@@ -265,7 +188,6 @@ async function seed() {
       correo: adminEmail,
       passwordHash,
       tipoUsuario: roles.admin,
-      // Nota: El administrador no tiene ficha asignada (ficha: null)
     });
     console.log('  - Usuario administrador creado.');
   } else {
@@ -273,7 +195,7 @@ async function seed() {
   }
   console.log('Usuario administrador verificado.');
 
-  console.log('✅ Seed ejecutado con éxito');
+  console.log('✅ Seed de usuarios ejecutado con éxito');
   await AppDataSource.destroy();
 }
 

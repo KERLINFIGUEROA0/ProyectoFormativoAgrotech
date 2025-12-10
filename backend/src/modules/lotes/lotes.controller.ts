@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   UseInterceptors,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
@@ -20,8 +21,12 @@ import { UpdateLoteEstadoDto } from './dto/update-lote-estado.dto';
 import { PdfService } from '../pdf/pdf.service';
 import { SensoresService } from '../sensores/sensores.service';
 import { GenerarReporteTrazabilidadDto } from '../sensores/dto/generar-reporte.dto';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('lotes')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class LotesController {
   constructor(
     private readonly lotesService: LotesService,
@@ -30,6 +35,7 @@ export class LotesController {
   ) {}
 
   @Get('estadisticas')
+  @Permission('Lotes.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_estadisticas')
   @CacheTTL(300000)
@@ -42,6 +48,7 @@ export class LotesController {
   }
 
   @Get()
+  @Permission('Lotes.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos')
   @CacheTTL(60000)
@@ -55,6 +62,7 @@ export class LotesController {
   }
 
   @Get('listar')
+  @Permission('Lotes.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos_alt')
   @CacheTTL(60000)
@@ -68,6 +76,7 @@ export class LotesController {
   }
 
   @Get('disponibles')
+  @Permission('Lotes.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_disponibles')
   @CacheTTL(30000) // Cache más corto para datos dinámicos
@@ -81,6 +90,7 @@ export class LotesController {
   }
 
   @Get(':id')
+  @Permission('Lotes.Ver')
   @UseInterceptors(CacheInterceptor)
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const lote = await this.lotesService.buscarPorId(id);
@@ -91,6 +101,7 @@ export class LotesController {
   }
 
   @Post('crear')
+  @Permission('Lotes.Crear')
   async crear(@Body() data: CreateLoteDto) {
     const nuevo = await this.lotesService.crear(data);
     return {
@@ -101,6 +112,7 @@ export class LotesController {
   }
 
   @Put('actualizar/:id')
+  @Permission('Lotes.Editar')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateLoteDto,
@@ -114,6 +126,7 @@ export class LotesController {
   }
 
   @Patch(':id/estado')
+  @Permission('Lotes.Editar')
   async actualizarEstado(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateLoteEstadoDto,
@@ -127,6 +140,7 @@ export class LotesController {
   }
 
   @Post('reporte-trazabilidad')
+  @Permission('Lotes.Ver')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
     try {
       // 1. Obtener datos (El servicio ahora garantizará que no sean null)

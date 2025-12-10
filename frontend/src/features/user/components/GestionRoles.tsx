@@ -8,6 +8,7 @@ import { getRoles, createRole, updateRole, deleteRole } from "../api/roles";
 import { getUsuariosTodos as getUsuarios } from "../../auth/api/auth";
 import type { Rol, Usuario } from "../interfaces/usuarios";
 import PermissionsModal from "./PermissionsModal";
+import { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
 import {
   Input,
   Button,
@@ -149,15 +150,17 @@ export default function GestionRoles(): ReactElement {
           <h2 className="text-xl md:text-2xl font-bold text-gray-700">Gestión de Roles</h2>
           <p className="text-sm text-gray-500 mt-1">Administra los roles y sus permisos en el sistema</p>
         </div>
-        <Button
-          onClick={() => { setEditingId(null); setForm({}); setIsModalOpen(true); }}
-          color="success"
-          startContent={<FaPlus size={16} />}
-          size="sm"
-          className="w-full sm:w-auto font-bold text-white"
-        >
-          Nuevo Rol
-        </Button>
+        <SmartPermissionWrapper module="Usuarios" action="Crear">
+          <Button
+            onClick={() => { setEditingId(null); setForm({}); setIsModalOpen(true); }}
+            color="success"
+            startContent={<FaPlus size={16} />}
+            size="sm"
+            className="w-full sm:w-auto font-bold text-white"
+          >
+            Nuevo Rol
+          </Button>
+        </SmartPermissionWrapper>
       </div>
       <div className="mb-4 md:mb-6 flex items-center gap-3 flex-shrink-0">
         <Input
@@ -206,44 +209,50 @@ export default function GestionRoles(): ReactElement {
                 </TableCell>
                 <TableCell className="py-2 px-3 text-center">
                   <div className="flex justify-center gap-1">
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      color="primary"
-                      size="sm"
-                      onClick={() => { setEditingId(r.id); setForm(r); setIsModalOpen(true); }}
-                      title="Editar rol"
-                      className="w-8 h-8"
-                    >
-                      <FaEdit size={14} />
-                    </Button>
-                    {!['aprendiz', 'pasante', 'invitado', 'instructor'].includes(r.nombre.toLowerCase()) && (
+                    <SmartPermissionWrapper module="Usuarios" action="Editar">
                       <Button
                         isIconOnly
                         variant="light"
-                        color="danger"
+                        color="primary"
                         size="sm"
-                        onClick={() => openDeleteModal(r)}
-                        title="Eliminar rol"
+                        onClick={() => { setEditingId(r.id); setForm(r); setIsModalOpen(true); }}
+                        title="Editar rol"
                         className="w-8 h-8"
                       >
-                        <FaTrash size={14} />
+                        <FaEdit size={14} />
                       </Button>
+                    </SmartPermissionWrapper>
+                    {!['aprendiz', 'pasante', 'invitado', 'instructor'].includes(r.nombre.toLowerCase()) && (
+                      <SmartPermissionWrapper module="Usuarios" action="EliminarRol">
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          color="danger"
+                          size="sm"
+                          onClick={() => openDeleteModal(r)}
+                          title="Eliminar rol"
+                          className="w-8 h-8"
+                        >
+                          <FaTrash size={14} />
+                        </Button>
+                      </SmartPermissionWrapper>
                     )}
                   </div>
                 </TableCell>
                 <TableCell className="py-2 px-3 text-center">
-                  <Button
-                    isIconOnly
-                    variant="light"
-                    color="default"
-                    size="sm"
-                    onClick={() => openPermModal(r)}
-                    title="Gestionar permisos del rol"
-                    className="w-8 h-8"
-                  >
-                    <FaUserCog size={16}/>
-                  </Button>
+                  <SmartPermissionWrapper module="Usuarios" action="Asignar">
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      color="default"
+                      size="sm"
+                      onClick={() => openPermModal(r)}
+                      title="Gestionar permisos del rol"
+                      className="w-8 h-8"
+                    >
+                      <FaUserCog size={16}/>
+                    </Button>
+                  </SmartPermissionWrapper>
                 </TableCell>
               </TableRow>
             ))}

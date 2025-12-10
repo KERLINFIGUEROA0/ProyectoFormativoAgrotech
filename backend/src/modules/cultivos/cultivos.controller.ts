@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete, Param, Body, ParseIntPipe,
-  UseInterceptors, UploadedFile, BadRequestException, Res, Query
+  UseInterceptors, UploadedFile, BadRequestException, Res, Query, UseGuards
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -9,8 +9,12 @@ import { CultivosService } from './cultivos.service';
 import { PdfService } from './pdf.service';
 import { CreateCultivoDto } from './dto/create-cultivo.dto';
 import { UpdateCultivoDto } from './dto/update-cultivo.dto';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('cultivos')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class CultivosController {
   constructor(
     private readonly cultivosService: CultivosService,
@@ -18,30 +22,35 @@ export class CultivosController {
   ) {}
 
   @Post('crear')
+  @Permission('Cultivos.Crear')
   async crear(@Body() data: CreateCultivoDto) {
     const nuevo = await this.cultivosService.crear(data);
     return { success: true, message: `El cultivo se creó correctamente`, data: nuevo };
   }
 
   @Get('listar')
+  @Permission('Cultivos.Ver')
   async listar() {
     const lista = await this.cultivosService.listar();
     return { success: true, total: lista.length, data: lista };
   }
 
   @Get(':id')
+  @Permission('Cultivos.Ver')
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const cultivo = await this.cultivosService.buscarPorId(id);
     return { success: true, data: cultivo };
   }
 
   @Put('actualizar/:id')
+  @Permission('Cultivos.Editar')
   async actualizar(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateCultivoDto) {
     const actualizado = await this.cultivosService.actualizar(id, data);
     return { success: true, message: `El cultivo se actualizó`, data: actualizado };
   }
 
   @Put('finalizar/:id')
+  @Permission('Cultivos.Editar')
   async finalizar(@Param('id', ParseIntPipe) id: number, @Body() body: { fechaFin: string }) {
     if (!body.fechaFin) throw new BadRequestException("La fecha de finalización es obligatoria");
 
@@ -50,6 +59,7 @@ export class CultivosController {
   }
 
   @Post('registrar-cosecha/:id')
+  @Permission('Cultivos.Editar')
   async registrarCosecha(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { fecha: string; cantidad: number; esFinal: boolean }
@@ -66,6 +76,7 @@ export class CultivosController {
   }
 
   @Delete('eliminar/:id')
+  @Permission('Cultivos.Eliminar')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     await this.cultivosService.eliminar(id);
     return { success: true, message: `El cultivo fue eliminado` };
@@ -73,6 +84,7 @@ export class CultivosController {
 
   // --- ✅ CORRECCIÓN DEFINITIVA AQUÍ ---
   @Post(':id/imagen')
+  @Permission('Cultivos.Editar')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: './uploads/cultivos-pic',
@@ -96,6 +108,7 @@ export class CultivosController {
   }
 
   @Get(':id/exportar-excel')
+  @Permission('Cultivos.Ver')
   async exportarExcel(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response
@@ -117,6 +130,7 @@ export class CultivosController {
   }
 
   @Get('exportar-excel/general')
+  @Permission('Cultivos.Ver')
   async exportarExcelGeneral(@Res() res: Response) {
     const excelBuffer = await this.cultivosService.exportarExcelGeneral();
 
@@ -135,6 +149,7 @@ export class CultivosController {
   }
 
   @Post('actualizar-estados-lotes')
+  @Permission('Cultivos.Editar')
   async actualizarEstadosLotes() {
     const resultado = await this.cultivosService.actualizarEstadosLotes();
     return {
@@ -145,6 +160,7 @@ export class CultivosController {
   }
 
   @Get('diagnosticar-estados-lotes')
+  @Permission('Cultivos.Ver')
   async diagnosticarEstadosLotes() {
     const diagnostico = await this.cultivosService.diagnosticarEstadosLotes();
     return {
@@ -154,6 +170,7 @@ export class CultivosController {
   }
 
   @Get(':id/pdf-trazabilidad')
+  @Permission('Cultivos.Ver')
   async generarPdfTrazabilidad(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,
@@ -177,6 +194,7 @@ export class CultivosController {
   }
 
   @Get(':id/material-costs')
+  @Permission('Cultivos.Ver')
   async getMaterialCosts(@Param('id', ParseIntPipe) id: number, @Query('fechaInicio') fechaInicio?: string, @Query('fechaFin') fechaFin?: string) {
     const actividades = await this.cultivosService.getActividadesWithMateriales(id, fechaInicio, fechaFin);
     const totalMaterialCosts = actividades.reduce((total, actividad) => {

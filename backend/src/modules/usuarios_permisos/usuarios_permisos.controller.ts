@@ -19,7 +19,7 @@ export class UsuarioPermisoController {
   constructor(private readonly usuarioPermisoService: UsuarioPermisoService) {}
 
   @Get('usuario/:usuarioId')
-  @Permission('Usuarios.Ver') 
+  @Permission('Usuarios.Asignar') 
   async getPermissionsForUser(@Param('usuarioId') usuarioId: string) {
     try {
       const permissions =

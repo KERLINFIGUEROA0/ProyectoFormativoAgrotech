@@ -4,6 +4,7 @@ import { Pencil, Trash2, FileText, Plus, Search } from 'lucide-react';
 import type { Ficha, FichaForm } from '../interfaces/fichas';
 import { getFichas, createFicha, updateFicha, deleteFicha } from '../api/fichas';
 import FichaFormComponent from './FichaForm';
+import { SmartPermissionWrapper } from '../../../components/PermissionWrapper';
 import {
   Input,
   Button,
@@ -136,15 +137,17 @@ export default function GestionFichas(): ReactElement {
             <h1 className="text-xl md:text-2xl font-bold text-gray-700">Gestión de Fichas</h1>
             <p className="text-sm text-gray-500 mt-1">Administra las fichas de formación del sistema</p>
           </div>
-          <Button
-            onClick={handleCreate}
-            color="success"
-            startContent={<Plus size={16} />}
-            size="sm"
-            className="w-full sm:w-auto font-bold text-white"
-          >
-            Nueva Ficha
-          </Button>
+          <SmartPermissionWrapper module="Fichas" action="Crear">
+            <Button
+              onClick={handleCreate}
+              color="success"
+              startContent={<Plus size={16} />}
+              size="sm"
+              className="w-full sm:w-auto font-bold text-white"
+            >
+              Nueva Ficha
+            </Button>
+          </SmartPermissionWrapper>
         </div>
 
         <div className="mb-6">
@@ -284,28 +287,32 @@ export default function GestionFichas(): ReactElement {
                </TableCell>
                <TableCell className="py-2 px-3 text-center">
                  <div className="flex justify-center gap-1">
-                   <Button
-                     isIconOnly
-                     variant="light"
-                     color="primary"
-                     size="sm"
-                     onClick={() => handleEdit(ficha)}
-                     title="Editar ficha"
-                     className="w-8 h-8"
-                   >
-                     <Pencil size={14} />
-                   </Button>
-                   <Button
-                     isIconOnly
-                     variant="light"
-                     color="danger"
-                     size="sm"
-                     onClick={() => handleDeleteClick(ficha)}
-                     title="Eliminar ficha"
-                     className="w-8 h-8"
-                   >
-                     <Trash2 size={14} />
-                   </Button>
+                   <SmartPermissionWrapper module="Fichas" action="Editar">
+                     <Button
+                       isIconOnly
+                       variant="light"
+                       color="primary"
+                       size="sm"
+                       onClick={() => handleEdit(ficha)}
+                       title="Editar ficha"
+                       className="w-8 h-8"
+                     >
+                       <Pencil size={14} />
+                     </Button>
+                   </SmartPermissionWrapper>
+                   <SmartPermissionWrapper module="Fichas" action="EliminarFichas">
+                     <Button
+                       isIconOnly
+                       variant="light"
+                       color="danger"
+                       size="sm"
+                       onClick={() => handleDeleteClick(ficha)}
+                       title="Eliminar ficha"
+                       className="w-8 h-8"
+                     >
+                       <Trash2 size={14} />
+                     </Button>
+                   </SmartPermissionWrapper>
                  </div>
                </TableCell>
              </TableRow>

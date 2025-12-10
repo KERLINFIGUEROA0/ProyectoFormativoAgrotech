@@ -28,7 +28,7 @@ import { getFichasOpcionesFromUsuarios } from "../../fichas/api/fichas";
 import UserForm from "./UserForm";
 import PermissionsModal from "./PermissionsModal";
 import { api } from "../../../lib/axios";
-import PermissionWrapper from "../../../components/PermissionWrapper";
+import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
 import {
   Input,
   Select,
@@ -344,15 +344,26 @@ export default function GestionUsuarios(): ReactElement {
       await fetchData();
       closeModal();
     } catch (error: unknown) {
-      console.error("Error guardando usuario:", error);
-      const apiErrors = (error as any).response?.data?.message;
+      const axiosError = error as any;
+      const apiError = axiosError.response?.data?.error;
       let errorMessage =
         editingId != null ? "Error al actualizar." : "Error al crear.";
-      if (Array.isArray(apiErrors)) {
-        errorMessage = apiErrors.join(". ");
-      } else if (typeof apiErrors === "string") {
-        errorMessage = apiErrors;
+
+      if (typeof apiError === "string") {
+        errorMessage = apiError;
+      } else {
+        // Fallback al message si no hay error específico
+        const apiMessage = axiosError.response?.data?.message;
+        if (typeof apiMessage === "string") {
+          errorMessage = apiMessage;
+        }
       }
+
+      // Solo mostrar console.error para errores inesperados (no 400 de validación)
+      if (axiosError.response?.status !== 400) {
+        console.error("Error guardando usuario:", error);
+      }
+
       toast.error(errorMessage, { id: toastId });
     }
   };
@@ -583,7 +594,7 @@ export default function GestionUsuarios(): ReactElement {
                   <span className="sm:hidden">Excel</span>
                 </Button>
               </PermissionWrapper>
-              <PermissionWrapper module="Usuarios" permission="Ver">
+              <SmartPermissionWrapper module="Usuarios" action="DescargarExcel">
                 <Button
                   onClick={handleExportExcel}
                   color="default"
@@ -594,7 +605,7 @@ export default function GestionUsuarios(): ReactElement {
                   <span className="hidden sm:inline">Exportar</span>
                   <span className="sm:hidden">Export</span>
                 </Button>
-              </PermissionWrapper>
+              </SmartPermissionWrapper>
             </div>
           </div>
           <input
@@ -881,7 +892,7 @@ export default function GestionUsuarios(): ReactElement {
                   </TableCell>
                   <TableCell className="py-2 px-3">
                     <div className="flex justify-center items-center gap-1">
-                      <PermissionWrapper module="Usuarios" permission="Editar">
+                      <SmartPermissionWrapper module="Usuarios" action="Editar">
                         <Button
                           isIconOnly
                           variant="light"
@@ -893,8 +904,8 @@ export default function GestionUsuarios(): ReactElement {
                         >
                           <Pencil size={14} />
                         </Button>
-                      </PermissionWrapper>
-                      <PermissionWrapper module="Usuarios" permission="Editar">
+                      </SmartPermissionWrapper>
+                      <SmartPermissionWrapper module="Usuarios" action="Desactivar">
                         <Switch
                           size="sm"
                           color="success"
@@ -906,7 +917,7 @@ export default function GestionUsuarios(): ReactElement {
                               : "Activar usuario"
                           }
                         />
-                      </PermissionWrapper>
+                      </SmartPermissionWrapper>
                     </div>
                   </TableCell>
                   <TableCell className="py-2 px-3 text-center">

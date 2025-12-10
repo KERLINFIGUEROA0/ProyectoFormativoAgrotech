@@ -159,11 +159,9 @@ export class UsuariosController {
   }
 
   @Get('asignables')
-  @Permission('Usuarios.Ver') // Reutilizamos el permiso de ver usuarios
   async getAssignableUsers() {
     try {
       const usuarios = await this.usuariosService.findAssignableUsers();
-      // Mapeamos para que coincida con la interfaz UsuarioSimple del frontend
       const data = usuarios.map(u => ({
         id: u.id,
         identificacion: u.identificacion,
@@ -237,8 +235,9 @@ export class UsuariosController {
       );
     }
   }
+  
   @Delete('eliminar/:id')
-  @Permission('Usuarios.Eliminar')
+  @Permission('Usuarios.Desactivar')
   
   async eliminar(@Param('id') id: number) {
     try {
@@ -280,27 +279,6 @@ export class UsuariosController {
     }
   }
 
-  @Delete('eliminar-permanente/:id')
-  @Permission('Usuarios.Eliminar')
-
-  async eliminarPermanente(@Param('id') id: number) {
-    try {
-      await this.usuariosService.deleteUsuario(id);
-      return {
-        success: true,
-        message: `Usuario con id ${id} eliminado permanentemente`,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: `Error al eliminar permanentemente el usuario con id ${id}`,
-          error: error.message,
-        },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-  }
   @Get('identificacion/:identificacion')
   @Permission('Usuarios.Ver')
   
@@ -336,8 +314,8 @@ export class UsuariosController {
       );
     }
   }
+
   @Post('cambiarpassword')
-  
   async cambiarPassword(@Req() req, @Body() body: CambiarPasswordDto) {
     try {
       const usuarioId = req.user.id;
@@ -359,26 +337,21 @@ export class UsuariosController {
     }
   }
   @Get('perfil')
-
    async obtenerPerfil(@Req() req) {
      try {
        const usuarioId = req.user.id;
        const usuario = await this.usuariosService.buscarPorId(usuarioId);
 
-       // Obtener permisos del rol
        const permisosRol = (usuario.tipoUsuario?.rolPermisos ?? [])
          .map((rp) => rp.permiso?.nombre)
          .filter(Boolean) as string[];
 
-       // Obtener permisos individuales del usuario
        const permisosUsuario = (usuario.usuarioPermisos ?? [])
          .map((up) => up.permiso?.nombre)
          .filter(Boolean) as string[];
 
-       // Combinar permisos únicos
        const permisos = Array.from(new Set([...permisosRol, ...permisosUsuario]));
 
-       // Agrupar permisos por módulo
        const modulos = (usuario.tipoUsuario?.rolPermisos ?? [])
          .map((rp) => rp.permiso)
          .concat((usuario.usuarioPermisos ?? []).map((up) => up.permiso))
@@ -464,7 +437,6 @@ export class UsuariosController {
   }
 
   @Get('fichas/opciones')
-  @Permission('Usuarios.Ver')
   async getFichasOpciones() {
     try {
       const opciones = await this.fichasService.getOpciones();
@@ -486,7 +458,7 @@ export class UsuariosController {
   }
 
   @Post('exportar-excel-filtrado')
-  @Permission('Usuarios.Ver')
+  @Permission('Usuarios.DescargarExcel')
   async exportarExcelFiltrado(@Body() filtros: any, @Res() res: Response) {
     try {
       const buffer = await this.usuariosService.exportarExcelFiltrado(filtros);

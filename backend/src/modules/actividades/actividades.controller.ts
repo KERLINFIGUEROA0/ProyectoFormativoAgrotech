@@ -27,18 +27,21 @@ import { AsignarActividadDto } from './dto/asignar-actividad.dto';
 import { DevolverMaterialesFinalDto } from './dto/devolver-materiales-final.dto';
 import { CreateRespuestaDto, CalificarRespuestaDto, MaterialDevueltoDto } from './dto/create-respuesta.dto';
 import { CalificarActividadDto } from './dto/calificar-actividad.dto';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 import { plainToInstance } from 'class-transformer';
 import * as path from 'path';
 import * as fs from 'fs';
 
 @Controller('actividades')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class ActividadesController {
   constructor(private readonly actividadesService: ActividadesService) {}
 
   // ✅ Crear actividad con imágenes y usuario autenticado
-  @UseGuards(JwtAuthGuard)
   @Post('registrar')
+  @Permission('Actividades.Crear')
   @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   async create(
     @UploadedFiles() files: Express.Multer.File[],
@@ -68,8 +71,8 @@ export class ActividadesController {
   }
 
   // ✅ Listar actividades filtradas por usuario (con relaciones)
-  @UseGuards(JwtAuthGuard)
   @Get('listar')
+  @Permission('Actividades.Ver')
   findAll(@Req() req) {
     const userIdentificacion = req.user?.identificacion;
     return this.actividadesService.findAll(userIdentificacion);
@@ -77,12 +80,14 @@ export class ActividadesController {
 
   // ✅ Buscar por término (id, título, descripción)
   @Get('search')
+  @Permission('Actividades.Ver')
   search(@Query() query: SearchActividadDto) {
     return this.actividadesService.search(query);
   }
 
   // ✅ Buscar una sola actividad por ID
   @Get('listar/:id')
+  @Permission('Actividades.Ver')
   findOne(@Param('id') id: string) {
     const result = this.actividadesService.findOne(Number(id));
     return result;
@@ -90,8 +95,9 @@ export class ActividadesController {
 
   // --- INICIO DE LA CORRECCIÓN ---
   // ✅ Actualizar actividad
-  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades)) // Configuración específica para actividades
   @Patch(':id')
+  @Permission('Actividades.Editar')
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades)) // Configuración específica para actividades
   update(
     @Param('id') id: string,
     @Body() body: any, // 3. Recibe el body crudo como 'any'
@@ -152,14 +158,15 @@ export class ActividadesController {
 
   // ✅ Eliminar actividad
   @Delete(':id')
+  @Permission('Actividades.Eliminar')
   remove(@Param('id') id: string) {
     return this.actividadesService.remove(Number(id));
   }
   
   // ✅ Enviar respuesta a actividad (aprendices)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   @Post(':id/respuesta')
+  @Permission('Actividades.Ver')
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   async enviarRespuesta(
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],
@@ -196,8 +203,8 @@ export class ActividadesController {
   }
 
   // ✅ Obtener respuestas de una actividad
-  @UseGuards(JwtAuthGuard)
   @Get(':id/respuestas')
+  @Permission('Actividades.Ver')
   async obtenerRespuestasPorActividad(@Param('id') id: string, @Req() req) {
     const userIdentificacion = req.user?.identificacion;
     const user = await this.actividadesService['usuarioRepository'].findOne({
@@ -209,8 +216,8 @@ export class ActividadesController {
   }
 
   // ✅ Calificar respuesta (instructores)
-  @UseGuards(JwtAuthGuard)
   @Patch('respuesta/:respuestaId/calificar')
+  @Permission('Actividades.Editar')
   async calificarRespuesta(
     @Param('respuestaId') respuestaId: string,
     @Body() dto: CalificarRespuestaDto,
@@ -226,8 +233,8 @@ export class ActividadesController {
   }
 
   // ✅ Calificar actividad (instructores)
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/calificar')
+  @Permission('Actividades.Editar')
   async calificarActividad(
     @Param('id') id: string,
     @Body() dto: CalificarActividadDto,
@@ -244,8 +251,8 @@ export class ActividadesController {
 
 
   // ✅ Descargar archivo de evidencia
-  @UseGuards(JwtAuthGuard)
   @Get('descargar/:filename')
+  @Permission('Actividades.Ver')
   async descargarArchivo(@Param('filename') filename: string, @Query('nombre') nombreOriginal: string, @Res() res: Response) {
     try {
       // Usar el directorio temp-uploads del proyecto
@@ -284,8 +291,8 @@ export class ActividadesController {
   }
 
   // ✅ Obtener reporte de actividad
-  @UseGuards(JwtAuthGuard)
   @Get(':id/reporte')
+  @Permission('Actividades.Ver')
   async obtenerReporteActividad(@Param('id') id: string, @Req() req) {
     const userIdentificacion = req.user?.identificacion;
     const user = await this.actividadesService['usuarioRepository'].findOne({
@@ -300,8 +307,8 @@ export class ActividadesController {
   }
 
   // ✅ Descargar reporte de actividad en Excel
-  @UseGuards(JwtAuthGuard)
   @Get(':id/reporte/excel')
+  @Permission('Actividades.Ver')
   async descargarReporteExcel(@Param('id') id: string, @Req() req, @Res() res: Response) {
     const userIdentificacion = req.user?.identificacion;
     const user = await this.actividadesService['usuarioRepository'].findOne({
@@ -321,8 +328,8 @@ export class ActividadesController {
   }
 
   // ✅ Devolver materiales finales (solo responsable cuando actividad completada)
-  @UseGuards(JwtAuthGuard)
   @Post(':id/devolver-materiales-final')
+  @Permission('Actividades.Editar')
   async devolverMaterialesFinal(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DevolverMaterialesFinalDto,
@@ -333,9 +340,9 @@ export class ActividadesController {
   }
 
   // ✅ Asignar actividad a aprendices
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   @Post('asignar')
+  @Permission('Actividades.Crear')
+  @UseInterceptors(AnyFilesInterceptor(multerConfigActividades))
   asignarActividad(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: any, // Recibir como any para procesar FormData

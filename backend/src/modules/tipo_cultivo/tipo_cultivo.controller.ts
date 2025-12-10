@@ -9,16 +9,22 @@ import {
   ParseIntPipe,
   NotFoundException,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { TipoCultivoService } from './tipo_cultivo.service';
 import { CreateTipoCultivoDto } from './dto/create-tipo_cultivo.dto';
 import { UpdateTipoCultivoDto } from './dto/update-tipo_cultivo.dto';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('tipo-cultivo')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class TipoCultivoController {
   constructor(private readonly tipoCultivoService: TipoCultivoService) {}
 
   @Post('crear')
+  @Permission('TipoCultivo.Crear')
   async crear(@Body() data: CreateTipoCultivoDto) {
     try {
       const nuevo = await this.tipoCultivoService.crear(data);
@@ -35,6 +41,7 @@ export class TipoCultivoController {
   }
 
   @Get('listar')
+  @Permission('TipoCultivo.Ver')
   async listar() {
     const lista = await this.tipoCultivoService.listar();
     return {
@@ -45,6 +52,7 @@ export class TipoCultivoController {
   }
 
   @Get(':id')
+  @Permission('TipoCultivo.Ver')
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const cultivo = await this.tipoCultivoService.buscarPorId(id);
     if (!cultivo) {
@@ -59,6 +67,7 @@ export class TipoCultivoController {
   }
 
   @Put('actualizar/:id')
+  @Permission('TipoCultivo.Editar')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateTipoCultivoDto,
@@ -77,6 +86,7 @@ export class TipoCultivoController {
   }
 
   @Delete('eliminar/:id')
+  @Permission('TipoCultivo.Eliminar')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     const eliminado = await this.tipoCultivoService.eliminar(id);
     if (!eliminado) {

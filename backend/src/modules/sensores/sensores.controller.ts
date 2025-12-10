@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { SensoresService } from './sensores.service';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
@@ -6,8 +6,12 @@ import { UpdateSensoreDto } from './dto/update-sensore.dto';
 import { UpdateSensoreEstadoDto } from './dto/update-sensore-estado.dto';
 import { GenerarReporteTrazabilidadDto } from './dto/generar-reporte.dto';
 import { PdfService } from '../pdf/pdf.service';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('sensores')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class SensoresController {
   constructor(
     private readonly sensoresService: SensoresService,
@@ -15,12 +19,14 @@ export class SensoresController {
   ) {}
 
   @Post('crear')
+  @Permission('Sensores.Crear')
   async create(@Body() createSensoreDto: CreateSensoreDto) {
     const nuevo = await this.sensoresService.create(createSensoreDto);
     return { success: true, message: `Sensor "${nuevo.nombre}" creado.`, data: nuevo };
   }
 
   @Get('listar')
+  @Permission('Sensores.Ver')
   async findAll() {
     const sensores = await this.sensoresService.findAll();
     return { success: true, data: sensores };
@@ -29,6 +35,7 @@ export class SensoresController {
   // --- ENDPOINT PARA ACTUALIZAR ---
   // Usa Put para reemplazar/actualizar el recurso completo.
   @Put('actualizar/:id')
+  @Permission('Sensores.Editar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateSensoreDto: UpdateSensoreDto) {
     const actualizado = await this.sensoresService.update(id, updateSensoreDto);
     return {
@@ -40,6 +47,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ACTIVAR/DESACTIVAR SENSOR ---
   @Patch('actualizar/:id/estado')
+  @Permission('Sensores.Editar')
   async updateEstado(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSensoreEstadoDto) {
     const actualizado = await this.sensoresService.updateEstado(id, dto.estado);
     return {
@@ -51,6 +59,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ELIMINAR ---
   @Delete('eliminar/:id')
+  @Permission('Sensores.Eliminar')
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.sensoresService.remove(id);
     return {
@@ -61,6 +70,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ELIMINAR SENSORES AUTOMÁTICOS ---
   @Delete('eliminar-automaticos')
+  @Permission('Sensores.Eliminar')
   async eliminarSensoresAutomaticos() {
     const resultado = await this.sensoresService.eliminarSensoresAutomaticos();
     return {
@@ -74,6 +84,7 @@ export class SensoresController {
    * Obtiene sensores por surco
    */
   @Get('por-surco/:surcoId')
+  @Permission('Sensores.Ver')
   async findBySurco(@Param('surcoId', ParseIntPipe) surcoId: number) {
     const sensores = await this.sensoresService.findBySublote(surcoId);
     return { success: true, data: sensores };
@@ -83,6 +94,7 @@ export class SensoresController {
    * Obtiene sensores por cultivo
    */
   @Get('por-cultivo/:cultivoId')
+  @Permission('Sensores.Ver')
   async findByCultivo(@Param('cultivoId', ParseIntPipe) cultivoId: number) {
     const sensores = await this.sensoresService.findByCultivo(cultivoId);
     return { success: true, data: sensores };
@@ -93,6 +105,7 @@ export class SensoresController {
    * Elimina un sensor específico de un lote
    */
   @Delete('eliminar-de-lote/:sensorId')
+  @Permission('Sensores.Eliminar')
   async eliminarSensorDeLote(@Param('sensorId', ParseIntPipe) sensorId: number) {
     await this.sensoresService.eliminarSensorDeLote(sensorId);
     return {
@@ -105,6 +118,7 @@ export class SensoresController {
    * Sincroniza sensores para un lote basado en los tópicos de su broker
    */
   @Post('sincronizar-lote/:loteId')
+  @Permission('Sensores.Editar')
   async sincronizarSensoresLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const result = await this.sensoresService.sincronizarSensoresLote(loteId);
     return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
@@ -114,12 +128,14 @@ export class SensoresController {
    * Obtiene cultivos activos de un lote para el selector de reportes
    */
   @Get('cultivos-activos-lote/:loteId')
+  @Permission('Sensores.Ver')
   async getCultivosActivosLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const cultivos = await this.sensoresService.getCultivosActivosLote(loteId);
     return { success: true, data: cultivos };
   }
 
   @Post('reporte-trazabilidad')
+  @Permission('Sensores.Ver')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
     console.log('Recibiendo solicitud de reporte:', dto);
     try {
