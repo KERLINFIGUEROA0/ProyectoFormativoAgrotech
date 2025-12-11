@@ -219,7 +219,7 @@ const PagosPasantePage: React.FC = () => {
               
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
-                <p className="text-blue-600 font-medium">
+                <p className="text-gray-800 font-medium">
                   {isAdmin ? '' : 'Actividades que has asignado'}
                 </p>
               </div>

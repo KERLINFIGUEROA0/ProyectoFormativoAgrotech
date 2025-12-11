@@ -1,7 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Server, X, Wifi } from 'lucide-react';
+import { Server, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
-import { Input, Button, Select, SelectItem } from "@heroui/react";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input,
+  Button,
+  Select,
+  SelectItem,
+  Checkbox,
+  Card,
+  CardHeader,
+  CardBody,
+  Divider,
+  Chip
+} from "@heroui/react";
 import type { Broker, Lote } from '../interfaces/iot';
 import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
 
@@ -24,7 +40,7 @@ const defaultTopicsConfig = [
 
 export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, brokers: _brokers }: BrokerFormModalProps) {
   const [lotes, setLotes] = useState<Lote[]>([]);
-  const [topicosAdicionales, setTopicosAdicionales] = useState<Array<{topic: string, min?: number, max?: number}>>([{topic: '', min: undefined, max: undefined}]);
+  const [topicosAdicionales, setTopicosAdicionales] = useState<Array<{ topic: string, min?: number, max?: number }>>([{ topic: '', min: undefined, max: undefined }]);
 
   // 2. ESTADO INICIAL (Marcados por defecto)
   const [defaultTopicsEnabled, setDefaultTopicsEnabled] = useState<Record<string, boolean>>({
@@ -95,7 +111,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         // Inicializar todos en false
         defaultTopicsConfig.forEach(dt => enabled[dt.key] = false);
 
-        const additional: Array<{topic: string, min?: number, max?: number}> = [];
+        const additional: Array<{ topic: string, min?: number, max?: number }> = [];
         const prefix = broker.prefijoTopicos || '';
 
         broker.topicosAdicionales?.forEach((t: any) => {
@@ -111,14 +127,14 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           } else {
             const cleanTopic = topicStr.replace(prefix + '/', '');
             if (typeof t === 'string') {
-              additional.push({topic: cleanTopic, min: undefined, max: undefined});
+              additional.push({ topic: cleanTopic, min: undefined, max: undefined });
             } else {
-              additional.push({topic: cleanTopic, min: t.min, max: t.max});
+              additional.push({ topic: cleanTopic, min: t.min, max: t.max });
             }
           }
         });
         setDefaultTopicsEnabled(enabled);
-        setTopicosAdicionales(additional.length > 0 ? additional : [{topic: '', min: undefined, max: undefined}]);
+        setTopicosAdicionales(additional.length > 0 ? additional : [{ topic: '', min: undefined, max: undefined }]);
       } else {
         setFormData({
           nombre: '',
@@ -134,7 +150,7 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
         const defaultsReset: Record<string, boolean> = {};
         defaultTopicsConfig.forEach(dt => defaultsReset[dt.key] = true);
         setDefaultTopicsEnabled(defaultsReset);
-        setTopicosAdicionales([{topic: '', min: undefined, max: undefined}]);
+        setTopicosAdicionales([{ topic: '', min: undefined, max: undefined }]);
       }
     }
   }, [isOpen, broker]);
@@ -181,8 +197,8 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) e.preventDefault();
 
     try {
       const testData = {
@@ -251,288 +267,269 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-500 ease-out" onClick={onClose}>
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-[85vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 ease-out" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Server className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">{broker ? 'Editar Broker' : 'Nuevo Broker'}</h3>
-              <p className="text-sm text-gray-600">Configuración de conexión MQTT y Tópicos</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <X size={20} className="text-gray-500" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-6">
-
-              {/* SECCIÓN 1: Información del Broker */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-                <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  Información del Broker
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    placeholder="Nombre del broker"
-                    fullWidth
-                    required
-                  />
-                  <Select
-                    label="Protocolo"
-                    selectedKeys={[formData.protocolo]}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as 'mqtt' | 'mqtts' | 'http' | 'https' | 'ws' | 'wss';
-                      setFormData({ ...formData, protocolo: selected });
-                    }}
-                    fullWidth
-                  >
-                    <SelectItem key="mqtt">MQTT (mqtt://)</SelectItem>
-                    <SelectItem key="mqtts">MQTT SSL (mqtts://)</SelectItem>
-                    <SelectItem key="http">HTTP (http://)</SelectItem>
-                    <SelectItem key="https">HTTPS (https://)</SelectItem>
-                    <SelectItem key="ws">WebSocket (ws://)</SelectItem>
-                    <SelectItem key="wss">WebSocket SSL (wss://)</SelectItem>
-                  </Select>
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      size="5xl"
+      scrollBehavior="inside"
+    >
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Server className="h-6 w-6 text-blue-600" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <Input
-                    label="Host"
-                    value={formData.host}
-                    onChange={(e) => setFormData({ ...formData, host: e.target.value })}
-                    placeholder="ej: test.mosquitto.org"
-                    fullWidth
-                    required
-                  />
-                  <Input
-                    label="Puerto"
-                    type="number"
-                    value={formData.puerto}
-                    onChange={(e) => setFormData({ ...formData, puerto: e.target.value })}
-                    placeholder="1883"
-                    fullWidth
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <Select
-                    label="Lote *"
-                    selectedKeys={formData.loteId ? [formData.loteId] : []}
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys);
-                      setFormData({ ...formData, loteId: String(selected[0]) });
-                    }}
-                    placeholder="Seleccionar lote"
-                    fullWidth
-                    required
-                  >
-                    {lotes.map((lote) => (
-                      <SelectItem key={String(lote.id)}>{lote.nombre}</SelectItem>
-                    ))}
-                  </Select>
-                  <Input
-                    label="Prefijo Global"
-                    value={formData.prefijoTopicos}
-                    onChange={(e) => setFormData({ ...formData, prefijoTopicos: e.target.value })}
-                    placeholder="ej: agrotech"
-                    fullWidth
-                  />
-                  <div className="flex items-end">
-                    <Button
-                      onClick={handleTestConnection}
-                      disabled={isTestingConnection || !formData.host || !formData.puerto || !formData.loteId}
-                      className="bg-green-600 text-white font-bold hover:bg-green-700"
-                      fullWidth
-                      startContent={<Wifi size={14} />}
-                    >
-                      {isTestingConnection ? 'Probando...' : 'Probar Conexión'}
-                    </Button>
-                  </div>
+                <div>
+                  <h3 className="text-xl font-bold">{broker ? 'Editar Broker' : 'Nuevo Broker'}</h3>
+                  <p className="text-small text-default-500 font-normal">Configuración de conexión MQTT y Tópicos</p>
                 </div>
               </div>
+            </ModalHeader>
+            <ModalBody>
+              <form id="broker-form" onSubmit={handleSubmit} className="space-y-6">
 
-              {/* SECCIÓN 2: Configuración de Tópicos */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
-                <h4 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Dispositivos Predeterminados
-                </h4>
-                <div className="space-y-4">
-                  <div className="bg-white p-3 rounded-md border border-green-100">
-                    <div className="grid grid-cols-2 gap-3">
-                      {defaultTopicsConfig.map((dt) => {
-                         // Construcción visual del tópico final
-                         const fullTopic = normalizedPrefix ? `${normalizedPrefix}/${dt.key}` : dt.key;
+                {/* SECCIÓN 1: Información del Broker */}
+                <Card shadow="sm" className="border border-default-200">
+                  <CardHeader className="flex gap-2 bg-default-50/50 pb-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-small font-bold text-default-700">Información de Conexión</span>
+                  </CardHeader>
+                  <Divider />
+                  <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Nombre"
+                      placeholder="Nombre del broker"
+                      value={formData.nombre}
+                      onValueChange={(val) => setFormData({ ...formData, nombre: val })}
+                      isRequired
+                      variant="bordered"
+                    />
+                    <Select
+                      label="Protocolo"
+                      placeholder="Selecciona un protocolo"
+                      selectedKeys={[formData.protocolo]}
+                      onChange={(e) => setFormData({ ...formData, protocolo: e.target.value as any })}
+                      isRequired
+                      variant="bordered"
+                    >
+                      <SelectItem key="mqtt" textValue="MQTT (mqtt://)">MQTT (mqtt://)</SelectItem>
+                      <SelectItem key="mqtts" textValue="MQTT SSL (mqtts://)">MQTT SSL (mqtts://)</SelectItem>
+                      <SelectItem key="http" textValue="HTTP (http://)">HTTP (http://)</SelectItem>
+                      <SelectItem key="https" textValue="HTTPS (https://)">HTTPS (https://)</SelectItem>
+                      <SelectItem key="ws" textValue="WebSocket (ws://)">WebSocket (ws://)</SelectItem>
+                      <SelectItem key="wss" textValue="WebSocket SSL (wss://)">WebSocket SSL (wss://)</SelectItem>
+                    </Select>
 
-                        return (
-                          <label key={dt.key} className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${defaultTopicsEnabled[dt.key] ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'}`}>
-                            <input
-                              type="checkbox"
-                              checked={defaultTopicsEnabled[dt.key]}
-                              onChange={(e) => setDefaultTopicsEnabled(prev => ({ ...prev, [dt.key]: e.target.checked }))}
-                              className="mr-3 h-4 w-4 text-green-600 rounded focus:ring-green-500"
-                            />
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-800">
-                                {dt.label}
-                              </span>
-                              <span className="text-xs text-gray-400 break-all">{fullTopic}</span>
-                            </div>
-                          </label>
-                        );
-                      })}
+                    <Input
+                      label="Host"
+                      placeholder="ej: test.mosquitto.org"
+                      value={formData.host}
+                      onValueChange={(val) => setFormData({ ...formData, host: val })}
+                      isRequired
+                      variant="bordered"
+                    />
+                    <Input
+                      label="Puerto"
+                      placeholder="1883"
+                      type="number"
+                      value={formData.puerto}
+                      onValueChange={(val) => setFormData({ ...formData, puerto: val })}
+                      isRequired
+                      variant="bordered"
+                    />
+
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Select
+                        label="Lote"
+                        placeholder="Seleccionar lote"
+                        selectedKeys={formData.loteId ? [formData.loteId] : []}
+                        onChange={(e) => setFormData({ ...formData, loteId: e.target.value })}
+                        isRequired
+                        variant="bordered"
+                      >
+                        {lotes.map((lote) => (
+                          <SelectItem key={String(lote.id)} textValue={lote.nombre}>{lote.nombre}</SelectItem>
+                        ))}
+                      </Select>
+                      <Input
+                        label="Prefijo Global"
+                        placeholder="ej: agrotech"
+                        value={formData.prefijoTopicos}
+                        onValueChange={(val) => setFormData({ ...formData, prefijoTopicos: val })}
+                        variant="bordered"
+                      />
+                      <Button
+                        color="success"
+                        variant="ghost"
+                        className="h-full min-h-[56px]"
+                        startContent={<Wifi size={18} />}
+                        onPress={handleTestConnection}
+                        isLoading={isTestingConnection}
+                        isDisabled={!formData.host || !formData.puerto || !formData.loteId}
+                      >
+                        {isTestingConnection ? 'Probando...' : 'Probar Conexión'}
+                      </Button>
                     </div>
-                  </div>
+                  </CardBody>
+                </Card>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tópicos Personalizados (Opcional)
-                    </label>
-                    {topicosAdicionales.map((topico, index) => (
-                      <div key={index} className="mb-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          <div className="md:col-span-2">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Tópico (se añade al prefijo global)</label>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 relative">
-                                <input
-                                  type="text"
-                                  value={topico.topic}
-                                  onChange={(e) => {
-                                    const newTopicos = [...topicosAdicionales];
-                                    newTopicos[index] = { ...topico, topic: e.target.value };
-                                    setTopicosAdicionales(newTopicos);
-                                  }}
-                                  placeholder="ej: mi_sensor_extra"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                  style={{
-                                    paddingLeft: normalizedPrefix ? `${(normalizedPrefix.length * 8) + 24}px` : '12px'
-                                  }}
-                                />
-                                {normalizedPrefix && (
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
-                                    {normalizedPrefix}/
-                                  </span>
-                                )}
-                              </div>
-                              {topicosAdicionales.length > 1 && (
-                                <Button
-                                  type="button"
-                                  onClick={() => setTopicosAdicionales(topicosAdicionales.filter((_, i) => i !== index))}
-                                  color="danger"
-                                  size="sm"
-                                  variant="solid"
-                                >
-                                  ×
-                                </Button>
-                              )}
+                {/* SECCIÓN 2: Configuración de Tópicos */}
+                <Card shadow="sm" className="border border-green-200 bg-green-50/20">
+                  <CardHeader className="flex gap-2 pb-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-small font-bold text-green-900">Configuración de Tópicos</span>
+                  </CardHeader>
+                  <Divider className="bg-green-100" />
+                  <CardBody className="space-y-6">
+                    {/* Default Topics */}
+                    <div>
+                      <h5 className="text-small font-bold text-default-600 mb-3">Dispositivos Predeterminados</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {defaultTopicsConfig.map((dt) => {
+                          const fullTopic = normalizedPrefix ? `${normalizedPrefix}/${dt.key}` : dt.key;
+                          return (
+                            <div key={dt.key} className={`flex items-start p-3 rounded-lg border transition-colors ${defaultTopicsEnabled[dt.key] ? 'bg-white border-green-300 shadow-sm' : 'bg-transparent border-transparent hover:bg-default-100'}`}>
+                              <Checkbox
+                                isSelected={defaultTopicsEnabled[dt.key]}
+                                onValueChange={(isSelected) => setDefaultTopicsEnabled(prev => ({ ...prev, [dt.key]: isSelected }))}
+                                classNames={{ label: "flex flex-col gap-1" }}
+                                size="sm"
+                                color="success"
+                              >
+                                <span className="font-semibold text-gray-800">{dt.label}</span>
+                                <span className="text-tiny text-gray-400 font-mono break-all">{fullTopic}</span>
+                              </Checkbox>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tópico completo: <code className="bg-gray-100 px-1 rounded text-xs">
-                                {normalizedPrefix ? `${normalizedPrefix}/${topico.topic || 'mi_sensor_extra'}` : topico.topic || 'mi_sensor_extra'}
-                              </code>
-                            </p>
-                          </div>
-                          <Input
-                            label="Valor Mínimo"
-                            type="number"
-                            value={String(topico.min || '')}
-                            onChange={(e) => {
-                              const newTopicos = [...topicosAdicionales];
-                              newTopicos[index] = { ...topico, min: e.target.value ? Number(e.target.value) : undefined };
-                              setTopicosAdicionales(newTopicos);
-                            }}
-                            placeholder="ej: 0"
-                            fullWidth
-                            size="sm"
-                          />
-                          <Input
-                            label="Valor Máximo"
-                            type="number"
-                            value={String(topico.max || '')}
-                            onChange={(e) => {
-                              const newTopicos = [...topicosAdicionales];
-                              newTopicos[index] = { ...topico, max: e.target.value ? Number(e.target.value) : undefined };
-                              setTopicosAdicionales(newTopicos);
-                            }}
-                            placeholder="ej: 100"
-                            fullWidth
-                            size="sm"
-                          />
-                        </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      onClick={() => setTopicosAdicionales([...topicosAdicionales, {topic: '', min: undefined, max: undefined}])}
-                      className="bg-green-600 text-white font-bold hover:bg-green-700"
-                      size="sm"
-                      startContent="+"
-                    >
-                      Añadir otro tópico
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                    </div>
 
-              {/* Autenticación */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
-                <h4 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  Autenticación (Opcional)
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Usuario"
-                    value={formData.usuario}
-                    onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
-                    placeholder="Usuario"
-                    fullWidth
-                  />
-                  <Input
-                    label="Contraseña"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Contraseña"
-                    fullWidth
-                  />
-                </div>
-              </div>
+                    {/* Custom Topics */}
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h5 className="text-small font-bold text-default-600">Tópicos Personalizados</h5>
+                        <Button
+                          size="sm"
+                          color="primary"
+                          variant="flat"
+                          onPress={() => setTopicosAdicionales([...topicosAdicionales, { topic: '', min: undefined, max: undefined }])}
+                          startContent={<span>+</span>}
+                        >
+                          Añadir Tópico
+                        </Button>
+                      </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  onClick={onClose}
-                  color="default"
-                  variant="light"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-green-600 text-white font-bold hover:bg-green-700"
-                >
-                  {broker ? 'Actualizar' : 'Guardar y Configurar'}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+                      <div className="space-y-3">
+                        {topicosAdicionales.map((topico, index) => (
+                          <div key={index} className="flex flex-col md:flex-row gap-3 p-3 bg-white rounded-lg border border-default-200">
+                            <div className="flex-1">
+                              <Input
+                                size="sm"
+                                label="Tópico"
+                                placeholder="ej: mi_sensor_extra"
+                                value={topico.topic}
+                                onValueChange={(val) => {
+                                  const newTopicos = [...topicosAdicionales];
+                                  newTopicos[index] = { ...topico, topic: val };
+                                  setTopicosAdicionales(newTopicos);
+                                }}
+                                startContent={
+                                  normalizedPrefix ? <span className="text-default-400 text-small">{normalizedPrefix}/</span> : null
+                                }
+                              />
+                            </div>
+                            <div className="w-full md:w-24">
+                              <Input
+                                size="sm"
+                                type="number"
+                                label="Min"
+                                placeholder="0"
+                                value={String(topico.min || '')}
+                                onValueChange={(val) => {
+                                  const newTopicos = [...topicosAdicionales];
+                                  newTopicos[index] = { ...topico, min: val ? Number(val) : undefined };
+                                  setTopicosAdicionales(newTopicos);
+                                }}
+                              />
+                            </div>
+                            <div className="w-full md:w-24">
+                              <Input
+                                size="sm"
+                                type="number"
+                                label="Max"
+                                placeholder="100"
+                                value={String(topico.max || '')}
+                                onValueChange={(val) => {
+                                  const newTopicos = [...topicosAdicionales];
+                                  newTopicos[index] = { ...topico, max: val ? Number(val) : undefined };
+                                  setTopicosAdicionales(newTopicos);
+                                }}
+                              />
+                            </div>
+                            {topicosAdicionales.length > 1 && (
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                color="danger"
+                                variant="light"
+                                onPress={() => setTopicosAdicionales(topicosAdicionales.filter((_, i) => i !== index))}
+                                className="self-center"
+                              >
+                                ✕
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+
+                {/* SECCIÓN 3: Autenticación */}
+                <Card shadow="sm" className="border border-purple-200 bg-purple-50/20">
+                  <CardHeader className="flex gap-2 pb-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span className="text-small font-bold text-purple-900">Autenticación (Opcional)</span>
+                  </CardHeader>
+                  <Divider className="bg-purple-100" />
+                  <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Usuario"
+                      placeholder="Usuario MQTT"
+                      value={formData.usuario}
+                      onValueChange={(val) => setFormData({ ...formData, usuario: val })}
+                      variant="bordered"
+                      className="bg-white"
+                    />
+                    <Input
+                      label="Contraseña"
+                      type="password"
+                      placeholder="Contraseña MQTT"
+                      value={formData.password}
+                      onValueChange={(val) => setFormData({ ...formData, password: val })}
+                      variant="bordered"
+                      className="bg-white"
+                    />
+                  </CardBody>
+                </Card>
+
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button onPress={onClose} variant="light" color="default">
+                Cancelar
+              </Button>
+              <Button className="bg-green-600 text-white font-bold hover:bg-green-700" onPress={() => handleSubmit(null)} type="submit" form="broker-form">
+                {broker ? 'Actualizar' : 'Guardar y Configurar'}
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 }

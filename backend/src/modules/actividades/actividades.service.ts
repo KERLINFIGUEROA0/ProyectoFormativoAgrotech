@@ -820,8 +820,18 @@ export class ActividadesService {
                     const costoDano = cantMalasUsuario * precioUnitario;
 
                     // A. TRANSACCIÓN FINANCIERA (GASTO) - Se crea en devolverMaterialesFinal
-                    // No crear gastos aquí para evitar duplicación
-
+                    const cobroPorDano = gastoRepo.create({
+                        descripcion: `Daño Herramienta: ${material.nombre} (${cantMalasUsuario} ${unidadParaCalculo}) - ${actividad.titulo}`,
+                        monto: parseFloat(costoDano.toFixed(2)),
+                        fecha: actividad.fecha, // Usar fecha de la actividad en lugar de fecha actual
+                        tipo: TipoMovimiento.EGRESO,
+                        cultivo: actividad.cultivo,
+                        cantidad: cantMalasUsuario,
+                        unidad: unidadParaCalculo,
+                        precioUnitario: precioUnitario
+                    });
+                    await queryRunner.manager.save(cobroPorDano);
+   
                     await this.movimientosService.registrarMovimiento(
                         TipoMovimiento.EGRESO,
                         cantMalasUsuario,

@@ -148,7 +148,17 @@ const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDele
           </div>
           <div>
             <p className="text-gray-500">Fecha Límite:</p>
-            <p className="font-semibold text-right">{new Date(actividad.fecha).toLocaleDateString()}</p>
+            <p className="font-semibold text-right">
+              {actividad.fecha
+                ? new Date(actividad.fecha).toLocaleDateString('es-ES', {
+                    timeZone: 'America/Bogota',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                  })
+                : 'Sin fecha'
+              }
+            </p>
           </div>
         </div>
       </div>

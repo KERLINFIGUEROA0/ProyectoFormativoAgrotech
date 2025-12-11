@@ -141,18 +141,22 @@ export default function GestionCultivosPage(): ReactElement {
   // Obtener sublotes con cultivos
   const sublotesConCultivos = allSublotes
     .filter(s => s.cultivo !== null) // Solo sublotes que tienen cultivo asignado
-    .map(s => ({
-      id: s.id,
-      nombre: s.nombre,
-      coordenadas: s.coordenadas,
-      cultivo: {
-        id: s.cultivo!.id,
-        nombre: s.cultivo!.nombre,
-        tipoCultivo: { nombre: 'Tipo no disponible' }, // Por ahora, ya que no viene en la relación
-        estado: 'Activo' // Por ahora, asumimos activo
-      },
-      lote: s.lote
-    }));
+    .map(s => {
+      // Buscar el cultivo completo en la lista de cultivos para obtener tipoCultivo y estado reales
+      const cultivoCompleto = cultivos.find(c => c.id === s.cultivo!.id);
+      return {
+        id: s.id,
+        nombre: s.nombre,
+        coordenadas: s.coordenadas,
+        cultivo: {
+          id: s.cultivo!.id,
+          nombre: s.cultivo!.nombre,
+          tipoCultivo: cultivoCompleto?.tipoCultivo || { nombre: 'Tipo no disponible' },
+          estado: cultivoCompleto?.Estado || 'Activo'
+        },
+        lote: s.lote
+      };
+    });
 
   const openModal = (cultivo: Cultivo | null = null) => {
     setEditingCultivo(cultivo);

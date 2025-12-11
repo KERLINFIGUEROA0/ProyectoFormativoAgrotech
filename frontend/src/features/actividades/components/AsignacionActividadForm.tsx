@@ -432,7 +432,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
                 <div className="p-2 bg-green-100 rounded-lg text-green-700">
                     <ClipboardList size={20} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-800">Detalles de la Tarea</h3>
+                <h3 className="text-lg font-bold text-gray-800">Detalles de la Actividad</h3>
             </div>
 
             <Input

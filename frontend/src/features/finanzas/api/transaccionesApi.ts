@@ -18,6 +18,7 @@ export const obtenerTransacciones = async () => {
     cantidad: v.cantidad || 1,
     unidad: v.unidadMedida || 'kg', // Las cosechas se miden en kg
     precioUnitario: v.precioUnitario || v.monto,
+    fecha: v.fecha, // Ya es string YYYY-MM-DD
   }));
 
   const egresos = (gastosRes.data?.data || gastosRes.data || []).map((g: any) => ({
@@ -28,6 +29,7 @@ export const obtenerTransacciones = async () => {
     cantidad: g.cantidad !== null ? Number(g.cantidad) : 1,
     unidad: g.unidad || '-',
     precioUnitario: g.precioUnitario !== null ? Number(g.precioUnitario) : g.monto,
+    fecha: new Date(g.fecha).toISOString().split('T')[0], // Convertir a string YYYY-MM-DD
   }));
 
   const pagosEgresos = (pagosRes.data?.data || pagosRes.data || []).map((p: any) => ({
@@ -35,7 +37,7 @@ export const obtenerTransacciones = async () => {
     id: `pago-${p.id}`,
     tipo: 'egreso',
     descripcion: p.descripcion || `Pago a ${p.usuario?.nombre} ${p.usuario?.apellidos} por actividad ${p.actividad?.titulo}`,
-    fecha: p.fechaPago,
+    fecha: p.fechaPago ? new Date(p.fechaPago).toISOString().split('T')[0] : null, // Convertir a string YYYY-MM-DD
     cantidad: p.horasTrabajadas || 1,
     unidad: 'horas',
     precioUnitario: p.tarifaHora || p.monto,
@@ -43,8 +45,10 @@ export const obtenerTransacciones = async () => {
   }));
 
 
-  // Combinar y ordenar por fecha descendente
-  const allTransacciones = [...ingresos, ...egresos, ...pagosEgresos].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  // Combinar y ordenar por fecha descendente, filtrando fechas nulas o inválidas
+  const allTransacciones = [...ingresos, ...egresos, ...pagosEgresos]
+    .filter((t: any) => t.fecha && !isNaN(new Date(t.fecha).getTime()))
+    .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
 
   return { data: allTransacciones };
