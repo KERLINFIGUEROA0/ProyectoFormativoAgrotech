@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {  Download, FileText, Image, File, Check, X as XIcon, DollarSign } from 'lucide-react';
+import { Download, FileText, Image, File, Check, X as XIcon, DollarSign } from 'lucide-react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Table, TableHeader, TableBody, TableRow, TableCell, TableColumn, Chip } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { obtenerRespuestasPorActividad, calificarRespuesta, obtenerPagosPorActividad } from '../api/actividadesapi';
+import { formatDateOnly } from '../../../utils/dateUtils';
 import ModalComentarioRechazo from './ModalComentarioRechazo';
 
 // Función helper para extraer el nombre original del archivo
@@ -19,23 +20,23 @@ const getOriginalFilename = (fullFilename: string): string => {
 };
 
 interface ModalVerRespuestasProps {
-    actividad: Actividad;
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess?: () => void;
-    onOpenPago?: (actividad: Actividad, pasantes: Array<{
-      identificacion: number;
-      nombre: string;
-      apellidos: string;
-    }>) => void;
+  actividad: Actividad;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+  onOpenPago?: (actividad: Actividad, pasantes: Array<{
+    identificacion: number;
+    nombre: string;
+    apellidos: string;
+  }>) => void;
 }
 
 const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
-    actividad,
-    isOpen,
-    onClose,
-    onSuccess,
-    onOpenPago,
+  actividad,
+  isOpen,
+  onClose,
+  onSuccess,
+  onOpenPago,
 }) => {
   const [respuestas, setRespuestas] = useState<RespuestaActividad[]>([]);
   const [pagos, setPagos] = useState<any[]>([]);
@@ -256,16 +257,16 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             ) : (
               <Table aria-label="Tabla de respuestas de actividad">
                 <TableHeader>
-                   <TableColumn>Nombre</TableColumn>
-                   <TableColumn>Rol</TableColumn>
-                   <TableColumn>ID Ficha</TableColumn>
-                   <TableColumn>Descripción</TableColumn>
-                   <TableColumn>Estado</TableColumn>
-                   <TableColumn>Comentario Instructor</TableColumn>
-                   <TableColumn>Archivos</TableColumn>
-                   <TableColumn>Fecha</TableColumn>
-                   <TableColumn>Acciones</TableColumn>
-                 </TableHeader>
+                  <TableColumn>Nombre</TableColumn>
+                  <TableColumn>Rol</TableColumn>
+                  <TableColumn>ID Ficha</TableColumn>
+                  <TableColumn>Descripción</TableColumn>
+                  <TableColumn>Estado</TableColumn>
+                  <TableColumn>Comentario Instructor</TableColumn>
+                  <TableColumn>Archivos</TableColumn>
+                  <TableColumn>Fecha</TableColumn>
+                  <TableColumn>Acciones</TableColumn>
+                </TableHeader>
                 <TableBody>
                   {respuestas.map((respuesta) => (
                     <TableRow key={respuesta.id}>
@@ -287,13 +288,13 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
                         <Chip
                           color={
                             respuesta.estado === 'aprobado' ? 'success' :
-                            respuesta.estado === 'rechazado' ? 'danger' : 'warning'
+                              respuesta.estado === 'rechazado' ? 'danger' : 'warning'
                           }
                           variant="flat"
                           size="sm"
                         >
                           {respuesta.estado === 'aprobado' ? 'Aprobado' :
-                           respuesta.estado === 'rechazado' ? 'Rechazado' : 'Pendiente'}
+                            respuesta.estado === 'rechazado' ? 'Rechazado' : 'Pendiente'}
                         </Chip>
                       </TableCell>
                       <TableCell>
@@ -323,7 +324,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
                         )}
                       </TableCell>
                       <TableCell>
-                        {new Date(respuesta.fechaEnvio).toLocaleDateString('es-ES')}
+                        {formatDateOnly(respuesta.fechaEnvio)}
                       </TableCell>
                       <TableCell>
                         {respuesta.estado === 'pendiente' && (
