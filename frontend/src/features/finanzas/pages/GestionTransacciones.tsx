@@ -228,6 +228,7 @@ export default function GestionTransaccionesPage(): ReactElement {
               variant="bordered"
               startContent={<Filter size={18} className="text-green-600" />}
               classNames={{ trigger: "bg-white" }}
+              aria-label="Seleccionar cultivo para filtrar"
             >
               {cultivos.map(cultivo => (
                 <SelectItem key={cultivo.id.toString()}>

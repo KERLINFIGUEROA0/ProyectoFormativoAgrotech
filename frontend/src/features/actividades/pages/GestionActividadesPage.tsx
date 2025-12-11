@@ -519,16 +519,6 @@ const GestionActividadesPage: React.FC = () => {
             Gestión de Actividades
           </h1>
           <div className="flex items-center gap-2">
-            <PermissionWrapper module="Actividades" permission="Crear">
-              <Button
-                onClick={() => handleOpenEditModal()}
-                color="success"
-                variant="solid"
-                className="font-bold text-white shadow-lg shadow-green-200"
-              >
-                Nueva Actividad
-              </Button>
-            </PermissionWrapper>
             <Button
               className="bg-transparent p-3 border-none"
               onClick={mostrarNotificacionesPendientes}

@@ -27,7 +27,7 @@ export class PagosController {
   }
 
   @Get()
-  @Permission('Actividades.VerPagos')
+  @Permission('Finanzas.Ver')
   async findAll(@Request() req: any) {
     const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
     let userRole = user?.tipoUsuario?.nombre;
@@ -37,26 +37,26 @@ export class PagosController {
   }
 
   @Get('usuario/:id')
-  @Permission('Actividades.VerPagos')
+  @Permission('Finanzas.Ver')
   async findByUsuario(@Param('id', ParseIntPipe) id: number) {
     const data = await this.pagosService.findByUsuario(id);
     return { success: true, data };
   }
 
   @Get('cultivo/:id')
-  @Permission('Actividades.VerPagos')
+  @Permission('Finanzas.Ver')
   findByCultivo(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByCultivo(id);
   }
 
   @Get('actividad/:id')
-  @Permission('Actividades.VerPagos')
+  @Permission('Finanzas.Ver')
   findByActividad(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByActividad(id);
   }
 
   @Get(':id')
-  @Permission('Actividades.VerPagos')
+  @Permission('Finanzas.Ver')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
   }
