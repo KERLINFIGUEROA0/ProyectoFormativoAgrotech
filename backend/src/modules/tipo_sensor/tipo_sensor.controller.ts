@@ -13,6 +13,7 @@ export class TipoSensorController {
   constructor(private readonly tipoSensorService: TipoSensorService) {}
 
   @Post('crear')
+  @Permission('Iot.Crear')
   async create(@Body() createTipoSensorDto: CreateTipoSensorDto) {
     const nuevo = await this.tipoSensorService.create(createTipoSensorDto);
     return {
@@ -23,6 +24,7 @@ export class TipoSensorController {
   }
 
   @Get('listar')
+  @Permission('Iot.Ver')
   async findAll() {
     const tipos = await this.tipoSensorService.findAll();
     return {
@@ -33,6 +35,7 @@ export class TipoSensorController {
 
   // ... (el resto del código sigue igual)
   @Get(':id')
+  @Permission('Iot.Ver')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const tipo = await this.tipoSensorService.findOne(id);
     if (!tipo) {
@@ -45,6 +48,7 @@ export class TipoSensorController {
   }
 
   @Patch('actualizar/:id')
+  @Permission('Iot.Editar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateTipoSensorDto: UpdateTipoSensorDto) {
     const actualizado = await this.tipoSensorService.update(id, updateTipoSensorDto);
     return {
@@ -55,6 +59,7 @@ export class TipoSensorController {
   }
 
   @Delete('eliminar/:id')
+  @Permission('Iot.Eliminar')
   async remove(@Param('id', ParseIntPipe) id: number) {
     const resultado = await this.tipoSensorService.remove(id);
     return resultado;

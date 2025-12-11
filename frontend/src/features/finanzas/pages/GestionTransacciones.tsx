@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { FaPlus, FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
+import { FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
 import { Trash2, FileSpreadsheet, Plus, Search, Filter } from 'lucide-react';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
@@ -31,6 +31,7 @@ import {
   DropdownMenu,
   DropdownItem
 } from "@heroui/react";
+import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
 // ✅ IMPORTAR HELPER DE FECHAS
 import { formatToTable } from '../../../utils/dateUtils.ts';
 
@@ -66,7 +67,7 @@ export default function GestionTransaccionesPage(): ReactElement {
 
   const cargarCultivos = async () => {
     try {
-      const response = await fetch(`${API_URL}/cultivos/listar`, {
+      const response = await fetch(`${API_URL}/finanzas/cultivos-disponibles`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -160,73 +161,81 @@ export default function GestionTransaccionesPage(): ReactElement {
           <h1 className="text-2xl font-bold text-gray-700">Gestión de Transacciones</h1>
 
           <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={async () => {
-                if (selectedCultivoId) {
-                  try {
-                    await exportarExcelCultivo(selectedCultivoId);
-                    toast.success('Reporte Excel generado con éxito');
-                  } catch (error) {
-                    toast.error('Error al generar el reporte Excel');
+            <PermissionWrapper module="Finanzas" permission="Exportar">
+              <Button
+                onClick={async () => {
+                  if (selectedCultivoId) {
+                    try {
+                      await exportarExcelCultivo(selectedCultivoId);
+                      toast.success('Reporte Excel generado con éxito');
+                    } catch (error) {
+                      toast.error('Error al generar el reporte Excel');
+                    }
+                  } else {
+                    toast.error("Por favor seleccione un cultivo primero");
                   }
-                } else {
-                  toast.error("Por favor seleccione un cultivo primero");
-                }
-              }}
-              color="default"
-              variant="solid"
-              startContent={<FaFileExcel />}
-              className="font-semibold"
-            >
-              Exportar Excel por Cultivo
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  await exportarExcelGeneral();
-                  toast.success('Reporte Excel general generado con éxito');
-                } catch (error) {
-                  toast.error('Error al generar el reporte Excel general');
-                }
-              }}
-              color="default"
-              variant="solid"
-              startContent={<FaFileExcel />}
-              className="font-semibold"
-            >
-              Exportar Excel General
-            </Button>
-            <Button
-              onClick={openModal}
-              color="success"
-              variant="solid"
-              className="font-bold text-white shadow-lg shadow-green-200"
-            >
-              Nueva Venta
-            </Button>
+                }}
+                color="default"
+                variant="solid"
+                startContent={<FaFileExcel />}
+                className="font-semibold"
+              >
+                Exportar Excel por Cultivo
+              </Button>
+            </PermissionWrapper>
+            <PermissionWrapper module="Finanzas" permission="Exportar">
+              <Button
+                onClick={async () => {
+                  try {
+                    await exportarExcelGeneral();
+                    toast.success('Reporte Excel general generado con éxito');
+                  } catch (error) {
+                    toast.error('Error al generar el reporte Excel general');
+                  }
+                }}
+                color="default"
+                variant="solid"
+                startContent={<FaFileExcel />}
+                className="font-semibold"
+              >
+                Exportar Excel General
+              </Button>
+            </PermissionWrapper>
+            <PermissionWrapper module="Finanzas" permission="Crear">
+              <Button
+                onClick={openModal}
+                color="success"
+                variant="solid"
+                className="font-bold text-white shadow-lg shadow-green-200"
+              >
+                Nueva Venta
+              </Button>
+            </PermissionWrapper>
           </div>
         </div>
 
         {/* Filtros arriba */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <Select
-            placeholder="Seleccionar Cultivo"
-            className="w-full sm:w-64"
-            selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              setSelectedCultivoId(selected ? Number(selected) : null);
-            }}
-            variant="bordered"
-            startContent={<Filter size={18} className="text-green-600" />}
-            classNames={{ trigger: "bg-white" }}
-          >
-            {cultivos.map(cultivo => (
-              <SelectItem key={cultivo.id.toString()}>
-                {cultivo.nombre}
-              </SelectItem>
-            ))}
-          </Select>
+          <PermissionWrapper module="Finanzas" permission="Exportar">
+            <Select
+              placeholder="Seleccionar Cultivo"
+              className="w-full sm:w-64"
+              selectedKeys={selectedCultivoId ? [selectedCultivoId.toString()] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setSelectedCultivoId(selected ? Number(selected) : null);
+              }}
+              variant="bordered"
+              startContent={<Filter size={18} className="text-green-600" />}
+              classNames={{ trigger: "bg-white" }}
+            >
+              {cultivos.map(cultivo => (
+                <SelectItem key={cultivo.id.toString()}>
+                  {cultivo.nombre}
+                </SelectItem>
+              ))}
+            </Select>
+          </PermissionWrapper>
 
           <Input
             type="text"
@@ -299,30 +308,55 @@ export default function GestionTransaccionesPage(): ReactElement {
                   <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
                       {t.rutaFacturaPdf && (
+                        <PermissionWrapper module="Finanzas" permission="Exportar">
+                          <Button
+                            isIconOnly
+                            variant="light"
+                            color="primary"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${API_URL}/finanzas/transacciones/${t.id}/factura`, {
+                                  headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                  }
+                                });
+                                if (!response.ok) {
+                                  throw new Error('Error al descargar la factura');
+                                }
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `factura-venta-${t.id}.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                                toast.success('Factura descargada con éxito');
+                              } catch (error) {
+                                toast.error('Error al descargar la factura');
+                                console.error('Error:', error);
+                              }
+                            }}
+                            title="Descargar Factura"
+                          >
+                            <FaDownload />
+                          </Button>
+                        </PermissionWrapper>
+                      )}
+                      <PermissionWrapper module="Finanzas" permission="Eliminar">
                         <Button
                           isIconOnly
                           variant="light"
-                          color="primary"
+                          color="danger"
                           size="sm"
-                          as="a"
-                          href={`${API_URL}/ventas/${t.id}/factura`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Descargar Factura"
+                          onClick={() => handleDelete(t.id, t.tipo)}
+                          title={`Eliminar ${t.tipo === 'ingreso' ? 'venta' : 'gasto'}`}
                         >
-                          <FaDownload />
+                          <FaTrash />
                         </Button>
-                      )}
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        color="danger"
-                        size="sm"
-                        onClick={() => handleDelete(t.id, t.tipo)}
-                        title={`Eliminar ${t.tipo === 'ingreso' ? 'venta' : 'gasto'}`}
-                      >
-                        <FaTrash />
-                      </Button>
+                      </PermissionWrapper>
                     </div>
                   </TableCell>
                 </TableRow>

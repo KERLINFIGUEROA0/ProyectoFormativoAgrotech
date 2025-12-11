@@ -39,6 +39,7 @@ import { MqttModule } from './modules/mqtt/mqtt.module';
 import { FichasModule } from './modules/fichas/fichas.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
 import { PagosModule } from './modules/pagos/pagos.module';
+import { FinanzasModule } from './modules/finanzas/finanzas.module';
 import { WebSocketModule } from './websocket/websocket.module';
 
 
@@ -92,6 +93,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FichasModule,
     MovimientosModule,
     PagosModule,
+    FinanzasModule,
     WebSocketModule,
   ],
   providers: [],

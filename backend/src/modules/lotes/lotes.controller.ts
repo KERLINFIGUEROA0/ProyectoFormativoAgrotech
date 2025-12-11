@@ -35,7 +35,7 @@ export class LotesController {
   ) {}
 
   @Get('estadisticas')
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_estadisticas')
   @CacheTTL(300000)
@@ -47,8 +47,21 @@ export class LotesController {
     };
   }
 
+  // Endpoint público para dashboard - solo requiere autenticación
+  @Get('dashboard/estadisticas')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('lotes_dashboard_estadisticas')
+  @CacheTTL(300000)
+  async getDashboardEstadisticas() {
+    const data = await this.lotesService.obtenerEstadisticas();
+    return {
+      success: true,
+      data,
+    };
+  }
+
   @Get()
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos')
   @CacheTTL(60000)
@@ -62,7 +75,7 @@ export class LotesController {
   }
 
   @Get('listar')
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_todos_alt')
   @CacheTTL(60000)
@@ -76,7 +89,7 @@ export class LotesController {
   }
 
   @Get('disponibles')
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.Ver')
   @UseInterceptors(CacheInterceptor)
   @CacheKey('lotes_disponibles')
   @CacheTTL(30000) // Cache más corto para datos dinámicos
@@ -90,7 +103,7 @@ export class LotesController {
   }
 
   @Get(':id')
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.Ver')
   @UseInterceptors(CacheInterceptor)
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const lote = await this.lotesService.buscarPorId(id);
@@ -101,7 +114,7 @@ export class LotesController {
   }
 
   @Post('crear')
-  @Permission('Lotes.Crear')
+  @Permission('Cultivo.Crear')
   async crear(@Body() data: CreateLoteDto) {
     const nuevo = await this.lotesService.crear(data);
     return {
@@ -112,7 +125,7 @@ export class LotesController {
   }
 
   @Put('actualizar/:id')
-  @Permission('Lotes.Editar')
+  @Permission('Cultivo.Editar')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateLoteDto,
@@ -126,7 +139,7 @@ export class LotesController {
   }
 
   @Patch(':id/estado')
-  @Permission('Lotes.Editar')
+  @Permission('Cultivo.Editar')
   async actualizarEstado(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateLoteEstadoDto,
@@ -140,7 +153,7 @@ export class LotesController {
   }
 
   @Post('reporte-trazabilidad')
-  @Permission('Lotes.Ver')
+  @Permission('Cultivo.DescargarPdf')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
     try {
       // 1. Obtener datos (El servicio ahora garantizará que no sean null)
@@ -185,7 +198,4 @@ export class LotesController {
     }
   }
 
-  // ✅ ELIMINADOS: Endpoints de eliminación y archivado
-  // Los lotes se reutilizan cambiando coordenadas, nunca se eliminan
-  // Esto preserva toda la trazabilidad histórica
 }

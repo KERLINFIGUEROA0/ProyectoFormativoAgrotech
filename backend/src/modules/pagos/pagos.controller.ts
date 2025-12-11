@@ -16,7 +16,7 @@ export class PagosController {
   ) {}
 
   @Post()
-  @Permission('Pagos.Crear')
+  @Permission('Actividades.Pagar')
   create(@Body() createPagoDto: CreatePagoDto | CreatePagoDto[]) {
     // Si es un array, crear múltiples pagos
     if (Array.isArray(createPagoDto)) {
@@ -27,40 +27,42 @@ export class PagosController {
   }
 
   @Get()
-  @Permission('Pagos.Ver')
+  @Permission('Actividades.VerPagos')
   async findAll(@Request() req: any) {
     const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
     let userRole = user?.tipoUsuario?.nombre;
     if (!userRole) userRole = req.user.rolNombre;
-    return this.pagosService.findAll(user?.identificacion, userRole);
+    const data = await this.pagosService.findAll(user?.identificacion, userRole);
+    return { success: true, data };
   }
 
   @Get('usuario/:id')
-  @Permission('Pagos.Ver')
-  findByUsuario(@Param('id', ParseIntPipe) id: number) {
-    return this.pagosService.findByUsuario(id);
+  @Permission('Actividades.VerPagos')
+  async findByUsuario(@Param('id', ParseIntPipe) id: number) {
+    const data = await this.pagosService.findByUsuario(id);
+    return { success: true, data };
   }
 
   @Get('cultivo/:id')
-  @Permission('Pagos.Ver')
+  @Permission('Actividades.VerPagos')
   findByCultivo(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByCultivo(id);
   }
 
   @Get('actividad/:id')
-  @Permission('Pagos.Ver')
+  @Permission('Actividades.VerPagos')
   findByActividad(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByActividad(id);
   }
 
   @Get(':id')
-  @Permission('Pagos.Ver')
+  @Permission('Actividades.VerPagos')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
   }
 
   @Put(':id')
-  @Permission('Pagos.Editar')
+  @Permission('Actividades.Pagar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updatePagoDto: UpdatePagoDto, @Request() req: any) {
     const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
     let userRole = user?.tipoUsuario?.nombre;

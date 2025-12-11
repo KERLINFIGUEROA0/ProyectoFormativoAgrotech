@@ -7,7 +7,7 @@ import { Permission } from '../authorization/permission.decorator';
 @Controller('inventario/movimientos')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class MovimientosController {
-  constructor(private readonly movimientosService: MovimientosService) {}
+  constructor(private readonly movimientosService: MovimientosService) { }
 
   @Get('historial')
   @Permission('Inventario.Ver')

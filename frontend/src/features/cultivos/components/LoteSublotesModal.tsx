@@ -7,6 +7,8 @@ import { obtenerSublotesPorLote, crearSublote, actualizarSublote, obtenerCultivo
 import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import SubloteForm from './SubloteForm';
 import SubloteMap from './SubloteMap';
+import PermissionWrapper from '../../../components/PermissionWrapper';
+import { useModulePermissions } from '../../../features/user/hooks/useModulePermissions';
 
 interface LoteSublotesModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface LoteSublotesModalProps {
 }
 
 export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCreated }: LoteSublotesModalProps): ReactElement {
+  const { hasPermissionInModule } = useModulePermissions();
   const [sublotes, setSublotes] = useState<Sublote[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSublote, setSelectedSublote] = useState<Sublote | null>(null);
@@ -184,17 +187,19 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-lg font-semibold text-gray-900">Sublotes ({sublotes.length})</h4>
-                <button
-                  onClick={() => {
-                    setEditingSublote(null);
-                    setSelectedSublote(null);
-                    setIsFormOpen(true);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors"
-                >
-                  <Plus size={16} />
-                  Nuevo
-                </button>
+                <PermissionWrapper module="Cultivo" permission="Crear">
+                  <button
+                    onClick={() => {
+                      setEditingSublote(null);
+                      setSelectedSublote(null);
+                      setIsFormOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors"
+                  >
+                    <Plus size={16} />
+                    Nuevo
+                  </button>
+                </PermissionWrapper>
               </div>
               <p className="text-sm text-gray-600">Haz clic en un sublote para ver detalles</p>
             </div>
@@ -237,26 +242,30 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
                           </span>
                         </div>
                         <div className="flex gap-1 ml-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditSublote(sublote);
-                            }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                            title="Editar sublote"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteSublote(sublote);
-                            }}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="Eliminar sublote"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <PermissionWrapper module="Cultivo" permission="Editar">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditSublote(sublote);
+                              }}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Editar sublote"
+                            >
+                              <Edit size={14} />
+                            </button>
+                          </PermissionWrapper>
+                          <PermissionWrapper module="Cultivo" permission="EliminarSublote">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSublote(sublote);
+                              }}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Eliminar sublote"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </PermissionWrapper>
                         </div>
                       </div>
                     </div>
@@ -276,7 +285,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
                   <span className="text-sm font-medium text-gray-900">Mapa Interactivo</span>
                 </div>
                 <div className="text-xs text-gray-600">
-                  Clic para crear sublote
+                  {hasPermissionInModule('Cultivo', 'Crear') ? 'Clic para crear sublote' : 'Sin permisos para crear sublotes'}
                 </div>
               </div>
             </div>
@@ -284,7 +293,7 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
             <SubloteMap
               lote={lote}
               sublotes={sublotes}
-              onPointClick={(lat, lng) => {
+              onPointClick={hasPermissionInModule('Cultivo', 'Crear') ? (lat, lng) => {
                 // Crear sublote con las coordenadas del punto clicado
                 const tempSublote: Partial<Sublote> = {
                   nombre: `Punto ${sublotes.length + 1}`,
@@ -297,8 +306,9 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
                 setEditingSublote(tempSublote as Sublote);
                 setIsQuickCreate(true); // Flag para modo creación rápida
                 setIsFormOpen(true);
-              }}
+              } : undefined}
               height="100%"
+              canCreate={hasPermissionInModule('Cultivo', 'Crear')}
             />
           </div>
 

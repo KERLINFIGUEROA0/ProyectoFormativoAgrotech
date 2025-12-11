@@ -1453,7 +1453,7 @@ export class ActividadesService {
 
           const unidadUsada = (item.unidadMedida as UnidadMedida) || UnidadMedida.UNIDAD;
           let unidadBase = material.unidadBase || UnitConversionUtil.obtenerUnidadBase(
-            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible', 
+            material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
             material.medidasDeContenido
           );
 
@@ -1530,5 +1530,35 @@ export class ActividadesService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // Métodos para obtener datos necesarios en asignación (usando permisos de Actividades)
+  async obtenerCultivosDisponibles() {
+    return this.cultivoRepository.find({
+      order: { nombre: 'ASC' },
+      select: ['id', 'nombre']
+    });
+  }
+
+  async obtenerLotesDisponibles() {
+    return this.loteRepository.find({
+      order: { nombre: 'ASC' },
+      select: ['id', 'nombre']
+    });
+  }
+
+  async obtenerSublotesDisponibles(loteId: number) {
+    return this.subloteRepository.find({
+      where: { lote: { id: loteId } },
+      order: { nombre: 'ASC' },
+      select: ['id', 'nombre']
+    });
+  }
+
+  async obtenerMaterialesDisponibles() {
+    return this.materialRepository.find({
+      where: { estado: true },
+      order: { nombre: 'ASC' }
+    });
   }
 }

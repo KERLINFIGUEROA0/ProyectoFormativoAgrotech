@@ -25,7 +25,7 @@ export class SublotesController {
   constructor(private readonly sublotesService: SublotesService) {}
 
   @Post('crear')
-  @Permission('Sublotes.Crear')
+  @Permission('Cultivo.Crear')
   async crear(@Body() data: CreateSubloteDto) {
     const nuevo = await this.sublotesService.crear(data);
     return {
@@ -36,7 +36,7 @@ export class SublotesController {
   }
 
   @Get('listar')
-  @Permission('Sublotes.Ver')
+  @Permission('Cultivo.Ver')
   async listar() {
     const lista = await this.sublotesService.listar();
     return {
@@ -47,7 +47,7 @@ export class SublotesController {
   }
 
   @Get('lotes/:loteId/sublotes')
-  @Permission('Sublotes.Ver')
+  @Permission('Cultivo.Ver')
   async listarPorLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const lista = await this.sublotesService.listarPorLote(loteId);
     return {
@@ -58,7 +58,7 @@ export class SublotesController {
   }
 
   @Get('lotes/:loteId/disponibles')
-  @Permission('Sublotes.Ver')
+  @Permission('Cultivo.Ver')
   async listarDisponiblesPorLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const lista = await this.sublotesService.listarDisponiblesPorLote(loteId);
     return {
@@ -69,7 +69,7 @@ export class SublotesController {
   }
 
   @Get(':id')
-  @Permission('Sublotes.Ver')
+  @Permission('Cultivo.Ver')
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const sublote = await this.sublotesService.buscarPorId(id);
     return {
@@ -79,7 +79,7 @@ export class SublotesController {
   }
 
   @Put('actualizar/:id')
-  @Permission('Sublotes.Editar')
+  @Permission('Cultivo.Editar')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateSubloteDto,
@@ -93,7 +93,7 @@ export class SublotesController {
   }
 
   @Delete('eliminar/:id')
-  @Permission('Sublotes.Eliminar')
+  @Permission('Cultivo.EliminarSublote')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     await this.sublotesService.eliminar(id);
     return {
@@ -103,7 +103,7 @@ export class SublotesController {
   }
 
   @Patch('actualizar/:id/estado')
-  @Permission('Sublotes.Editar')
+  @Permission('Cultivo.Editar')
   async actualizarEstado(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateSubloteEstadoDto,
@@ -117,7 +117,7 @@ export class SublotesController {
   }
 
   @Patch('actualizar/:id/mqtt')
-  @Permission('Sublotes.Editar')
+  @Permission('Cultivo.Editar')
   async actualizarMqtt(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateSubloteMqttDto,
@@ -131,7 +131,7 @@ export class SublotesController {
   }
 
   @Post(':id/sincronizar')
-  @Permission('Sublotes.Editar')
+  @Permission('Cultivo.Editar')
   sincronizarSensores(@Param('id') id: string) {
     return this.sublotesService.sincronizarSensores(+id);
   }

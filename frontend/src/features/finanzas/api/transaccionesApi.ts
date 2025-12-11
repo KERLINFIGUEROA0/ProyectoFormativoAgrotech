@@ -5,13 +5,13 @@ import type { TransaccionData } from "../interfaces/finanzas";
 export const obtenerTransacciones = async () => {
   // Obtener ingresos, egresos y pagos por separado y combinarlos
   const [ventasRes, gastosRes, pagosRes] = await Promise.all([
-    api.get("/ventas"),
-    api.get("/gastos-produccion"),
-    api.get("/pagos")
+    api.get("/finanzas/transacciones"), // ✅ Endpoint correcto para ventas
+    api.get("/gastos-produccion"),      // ✅ Endpoint correcto para gastos
+    api.get("/pagos")                   // ✅ Mantener pagos como está
   ]);
 
 
-  const ingresos = (ventasRes.data?.data || []).map((v: any) => ({
+  const ingresos = (ventasRes.data?.data || ventasRes.data || []).map((v: any) => ({
     ...v,
     id: v.id,
     tipo: 'ingreso',
@@ -20,7 +20,7 @@ export const obtenerTransacciones = async () => {
     precioUnitario: v.precioUnitario || v.monto,
   }));
 
-  const egresos = (gastosRes.data?.data || []).map((g: any) => ({
+  const egresos = (gastosRes.data?.data || gastosRes.data || []).map((g: any) => ({
     ...g,
     id: `gasto-${g.id}`,
     tipo: 'egreso',
@@ -30,7 +30,7 @@ export const obtenerTransacciones = async () => {
     precioUnitario: g.precioUnitario !== null ? Number(g.precioUnitario) : g.monto,
   }));
 
-  const pagosEgresos = (pagosRes.data || []).map((p: any) => ({
+  const pagosEgresos = (pagosRes.data?.data || pagosRes.data || []).map((p: any) => ({
     ...p,
     id: `pago-${p.id}`,
     tipo: 'egreso',
@@ -61,7 +61,14 @@ export const crearTransaccion = async (data: TransaccionData) => {
     const response = await api.post("/gastos-produccion", payload);
     return response.data;
   } else {
-    const response = await api.post("/ventas", data);
+    const payload = {
+      descripcion: data.descripcion,
+      cantidad: data.cantidad,
+      monto: data.monto,
+      fecha: data.fecha,
+      produccionId: data.produccionId
+    };
+    const response = await api.post("/finanzas/transacciones", payload);
     return response.data;
   }
 };
@@ -75,7 +82,14 @@ export const actualizarTransaccion = async (id: string | number, data: Partial<T
     const response = await api.patch(`/gastos-produccion/${actualId}`, data);
     return response.data;
   } else {
-    const response = await api.patch(`/ventas/${actualId}`, data);
+    const payload = {
+      descripcion: data.descripcion,
+      cantidad: data.cantidad,
+      monto: data.monto,
+      fecha: data.fecha,
+      produccionId: data.produccionId
+    };
+    const response = await api.put(`/finanzas/transacciones/${actualId}`, payload);
     return response.data;
   }
 };
@@ -95,7 +109,7 @@ export const eliminarTransaccion = async (id: string | number) => {
     const response = await api.delete(`/pagos/${actualId}`);
     return response.data;
   } else {
-    const response = await api.delete(`/ventas/${actualId}`);
+    const response = await api.delete(`/finanzas/transacciones/${actualId}`);
     return response.data;
   }
 };
@@ -123,4 +137,15 @@ export const obtenerDistribucionEgresos = async () => {
 export const obtenerGastos = async () => {
   const response = await api.get("/gastos-produccion");
   return response.data; // Asumimos que devuelve { data: [...] }
+};
+
+// Nuevas funciones para obtener datos limitados con permisos compuestos
+export const obtenerCosechasDisponibles = async () => {
+  const response = await api.get("/finanzas/cosechas-disponibles");
+  return response.data; // Devuelve cosechas disponibles para venta
+};
+
+export const obtenerMaterialesDisponibles = async () => {
+  const response = await api.get("/finanzas/materiales-disponibles");
+  return response.data; // Devuelve materiales disponibles para gastos
 };

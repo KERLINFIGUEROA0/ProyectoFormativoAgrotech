@@ -47,7 +47,7 @@ export class ProduccionesService {
 
   // --- ✅ NUEVO: Encontrar todas las producciones de UN cultivo específico ---
   async findAllByCultivo(cultivoId: number): Promise<Produccion[]> {
-    return this.produccionRepository.find({
+    return await this.produccionRepository.find({
       where: { cultivo: { id: cultivoId } },
       relations: ['cultivo'],
       order: { fecha: 'DESC' },

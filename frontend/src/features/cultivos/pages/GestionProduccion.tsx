@@ -7,9 +7,11 @@ import { obtenerSublotesPorLote, obtenerCultivos, crearSublote, actualizarSublot
 import { listarBrokers } from '../../iot/api/mqttConfigApi';
 import SubloteForm from '../components/SubloteForm';
 import SubloteMap from '../components/SubloteMap';
+import { useModulePermissions } from '../../../features/user/hooks/useModulePermissions';
 import type { Lote, Cultivo, Sublote, SubloteData } from '../interfaces/cultivos';
 import type { Broker } from '../../iot/interfaces/iot';
 import { Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, Select, SelectItem } from '@heroui/react';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -59,6 +61,7 @@ function isPointInLote(lat: number, lng: number, lote: Lote): boolean {
 
 // --- Componente Principal ---
 export default function GestionProduccion(): ReactElement {
+  const { hasPermissionInModule } = useModulePermissions();
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [cultivos, setCultivos] = useState<Cultivo[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
@@ -74,23 +77,34 @@ export default function GestionProduccion(): ReactElement {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [lotesRes, cultivosRes, brokersRes] = await Promise.all([
+        // Cargar lotes y cultivos (siempre disponibles con Cultivo.Ver)
+        const [lotesRes, cultivosRes] = await Promise.all([
           obtenerLotes(),
-          obtenerCultivos(),
-          listarBrokers()
+          obtenerCultivos()
         ]);
 
         const todosLosLotes: Lote[] = lotesRes.data || [];
-
         setLotes(todosLosLotes);
         setCultivos(cultivosRes.data?.data || cultivosRes.data || []);
-        setBrokers(brokersRes || []);
+
+        // Cargar brokers solo si el usuario tiene permisos de Iot
+        if (hasPermissionInModule('Iot', 'Ver')) {
+          try {
+            const brokersRes = await listarBrokers();
+            setBrokers(brokersRes || []);
+          } catch (error) {
+            console.warn('No se pudieron cargar brokers (permisos insuficientes):', error);
+            setBrokers([]);
+          }
+        } else {
+          setBrokers([]);
+        }
       } catch (error) {
         toast.error("Error al cargar datos iniciales.");
       }
     };
     loadInitialData();
-  }, []);
+  }, [hasPermissionInModule]);
 
   useEffect(() => {
     if (loteSeleccionado) {
@@ -130,6 +144,12 @@ export default function GestionProduccion(): ReactElement {
 
   const handleMapClick = (lat: number, lng: number) => {
     if (!loteSeleccionado) return;
+
+    // Verificar permisos antes de permitir crear sublotes
+    if (!hasPermissionInModule('Cultivo', 'Crear')) {
+      // Sin permisos: no hacer nada, permitir zoom normal del mapa
+      return;
+    }
 
     // Verificar si el punto está dentro del lote
     if (isPointInLote(lat, lng, loteSeleccionado)) {
@@ -274,14 +294,16 @@ export default function GestionProduccion(): ReactElement {
                       </span>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => handleLoteSeleccionado(lote)}
-                    color="primary"
-                    variant="solid"
-                    className="w-full"
-                  >
-                    Gestionar Sublotes
-                  </Button>
+                  <PermissionWrapper module="Cultivo" permission="Ver">
+                    <Button
+                      onClick={() => handleLoteSeleccionado(lote)}
+                      color="primary"
+                      variant="solid"
+                      className="w-full"
+                    >
+                      Gestionar Sublotes
+                    </Button>
+                  </PermissionWrapper>
                 </CardBody>
               </Card>
             ))}
@@ -397,34 +419,38 @@ export default function GestionProduccion(): ReactElement {
                             </div>
 
                             <div className="flex flex-col gap-2">
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditSublote(sublote);
-                                }}
-                                isIconOnly
-                                variant="flat"
-                                color="primary"
-                                size="sm"
-                                className="w-8 h-8"
-                                title="Editar sublote"
-                              >
-                                <Edit size={16} />
-                              </Button>
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteSublote(sublote);
-                                }}
-                                isIconOnly
-                                variant="flat"
-                                color="danger"
-                                size="sm"
-                                className="w-8 h-8"
-                                title="Eliminar sublote"
-                              >
-                                <Trash2 size={16} />
-                              </Button>
+                              <PermissionWrapper module="Cultivo" permission="Editar">
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditSublote(sublote);
+                                  }}
+                                  isIconOnly
+                                  variant="flat"
+                                  color="primary"
+                                  size="sm"
+                                  className="w-8 h-8"
+                                  title="Editar sublote"
+                                >
+                                  <Edit size={16} />
+                                </Button>
+                              </PermissionWrapper>
+                              <PermissionWrapper module="Cultivo" permission="EliminarSublote">
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSublote(sublote);
+                                  }}
+                                  isIconOnly
+                                  variant="flat"
+                                  color="danger"
+                                  size="sm"
+                                  className="w-8 h-8"
+                                  title="Eliminar sublote"
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </PermissionWrapper>
                             </div>
                           </div>
                         </CardBody>
@@ -450,7 +476,10 @@ export default function GestionProduccion(): ReactElement {
                       <span className="text-sm font-medium text-gray-600">Mapa Interactivo</span>
                     </div>
                     <div className="text-xs text-gray-600">
-                      Clic para crear sublote • Selecciona para gestionar
+                      {hasPermissionInModule('Cultivo', 'Crear')
+                        ? 'Clic para crear sublote • Selecciona para gestionar'
+                        : 'Clic para hacer zoom • Selecciona para gestionar'
+                      }
                     </div>
                   </div>
                 </div>
@@ -462,6 +491,7 @@ export default function GestionProduccion(): ReactElement {
                   height="600px"
                   center={getMapCenter(loteSeleccionado)}
                   zoom={getMapZoom(loteSeleccionado)}
+                  canCreate={hasPermissionInModule('Cultivo', 'Crear')}
                 />
               </div>
             </div>

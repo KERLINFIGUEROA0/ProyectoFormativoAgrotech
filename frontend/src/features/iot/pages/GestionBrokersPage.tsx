@@ -10,6 +10,8 @@ import {
 import BrokerFormModal from '../components/BrokerFormModal';
 import type { Broker } from '../interfaces/iot';
 import { Button } from "@heroui/react";
+import PermissionWrapper from "../../../components/PermissionWrapper";
+import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
 
 // --- Componente de Tarjeta de Broker ---
 interface BrokerCardProps {
@@ -27,9 +29,8 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete, onToggleEs
   return (
     <div
       onClick={onSelect}
-      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-        isSelected ? 'bg-green-50 border-green-500 shadow-lg' : 'bg-white border-gray-200 hover:shadow-md'
-      }`}
+      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-green-50 border-green-500 shadow-lg' : 'bg-white border-gray-200 hover:shadow-md'
+        }`}
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-3">
@@ -51,15 +52,21 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete, onToggleEs
       </div>
       <div className="mt-4 flex justify-end items-center">
         <div className="flex gap-2">
-          <button onClick={(e) => { e.stopPropagation(); onToggleEstado(); }} className={`p-1.5 rounded-full ${isActive ? 'text-yellow-500 hover:bg-yellow-100' : 'text-green-500 hover:bg-green-100'}`} title={isActive ? 'Desactivar Broker' : 'Activar Broker'}>
-            {isActive ? <PowerOff size={16} /> : <Power size={16} />}
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar Broker">
-            <Edit size={16} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full" title="Eliminar Broker">
-            <Trash2 size={16} />
-          </button>
+          <PermissionWrapper module="Iot" permission="Editar">
+            <button onClick={(e) => { e.stopPropagation(); onToggleEstado(); }} className={`p-1.5 rounded-full ${isActive ? 'text-yellow-500 hover:bg-yellow-100' : 'text-green-500 hover:bg-green-100'}`} title={isActive ? 'Desactivar Broker' : 'Activar Broker'}>
+              {isActive ? <PowerOff size={16} /> : <Power size={16} />}
+            </button>
+          </PermissionWrapper>
+          <PermissionWrapper module="Iot" permission="Editar">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar Broker">
+              <Edit size={16} />
+            </button>
+          </PermissionWrapper>
+          <PermissionWrapper module="Iot" permission="Eliminar">
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full" title="Eliminar Broker">
+              <Trash2 size={16} />
+            </button>
+          </PermissionWrapper>
         </div>
       </div>
     </div>
@@ -68,6 +75,9 @@ function BrokerCard({ broker, isSelected, onSelect, onEdit, onDelete, onToggleEs
 
 // --- Componente Principal ---
 export default function GestionBrokersPage(): ReactElement {
+  // Protección de permisos en tiempo real
+  usePermissionGuard({ module: 'Iot' });
+
   const [brokers, setBrokers] = useState<Broker[]>([]);
 
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
@@ -139,9 +149,11 @@ export default function GestionBrokersPage(): ReactElement {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Configuración de Brokers </h1>
-        <button onClick={() => openBrokerModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
-          <Plus /> Nuevo Broker
-        </button>
+        <PermissionWrapper module="Iot" permission="Crear">
+          <button onClick={() => openBrokerModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow">
+            <Plus /> Nuevo Broker
+          </button>
+        </PermissionWrapper>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -151,7 +163,7 @@ export default function GestionBrokersPage(): ReactElement {
               key={broker.id}
               broker={broker}
               isSelected={false}
-              onSelect={() => {}}
+              onSelect={() => { }}
               onEdit={() => openBrokerModal(broker)}
               onDelete={() => handleDeleteBroker(broker)}
               onToggleEstado={() => handleToggleEstado(broker)}

@@ -14,7 +14,7 @@ import { Permission } from '../../authorization/permission.decorator';
 @Controller('materiales')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class MaterialesController {
-  constructor(private readonly materialesService: MaterialesService) {}
+  constructor(private readonly materialesService: MaterialesService) { }
 
   // --- OBTENER REPORTE DE STOCK BAJO ---
   @Get('reportes/stock-bajo')
@@ -48,6 +48,13 @@ export class MaterialesController {
     return { success: true, total: materiales.length, data: materiales };
   }
 
+  // Endpoint público para dashboard - solo requiere autenticación
+  @Get('dashboard/listar')
+  async findAllParaDashboard() {
+    const materiales = await this.materialesService.findAll();
+    return { success: true, total: materiales.length, data: materiales };
+  }
+
   // --- OBTENER UN MATERIAL POR SU ID ---
   @Get(':id')
   @Permission('Inventario.Ver')
@@ -67,10 +74,10 @@ export class MaterialesController {
       data: material,
     };
   }
-  
+
   // --- SUBIR O ACTUALIZAR LA IMAGEN DE UN MATERIAL ---
   @Post(':id/imagen')
-  @Permission('Inventario.Editar')
+  @Permission('Inventario.Crear')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: './uploads/materiales-pic',
@@ -123,7 +130,7 @@ export class MaterialesController {
 
   // --- ACTUALIZAR STOCK (AGREGAR EMPAQUES) ---
   @Post(':id/actualizar-stock')
-  @Permission('Inventario.Editar')
+  @Permission('Inventario.ActualizarStock')
   async actualizarStock(@Param('id', ParseIntPipe) id: number, @Body() body: { cantidadEmpaques: number }) {
     const { cantidadEmpaques } = body;
     if (cantidadEmpaques <= 0) {

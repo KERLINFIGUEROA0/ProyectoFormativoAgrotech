@@ -9,6 +9,7 @@ import LoteForm from '../components/LoteForm';
 import LotesMap from '../components/LotesMap';
 import type { Lote, LoteData } from '../interfaces/cultivos';
 import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Progress } from '@heroui/react';
+import PermissionWrapper, { SmartPermissionWrapper } from '../../../components/PermissionWrapper';
 
 
 export default function GestionLotesPage(): ReactElement {
@@ -139,14 +140,16 @@ const handleViewLocation = (lote: Lote) => {
     <div className="h-full flex flex-col space-y-4 md:space-y-6 p-4 md:p-6 bg-gray-50">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Gestión Lotes</h1>
-        <Button
-          onPress={() => openModal()}
-          className="bg-green-600 text-white font-bold hover:bg-green-700"
-          size="sm"
-          startContent={<Plus size={16} strokeWidth={2.5} />}
-        >
-          Nuevo Lote
-        </Button>
+        <PermissionWrapper module="Cultivo" permission="Crear">
+          <Button
+            onPress={() => openModal()}
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
+            size="sm"
+            startContent={<Plus size={16} strokeWidth={2.5} />}
+          >
+            Nuevo Lote
+          </Button>
+        </PermissionWrapper>
       </div>
 
       {/* Main Stats Grid */}
@@ -291,26 +294,30 @@ const handleViewLocation = (lote: Lote) => {
                         </Chip>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <Button
-                          onClick={() => handleViewLocation(lote)}
-                          color="primary"
-                          variant="light"
-                          size="sm"
-                          startContent={<FaMapMarkerAlt />}
-                        >
-                          Ver
-                        </Button>
+                        <SmartPermissionWrapper module="Cultivo" action="Ver">
+                          <Button
+                            onClick={() => handleViewLocation(lote)}
+                            color="primary"
+                            variant="light"
+                            size="sm"
+                            startContent={<FaMapMarkerAlt />}
+                          >
+                            Ver
+                          </Button>
+                        </SmartPermissionWrapper>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => openModal(lote)}
-                          color="primary"
-                          variant="light"
-                          size="sm"
-                          isIconOnly
-                        >
-                          <FaEdit />
-                        </Button>
+                        <SmartPermissionWrapper module="Cultivo" action="Editar">
+                          <Button
+                            onClick={() => openModal(lote)}
+                            color="primary"
+                            variant="light"
+                            size="sm"
+                            isIconOnly
+                          >
+                            <FaEdit />
+                          </Button>
+                        </SmartPermissionWrapper>
                       </TableCell>
                     </TableRow>
                   ))}

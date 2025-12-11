@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../context/AuthContext';
 import { obtenerPagosUsuario, obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Card, CardHeader, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 interface Pago {
   id: number;
@@ -99,25 +100,26 @@ const PagosPasantePage: React.FC = () => {
 
   const cargarPagos = async () => {
     try {
-      let data: Pago[];
+      let responseData: { success: boolean; data: Pago[] };
       const rol = userData?.rolNombre?.toLowerCase();
 
       if (rol === 'admin' || rol === 'administrador' || rol === 'instructor') {
         // Administradores e instructores ven todos los pagos (cada uno según sus permisos en el backend)
-        data = await obtenerTodosPagos();
+        responseData = await obtenerTodosPagos();
       } else if (rol === 'pasante') {
         // Pasantes ven solo sus pagos
         if (!userData?.identificacion) {
           toast.error('No se pudo obtener la información del usuario');
           return;
         }
-        data = await obtenerPagosUsuario(userData.identificacion);
+        responseData = await obtenerPagosUsuario(userData.identificacion);
       } else {
         // Usuario sin rol definido
         toast.error('Rol de usuario no reconocido');
         return;
       }
 
+      const data = responseData.data || [];
       setPagos(data);
 
       // Calcular estadísticas
@@ -206,7 +208,8 @@ const PagosPasantePage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <PermissionWrapper module="Actividades" permission="VerPagos">
+      <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           {(isAdmin || isInstructor) && (
@@ -526,6 +529,7 @@ const PagosPasantePage: React.FC = () => {
         )}
       </>
     </div>
+    </PermissionWrapper>
   );
 };
 

@@ -130,11 +130,11 @@ export const descargarReporteApi = async (data: {
 }) => {
   if (data.formato === 'json') {
     // Para testing, devolver JSON directamente
-    const response = await api.post('/lotes/reporte-trazabilidad', data);
+    const response = await api.post('/sensores/reporte-trazabilidad', data);
     return response.data;
   } else {
     // Para PDF/CSV, descargar como blob
-    const response = await api.post('/lotes/reporte-trazabilidad', data, {
+    const response = await api.post('/sensores/reporte-trazabilidad', data, {
       responseType: 'blob',
     });
     return response.data; // Retorna el blob

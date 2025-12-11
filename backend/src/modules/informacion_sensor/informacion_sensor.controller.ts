@@ -17,8 +17,15 @@ export class InformacionSensorController {
    * (Ideal para un dashboard)
    */
   @Get('latest')
-  @Permission('InformacionSensor.Ver')
+  @Permission('Iot.Ver')
   async getLatestData(@Query('maxAgeMinutes', new ParseIntPipe({ optional: true })) maxAgeMinutes?: number) {
+    const data = await this.informacionSensorService.getLatestData(maxAgeMinutes || 2);
+    return { success: true, data };
+  }
+
+  // Endpoint público para dashboard - solo requiere autenticación
+  @Get('dashboard/latest')
+  async getLatestDataParaDashboard(@Query('maxAgeMinutes', new ParseIntPipe({ optional: true })) maxAgeMinutes?: number) {
     const data = await this.informacionSensorService.getLatestData(maxAgeMinutes || 2);
     return { success: true, data };
   }
@@ -27,7 +34,7 @@ export class InformacionSensorController {
    * ✅ NUEVO: Devuelve el historial de un sensor específico por su ID.
    */
   @Get('sensor/:id')
-  @Permission('InformacionSensor.Ver')
+  @Permission('Iot.Ver')
   async findAllBySensor(
     @Param('id', ParseIntPipe) id: number,
     @Query('take', new ParseIntPipe({ optional: true })) take?: number,
@@ -38,7 +45,7 @@ export class InformacionSensorController {
 
   // --- Tus métodos existentes ---
   @Post()
-  @Permission('InformacionSensor.Crear')
+  @Permission('Iot.Crear')
   create(@Body() createInformacionSensorDto: CreateInformacionSensorDto) {
     return this.informacionSensorService.create(createInformacionSensorDto);
   }
@@ -48,7 +55,7 @@ export class InformacionSensorController {
    * IMPORTANTE: Esta ruta debe estar ANTES de @Get(':id') para que funcione
    */
   @Post('test/:sensorId')
-  @Permission('InformacionSensor.Crear')
+  @Permission('Iot.Crear')
   async insertTestData(@Param('sensorId', ParseIntPipe) sensorId: number) {
     const valor = Math.random() * 50 + 10; // Valor aleatorio entre 10 y 60
     const data = await this.informacionSensorService.create({
@@ -59,7 +66,7 @@ export class InformacionSensorController {
   }
 
   @Get()
-  @Permission('InformacionSensor.Ver')
+  @Permission('Iot.Ver')
   findAll() {
     return this.informacionSensorService.findAll();
   }
@@ -68,7 +75,7 @@ export class InformacionSensorController {
     * Generate advanced report with statistics and chart data
     */
    @Get('report')
-   @Permission('InformacionSensor.Ver')
+   @Permission('Iot.Ver')
    async generateReport(
      @Query('scope') scope: 'sublote' | 'cultivo',
      @Query('scopeId', ParseIntPipe) scopeId: number,
@@ -81,25 +88,25 @@ export class InformacionSensorController {
    }
 
   @Get(':id')
-  @Permission('InformacionSensor.Ver')
+  @Permission('Iot.Ver')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.informacionSensorService.findOne(id);
   }
 
   @Patch(':id')
-  @Permission('InformacionSensor.Editar')
+  @Permission('Iot.Editar')
   update(@Param('id') id: string, @Body() updateInformacionSensorDto: UpdateInformacionSensorDto) {
     return this.informacionSensorService.update(+id, updateInformacionSensorDto);
   }
   
   @Get('cultivo/:id')
-  @Permission('InformacionSensor.Ver')
+  @Permission('Iot.Ver')
   findByCultivo(@Param('id', ParseIntPipe) id: number) {
     return this.informacionSensorService.findByCultivo(id);
   }
 
   @Delete(':id')
-  @Permission('InformacionSensor.Eliminar')
+  @Permission('Iot.Eliminar')
   remove(@Param('id') id: string) {
     return this.informacionSensorService.remove(+id);
   }

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Sprout, ClipboardList, Package, DollarSign, ArrowLeft, FileText } from 'lucide-react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from '@heroui/react';
 import { obtenerTrazabilidad, generarPdfTrazabilidad } from '../api/cultivosApi';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // Mapeo de iconos para cada tipo de evento
 const iconMap: any = {
@@ -111,13 +112,15 @@ export default function TrazabilidadCultivoPage() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
-        >
-          <FileText size={18} />
-          Generar PDF de Trazabilidad
-        </button>
+        <PermissionWrapper module="Cultivo" permission="DescargarTrazabilidad">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+          >
+            <FileText size={18} />
+            Generar PDF de Trazabilidad
+          </button>
+        </PermissionWrapper>
       </div>
 
       <div className="relative pl-8">

@@ -7,6 +7,7 @@ import TratamientoForm from '../components/TratamientoForm';
 import { listarCultivos } from '../../cultivos/api/cultivosApi';
 import { useLocation } from 'react-router-dom';
 import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
+import PermissionWrapper  from "../../../components/PermissionWrapper";
 
 export default function GestionTratamientosPage() {
   const location = useLocation();
@@ -159,9 +160,11 @@ const handleSave = async (data: Partial<Tratamiento>) => {
     <div className="p-6 bg-gray-50 min-h-full space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Tratamientos</h1>
-        <Button onClick={() => handleOpenModal()} color="success" startContent={<Plus />} className="text-white font-bold">
-          Planificar Tratamiento
-        </Button>
+        <PermissionWrapper module="Fitosanitario" permission="Crear">
+          <Button onClick={() => handleOpenModal()} color="success" startContent={<Plus />} className="text-white font-bold">
+            Planificar Tratamiento
+          </Button>
+        </PermissionWrapper>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-md">
@@ -197,12 +200,16 @@ const handleSave = async (data: Partial<Tratamiento>) => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center flex justify-center items-center gap-4">
-                    <Button onClick={() => handleOpenModal(t)} color="success" variant="light" isIconOnly>
-                      <Edit2 size={16} />
-                    </Button>
-                    <Button onClick={() => handleDelete(t.id)} color="danger" variant="light" isIconOnly>
-                      <Trash2 size={16} />
-                    </Button>
+                    <PermissionWrapper module="Fitosanitario" permission="Editar">
+                      <Button onClick={() => handleOpenModal(t)} color="success" variant="light" isIconOnly>
+                        <Edit2 size={16} />
+                      </Button>
+                    </PermissionWrapper>
+                    <PermissionWrapper module="Fitosanitario" permission="Eliminar">
+                      <Button onClick={() => handleDelete(t.id)} color="danger" variant="light" isIconOnly>
+                        <Trash2 size={16} />
+                      </Button>
+                    </PermissionWrapper>
                   </td>
                 </tr>
               ))}

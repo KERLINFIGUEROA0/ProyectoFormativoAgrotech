@@ -19,13 +19,11 @@ import {
 } from "lucide-react";
 
 // APIs
+import { api } from "../lib/axios";
 import { obtenerTransacciones } from "../features/finanzas/api/transaccionesApi";
-import { listarMateriales } from "../features/inventario/api/inventarioApi";
-import { getLatestSensorData, listarSensores } from "../features/iot/api/sensoresApi";
-import { listarCultivos } from "../features/cultivos/api/cultivosApi";
-import { obtenerEstadisticasLotes } from "../features/cultivos/api/lotesApi";
 import { SensorCarousel } from "../components/home/SensorCarousel";
 import type { LatestSensorData, Sensor } from "../features/iot/interfaces/iot";
+import PermissionWrapper from "../components/PermissionWrapper";
 
 interface Movimiento {
   id: string | number;
@@ -65,8 +63,9 @@ export default function HomePage() {
   useEffect(() => {
     const fetchSensorData = async () => {
       try {
-        const latestSensorsRes = await getLatestSensorData();
-        setLatestData(latestSensorsRes || []);
+        const response = await api.get("/informacion-sensor/dashboard/latest");
+        const latestSensorsRes = response.data?.data || response.data || [];
+        setLatestData(latestSensorsRes);
       } catch (error) {
         console.error("Error fetching sensor data", error);
       }
@@ -83,7 +82,7 @@ export default function HomePage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Load all data in parallel
+      // Load all data in parallel - usando endpoints públicos para dashboard
       const [
         transaccionesRes,
         cultivosRes,
@@ -93,11 +92,11 @@ export default function HomePage() {
         lotesStatsRes
       ] = await Promise.allSettled([
         obtenerTransacciones(),
-        listarCultivos(),
-        listarMateriales(),
-        listarSensores(),
-        getLatestSensorData(),
-        obtenerEstadisticasLotes(),
+        api.get("/cultivos/dashboard/listar"),
+        api.get("/materiales/dashboard/listar"),
+        api.get("/sensores/dashboard/listar"),
+        api.get("/informacion-sensor/dashboard/latest"),
+        api.get("/lotes/dashboard/estadisticas"),
       ]);
 
       // Process financial data
@@ -118,14 +117,14 @@ export default function HomePage() {
       // Process cultivos data
       let cultivosActivos = 0;
       if (cultivosRes.status === 'fulfilled') {
-        const cultivos = cultivosRes.value.data || [];
+        const cultivos = cultivosRes.value.data?.data || cultivosRes.value.data || [];
         cultivosActivos = cultivos.length;
       }
 
       // Process inventory data
       let productosInventario = 0;
       if (inventarioRes.status === 'fulfilled') {
-        const materiales = inventarioRes.value.data || [];
+        const materiales = inventarioRes.value.data?.data || inventarioRes.value.data || [];
         productosInventario = materiales.length;
       }
 
@@ -135,18 +134,18 @@ export default function HomePage() {
       let sensoresActivos = 0;
 
       if (sensorsRes.status === 'fulfilled') {
-        sensors = sensorsRes.value.data || [];
+        sensors = sensorsRes.value.data?.data || sensorsRes.value.data || [];
       }
 
       if (latestSensorsRes.status === 'fulfilled') {
-        latestSensors = latestSensorsRes.value || [];
+        latestSensors = latestSensorsRes.value.data?.data || latestSensorsRes.value.data || [];
         sensoresActivos = latestSensors.length;
       }
 
       // Process lotes stats - only get total
       let totalLotes = 0;
       if (lotesStatsRes.status === 'fulfilled') {
-        const stats = lotesStatsRes.value.data || {};
+        const stats = lotesStatsRes.value.data?.data || lotesStatsRes.value.data || {};
         totalLotes = stats.total || 0;
       }
 
@@ -330,48 +329,50 @@ export default function HomePage() {
         </Card>
 
         {/* Financial Summary */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-green-100 rounded-md">
-                <DollarSign className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-800">Movimientos</h3>
-                <p className="text-xs text-gray-600">Últimas transacciones</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="space-y-2">
-              {statsData.movimientosRecientes.length > 0 ? (
-                statsData.movimientosRecientes.slice(0, 3).map((movimiento) => (
-                  <div key={movimiento.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1 rounded-full ${movimiento.tipo === 'ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <TrendingUp className={`h-2.5 w-2.5 ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-900 truncate max-w-24">{movimiento.descripcion}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(movimiento.fecha).toLocaleDateString('es-ES')}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`text-xs font-semibold ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
-                      {movimiento.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(movimiento.monto)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">Sin movimientos</p>
+        <PermissionWrapper module="Finanzas" permission="VerMovimientos">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-green-100 rounded-md">
+                  <DollarSign className="h-4 w-4 text-green-600" />
                 </div>
-              )}
-            </div>
-          </CardBody>
-        </Card>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800">Movimientos</h3>
+                  <p className="text-xs text-gray-600">Últimas transacciones</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="pt-0">
+              <div className="space-y-2">
+                {statsData.movimientosRecientes.length > 0 ? (
+                  statsData.movimientosRecientes.slice(0, 3).map((movimiento) => (
+                    <div key={movimiento.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1 rounded-full ${movimiento.tipo === 'ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
+                          <TrendingUp className={`h-2.5 w-2.5 ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-900 truncate max-w-24">{movimiento.descripcion}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(movimiento.fecha).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-semibold ${movimiento.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
+                        {movimiento.tipo === 'egreso' ? '-' : ''}{currencyFormatter.format(movimiento.monto)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-xs">Sin movimientos</p>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+        </PermissionWrapper>
       </div>
 
     </div>

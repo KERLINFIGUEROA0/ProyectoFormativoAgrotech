@@ -24,7 +24,7 @@ export class TipoCultivoController {
   constructor(private readonly tipoCultivoService: TipoCultivoService) {}
 
   @Post('crear')
-  @Permission('TipoCultivo.Crear')
+  @Permission('Cultivo.Crear')
   async crear(@Body() data: CreateTipoCultivoDto) {
     try {
       const nuevo = await this.tipoCultivoService.crear(data);
@@ -41,7 +41,7 @@ export class TipoCultivoController {
   }
 
   @Get('listar')
-  @Permission('TipoCultivo.Ver')
+  @Permission('Cultivo.Ver')
   async listar() {
     const lista = await this.tipoCultivoService.listar();
     return {
@@ -52,7 +52,7 @@ export class TipoCultivoController {
   }
 
   @Get(':id')
-  @Permission('TipoCultivo.Ver')
+  @Permission('Cultivos.Ver')
   async buscarPorId(@Param('id', ParseIntPipe) id: number) {
     const cultivo = await this.tipoCultivoService.buscarPorId(id);
     if (!cultivo) {
@@ -67,7 +67,7 @@ export class TipoCultivoController {
   }
 
   @Put('actualizar/:id')
-  @Permission('TipoCultivo.Editar')
+  @Permission('Cultivos.Editar')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateTipoCultivoDto,
@@ -86,7 +86,7 @@ export class TipoCultivoController {
   }
 
   @Delete('eliminar/:id')
-  @Permission('TipoCultivo.Eliminar')
+  @Permission('Cultivos.Eliminar')
   async eliminar(@Param('id', ParseIntPipe) id: number) {
     const eliminado = await this.tipoCultivoService.eliminar(id);
     if (!eliminado) {
