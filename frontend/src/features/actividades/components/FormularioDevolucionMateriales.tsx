@@ -23,9 +23,10 @@ interface DevolucionItem {
 interface Props {
   materiales: MaterialAsignado[];
   onChange: (datos: any[]) => void; // Para enviar datos al padre
+  onValidityChange?: (isValid: boolean) => void; // Nueva prop para comunicar validez
 }
 
-export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, onChange }) => {
+export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, onChange, onValidityChange }) => {
   const [items, setItems] = useState<DevolucionItem[]>([]);
 
   // CAMBIO 2: Inicialización protegida.
@@ -51,23 +52,34 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
     }
   }, [materiales]); // Dependencia correcta
 
-  // 2. NOTIFICAR AL PADRE (CORREGIDO: Sin conversión, enviamos datos puros)
+  // 2. NOTIFICAR AL PADRE (CORREGIDO: Sin conversión, enviamos datos puros) y VALIDAR
   useEffect(() => {
     if (items.length > 0) {
-      const payload = items.map((item) => {
+      // Calcular validez general
+      let isFormValid = true;
+
+      const payload = items.map((item, index) => {
+        const mat = materiales[index];
         const valDevueltaUsuario = Number(item.cantidadDevuelta) || 0;
         const valDanadaUsuario = item.reportarDano ? (Number(item.cantidadDanada) || 0) : 0;
 
-        // 🔍 DEBUG FRONTEND: ¿Qué estamos enviando realmente?
-        console.group(`📦 [FRONT] Item Material ID: ${item.materialId}`);
-        console.log(`   Valor escrito por usuario: ${item.cantidadDevuelta}`);
-        console.log(`   Valor numérico procesado: ${valDevueltaUsuario}`);
-        console.log(`   Unidad Seleccionada (Estado): "${item.unidadSeleccionada}"`);
-        console.groupEnd();
+        // Validación de exceso
+        if (mat) {
+          let totalIngresadoEnAsignada = valDevueltaUsuario + valDanadaUsuario;
 
-        // 🔥 CAMBIO CRÍTICO:
-        // Ya no convertimos aquí. Enviamos exactamente lo que escribió el usuario
-        // y la unidad que seleccionó. El backend se encarga del resto.
+          // Si hay conversión de unidad, normalizar para validar
+          if (item.unidadSeleccionada !== mat.unidad) {
+            const fSel = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
+            const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
+            totalIngresadoEnAsignada = totalIngresadoEnAsignada * (fSel / fOrig);
+          }
+
+          // Verificamos si excede lo asignado (con margen de error mínimo)
+          if (totalIngresadoEnAsignada > (mat.cantidadAsignada + 0.0001)) {
+            isFormValid = false;
+          }
+        }
+
         return {
           materialId: item.materialId,
           cantidadDevuelta: valDevueltaUsuario,
@@ -78,8 +90,17 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
       console.log('🚀 [FRONT] Payload completo enviado al padre:', payload);
       onChange(payload);
+
+      // Notificar validez
+      if (onValidityChange) {
+        onValidityChange(isFormValid);
+      }
+    } else {
+      // Si no hay ítems, es válido (nada que reportar) o inválido según lógica de negocio. 
+      // Asumimos válido si no hay materiales.
+      if (onValidityChange) onValidityChange(true);
     }
-  }, [items, onChange]);
+  }, [items, onChange, onValidityChange, materiales]);
 
   // 3. CALCULAR RESUMEN DE TRANSACCIÓN (COSTOS)
   const resumenCostos = useMemo(() => {
@@ -97,32 +118,32 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
         // --- CASO A: HERRAMIENTAS (Solo cobramos si las dañan) ---
         if (mat.tipoConsumo === 'no_consumible') {
-            if (!item.reportarDano || valDanadaUsuario <= 0) return null;
+          if (!item.reportarDano || valDanadaUsuario <= 0) return null;
 
-            cantidadCobrar = valDanadaUsuario;
-            precioTotal = cantidadCobrar * mat.precioUnitario;
-            concepto = 'Daño/Pérdida';
+          cantidadCobrar = valDanadaUsuario;
+          precioTotal = cantidadCobrar * mat.precioUnitario;
+          concepto = 'Daño/Pérdida';
         }
         // --- CASO B: INSUMOS (Cobramos lo que se gastó) ---
         // Aquí aplicamos la lógica: Asignado (10) - Devuelto (5) = Cobrar (5)
         else {
-            // 1. Convertir lo devuelto a la misma unidad que lo asignado (por si acaso)
-            let devueltoNormalizado = valDevueltaUsuario;
-            if (item.unidadSeleccionada !== mat.unidad) {
-               const fSel = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
-               const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
-               devueltoNormalizado = valDevueltaUsuario * (fSel / fOrig);
-            }
+          // 1. Convertir lo devuelto a la misma unidad que lo asignado (por si acaso)
+          let devueltoNormalizado = valDevueltaUsuario;
+          if (item.unidadSeleccionada !== mat.unidad) {
+            const fSel = FACTORES_CONVERSION[item.unidadSeleccionada] || 1;
+            const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
+            devueltoNormalizado = valDevueltaUsuario * (fSel / fOrig);
+          }
 
-            // 2. Calcular consumo real
-            const consumoReal = mat.cantidadAsignada - devueltoNormalizado;
+          // 2. Calcular consumo real
+          const consumoReal = mat.cantidadAsignada - devueltoNormalizado;
 
-            // Si el consumo es casi 0, no cobramos nada
-            if (consumoReal <= 0.001) return null;
+          // Si el consumo es casi 0, no cobramos nada
+          if (consumoReal <= 0.001) return null;
 
-            cantidadCobrar = consumoReal;
-            precioTotal = cantidadCobrar * mat.precioUnitario; // 5 * 1000 = 5000
-            concepto = 'Consumo Real';
+          cantidadCobrar = consumoReal;
+          precioTotal = cantidadCobrar * mat.precioUnitario; // 5 * 1000 = 5000
+          concepto = 'Consumo Real';
         }
 
         return {
@@ -189,9 +210,9 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
           // Normalizamos a la unidad asignada para comparar con el límite
           let totalIngresadoEnAsignada = valDevuelta + (itemState.reportarDano ? valDanada : 0);
           if (permiteConversion) {
-             const fSel = FACTORES_CONVERSION[itemState.unidadSeleccionada] || 1;
-             const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
-             totalIngresadoEnAsignada = totalIngresadoEnAsignada * (fSel / fOrig);
+            const fSel = FACTORES_CONVERSION[itemState.unidadSeleccionada] || 1;
+            const fOrig = FACTORES_CONVERSION[mat.unidad] || 1;
+            totalIngresadoEnAsignada = totalIngresadoEnAsignada * (fSel / fOrig);
           }
 
           // Permitimos un margen de error mínimo por decimales (0.0001)
@@ -200,136 +221,136 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
           // Calcular costo estimado para daños
           const costoEstimado = itemState.reportarDano ? (valDanada * mat.precioUnitario) : 0;
 
-        return (
-          <div key={mat.materialId} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            {/* Encabezado del Material */}
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h4 className="font-bold text-gray-800 flex items-center gap-2">
-                  {mat.nombre}
-                  {permiteConversion && (
-                    <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1">
-                      <Ruler size={12}/> {mat.unidad} (Asignado)
-                    </span>
-                  )}
-                </h4>
-                <span className={`text-xs px-2 py-1 rounded-full ${esHerramienta ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                  {esHerramienta ? 'Herramienta' : 'Insumo'}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="block text-sm text-gray-500">Total Asignado</span>
-                <span className="font-mono font-bold text-lg">{mat.cantidadAsignada} {mat.unidad}</span>
-              </div>
-            </div>
-
-            <div className={`grid ${esHerramienta ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
-
-              {/* COLUMNA 1: Devolución (Sobrantes o Herramientas buenas) */}
-              <div>
-                <label className="text-sm font-medium text-green-700 mb-1 flex items-center gap-1">
-                  <PackageCheck size={16} />
-                  {esHerramienta ? 'Devolver Buen Estado' : 'Devolver Sobrante (Resto al Stock)'}
-                </label>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text" // Usamos text temporalmente para permitir "1." mientras escribes
-                    inputMode="decimal"
-                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2"
-                    value={itemState.cantidadDevuelta}
-                    onChange={(e) => {
-                      // Validamos que sea un número o vacío para no romper el input
-                      if (/^\d*\.?\d*$/.test(e.target.value)) {
-                        handleUpdate(index, 'cantidadDevuelta', e.target.value);
-                      }
-                    }}
-                    placeholder="0"
-                  />
-
-                  {/* SELECTOR DE UNIDAD */}
-                  {permiteConversion ? (
-                    <select
-                      className="w-24 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-gray-50 text-sm"
-                      value={itemState.unidadSeleccionada}
-                      onChange={(e) => handleUpdate(index, 'unidadSeleccionada', e.target.value)}
-                    >
-                      {opcionesUnidad.map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                  ) : (
-                    <div className="px-3 py-2 bg-gray-100 text-gray-500 rounded-md border border-gray-200 text-sm font-medium">
-                      {mat.unidad}
-                    </div>
-                  )}
+          return (
+            <div key={mat.materialId} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              {/* Encabezado del Material */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                    {mat.nombre}
+                    {permiteConversion && (
+                      <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Ruler size={12} /> {mat.unidad} (Asignado)
+                      </span>
+                    )}
+                  </h4>
+                  <span className={`text-xs px-2 py-1 rounded-full ${esHerramienta ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {esHerramienta ? 'Herramienta' : 'Insumo'}
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {esHerramienta
-                    ? 'Cantidad que regresa al inventario funcional.'
-                    : 'Cantidad de insumo que NO se gastó y vuelve a bodega.'}
-                </p>
+                <div className="text-right">
+                  <span className="block text-sm text-gray-500">Total Asignado</span>
+                  <span className="font-mono font-bold text-lg">{mat.cantidadAsignada} {mat.unidad}</span>
+                </div>
               </div>
 
-              {/* COLUMNA 2: Daños - SOLO VISIBLE PARA HERRAMIENTAS (no_consumible) */}
-              {esHerramienta && (
-                <div className={`p-3 rounded-md border ${itemState.reportarDano ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-transparent'}`}>
-                  <div className="flex items-center mb-2">
+              <div className={`grid ${esHerramienta ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+
+                {/* COLUMNA 1: Devolución (Sobrantes o Herramientas buenas) */}
+                <div>
+                  <label className="text-sm font-medium text-green-700 mb-1 flex items-center gap-1">
+                    <PackageCheck size={16} />
+                    {esHerramienta ? 'Devolver Buen Estado' : 'Devolver Sobrante (Resto al Stock)'}
+                  </label>
+
+                  <div className="flex gap-2">
                     <input
-                      id={`check-dano-${mat.materialId}`}
-                      type="checkbox"
-                      className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
-                      checked={itemState.reportarDano}
-                      onChange={(e) => handleUpdate(index, 'reportarDano', e.target.checked)}
+                      type="text" // Usamos text temporalmente para permitir "1." mientras escribes
+                      inputMode="decimal"
+                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2"
+                      value={itemState.cantidadDevuelta}
+                      onChange={(e) => {
+                        // Validamos que sea un número o vacío para no romper el input
+                        if (/^\d*\.?\d*$/.test(e.target.value)) {
+                          handleUpdate(index, 'cantidadDevuelta', e.target.value);
+                        }
+                      }}
+                      placeholder="0"
                     />
-                    <label htmlFor={`check-dano-${mat.materialId}`} className="ml-2 block text-sm font-medium text-gray-900 cursor-pointer">
-                      Reportar Daño / Pérdida
-                    </label>
+
+                    {/* SELECTOR DE UNIDAD */}
+                    {permiteConversion ? (
+                      <select
+                        className="w-24 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-gray-50 text-sm"
+                        value={itemState.unidadSeleccionada}
+                        onChange={(e) => handleUpdate(index, 'unidadSeleccionada', e.target.value)}
+                      >
+                        {opcionesUnidad.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-100 text-gray-500 rounded-md border border-gray-200 text-sm font-medium">
+                        {mat.unidad}
+                      </div>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {esHerramienta
+                      ? 'Cantidad que regresa al inventario funcional.'
+                      : 'Cantidad de insumo que NO se gastó y vuelve a bodega.'}
+                  </p>
+                </div>
 
-                  {itemState.reportarDano && (
-                    <div className="animate-fadeIn">
-                      <label className="text-sm font-medium text-red-700 mb-1 flex items-center gap-1">
-                        <PackageX size={16} />
-                        Cantidad Dañada
-                      </label>
+                {/* COLUMNA 2: Daños - SOLO VISIBLE PARA HERRAMIENTAS (no_consumible) */}
+                {esHerramienta && (
+                  <div className={`p-3 rounded-md border ${itemState.reportarDano ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-transparent'}`}>
+                    <div className="flex items-center mb-2">
                       <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full border-red-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 px-3 py-2 mb-2"
-                        value={itemState.cantidadDanada}
-                        onChange={(e) => {
-                          if (/^\d*\.?\d*$/.test(e.target.value)) {
-                            handleUpdate(index, 'cantidadDanada', e.target.value);
-                          }
-                        }}
-                        placeholder="0"
+                        id={`check-dano-${mat.materialId}`}
+                        type="checkbox"
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
+                        checked={itemState.reportarDano}
+                        onChange={(e) => handleUpdate(index, 'reportarDano', e.target.checked)}
                       />
+                      <label htmlFor={`check-dano-${mat.materialId}`} className="ml-2 block text-sm font-medium text-gray-900 cursor-pointer">
+                        Reportar Daño / Pérdida
+                      </label>
+                    </div>
 
-                      <div className="bg-white p-2 rounded border border-red-100 mt-2">
-                        <div className="flex justify-between items-center text-sm text-gray-600">
-                          <span>Costo Unitario:</span>
-                          <span>${mat.precioUnitario.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center font-bold text-red-600 mt-1 border-t pt-1">
-                          <span className="flex items-center gap-1"><DollarSign size={14}/> Cargo Total:</span>
-                          <span>${costoEstimado.toLocaleString()}</span>
+                    {itemState.reportarDano && (
+                      <div className="animate-fadeIn">
+                        <label className="text-sm font-medium text-red-700 mb-1 flex items-center gap-1">
+                          <PackageX size={16} />
+                          Cantidad Dañada
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-full border-red-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 px-3 py-2 mb-2"
+                          value={itemState.cantidadDanada}
+                          onChange={(e) => {
+                            if (/^\d*\.?\d*$/.test(e.target.value)) {
+                              handleUpdate(index, 'cantidadDanada', e.target.value);
+                            }
+                          }}
+                          placeholder="0"
+                        />
+
+                        <div className="bg-white p-2 rounded border border-red-100 mt-2">
+                          <div className="flex justify-between items-center text-sm text-gray-600">
+                            <span>Costo Unitario:</span>
+                            <span>${mat.precioUnitario.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center font-bold text-red-600 mt-1 border-t pt-1">
+                            <span className="flex items-center gap-1"><DollarSign size={14} /> Cargo Total:</span>
+                            <span>${costoEstimado.toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Validaciones Visuales */}
+              {esExceso && (
+                <div className="mt-2 flex items-center gap-2 text-red-600 text-sm font-medium bg-red-50 p-2 rounded animate-pulse">
+                  <AlertTriangle size={16} />
+                  Estás devolviendo {totalIngresadoEnAsignada.toFixed(2)} {mat.unidad}, pero solo se asignaron {mat.cantidadAsignada}.
                 </div>
               )}
             </div>
-
-            {/* Validaciones Visuales */}
-            {esExceso && (
-              <div className="mt-2 flex items-center gap-2 text-red-600 text-sm font-medium bg-red-50 p-2 rounded animate-pulse">
-                <AlertTriangle size={16} />
-                Estás devolviendo {totalIngresadoEnAsignada.toFixed(2)} {mat.unidad}, pero solo se asignaron {mat.cantidadAsignada}.
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
 
       {/* SECCIÓN 2: PREVISUALIZACIÓN DE TRANSACCIÓN FINANCIERA */}
@@ -358,9 +379,9 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
 
                     {/* Columna Concepto: Diferencia visualmente Consumo de Daño */}
                     <td className="px-4 py-2 text-sm text-slate-600">
-                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.concepto === 'Daño/Pérdida' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {item.concepto}
-                        </span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.concepto === 'Daño/Pérdida' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {item.concepto}
+                      </span>
                     </td>
 
                     <td className="px-4 py-2 text-sm text-right text-slate-700 font-bold">

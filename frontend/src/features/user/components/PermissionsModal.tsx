@@ -239,7 +239,8 @@ export default function PermissionsModal({
             </div>
             <Button
               onClick={onClose}
-              color="primary"
+              color="success"
+              className="w-full sm:w-auto font-bold text-white"
             >
               Cerrar
             </Button>

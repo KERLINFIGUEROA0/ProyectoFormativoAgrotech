@@ -44,9 +44,19 @@ export const formatDateOnly = (dateString: string | Date): string => {
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
   }
+  // Si es un Date object, convertir a string YYYY-MM-DD primero
+  if (dateString instanceof Date) {
+    const year = dateString.getFullYear();
+    const month = String(dateString.getMonth() + 1).padStart(2, '0');
+    const day = String(dateString.getDate()).padStart(2, '0');
+    return `${day}/${month}/${year}`;
+  }
+  // Para otros formatos de string, intentar parsear
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Fecha inválida';
 
   return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
     year: 'numeric',
     month: '2-digit',
     day: 'numeric',

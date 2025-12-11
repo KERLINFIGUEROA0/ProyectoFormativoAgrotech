@@ -412,7 +412,7 @@ export default function GestionInventarioPage() {
           </div>
           <Button
             onClick={() => setFiltroEstadoStock(filtroEstadoStock === 'Crítico' ? 'Todos' : 'Crítico')}
-            className="bg-green-600 text-white font-bold hover:bg-green-700 flex-shrink-0"
+            className="bg-red-600 text-white font-bold hover:bg-red-700 flex-shrink-0"
           >
             {filtroEstadoStock === 'Crítico' ? 'Ver Todos' : 'Ver Stock Bajo'}
           </Button>

@@ -1,6 +1,7 @@
 // src/features/actividades/pages/PrincipalAcvidades.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { DateTime } from 'luxon';
 import {
   ClipboardList, Users, ArrowRight, Loader2, Leaf, Shield
 } from 'lucide-react';
@@ -46,7 +47,7 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ title, description, i
 
 // --- Función de íconos y componente de item reciente (sin cambios) ---
 const getActivityIcon = (actividad: Actividad) => {
-  const titulo = actividad.titulo?.toLowerCase() ?? ''; 
+  const titulo = actividad.titulo?.toLowerCase() ?? '';
   if (titulo.includes('riego') || titulo.includes('agua')) {
     return <Leaf className="w-5 h-5 text-blue-500" />;
   }
@@ -91,31 +92,8 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
     statusColor = 'text-gray-600';
   }
 
-  const getTimeElapsed = (date: string) => {
-    const diff = Math.abs(new Date().getTime() - new Date(date).getTime());
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours === 0) return 'Hace un momento';
-    if (hours < 24) return `Hace ${hours} horas`;
-    return new Date(date).toLocaleDateString();
-  };
-
-  const getScheduledText = (fecha: string) => {
-    const now = new Date();
-    const activityDate = new Date(fecha);
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const activityDay = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
-    if (activityDay.getTime() === today.getTime()) return 'Programado para hoy';
-    if (activityDay.getTime() === tomorrow.getTime()) return 'Programado para mañana';
-    if (activityDay < today) return 'Fecha pasada';
-    return 'Programado para mañana'; // for future dates beyond tomorrow
-  };
-
-  const timeInfo =
-    actividad.estado === 'completado' || actividad.estado === 'en proceso'
-      ? getTimeElapsed(actividad.fecha)
-      : getScheduledText(actividad.fecha);
+  // CAMBIO: Mostrar fecha límite en lugar de tiempo transcurrido
+  const fechaLimite = DateTime.fromISO(actividad.fecha).setZone('utc').toFormat('dd/MM/yyyy');
 
   return (
     <div className="flex justify-between items-start py-4 px-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors duration-200 mb-2 last:mb-0">
@@ -128,7 +106,9 @@ const RecentActivityItem: React.FC<{ actividad: Actividad }> = ({ actividad }) =
           <p className={`text-sm ${statusColor}`}>{statusText}</p>
         </div>
       </div>
-      <p className="text-sm text-gray-500 whitespace-nowrap">{timeInfo}</p>
+      <p className="text-sm text-gray-500 whitespace-nowrap font-medium">
+        {fechaLimite}
+      </p>
     </div>
   );
 };
@@ -140,7 +120,7 @@ const ActividadesPrincipal: React.FC = () => {
   // ✅ 3. Se aplican los tipos correctos a los estados
   const [usuarios, setUsuarios] = useState<UsuarioSimple[]>([]);
   const [cultivos, setCultivos] = useState<CultivoSimple[]>([]);
-  
+
   const [isAsignacionModalOpen, setIsAsignacionModalOpen] = useState(false);
   const [cargando, setCargando] = useState(true);
 

@@ -172,8 +172,8 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
             </Button>
             <Button
               onClick={validateAndSubmit}
-              color="primary"
-              className="font-medium shadow-lg"
+              color="success"
+              className="w-full sm:w-auto font-bold text-white"
             >
               Cambiar Contraseña
             </Button>

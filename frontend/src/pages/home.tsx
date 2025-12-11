@@ -354,7 +354,15 @@ export default function HomePage() {
                       <div>
                         <p className="text-xs font-medium text-gray-900 truncate max-w-24">{movimiento.descripcion}</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(movimiento.fecha).toLocaleDateString('es-ES')}
+                          {movimiento.fecha && !isNaN(new Date(movimiento.fecha).getTime())
+                            ? new Date(movimiento.fecha + 'T12:00:00').toLocaleDateString('es-ES', {
+                                timeZone: 'America/Bogota',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                              })
+                            : 'Fecha no disponible'
+                          }
                         </p>
                       </div>
                     </div>

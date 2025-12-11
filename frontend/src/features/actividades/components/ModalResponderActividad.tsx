@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {  Download, FileText, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Download, FileText, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Button, Textarea, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { enviarRespuesta, obtenerRespuestasPorActividad, descargarArchivoActividad } from '../api/actividadesapi';
@@ -30,6 +30,7 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [datosDevolucion, setDatosDevolucion] = useState<any[]>([]);
+  const [isMaterialFormValid, setIsMaterialFormValid] = useState(true); // Nuevo estado de validez
 
   // Determinar si el usuario puede devolver materiales (solo el responsable)
   const puedeDevolverMateriales = actividad?.responsable?.identificacion === currentUserIdentificacion;
@@ -217,10 +218,10 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
               {existingRespuesta?.estado === 'rechazado'
                 ? 'Corregir y Reenviar Actividad'
                 : existingRespuesta?.estado === 'pendiente'
-                ? 'Estado de tu Respuesta'
-                : existingRespuesta?.estado === 'aprobado'
-                ? 'Actividad Finalizada'
-                : 'Responder Actividad'
+                  ? 'Estado de tu Respuesta'
+                  : existingRespuesta?.estado === 'aprobado'
+                    ? 'Actividad Finalizada'
+                    : 'Responder Actividad'
               }
             </h2>
           </ModalHeader>
@@ -283,22 +284,20 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                 </div>
               )}
               {existingRespuesta && (
-                <div className={`mt-2 p-3 rounded ${
-                  existingRespuesta.estado === 'rechazado'
-                    ? 'bg-red-50 border border-red-200'
-                    : existingRespuesta.estado === 'aprobado'
+                <div className={`mt-2 p-3 rounded ${existingRespuesta.estado === 'rechazado'
+                  ? 'bg-red-50 border border-red-200'
+                  : existingRespuesta.estado === 'aprobado'
                     ? 'bg-green-50 border border-green-200'
                     : 'bg-yellow-50 border border-yellow-200'
-                }`}>
+                  }`}>
                   <p className="text-sm font-medium">Estado de respuesta:
-                    <span className={`ml-1 px-2 py-1 text-xs rounded ${
-                      existingRespuesta.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
+                    <span className={`ml-1 px-2 py-1 text-xs rounded ${existingRespuesta.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
                       existingRespuesta.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {existingRespuesta.estado === 'aprobado' ? 'Aprobada - Finalizada' :
-                       existingRespuesta.estado === 'rechazado' ? 'Rechazada - Requiere Corrección' :
-                       'Enviada - Esperando Calificación'}
+                        existingRespuesta.estado === 'rechazado' ? 'Rechazada - Requiere Corrección' :
+                          'Enviada - Esperando Calificación'}
                     </span>
                   </p>
                   {existingRespuesta.estado === 'rechazado' && (
@@ -343,48 +342,49 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                   />
                 </div>
 
-            {/* SECCIÓN: DEVOLUCIÓN DE MATERIALES (🔐 SOLO RESPONSABLE) */}
-            {puedeDevolverMateriales ? (
-              <div className="bg-green-50 rounded-lg p-4 border border-green-200 animate-fadeIn">
-                <div className="flex items-center gap-2 mb-4 border-b border-green-200 pb-2">
-                  <ShieldCheck className="text-green-700" size={20} />
-                  <div>
-                    <h4 className="text-sm font-bold text-green-800">Zona de Responsable</h4>
-                    <p className="text-xs text-green-600">
-                      Eres el responsable de esta actividad y debes gestionar la devolución de materiales.
-                    </p>
-                  </div>
-                </div>
+                {/* SECCIÓN: DEVOLUCIÓN DE MATERIALES (🔐 SOLO RESPONSABLE) */}
+                {puedeDevolverMateriales ? (
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200 animate-fadeIn">
+                    <div className="flex items-center gap-2 mb-4 border-b border-green-200 pb-2">
+                      <ShieldCheck className="text-green-700" size={20} />
+                      <div>
+                        <h4 className="text-sm font-bold text-green-800">Zona de Responsable</h4>
+                        <p className="text-xs text-green-600">
+                          Eres el responsable de esta actividad y debes gestionar la devolución de materiales.
+                        </p>
+                      </div>
+                    </div>
 
-                {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
-                  <FormularioDevolucionMateriales
-                    materiales={actividad.actividadMaterial.map((am: any) => ({
-                       materialId: am.material.id,
-                       nombre: am.material.nombre,
-                       cantidadAsignada: Number(am.cantidadUsada),
-                       precioUnitario: am.material.tipoConsumo === 'no_consumible'
-                         ? Number(am.material.precio) || 0
-                         : Number(am.cantidadUsada) > 0 ? Number(am.costo) / Number(am.cantidadUsada) : 0,
-                       unidad: am.unidadMedida,
-                       tipoConsumo: am.material.tipoConsumo
-                    }))}
-                    onChange={setDatosDevolucion}
-                  />
+                    {actividad.actividadMaterial && actividad.actividadMaterial.length > 0 ? (
+                      <FormularioDevolucionMateriales
+                        materiales={actividad.actividadMaterial.map((am: any) => ({
+                          materialId: am.material.id,
+                          nombre: am.material.nombre,
+                          cantidadAsignada: Number(am.cantidadUsada),
+                          precioUnitario: am.material.tipoConsumo === 'no_consumible'
+                            ? Number(am.material.precio) || 0
+                            : Number(am.cantidadUsada) > 0 ? Number(am.costo) / Number(am.cantidadUsada) : 0,
+                          unidad: am.unidadMedida,
+                          tipoConsumo: am.material.tipoConsumo
+                        }))}
+                        onChange={setDatosDevolucion}
+                        onValidityChange={setIsMaterialFormValid}
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">Esta actividad no tiene materiales asignados.</p>
+                    )}
+                  </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic">Esta actividad no tiene materiales asignados.</p>
+                  // Mensaje informativo para los que NO son responsables
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex items-start gap-2">
+                    <AlertCircle className="text-blue-500 mt-0.5" size={16} />
+                    <div className="text-xs text-blue-700">
+                      <span className="font-bold">Nota:</span> Solo el responsable
+                      (<strong>{actividad.responsable?.nombre} {actividad.responsable?.apellidos}</strong>)
+                      puede realizar la devolución de materiales al inventario.
+                    </div>
+                  </div>
                 )}
-              </div>
-            ) : (
-              // Mensaje informativo para los que NO son responsables
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex items-start gap-2">
-                <AlertCircle className="text-blue-500 mt-0.5" size={16} />
-                <div className="text-xs text-blue-700">
-                  <span className="font-bold">Nota:</span> Solo el responsable
-                  (<strong>{actividad.responsable?.nombre} {actividad.responsable?.apellidos}</strong>)
-                  puede realizar la devolución de materiales al inventario.
-                </div>
-              </div>
-            )}
 
                 <ModalFooter>
                   <Button
@@ -399,16 +399,17 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-green-600 text-white font-bold hover:bg-green-700"
+                    className="bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     isLoading={isSubmitting}
+                    isDisabled={!isMaterialFormValid || isSubmitting}
                   >
                     {isSubmitting
                       ? 'Enviando...'
                       : existingRespuesta?.estado === 'rechazado'
-                      ? 'Corregir y Reenviar'
-                      : puedeDevolverMateriales
-                      ? 'Finalizar y Devolver Inventario'
-                      : 'Enviar Evidencia'
+                        ? 'Corregir y Reenviar'
+                        : puedeDevolverMateriales
+                          ? 'Finalizar y Devolver Inventario'
+                          : 'Enviar Evidencia'
                     }
                   </Button>
                 </ModalFooter>
