@@ -10,14 +10,13 @@ title: Manual de Usuario
 #### Guía Paso a Paso
 Para iniciar sesión en la aplicación AgroTech, sigue estos pasos detallados:
 
-1. Abre tu navegador web y navega a la URL principal de la aplicación AgroTech.
-2. En la página de inicio, localiza los campos de "Nombre de Usuario" y "Contraseña".
-3. Ingresa tu nombre de usuario registrado en el campo correspondiente.
-4. Ingresa tu contraseña en el campo de "Contraseña".
-5. Verifica que los datos sean correctos antes de proceder.
-6. Haz clic en el botón "Iniciar Sesión" o presiona Enter.
-7. Si las credenciales son válidas, serás redirigido automáticamente al dashboard principal.
-8. En caso de error, revisa el mensaje de notificación y corrige los datos si es necesario.
+1. En la página de inicio, Ingresa los campos de "Numero de documento" y "Contraseña".
+2. Ingresa tu numero de documento registrado en el campo correspondiente.
+3. Ingresa tu contraseña en el campo de "Contraseña".
+4. Verifica que los datos sean correctos antes de proceder.
+5. Haz clic en el botón "Iniciar Sesión" o presiona Enter.
+6. Si las credenciales son válidas, serás redirigido automáticamente al dashboard principal.
+7. En caso de error, revisa el mensaje de notificación y corrige los datos si es necesario.
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
@@ -26,9 +25,9 @@ Enlace al video explicativo: [Agregar enlace aquí]
 #### Guía Paso a Paso
 Si has olvidado tu contraseña, puedes recuperarla siguiendo estos pasos detallados:
 
-1. Desde la página de inicio de sesión de AgroTech, localiza el enlace "Olvidé mi contraseña" o "¿Olvidaste tu contraseña?".
+1. Desde la página de inicio de sesión de AgroTech, Ingresa al enlace "Olvidé mi contraseña" o "¿Olvidaste tu contraseña?".
 2. Haz clic en el enlace para acceder al formulario de recuperación.
-3. Ingresa la dirección de correo electrónico asociada a tu cuenta de usuario.
+3. Ingresa tu numero de documento de tu cuenta de usuario.
 4. Verifica que el correo electrónico sea correcto y esté registrado en el sistema.
 5. Haz clic en el botón "Enviar" o "Recuperar Contraseña".
 6. Revisa tu bandeja de entrada (y carpeta de spam si es necesario) para un correo electrónico de AgroTech.
@@ -48,19 +47,8 @@ Después del inicio de sesión, accederás al dashboard principal que proporcion
 #### Estadísticas Generales
 - **Resumen de Cultivos**: Número total de cultivos activos y en diferentes estados
 - **Estado de Lotes**: Información sobre lotes disponibles, en uso y mantenimiento
-- **Inventario**: Alertas de stock bajo y materiales disponibles
+- **Movimientos**: Registro de ultimos movimientos de inventario 
 - **Sensores Activos**: Estado de conexión de sensores IoT
-- **Actividades Pendientes**: Tareas asignadas y su estado de progreso
-
-#### Gráficos y Métricas
-- Gráfico de rendimiento de cultivos por período
-- Tendencias de uso de materiales
-- Alertas del sistema y notificaciones importantes
-
-#### Navegación Rápida
-- Acceso directo a módulos principales desde tarjetas del dashboard
-- Búsqueda global de cultivos, lotes y usuarios
-- Notificaciones en tiempo real del sistema
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
@@ -70,11 +58,9 @@ El módulo de sensores permite monitorear condiciones ambientales en tiempo real
 
 ### Guía Paso a Paso para Configurar un Sensor
 1. Inicia sesión y navega al módulo de Sensores desde el menú lateral.
-2. Accede a "Gestión de Sensores" o "Gestionar Sensores".
-3. Haz clic en "Agregar Nuevo Sensor" o "Crear Sensor".
+2. Accede a "Monitor de sensores ".
+3. Haz clic en "Nuevo Broker".
 4. Completa los detalles del sensor:
-   - Selecciona el tipo de sensor (ej. temperatura, humedad).
-   - Especifica ubicación física y coordenadas.
    - Configura parámetros MQTT: broker, tópico y credenciales.
    - Define umbrales para alertas (ej. temperatura máxima).
 5. Guarda la configuración del sensor.
@@ -129,7 +115,7 @@ Enlace al video explicativo: [Agregar enlace aquí]
 4. Gestiona lotes asociados navegando a Gestionar Lotes y asignándolos al cultivo.
 5. Monitorea la producción accediendo a la página específica de cada cultivo.
 6. Revisa la trazabilidad completa en Trazabilidad de Cultivo para ver eventos históricos.
-7. Edita o elimina cultivos existentes desde la lista de cultivos.
+7. Elimina cultivos existentes desde la lista de cultivos.
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
@@ -138,19 +124,18 @@ Enlace al video explicativo: [Agregar enlace aquí]
 El módulo de materiales permite gestionar el inventario de insumos agrícolas, controlando stock y asignaciones.
 
 ### Guía Paso a Paso para Agregar un Nuevo Material
-1. Inicia sesión y navega al módulo de Materiales desde el menú lateral.
-2. Accede a "Gestión de Materiales" o "Gestionar Materiales".
-3. Haz clic en "Crear Material".
+1. Inicia sesión y navega al módulo de Inventario desde el menú lateral.
+2. Accede a "Gestión de Productos".
+3. Haz clic en "Añadir producto".
 4. Completa el formulario con la información requerida:
    - Nombre del material (ej. "Fertilizante orgánico").
    - Tipo de material (ej. semilla, fertilizante).
    - Cantidad inicial en stock.
    - Unidad de medida (ej. kg, litros).
    - Descripción adicional y costo unitario.
-5. Asigna el material a lotes o actividades específicas si es necesario.
-6. Revisa los datos para asegurar precisión.
-7. Haz clic en "Crear Material".
-8. Monitorea el stock y actualiza cantidades según uso.
+5. Revisa los datos para asegurar precisión.
+6. Haz clic en "Guardar Material".
+7. Monitorea el stock y actualiza cantidades según uso.
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
@@ -159,14 +144,14 @@ Enlace al video explicativo: [Agregar enlace aquí]
 El módulo de tratamientos permite gestionar aplicaciones fitosanitarias y tratamientos para cultivos.
 
 ### Guía Paso a Paso para Gestionar Tratamientos
-1. Inicia sesión y accede al módulo de Tratamientos desde el menú lateral.
-2. Ve a "Gestión de Tratamientos" o "Tratamientos".
+1. Inicia sesión y accede al módulo de Fitosanitario desde el menú lateral.
+2. Ve a "EPA".
 3. Para crear un nuevo tratamiento:
-   - Haz clic en "Crear Nuevo Tratamiento" o "Agregar Tratamiento".
-   - Selecciona tipo de tratamiento (ej. fungicida, herbicida).
-   - Ingresa nombre, dosis recomendada y descripción.
-   - Asocia con cultivos específicos.
-   - Guarda el tratamiento.
+   - Haz clic en "Crear EPA".
+   - Ingresa nombre.
+   - Selecciona tipo de Epa (ej. plaga, enfermedad).
+   - Descripción de amenaza o posible control de la enfermedad.
+   - haz click en registrar EPA.
 4. Registra aplicaciones y monitorea efectividad.
 
 Enlace al video explicativo: [Agregar enlace aquí]
@@ -177,8 +162,8 @@ El módulo de actividades permite gestionar tareas agrícolas, asignar recursos 
 
 ### Guía Paso a Paso para Crear una Nueva Actividad
 1. Inicia sesión en AgroTech y navega al módulo de Actividades desde el menú principal.
-2. Accede a la página de "Gestión de Actividades" o "Gestionar Actividades".
-3. Haz clic en el botón "Crear Nueva Actividad" o "Agregar Actividad".
+2. Accede a la página de "Gestión de Actividades".
+3. Haz clic en el botón "Asignar Nueva Actividad".
 4. Completa el formulario con los detalles requeridos:
    - Nombre de la actividad (ej. "Siembra de maíz").
    - Descripción detallada de la tarea.
@@ -187,7 +172,7 @@ El módulo de actividades permite gestionar tareas agrícolas, asignar recursos 
    - Lista de materiales requeridos y cantidades.
    - Asigna usuarios responsables si es necesario.
 5. Revisa la información ingresada para asegurar precisión.
-6. Haz clic en "Guardar" o "Crear Actividad" para registrar la nueva actividad.
+6. Haz clic en "Asignar Actividad" para registrar la nueva actividad.
 7. Una vez guardada, puedes editarla, asignar materiales adicionales o marcarla como completada.
 
 Enlace al video explicativo: [Agregar enlace aquí]
@@ -201,8 +186,7 @@ El módulo de finanzas permite controlar ingresos y generar reportes para una ge
 2. Ve a "Finanzas".
 3. Crea una nueva transacción financiera especificando descripción, cantidad, precio.
 4. Genera reportes y balances automáticamente.
-5. Revisa estadísticas financieras navegando a las secciones de balances y métricas.
-6. Exporta datos para análisis externos si es necesario.
+5. Exporta datos para análisis externos si es necesario.
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
@@ -227,8 +211,6 @@ El módulo de usuarios permite administrar cuentas, roles y permisos para contro
 
 Enlace al video explicativo: [Agregar enlace aquí]
 
-## Módulos Adicionales
-
 ### Módulo de Producciones
 
 El módulo de producciones permite registrar y gestionar cosechas y rendimientos de cultivos.
@@ -243,16 +225,5 @@ El módulo de producciones permite registrar y gestionar cosechas y rendimientos
    - Guarda el registro.
 4. Revisa producciones anteriores y genera reportes de rendimiento.
 5. Asocia producciones a ventas o inventarios si es necesario.
-
-Enlace al video explicativo: [Agregar enlace aquí]
-
-### Módulo de Movimientos
-
-El módulo de movimientos permite rastrear entradas, salidas y transferencias de inventario.
-
-#### Guía Paso a Paso para Gestionar Movimientos
-1. Inicia sesión y accede al módulo de Movimientos.
-2. Ve a "Gestión de Movimientos".
-3. Revisa historial de movimientos para control de stock.
 
 Enlace al video explicativo: [Agregar enlace aquí]
