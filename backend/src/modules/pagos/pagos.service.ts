@@ -290,6 +290,14 @@ export class PagosService {
     return this.pagoRepository.save(pago);
   }
 
+  async findByActividad(actividadId: number) {
+    return this.pagoRepository.find({
+      where: { idActividad: actividadId },
+      relations: ['usuario', 'actividad'],
+      order: { fechaPago: 'DESC' },
+    });
+  }
+
   async findByActividades(actividadIds: number[]) {
     return this.pagoRepository.find({
       where: { idActividad: In(actividadIds) },

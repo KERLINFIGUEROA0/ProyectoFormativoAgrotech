@@ -7,7 +7,6 @@ import {
   CheckCircle,
   Calendar,
   User,
-  FileText,
   Bell,
   Package,
   Users,
@@ -39,7 +38,7 @@ import {
 } from '../api/actividadesapi';
 import { getEstadoTexto } from '../utils/estadoUtils';
 // ✅ IMPORTAR HELPER DE FECHAS
-import { formatToTable, formatDateOnly, formatDateDisplay } from '../../../utils/dateUtils.ts';
+import { formatDateOnly } from '../../../utils/dateUtils.ts';
 
 // --- INICIO: Componente ModalDetalles (MODIFICADO) ---
 interface ModalDetallesProps {
@@ -55,6 +54,11 @@ const ModalDetalles: React.FC<ModalDetallesProps> = ({
   // Lógica de 'aprendicesAsignados' usando el campo asignados
   const aprendicesAsignados: UsuarioSimple[] = useMemo(() => {
     if (!actividad) return [];
+
+    // Si el backend ya incluye usuariosAsignados con ficha, usar eso
+    if (actividad.usuariosAsignados && actividad.usuariosAsignados.length > 0) {
+      return actividad.usuariosAsignados;
+    }
 
     // Crear un mapa de usuarios por nombre completo para acceder a la ficha
     if (!actividad) return [];
@@ -496,91 +500,6 @@ const GestionActividadesPage: React.FC = () => {
     return actividades.filter((a) => a.estado === filtroEstado);
   }, [actividades, filtroEstado]);
 
-  // (exportarPDF con logo agregado)
-  const exportarPDF = useCallback(async () => {
-    try {
-      const { default: jsPDF } = await import('jspdf');
-      const doc = new jsPDF();
-
-      // Agregar logo
-      try {
-        const logoResponse = await fetch('/logo.png');
-        if (logoResponse.ok) {
-          const logoBlob = await logoResponse.blob();
-          const logoBase64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(logoBlob);
-          });
-
-          // Logo en la esquina superior derecha
-          doc.addImage(logoBase64, 'PNG', 150, 10, 40, 20);
-        }
-      } catch (logoError) {
-        console.warn('No se pudo cargar el logo:', logoError);
-      }
-
-      doc.setFontSize(20);
-      doc.text('Reporte de Actividades', 20, 20);
-      doc.setFontSize(12);
-      doc.text(`Generado a las: ${formatDateOnly(new Date())}`, 20, 35);
-      doc.text(`Total de actividades: ${actividades.length}`, 20, 50);
-      doc.text(`Pendientes: ${stats.pendientes}`, 20, 60);
-      doc.text(`En proceso: ${stats.enProceso}`, 20, 70);
-      doc.text(`Completadas: ${stats.completadas}`, 20, 80);
-
-      const tableData = filteredActividades.map(act => [
-        act.titulo,
-        act.cultivo?.nombre || 'No especificado',
-        (() => {
-          try {
-            return act.asignados ? JSON.parse(act.asignados).join(', ') : 'Ejecutar migraciones para ver asignados';
-          } catch {
-            return 'Ejecutar migraciones para ver asignados';
-          }
-        })(),
-        formatDateDisplay(act.fecha),
-        getEstadoTexto(act.estado),
-        act.descripcion || 'Sin descripción',
-        act.horas ? `${act.horas} horas` : 'No especificado',
-        act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.tarifaHora)}` : 'No especificado',
-        act.horas && act.tarifaHora ? `$${new Intl.NumberFormat('es-CO').format(act.horas * act.tarifaHora)}` : 'No especificado',
-        act.actividadMaterial && act.actividadMaterial.length > 0
-          ? act.actividadMaterial.map(am => `${am.material.nombre} (${(am.cantidadUsada / 1000).toFixed(0)} ${String(am.unidadMedida) || 'unidades'})`).join(', ')
-          : 'Sin materiales'
-      ]);
-
-      const { default: autoTable } = await import('jspdf-autotable');
-
-      autoTable(doc, {
-        head: [['Título', 'Cultivo/Lote', 'Aprendices', 'Fecha', 'Estado', 'Descripción', 'Horas', 'Tarifa/Hora', 'Costo Mano de Obra', 'Materiales']],
-        body: tableData,
-        startY: 90,
-        styles: { fontSize: 6 },
-        headStyles: { fillColor: [41, 128, 185] },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-        columnStyles: {
-          0: { cellWidth: 30 }, // Título
-          1: { cellWidth: 25 }, // Cultivo
-          2: { cellWidth: 30 }, // Aprendices
-          3: { cellWidth: 20 }, // Fecha
-          4: { cellWidth: 15 }, // Estado
-          5: { cellWidth: 40 }, // Descripción
-          6: { cellWidth: 15 }, // Horas
-          7: { cellWidth: 20 }, // Tarifa
-          8: { cellWidth: 20 }, // Costo
-          9: { cellWidth: 40 }  // Materiales
-        }
-      });
-
-      doc.save(`reporte-actividades-${formatToTable(new Date()).replace(/:/g, '-')}.pdf`);
-      toast.success('PDF generado correctamente');
-
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      toast.error('Error al generar el PDF');
-    }
-  }, [actividades, filteredActividades, stats]);
 
   // (JSX principal sin cambios)
   if (cargando)
@@ -597,21 +516,13 @@ const GestionActividadesPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800">
           Gestión de Actividades
         </h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
-            color="warning"
-            startContent={<Bell size={16} />}
+            className="bg-transparent p-3 border-none"
             onClick={mostrarNotificacionesPendientes}
             title="Mostrar notificaciones de actividades pendientes"
           >
-            Notificaciones
-          </Button>
-          <Button
-            color="danger"
-            startContent={<FileText size={16} />}
-            onClick={exportarPDF}
-          >
-            Exportar PDF
+            <Bell className="w-6 h-6 text-black animate-bounce" />
           </Button>
         </div>
       </div>
@@ -785,8 +696,10 @@ const GestionActividadesPage: React.FC = () => {
             setShowPagoModal(false);
             setActividadPago(null);
             setPasantesPago([]);
+            // Forzar recarga del modal de respuestas para mostrar estado actualizado de pagos
+            setRespuestasKey(prev => prev + 1);
             cargarDatos(); // Recargar para actualizar estados
-            toast.success('El proceso de pago ha finalizado correctamente.');
+            toast.success('Pago registrado exitosamente. Puedes continuar pagando a otros pasantes.');
           }}
         />
       )}

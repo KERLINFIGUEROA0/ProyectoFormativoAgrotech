@@ -79,6 +79,7 @@ export interface Actividad {
   }[];
   respuestas?: RespuestaActividad[];
   asignados?: string; // JSON string con nombres de asignados
+  usuariosAsignados?: UsuarioSimple[]; // Usuarios asignados con información de ficha
 }
 
 // 2. Payload para CREAR una actividad (lo que se envía a la API)

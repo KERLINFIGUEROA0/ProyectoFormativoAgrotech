@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Download, FileText, Image, File, Check, X as XIcon } from 'lucide-react';
+import {  Download, FileText, Image, File, Check, X as XIcon, DollarSign } from 'lucide-react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Table, TableHeader, TableBody, TableRow, TableCell, TableColumn, Chip } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
-import { obtenerRespuestasPorActividad, calificarRespuesta } from '../api/actividadesapi';
+import { obtenerRespuestasPorActividad, calificarRespuesta, obtenerPagosPorActividad } from '../api/actividadesapi';
 import ModalComentarioRechazo from './ModalComentarioRechazo';
 
 // Función helper para extraer el nombre original del archivo
@@ -38,19 +38,36 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
     onOpenPago,
 }) => {
   const [respuestas, setRespuestas] = useState<RespuestaActividad[]>([]);
+  const [pagos, setPagos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalComentarioOpen, setModalComentarioOpen] = useState(false);
   const [respuestaSeleccionada, setRespuestaSeleccionada] = useState<number | null>(null);
+
+  // Calcular pasantes pendientes de pago
+  const pasantesPendientes = respuestas.filter(r => {
+    const esPasante = r.usuario.tipoUsuario?.nombre?.toLowerCase() === 'pasante';
+    const estaAprobado = r.estado === 'aprobado';
+    // Verificar si ya tiene un pago registrado (comparar como strings para evitar problemas de tipos)
+    const yaPago = pagos.some(p => String(p.idUsuario) === String(r.usuario.identificacion));
+    return esPasante && estaAprobado && !yaPago;
+  });
 
 
   const cargarRespuestas = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await obtenerRespuestasPorActividad(actividad.id);
-      setRespuestas(data);
+      const [respuestasData, pagosData] = await Promise.all([
+        obtenerRespuestasPorActividad(actividad.id),
+        obtenerPagosPorActividad(actividad.id)
+      ]);
+      setRespuestas(respuestasData);
+      // El backend puede devolver { data: [...] } o directamente [...]
+      const pagosArray = pagosData?.data || (Array.isArray(pagosData) ? pagosData : []);
+      setPagos(pagosArray);
     } catch (error) {
-      console.error('Error al cargar respuestas:', error);
+      console.error('Error al cargar respuestas y pagos:', error);
       setRespuestas([]);
+      setPagos([]);
     } finally {
       setLoading(false);
     }
@@ -342,6 +359,22 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             <Button onClick={onClose} color="default">
               Cerrar
             </Button>
+            {pasantesPendientes.length > 0 && onOpenPago && (
+              <Button
+                color="success"
+                startContent={<DollarSign size={16} />}
+                onClick={() => {
+                  const pasantes = pasantesPendientes.map(r => ({
+                    identificacion: r.usuario.identificacion,
+                    nombre: r.usuario.nombre,
+                    apellidos: r.usuario.apellidos,
+                  }));
+                  onOpenPago(actividad, pasantes);
+                }}
+              >
+                Pagar Pasantes ({pasantesPendientes.length})
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>

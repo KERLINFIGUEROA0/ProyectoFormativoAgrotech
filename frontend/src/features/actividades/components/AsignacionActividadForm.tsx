@@ -3,15 +3,11 @@ import { toast } from 'sonner';
 import {
   ClipboardList,
   UserCheck,
-  Loader2,
   Search,
   Users,
-  Filter,
   Package,
-  Hash,
   Plus,
   X,
-  Trash2,
 } from 'lucide-react';
 // Importamos componentes de Hero UI para un diseño limpio
 import {
@@ -26,7 +22,6 @@ import {
   CardHeader,
   ScrollShadow,
   Chip,
-  Avatar
 } from '@heroui/react';
 
 import {
@@ -90,7 +85,7 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
   const [formData, setFormData] = useState<AsignacionFormState>({
     titulo: '',
     descripcion: '',
-    fecha: new Date().toISOString().substring(0, 10),
+    fecha: new Date().toLocaleDateString('en-CA'), // Formato YYYY-MM-DD para la zona horaria local
     cultivo: '',
     lote: '',
     sublote: '',

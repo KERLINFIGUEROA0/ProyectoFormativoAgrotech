@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Clock, Calculator } from 'lucide-react';
+import { Clock, Calculator } from 'lucide-react';
 import { Button, Input, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { toast } from 'sonner';
 import type { Actividad } from '../interfaces/actividades';
@@ -31,13 +31,11 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
   onPagoSuccess,
   pasantes,
 }) => {
-  console.log('🎯 ModalPagoPasante renderizado:', { isOpen, pasantesCount: pasantes.length, actividad: actividad?.titulo });
 
   const [pagos, setPagos] = useState<PagoData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    console.log('🔄 useEffect ModalPagoPasante:', { isOpen, pasantesLength: pasantes.length, actividadId: actividad?.id });
     if (isOpen && pasantes.length > 0) {
       // Inicializar pagos para cada pasante
       const pagosIniciales = pasantes.map(pasante => ({
@@ -46,7 +44,6 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
         tarifaHora: actividad.tarifaHora || 0,
         descripcion: `Pago por actividad: ${actividad.titulo}`,
       }));
-      console.log('💰 Inicializando pagos:', pagosIniciales);
       setPagos(pagosIniciales);
     }
   }, [isOpen, pasantes, actividad]);
@@ -94,7 +91,6 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
         fechaPago: new Date().toISOString().split('T')[0],
       }));
 
-      console.log('💰 Enviando pagos:', pagosData);
 
       // Registrar pagos usando la API
       await registrarPagosPasantes(pagosData);
@@ -118,7 +114,6 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
       <ModalContent>
         <ModalHeader>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <DollarSign className="w-6 h-6 text-green-600" />
             Registrar Pagos - {actividad.titulo}
           </h2>
         </ModalHeader>
@@ -164,7 +159,6 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
                           onChange={(e) => handlePagoChange(index, 'tarifaHora', parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.01"
-                          startContent={<DollarSign className="w-4 h-4" />}
                           isRequired
                         />
                       </div>
@@ -200,7 +194,7 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
         <ModalFooter>
           <Button
             onClick={onClose}
-            color="danger"
+            color="default"
             variant="light"
           >
             Cancelar
@@ -208,8 +202,8 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            color="success"
-            startContent={isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <DollarSign className="w-4 h-4" />}
+            className="bg-green-600 text-white font-bold hover:bg-green-700"
+            startContent={isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : undefined}
           >
             {isSubmitting ? 'Registrando Pagos...' : 'Registrar Pagos'}
           </Button>

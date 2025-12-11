@@ -1088,21 +1088,11 @@ export class PdfService {
                             </tr>
                         `).join('') : '<tr><td colspan="3" style="text-align: center; color: #6c757d;">No hay registros de cosechas</td></tr>'}
                         ${c.cosechas && c.cosechas.length > 0 ? `
-                            <tr style="border-top: 2px solid #2E7D32; background-color: #E8F5E9;">
-                                <td style="text-align: center; font-weight: bold; color: #2E7D32;">INVENTARIO TOTAL PENDIENTE</td>
-                                <td class="text-right" style="font-weight: bold; color: #2E7D32;">${c.cosechas.reduce((sum, co) => sum + co.cantidadRestante, 0).toLocaleString()} Kg</td>
-                                <td></td>
-                            </tr>
                         ` : ''}
                     </tbody>
                 </table>
                 ${c.cosechas && c.cosechas.length > 0 ? `
-                    <div style="margin-top: 10px; padding: 10px; background-color: #E8F5E9; border-radius: 5px; text-align: center;">
-                        <strong style="color: #2E7D32;">
-                            Inventario Pendiente: ${c.cosechas.reduce((sum, co) => sum + co.cantidadRestante, 0).toLocaleString()} Kg sin vender
-                            <br><small>(Estas cantidades aparecen detalladas en la sección de ventas)</small>
-                        </strong>
-                    </div>
+                    
                 ` : ''}
 
                 <div class="grid-2">
@@ -1627,11 +1617,10 @@ export class PdfService {
         ` : ''}
 
         <!-- ==========================================
-              PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
-              ========================================== -->
+               PIE DE PÁGINA: NOTAS FINALES Y PAGINACIÓN
+               ========================================== -->
         <div class="footer">
             <p>AgroTech - Sistema de Gestión y Monitoreo - Generado el ${this.formatDateOnlyForDisplay(this.transformDateForDisplay(safeData.fechaGeneracion))}</p>
-            <p style="text-align: center; font-size: 10px; color: #666;">Página 1</p>
         </div>
     </body>
     </html>
