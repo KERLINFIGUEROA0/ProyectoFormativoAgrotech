@@ -4,14 +4,20 @@ import type { TransaccionData } from "../interfaces/finanzas";
 
 export const obtenerTransacciones = async () => {
   // Obtener ingresos, egresos y pagos por separado y combinarlos
-  const [ventasRes, gastosRes, pagosRes] = await Promise.all([
+  // Usar Promise.allSettled para manejar errores de permisos individualmente
+  const [ventasRes, gastosRes, pagosRes] = await Promise.allSettled([
     api.get("/finanzas/transacciones"), // ✅ Endpoint correcto para ventas
     api.get("/gastos-produccion"),      // ✅ Endpoint correcto para gastos
     api.get("/pagos")                   // ✅ Mantener pagos como está
   ]);
 
 
-  const ingresos = (ventasRes.data?.data || ventasRes.data || []).map((v: any) => ({
+  // Extraer datos de las respuestas, manejando errores de permisos
+  const ventasData = ventasRes.status === 'fulfilled' ? (ventasRes.value.data?.data || ventasRes.value.data || []) : [];
+  const gastosData = gastosRes.status === 'fulfilled' ? (gastosRes.value.data?.data || gastosRes.value.data || []) : [];
+  const pagosData = pagosRes.status === 'fulfilled' ? (pagosRes.value.data?.data || pagosRes.value.data || []) : [];
+
+  const ingresos = ventasData.map((v: any) => ({
     ...v,
     id: v.id,
     tipo: 'ingreso',
@@ -21,7 +27,7 @@ export const obtenerTransacciones = async () => {
     fecha: v.fecha, // Ya es string YYYY-MM-DD
   }));
 
-  const egresos = (gastosRes.data?.data || gastosRes.data || []).map((g: any) => ({
+  const egresos = gastosData.map((g: any) => ({
     ...g,
     id: `gasto-${g.id}`,
     tipo: 'egreso',
@@ -32,7 +38,7 @@ export const obtenerTransacciones = async () => {
     fecha: new Date(g.fecha).toISOString().split('T')[0], // Convertir a string YYYY-MM-DD
   }));
 
-  const pagosEgresos = (pagosRes.data?.data || pagosRes.data || []).map((p: any) => ({
+  const pagosEgresos = pagosData.map((p: any) => ({
     ...p,
     id: `pago-${p.id}`,
     tipo: 'egreso',

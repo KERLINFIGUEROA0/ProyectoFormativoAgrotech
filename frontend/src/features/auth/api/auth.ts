@@ -126,8 +126,7 @@ export const crearUsuario = async (data: any) => {
     if (error.response?.status === 400) {
       throw error;
     }
-    // Para otros errores, mostrar log
-    console.error("Error creando usuario:", error);
+    // Para otros errores, no mostrar logs de consola
     throw error;
   }
 };
@@ -154,8 +153,7 @@ export const updateUsuario = async (id: number, data: any) => {
     if (error.response?.status === 400) {
       throw error;
     }
-    // Para otros errores, mostrar log
-    console.error("Error actualizando usuario:", error);
+    // Para otros errores, no mostrar logs de consola
     throw error;
   }
 };
@@ -185,7 +183,6 @@ export const getRoles = async () => {
     const res = await api.get("/roles");
     return res.data;
   } catch (error) {
-    console.error("Error in getRoles API call:", error);
     throw error;
   }
 };

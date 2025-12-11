@@ -477,16 +477,7 @@ export class UsuariosService {
         nuevoRol.nombre.toLowerCase() !== 'pasante'
       ) {
         usuario.ficha = null as any;
-        console.log(
-          `Ficha removida automáticamente para usuario ${usuario.nombre} - nuevo rol: ${nuevoRol.nombre}`,
-        );
       }
-    }
-
-    if (data.tipoUsuario) {
-      console.log(
-        `Rol actualizado para usuario ${usuario.nombre} - nuevo rol ID: ${data.tipoUsuario}`,
-      );
     }
 
     if (data.id_ficha !== undefined) {

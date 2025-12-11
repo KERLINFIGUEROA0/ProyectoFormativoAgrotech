@@ -462,6 +462,7 @@ export default function GestionCultivosPage(): ReactElement {
                 classNames={{
                   trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
                 }}
+                aria-label="Filtrar por estado del cultivo"
               >
                 <SelectItem key="todos">Todos</SelectItem>
                 <SelectItem key="Activo">Activo</SelectItem>

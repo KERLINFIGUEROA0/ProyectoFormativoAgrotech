@@ -59,12 +59,11 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
           // Silently use default avatar without logging error
           // Check if it's our specific "no profile pic" error
           if (picError instanceof Error && picError.message !== 'NO_PROFILE_PIC') {
-            console.error("Error al cargar foto de perfil:", picError);
+            // Error handled silently
           }
           setAvatarUrl(avatarImg);
         }
       } catch (error) {
-        console.error("Error al obtener el perfil:", error);
         toast.error("No se pudo cargar la información del perfil.");
       }
     };
@@ -147,7 +146,6 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
       toast.success("Perfil actualizado con éxito.");
       setRefreshTrigger(prev => prev + 1);
     } catch (error: any) {
-      console.error("Error al guardar el perfil:", error);
       const errorMessage = error.response?.data?.error || error.response?.data?.message || "Error al guardar el perfil. Inténtelo de nuevo.";
       toast.error(errorMessage);
     }
@@ -170,7 +168,6 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
         setRefreshTrigger(prev => prev + 1);
 
       } catch (error) {
-        console.error("Error al subir la foto:", error);
         toast.error("Error al subir la foto. Inténtelo de nuevo.");
       }
     }
@@ -233,7 +230,7 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
               <Select
                 label="Tipo de Identificación"
                 placeholder="Selecciona el tipo"
-                selectedKeys={new Set([tempForm.tipo])}
+                selectedKeys={tempForm.tipo ? new Set([tempForm.tipo]) : new Set()}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
                   handleChange("tipo", selected as string);
@@ -244,6 +241,7 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
                   trigger: "rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500 bg-white",
                   label: "text-sm font-semibold text-gray-700"
                 }}
+                aria-label="Seleccionar tipo de identificación"
               >
                 <SelectItem key="Cédula de Ciudadanía">Cédula de Ciudadanía</SelectItem>
                 <SelectItem key="Tarjeta de Identidad">Tarjeta de Identidad</SelectItem>
@@ -387,7 +385,7 @@ export default function Usuario({ onOpenModal, handleLogout }: UsuarioProps): Re
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
-                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                     <path d="M10 14a2 2 0 100-4 2 2 0 000 4z" />
                   </svg>
                 </div>

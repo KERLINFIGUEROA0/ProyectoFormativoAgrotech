@@ -34,11 +34,6 @@ export class ActividadesMaterialesService {
     // Convertir a unidad base usando la utilidad
     let cantidadEnUnidadBase: number;
 
-    console.log(`📊 Conversión para material ${material.nombre}:`);
-    console.log(`   - Cantidad solicitada: ${cantidadAUsar} ${unidadUsada}`);
-    console.log(`   - Unidad base del material: ${material.unidadBase}`);
-    console.log(`   - Peso por unidad: ${material.pesoPorUnidad}`);
-
     // Determinar la unidad base si no está definida (para materiales existentes)
     let unidadBaseMaterial = material.unidadBase;
     if (!unidadBaseMaterial) {
@@ -46,7 +41,6 @@ export class ActividadesMaterialesService {
         material.tipoConsumo === TipoConsumo.CONSUMIBLE ? 'consumible' : 'no_consumible',
         material.medidasDeContenido
       );
-      console.log(`   🔧 Unidad base determinada: ${unidadBaseMaterial}`);
     }
 
     // Verificamos si es una unidad de empaque (Saco, Caja, etc.) y si el material tiene unidad base (g o ml)
@@ -56,21 +50,15 @@ export class ActividadesMaterialesService {
       // Ej: 1 SACO * 50kg = 50kg, o 1 BIDÓN * 20L = 20L
       const contenidoDelEmpaque = Number(material.pesoPorUnidad) || 1; // Fallback a 1 si es nulo
       cantidadEnUnidadBase = cantidadAUsar * contenidoDelEmpaque;
-      console.log(`   📦 Empaque detectado: ${cantidadAUsar} ${unidadUsada} * ${contenidoDelEmpaque} = ${cantidadEnUnidadBase} ${unidadBaseMaterial}`);
     } else {
       // Lógica normal (Gramo -> Kilo, Litro -> Ml)
-      console.log(`   🔄 Conversión estándar iniciada...`);
       try {
         cantidadEnUnidadBase = UnitConversionUtil.convertirABase(cantidadAUsar, unidadUsada);
-        console.log(`   ✅ Conversión completada: ${cantidadEnUnidadBase} ${unidadBaseMaterial || 'unidades'}`);
       } catch (error) {
         console.error(`   ❌ Error en conversión: ${error.message}`);
         throw new BadRequestException(error.message);
       }
     }
-
-    console.log(`   💰 Stock actual: ${material.cantidad} ${material.unidadBase}`);
-    console.log(`   📉 Se descontarán: ${cantidadEnUnidadBase} ${material.unidadBase}`);
 
     // 3. Validar Stock
     if (material.cantidad < cantidadEnUnidadBase) {

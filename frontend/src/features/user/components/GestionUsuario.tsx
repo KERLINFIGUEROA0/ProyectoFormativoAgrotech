@@ -637,6 +637,7 @@ export default function GestionUsuarios(): ReactElement {
                   const selected = Array.from(keys)[0];
                   setFilterRol(selected ? Number(selected) : null);
                 }}
+                aria-label="Filtrar por rol"
               >
                 {roles.map((rol) => (
                   <SelectItem key={rol.id.toString()}>
@@ -654,6 +655,7 @@ export default function GestionUsuarios(): ReactElement {
                   const selected = Array.from(keys)[0];
                   setFilterFicha(selected as string || null);
                 }}
+                aria-label="Filtrar por ficha"
               >
                 {fichasOpciones.map((ficha) => (
                   <SelectItem key={ficha.value}>
@@ -671,6 +673,7 @@ export default function GestionUsuarios(): ReactElement {
                   const selected = Array.from(keys)[0] as "all" | "active" | "inactive";
                   setFilterStatus(selected);
                 }}
+                aria-label="Filtrar por estado"
               >
                 <SelectItem key="all">Todos los estados</SelectItem>
                 <SelectItem key="active">Activos</SelectItem>

@@ -196,9 +196,6 @@ export class ActividadesController {
       }
     }
 
-    console.log('Archivos finales a guardar:', dto.archivos);
-    console.log('Materiales devueltos:', dto.materialesDevueltos);
-
     return this.actividadesService.enviarRespuesta(Number(id), dto, userIdentificacion);
   }
 

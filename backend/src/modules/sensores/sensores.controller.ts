@@ -120,16 +120,12 @@ export class SensoresController {
   @Post('reporte-trazabilidad')
   @Permission('Iot.DescargarPdf')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
-    console.log('Recibiendo solicitud de reporte IoT:', dto);
     try {
       const datos = await this.sensoresService.getFullTraceabilityData(dto);
-      console.log('Datos obtenidos, generando reporte IoT...');
 
       if (dto.formato === 'pdf') {
-        console.log('Intentando generar PDF IoT...');
         try {
           const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
-          console.log('PDF IoT generado exitosamente, tamaño:', buffer.length);
 
           res.set({
             'Content-Type': 'application/pdf',

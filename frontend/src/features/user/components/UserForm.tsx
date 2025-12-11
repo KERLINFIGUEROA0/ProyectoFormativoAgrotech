@@ -144,13 +144,14 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
               <Select
                 placeholder="Seleccione el tipo de identificación"
                 className="w-full"
-                selectedKeys={form.tipo ? new Set([String(form.tipo)]) : new Set()}
+                selectedKeys={form.tipo && ['CC', 'TI'].includes(String(form.tipo)) ? new Set([String(form.tipo)]) : new Set()}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
                   if (selected) {
                     handleFormChange('tipo', selected as string);
                   }
                 }}
+                aria-label="Seleccionar tipo de identificación"
               >
                 <SelectItem key="CC">Cédula de Ciudadanía (CC)</SelectItem>
                 <SelectItem key="TI">Tarjeta de Identidad (TI)</SelectItem>
@@ -249,6 +250,7 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
                   const selected = Array.from(keys)[0];
                   handleFormChange('rolId', selected ? Number(selected) : 0);
                 }}
+                aria-label="Seleccionar rol del usuario"
               >
                 {roles.map((rol) => (
                   <SelectItem key={rol.id.toString()}>
@@ -274,6 +276,7 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
                       handleFormChange('id_ficha', selected as string);
                     }}
                     disabled={loadingFichas}
+                    aria-label="Seleccionar ficha de formación"
                   >
                     {fichasOpciones.map((ficha) => (
                       <SelectItem key={ficha.value}>

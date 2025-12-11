@@ -444,6 +444,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroTipoCategoria(selected as string || null);
             }}
+            aria-label="Filtrar por categoría"
           >
             {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
           </Select>
@@ -457,6 +458,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroUbicacion(selected as string || null);
             }}
+            aria-label="Filtrar por ubicación"
           >
             {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
           </Select>
@@ -470,6 +472,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroProveedor(selected as string || null);
             }}
+            aria-label="Filtrar por proveedor"
           >
             {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
           </Select>
@@ -483,6 +486,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0] as "Todos" | "Activo" | "Inactivo";
               setFiltroEstadoMaterial(selected);
             }}
+            aria-label="Filtrar por estado del material"
           >
             <SelectItem key="Estado">Todos</SelectItem>
             <SelectItem key="Activo">Activos</SelectItem>
@@ -498,6 +502,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0] as "Todos" | "Normal" | "Stock Bajo" | "Crítico";
               setFiltroEstadoStock(selected);
             }}
+            aria-label="Filtrar por estado de stock"
           >
             <SelectItem key="Todos">Stock</SelectItem>
             <SelectItem key="Normal">Normal</SelectItem>

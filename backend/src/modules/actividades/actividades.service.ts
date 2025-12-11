@@ -739,18 +739,13 @@ export class ActividadesService {
             const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
 
             // LOG DE DECISIÓN DE UNIDAD
-            console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
-            console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
-            console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
 
             // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
             const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
-            console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
 
             // Cantidades que el usuario escribió (Ej: 50)
             const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
             const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
-            console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
 
             // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
             // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
@@ -765,28 +760,22 @@ export class ActividadesService {
                 material.medidasDeContenido
               );
             }
-            console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
 
             // Lógica de conversión (Usando la unidad seleccionada por el usuario)
             if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
                 [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
-               // Si devolvió BULTOS o SACOS
-               const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
-               console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
-               cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
-               cantMalasBase = cantMalasUsuario * pesoPorUnidad;
+                // Si devolvió BULTOS o SACOS
+                const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
+                cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
+                cantMalasBase = cantMalasUsuario * pesoPorUnidad;
             } else {
-               // Conversión estándar (L -> ml, kg -> g)
-               // Aquí es donde 50 L se convierten en 50,000 ml
-               console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
-               cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
-               cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
+                // Conversión estándar (L -> ml, kg -> g)
+                // Aquí es donde 50 L se convierten en 50,000 ml
+                cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
+                cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
             }
 
-            console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
-
             if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
-              console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
             }
 
             const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
@@ -862,8 +851,6 @@ export class ActividadesService {
                        `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
                        `dev-cons-${actividad.id}`
                      );
-
-                     console.log(`   ✅ Material ${material.id} procesado. Stock se aumentará en: ${cantBuenasBase}`);
                 }
                 // =========================================================
                 // 🧪 GESTIÓN FINANCIERA PARA CONSUMIBLES - SE EJECUTA SIEMPRE
@@ -872,24 +859,12 @@ export class ActividadesService {
    
                 if (asignacionOriginal) {
                     const cantidadAsignadaBase = Number(asignacionOriginal.cantidadUsadaBase) || 0;
-   
-                    console.log(`   🔍 DEBUG FINANCIERO CONSUMIBLE - Material: ${material.nombre}`);
-                    console.log(`      - asignacionOriginal.cantidadUsadaBase: ${asignacionOriginal.cantidadUsadaBase}`);
-                    console.log(`      - cantidadAsignadaBase (Number): ${cantidadAsignadaBase}`);
-                    console.log(`      - cantBuenasBase (devuelto): ${cantBuenasBase}`);
-   
+
                     // CÁLCULO CLAVE: Lo que se llevó - Lo que trajo = Lo que realmente gastó
                     let cantidadRealConsumidaBase = cantidadAsignadaBase - cantBuenasBase;
-   
-                    console.log(`      - cantidadRealConsumidaBase (antes de protección): ${cantidadRealConsumidaBase}`);
-   
+
                     // Protección: Si devuelve más de lo asignado (error de usuario), el consumo es 0
                     if (cantidadRealConsumidaBase < 0) cantidadRealConsumidaBase = 0;
-   
-                    console.log(`   💰 CÁLCULO FINANCIERO:`);
-                    console.log(`      - Asignado (Base): ${cantidadAsignadaBase}`);
-                    console.log(`      - Devuelto (Base): ${cantBuenasBase}`);
-                    console.log(`      - Consumido Real : ${cantidadRealConsumidaBase}`);
    
                     // Solo generamos transacción si hubo un consumo real mayor a 0
                     if (cantidadRealConsumidaBase > 0) {
@@ -920,14 +895,7 @@ export class ActividadesService {
                            precioUnitarioGasto = 0;
                            factorUnidad = 1;
                         }
-   
-                        console.log(`      - Actualizando asignacionOriginal:`);
-                        console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
-                        console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
-                        console.log(`        - unidadMedida: ${asignacionOriginal.unidadMedida}`);
-                        console.log(`        - cantidadAsignadaBase: ${cantidadAsignadaBase}`);
-                        console.log(`        - cantidadRealConsumidaBase: ${cantidadRealConsumidaBase}`);
-   
+
                         // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
                         asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
 
@@ -944,20 +912,7 @@ export class ActividadesService {
    
                         asignacionOriginal.costo = nuevoCostoTotal;
    
-                        console.log(`        - cantidadUsadaBase después: ${asignacionOriginal.cantidadUsadaBase}`);
-                        console.log(`        - cantidadUsada después: ${asignacionOriginal.cantidadUsada}`);
-                        console.log(`        - costo después: ${asignacionOriginal.costo}`);
-
-                        console.log(`      ✅ Actualización completada para material ${material.nombre}`);
-   
                         await actMaterialRepo.save(asignacionOriginal);
-   
-                        console.log(`      - Creando gasto:`);
-                        console.log(`        - descripcion: Consumo: ${material.nombre} - ${this.formatCantidad(asignacionOriginal.cantidadUsada || 0)} ${asignacionOriginal.unidadMedida} (Act: ${actividad.titulo})`);
-                        console.log(`        - cantidad: ${Number(asignacionOriginal.cantidadUsada?.toFixed(2) || '0')}`);
-                        console.log(`        - precioUnitario: ${precioUnitarioGasto}`);
-                        console.log(`        - factorUnidad: ${factorUnidad}`);
-                        console.log(`        - monto: ${parseFloat(nuevoCostoTotal.toFixed(2))}`);
 
                         // Verificar si ya existe un gasto para este material en esta actividad
                         const gastoExistente = await gastoRepo.findOne({
@@ -981,12 +936,8 @@ export class ActividadesService {
                           });
 
                           await gastoRepo.save(nuevoGasto);
-                          console.log(`      ✅ Transacción generada por: $${nuevoGasto.monto}`);
-                        } else {
-                          console.log(`      ℹ️ Gasto ya existe, no se duplica`);
                         }
                     } else {
-                        console.log(`      ℹ️ Consumo fue 0 (Se devolvió todo). No se genera cobro.`);
                         // Actualizar asignación a 0
                         asignacionOriginal.cantidadUsadaBase = 0;
                         asignacionOriginal.cantidadUsada = 0;
@@ -1145,10 +1096,6 @@ export class ActividadesService {
 
     try {
       // 🔍 DEBUG INICIAL
-      console.log('\n==================================================');
-      console.log('🚨 [BACKEND] INICIANDO PROCESO DE DEVOLUCIÓN');
-      console.log('📦 DTO Recibido completo:', JSON.stringify(dto, null, 2));
-      console.log('==================================================\n');
 
       const gastoRepo = queryRunner.manager.getRepository(Gasto);
       // Necesitamos este repositorio para saber en qué unidad se prestó
@@ -1173,18 +1120,13 @@ export class ActividadesService {
         const unidadAsignada = asignacionOriginal?.unidadMedida || UnidadMedida.UNIDAD;
 
         // LOG DE DECISIÓN DE UNIDAD
-        console.log(`\n🔎 Analizando Material ID: ${dev.materialId} (${material.nombre})`);
-        console.log(`   1. Unidad que viene del FRONT: "${dev.unidadSeleccionada}"`);
-        console.log(`   2. Unidad original ASIGNADA: "${unidadAsignada}"`);
 
         // ✅ AQUÍ ESTÁ EL FIX: Usar la unidad que el usuario seleccionó realmente
         const unidadParaCalculo = (dev.unidadSeleccionada as UnidadMedida) || unidadAsignada;
-        console.log(`   👉 DECISIÓN FINAL: Se usará la unidad "${unidadParaCalculo}" para calcular.`);
 
         // Cantidades que el usuario escribió (Ej: 50)
         const cantBuenasUsuario = Number(dev.cantidadDevuelta) || 0;
         const cantMalasUsuario = Number(dev.cantidadDanada) || 0;
-        console.log(`   🔢 Cantidad ingresada por usuario: ${cantBuenasUsuario}`);
 
         // 🔥 PASO 2: CONVERTIR ESAS CANTIDADES A LA UNIDAD BASE DEL SISTEMA (Ej: Litros -> Mililitros)
         // Si no hacemos esto, el sistema sumará 50ml en vez de 50,000ml
@@ -1199,28 +1141,23 @@ export class ActividadesService {
             material.medidasDeContenido
           );
         }
-        console.log(`   📏 Unidad BASE del sistema para este material: "${unidadBaseMaterial}"`);
 
         // Lógica de conversión (Usando la unidad seleccionada por el usuario)
         if (UnitConversionUtil.esUnidadEmpaque(unidadParaCalculo) &&
             [UnidadMedida.KILOGRAMO, UnidadMedida.LITRO, UnidadMedida.GRAMO, UnidadMedida.MILILITRO].includes(unidadBaseMaterial)) {
            // Si devolvió BULTOS o SACOS
            const pesoPorUnidad = Number(material.pesoPorUnidad) || 1;
-           console.log(`   📦 Es unidad de empaque (Saco/Bulto). Peso por unidad: ${pesoPorUnidad}`);
            cantBuenasBase = cantBuenasUsuario * pesoPorUnidad;
            cantMalasBase = cantMalasUsuario * pesoPorUnidad;
         } else {
            // Conversión estándar (L -> ml, kg -> g)
            // Aquí es donde 50 L se convierten en 50,000 ml
-           console.log(`   🔄 Ejecutando conversión estándar de ${unidadParaCalculo} a ${unidadBaseMaterial || 'base'}...`);
            cantBuenasBase = UnitConversionUtil.convertirABase(cantBuenasUsuario, unidadParaCalculo);
            cantMalasBase = UnitConversionUtil.convertirABase(cantMalasUsuario, unidadParaCalculo);
         }
 
-        console.log(`   🧮 RESULTADO MATEMÁTICO: ${cantBuenasUsuario} ${unidadParaCalculo} === ${cantBuenasBase} (en base DB)`);
 
         if (cantBuenasBase < 10 && cantBuenasUsuario > 10) {
-          console.error(`   🚨 ALERTA: La conversión dio un número muy pequeño. Verifica si 'convertirABase' está dividiendo en vez de multiplicar.`);
         }
 
         const totalRetornoBase = cantBuenasBase + cantMalasBase; // Total en mililitros/gramos
@@ -1295,7 +1232,6 @@ export class ActividadesService {
                        `Devolución sobrante: ${cantBuenasUsuario} ${unidadParaCalculo} - ${actividad.titulo}`,
                        `dev-cons-${actividad.id}`
                      );
-                     console.log(`   ✅ Stock recuperado: ${cantBuenasBase} (Base)`);
                 }
 
                 // ---------------------------------------------------------
@@ -1306,23 +1242,12 @@ export class ActividadesService {
                 if (asignacionOriginal) {
                     const cantidadAsignadaBase = Number(asignacionOriginal.cantidadUsadaBase) || 0;
 
-                    console.log(`   🔍 DEBUG FINANCIERO - Material: ${material.nombre}`);
-                    console.log(`      - asignacionOriginal.cantidadUsadaBase: ${asignacionOriginal.cantidadUsadaBase}`);
-                    console.log(`      - cantidadAsignadaBase (Number): ${cantidadAsignadaBase}`);
-                    console.log(`      - cantBuenasBase (devuelto): ${cantBuenasBase}`);
 
                     // CÁLCULO CLAVE: Lo que se llevó - Lo que trajo = Lo que realmente gastó
                     let cantidadRealConsumidaBase = cantidadAsignadaBase - cantBuenasBase;
 
-                    console.log(`      - cantidadRealConsumidaBase (antes de protección): ${cantidadRealConsumidaBase}`);
-
                     // Protección: Si devuelve más de lo asignado (error de usuario), el consumo es 0
                     if (cantidadRealConsumidaBase < 0) cantidadRealConsumidaBase = 0;
-
-                    console.log(`   💰 CÁLCULO FINANCIERO:`);
-                    console.log(`      - Asignado (Base): ${cantidadAsignadaBase}`);
-                    console.log(`      - Devuelto (Base): ${cantBuenasBase}`);
-                    console.log(`      - Consumido Real : ${cantidadRealConsumidaBase}`);
 
                     // Solo generamos transacción (dinero) si hubo un consumo real
                     if (cantidadRealConsumidaBase > 0) {
@@ -1354,9 +1279,6 @@ export class ActividadesService {
                            factorUnidad = 1;
                        }
 
-                       console.log(`      - Actualizando asignacionOriginal:`);
-                        console.log(`        - cantidadUsadaBase antes: ${asignacionOriginal.cantidadUsadaBase}`);
-                        console.log(`        - cantidadUsada antes: ${asignacionOriginal.cantidadUsada}`);
 
                        // A. Actualizar la relación ActividadMaterial con lo que realmente se gastó
                        asignacionOriginal.cantidadUsadaBase = cantidadRealConsumidaBase;
@@ -1374,9 +1296,6 @@ export class ActividadesService {
 
                         asignacionOriginal.costo = nuevoCostoTotal;
 
-                        console.log(`        - cantidadUsadaBase después: ${asignacionOriginal.cantidadUsadaBase}`);
-                        console.log(`        - cantidadUsada después: ${asignacionOriginal.cantidadUsada}`);
-                        console.log(`        - costo después: ${asignacionOriginal.costo}`);
 
                         await actMaterialRepo.save(asignacionOriginal);
 
@@ -1384,7 +1303,6 @@ export class ActividadesService {
                     }
                     else {
                         // Si devolvió TODO (Consumo 0), actualizamos la asignación a 0 costo
-                        console.log(`      ℹ️ Se devolvió todo el material. Costo final: 0`);
                         asignacionOriginal.cantidadUsadaBase = 0;
                         asignacionOriginal.cantidadUsada = 0;
                         asignacionOriginal.costo = 0;
