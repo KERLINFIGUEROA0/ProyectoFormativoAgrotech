@@ -3,155 +3,256 @@ title: Manual de Usuario
 ---
 # Manual de Usuario
 
-## Inicio de Sesión
+## 1. Autenticación
 
-[Iniciar Sesión](/)
+### Inicio de Sesión
 
-Para iniciar sesión en la aplicación AgroTech, sigue estos pasos:
+#### Guía Paso a Paso
+Para iniciar sesión en la aplicación AgroTech, sigue estos pasos detallados:
 
-1. Abre la página principal de la aplicación.
-2. Ingresa tu nombre de usuario y contraseña en los campos correspondientes.
-3. Haz clic en el botón "Iniciar Sesión".
-4. Si las credenciales son correctas, serás redirigido al dashboard principal.
+1. Abre tu navegador web y navega a la URL principal de la aplicación AgroTech.
+2. En la página de inicio, localiza los campos de "Nombre de Usuario" y "Contraseña".
+3. Ingresa tu nombre de usuario registrado en el campo correspondiente.
+4. Ingresa tu contraseña en el campo de "Contraseña".
+5. Verifica que los datos sean correctos antes de proceder.
+6. Haz clic en el botón "Iniciar Sesión" o presiona Enter.
+7. Si las credenciales son válidas, serás redirigido automáticamente al dashboard principal.
+8. En caso de error, revisa el mensaje de notificación y corrige los datos si es necesario.
 
-## Recuperación de Contraseña
+Enlace al video explicativo: [Agregar enlace aquí]
 
-[Recuperar Contraseña](/recuperar)
+### Recuperación de Contraseña
 
-Si has olvidado tu contraseña, puedes recuperarla de la siguiente manera:
+#### Guía Paso a Paso
+Si has olvidado tu contraseña, puedes recuperarla siguiendo estos pasos detallados:
 
-1. En la página de inicio de sesión, haz clic en el enlace "Olvidé mi contraseña".
-2. Ingresa tu dirección de correo electrónico asociada a tu cuenta.
-3. Haz clic en "Enviar".
-4. Revisa tu correo electrónico para un enlace de restablecimiento.
-5. Haz clic en el enlace y establece una nueva contraseña.
+1. Desde la página de inicio de sesión de AgroTech, localiza el enlace "Olvidé mi contraseña" o "¿Olvidaste tu contraseña?".
+2. Haz clic en el enlace para acceder al formulario de recuperación.
+3. Ingresa la dirección de correo electrónico asociada a tu cuenta de usuario.
+4. Verifica que el correo electrónico sea correcto y esté registrado en el sistema.
+5. Haz clic en el botón "Enviar" o "Recuperar Contraseña".
+6. Revisa tu bandeja de entrada (y carpeta de spam si es necesario) para un correo electrónico de AgroTech.
+7. En el correo, haz clic en el enlace de restablecimiento de contraseña proporcionado.
+8. Serás redirigido a una página segura donde podrás ingresar una nueva contraseña.
+9. Elige una contraseña segura y confírmala en el campo correspondiente.
+10. Haz clic en "Guardar" o "Actualizar Contraseña" para completar el proceso.
+11. Regresa a la página de inicio de sesión e intenta iniciar sesión con tu nueva contraseña.
 
-## Módulo de Actividades
+Enlace al video explicativo: [Agregar enlace aquí]
 
-[Gestionar Actividades](/gestion-actividades)
+## 2. Dashboard Principal
 
-El módulo de actividades permite gestionar tareas agrícolas. Para crear una nueva actividad:
+### Visualización General
+Después del inicio de sesión, accederás al dashboard principal que proporciona una vista general del sistema.
 
-1. Ve a la página de gestión de actividades.
-2. Haz clic en "Crear Nueva Actividad".
-3. Completa los detalles como nombre, descripción, fecha, materiales requeridos, etc.
-4. Asigna la actividad a un usuario si es necesario.
-5. Guarda la actividad.
+#### Estadísticas Generales
+- **Resumen de Cultivos**: Número total de cultivos activos y en diferentes estados
+- **Estado de Lotes**: Información sobre lotes disponibles, en uso y mantenimiento
+- **Inventario**: Alertas de stock bajo y materiales disponibles
+- **Sensores Activos**: Estado de conexión de sensores IoT
+- **Actividades Pendientes**: Tareas asignadas y su estado de progreso
 
-También puedes ver el cronograma en [Cronograma de Actividades](/cronograma).
+#### Gráficos y Métricas
+- Gráfico de rendimiento de cultivos por período
+- Tendencias de uso de materiales
+- Alertas del sistema y notificaciones importantes
 
-### Módulos de Aprendizaje
+#### Navegación Rápida
+- Acceso directo a módulos principales desde tarjetas del dashboard
+- Búsqueda global de cultivos, lotes y usuarios
+- Notificaciones en tiempo real del sistema
 
-- [Actividades Materiales](modulos/actividades_materiales.md) - Asignación de materiales a actividades, control de stock y costos.
+Enlace al video explicativo: [Agregar enlace aquí]
 
-## Módulo de Cultivos
+## 3. Gestión IoT y Sensores
 
-[Gestionar Cultivos](/gestion-cultivos)
+El módulo de sensores permite monitorear condiciones ambientales en tiempo real mediante IoT.
 
-Para gestionar cultivos:
+### Guía Paso a Paso para Configurar un Sensor
+1. Inicia sesión y navega al módulo de Sensores desde el menú lateral.
+2. Accede a "Gestión de Sensores" o "Gestionar Sensores".
+3. Haz clic en "Agregar Nuevo Sensor" o "Crear Sensor".
+4. Completa los detalles del sensor:
+   - Selecciona el tipo de sensor (ej. temperatura, humedad).
+   - Especifica ubicación física y coordenadas.
+   - Configura parámetros MQTT: broker, tópico y credenciales.
+   - Define umbrales para alertas (ej. temperatura máxima).
+5. Guarda la configuración del sensor.
+6. Revisa lecturas en tiempo real.
+7. Configura notificaciones y alertas basadas en los datos recibidos.
+8. Monitorea el estado del sensor y actualiza configuraciones si es necesario.
 
-1. Accede a la gestión de cultivos.
-2. Crea un nuevo cultivo ingresando nombre, tipo, etc.
-3. Gestiona lotes asociados en [Gestionar Lotes](/gestion-lotes).
-4. Ve la producción en la página específica de cada cultivo.
-5. Revisa la trazabilidad en [Trazabilidad de Cultivo](/cultivos/:id/trazabilidad).
+### Módulos IoT Relacionados
+- **MQTT Config**: Configuración de brokers MQTT y tópicos para comunicación IoT.
+- **Información Sensor**: Almacenamiento y gestión de lecturas de sensores IoT.
+- **WebSocket**: Comunicación bidireccional en tiempo real.
+- **Notifications**: Notificaciones en tiempo real vía WebSocket.
+- **Tipo Sensor**: Gestión de tipos de sensores para categorización.
 
-- [Trazabilidad](modulos/trazabilidad.md) - Línea de tiempo completa de eventos de un cultivo.
-- [Tipo Cultivo](modulos/tipo_cultivo.md) - Gestión de tipos de cultivos.
-- [Cultivos EPA](modulos/cultivos_epa.md) - Asociación de cultivos con tratamientos EPA.
+Enlace al video explicativo: <a href="https://www.youtube.com/watch?v=pxA7m7GuEZY" target="_blank">Ver video en YouTube</a>
 
-## Módulo de Usuarios
+Descargar documentación completa de IoT: <a href="/DocumentacionSistemaAgrotech.pdf" download>DocumentacionSistemaAgrotech.pdf</a>
 
-[Gestionar Usuarios](/gestion-usuarios)
+## 4. Gestión de Cultivos
 
-El módulo de usuarios permite administrar cuentas de usuario. Para crear un nuevo usuario:
+El módulo de cultivos permite administrar el ciclo de vida de los cultivos, desde la siembra hasta la cosecha.
 
-1. Ve a la página de gestión de usuarios.
-2. Haz clic en "Crear Nuevo Usuario".
-3. Completa los detalles como nombre, correo electrónico, rol, etc.
-4. Asigna permisos según sea necesario.
-5. Guarda el usuario.
+### Submódulo de Lotes y Sublotes
 
-Puedes editar o eliminar usuarios existentes desde la lista de usuarios.
+#### Gestión de Lotes
+El módulo de lotes permite dividir y gestionar áreas de cultivo para un control preciso.
 
-- [Rol Permiso](modulos/rol_permiso.md) - Gestión de roles y permisos.
-- [Tipo Usuario](modulos/tipo_usuario.md) - Gestión de tipos de usuarios.
-- [Usuarios Permisos](modulos/usuarios_permisos.md) - Asignación de permisos a usuarios.
-- [Permisos](modulos/permisos.md) - Definición de permisos del sistema.
+##### Guía Paso a Paso para Gestionar Lotes
+1. Inicia sesión y accede al módulo de Lotes desde el menú principal.
+2. Ve a "Gestión de Lotes".
+3. Para crear un nuevo lote:
+   - Haz clic en "Nuevo Lote".
+   - Especifica ubicación geográfica, tamaño en hectáreas y coordenadas si aplica.
+   - Guarda el lote.
+4. Monitorea el progreso, producción y asigna materiales o actividades.
+5. Gestiona sublotes para subdivisiones más detalladas.
 
-## Módulo de Finanzas
+Enlace al video explicativo: [Agregar enlace aquí]
 
-[Gestionar Finanzas](/gestion-finanzas)
+### Gestión de Cultivos
 
-Para gestionar finanzas y gastos de producción:
+#### Guía Paso a Paso para Gestionar Cultivos
+1. Inicia sesión y accede al módulo de Cultivos desde el menú lateral.
+2. Ve a "Gestión de Cultivos".
+3. Para crear un nuevo cultivo:
+   - Haz clic en "Nuevo Cultivo".
+   - Ingresa el nombre del cultivo (ej. "Maíz híbrido").
+   - Selecciona el tipo de cultivo de la lista disponible.
+   - Especifica detalles como variedad, fecha de siembra y ubicación.
+   - Asocia lotes o sublotes si es necesario.
+   - Guarda el cultivo.
+4. Gestiona lotes asociados navegando a Gestionar Lotes y asignándolos al cultivo.
+5. Monitorea la producción accediendo a la página específica de cada cultivo.
+6. Revisa la trazabilidad completa en Trazabilidad de Cultivo para ver eventos históricos.
+7. Edita o elimina cultivos existentes desde la lista de cultivos.
 
-1. Accede a la gestión de finanzas.
-2. Registra nuevos gastos en [Gastos de Producción](/gastos-produccion).
-3. Gestiona ventas en [Ventas](/ventas).
-4. Revisa reportes financieros y balances.
+Enlace al video explicativo: [Agregar enlace aquí]
 
-- [Pagos](modulos/pagos.md) - Gestión de pagos a pasantes por actividades realizadas.
-- [Gastos Producción](modulos/gastos_produccion.md) - Registro de gastos asociados a cultivos.
-- [Ventas](modulos/ventas.md) - Registro de ventas de producciones, generación de facturas PDF.
+## 5. Gestión de Inventario
 
-## Módulo de Materiales
+El módulo de materiales permite gestionar el inventario de insumos agrícolas, controlando stock y asignaciones.
 
-[Gestionar Materiales](/gestion-materiales)
+### Guía Paso a Paso para Agregar un Nuevo Material
+1. Inicia sesión y navega al módulo de Materiales desde el menú lateral.
+2. Accede a "Gestión de Materiales" o "Gestionar Materiales".
+3. Haz clic en "Crear Material".
+4. Completa el formulario con la información requerida:
+   - Nombre del material (ej. "Fertilizante orgánico").
+   - Tipo de material (ej. semilla, fertilizante).
+   - Cantidad inicial en stock.
+   - Unidad de medida (ej. kg, litros).
+   - Descripción adicional y costo unitario.
+5. Asigna el material a lotes o actividades específicas si es necesario.
+6. Revisa los datos para asegurar precisión.
+7. Haz clic en "Crear Material".
+8. Monitorea el stock y actualiza cantidades según uso.
 
-El módulo de materiales permite controlar inventarios. Para agregar un nuevo material:
+Enlace al video explicativo: [Agregar enlace aquí]
 
-1. Ve a la página de gestión de materiales.
-2. Haz clic en "Crear Nuevo Material".
-3. Ingresa detalles como nombre, tipo, cantidad, unidad de medida, etc.
-4. Asigna a lotes o actividades según corresponda.
-5. Guarda el material.
+## 6. Gestión Fitosanitaria
 
-## Módulo de Lotes
+El módulo de tratamientos permite gestionar aplicaciones fitosanitarias y tratamientos para cultivos.
 
-[Gestionar Lotes](/gestion-lotes)
+### Guía Paso a Paso para Gestionar Tratamientos
+1. Inicia sesión y accede al módulo de Tratamientos desde el menú lateral.
+2. Ve a "Gestión de Tratamientos" o "Tratamientos".
+3. Para crear un nuevo tratamiento:
+   - Haz clic en "Crear Nuevo Tratamiento" o "Agregar Tratamiento".
+   - Selecciona tipo de tratamiento (ej. fungicida, herbicida).
+   - Ingresa nombre, dosis recomendada y descripción.
+   - Asocia con cultivos específicos.
+   - Guarda el tratamiento.
+4. Registra aplicaciones y monitorea efectividad.
 
-Para gestionar lotes de cultivo:
+Enlace al video explicativo: [Agregar enlace aquí]
 
-1. Accede a la gestión de lotes.
-2. Crea un nuevo lote especificando cultivo, ubicación, tamaño, etc.
-3. Actualiza el estado del lote en [Actualizar Estado de Lote](/lotes/:id/estado).
-4. Monitorea el progreso y producción asociada.
+## 7. Gestión de Actividades
 
-- [Sublotes](modulos/sublotes.md) - Gestión de sublotes dentro de lotes.
+El módulo de actividades permite gestionar tareas agrícolas, asignar recursos y monitorear el progreso.
 
-## Módulo de Sensores
+### Guía Paso a Paso para Crear una Nueva Actividad
+1. Inicia sesión en AgroTech y navega al módulo de Actividades desde el menú principal.
+2. Accede a la página de "Gestión de Actividades" o "Gestionar Actividades".
+3. Haz clic en el botón "Crear Nueva Actividad" o "Agregar Actividad".
+4. Completa el formulario con los detalles requeridos:
+   - Nombre de la actividad (ej. "Siembra de maíz").
+   - Descripción detallada de la tarea.
+   - Fecha de inicio.
+   - Selecciona el cultivo o lote asociado.
+   - Lista de materiales requeridos y cantidades.
+   - Asigna usuarios responsables si es necesario.
+5. Revisa la información ingresada para asegurar precisión.
+6. Haz clic en "Guardar" o "Crear Actividad" para registrar la nueva actividad.
+7. Una vez guardada, puedes editarla, asignar materiales adicionales o marcarla como completada.
 
-[Gestionar Sensores](/gestion-sensores)
+Enlace al video explicativo: [Agregar enlace aquí]
 
-El módulo de sensores permite monitorear condiciones ambientales. Para configurar un sensor:
+## 8. Gestión Financiera
 
-1. Ve a la página de gestión de sensores.
-2. Agrega un nuevo sensor con detalles como tipo, ubicación, configuración MQTT.
-3. Revisa la información en tiempo real en [Información de Sensores](/sensores).
-4. Configura alertas y notificaciones según umbrales definidos.
+El módulo de finanzas permite controlar ingresos y generar reportes para una gestión económica eficiente.
 
-### Módulos IoT
+### Guía Paso a Paso para Gestionar Finanzas
+1. Inicia sesión y accede al módulo de Finanzas desde el menú principal.
+2. Ve a "Finanzas".
+3. Crea una nueva transacción financiera especificando descripción, cantidad, precio.
+4. Genera reportes y balances automáticamente.
+5. Revisa estadísticas financieras navegando a las secciones de balances y métricas.
+6. Exporta datos para análisis externos si es necesario.
 
-- [MQTT Config](modulos/mqtt-config.md) - Configuración de brokers MQTT y tópicos para comunicación IoT.
-- [Información Sensor](modulos/informacion_sensor.md) - Almacenamiento y gestión de lecturas de sensores IoT.
-- [WebSocket](modulos/websocket.md) - Comunicación bidireccional en tiempo real.
-- [Notifications](modulos/notifications.md) - Notificaciones en tiempo real vía WebSocket.
-- [Tipo Sensor](modulos/tipo_sensor.md) - Gestión de tipos de sensores para categorización.
+Enlace al video explicativo: [Agregar enlace aquí]
 
-## Módulo de Producciones
+## 9. Gestión de Usuarios
 
-- [Producciones](modulos/producciones.md) - Gestión de cosechas y producciones.
+El módulo de usuarios permite administrar cuentas, roles y permisos para controlar el acceso al sistema.
 
-## Módulo de Tratamientos
+### Guía Paso a Paso para Crear un Nuevo Usuario
+1. Inicia sesión con una cuenta que tenga permisos de administración.
+2. Navega al módulo de Usuarios desde el menú principal.
+3. Accede a "Gestión de Usuarios".
+4. Haz clic en "Nuevo Usuario".
+5. Completa el formulario con la información requerida:
+   - Nombre completo del usuario.
+   - Número de identificación único.
+   - Dirección de correo electrónico válida.
+   - Asigna un rol predeterminado (ej. Instructor, Aprendiz, Pasante).
+   - Configura permisos específicos si es necesario.
+6. Verifica que todos los campos obligatorios estén completos.
+7. Haz clic en "Registrar Usuario" para crear el usuario.
+8. Para editar o eliminar usuarios, selecciona uno de la lista y usa las opciones disponibles.
 
-- [EPA](modulos/epa.md) - Gestión de tratamientos fitosanitarios.
-- [EPA Tratamiento](modulos/epa_tratamiento.md) - Asociación de tratamientos EPA con cultivos.
-- [Tratamientos](modulos/tratamientos.md) - Definición de tratamientos aplicables.
+Enlace al video explicativo: [Agregar enlace aquí]
 
-## Módulo de Fichas
+## Módulos Adicionales
 
-- [Fichas](modulos/fichas.md) - Gestión de fichas académicas.
+### Módulo de Producciones
 
-## Módulo de Movimientos
+El módulo de producciones permite registrar y gestionar cosechas y rendimientos de cultivos.
 
-- [Movimientos](modulos/movimientos.md) - Registro de movimientos de inventario.
+#### Guía Paso a Paso para Gestionar Producciones
+1. Inicia sesión y accede al módulo de Producciones.
+2. Ve a "Producciones".
+3. Para registrar una nueva producción:
+   - Haz clic en "Nueva Producción".
+   - Selecciona el cultivo y lote asociado.
+   - Ingresa fecha de cosecha, cantidad producida y unidad de medida.
+   - Guarda el registro.
+4. Revisa producciones anteriores y genera reportes de rendimiento.
+5. Asocia producciones a ventas o inventarios si es necesario.
+
+Enlace al video explicativo: [Agregar enlace aquí]
+
+### Módulo de Movimientos
+
+El módulo de movimientos permite rastrear entradas, salidas y transferencias de inventario.
+
+#### Guía Paso a Paso para Gestionar Movimientos
+1. Inicia sesión y accede al módulo de Movimientos.
+2. Ve a "Gestión de Movimientos".
+3. Revisa historial de movimientos para control de stock.
+
+Enlace al video explicativo: [Agregar enlace aquí]

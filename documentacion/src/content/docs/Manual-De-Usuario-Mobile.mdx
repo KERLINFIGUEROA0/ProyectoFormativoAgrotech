@@ -1,0 +1,429 @@
+---
+title: Manual de Usuario - AgrotechMobile
+description: Guía completa para el uso de la aplicación móvil AgrotechMobile
+---
+
+# Manual de Usuario - AgrotechMobile
+
+Bienvenido al manual de usuario de AgrotechMobile, la aplicación móvil para gestión agrícola integral con IoT. Esta guía te ayudará a navegar y utilizar todas las funcionalidades de la app paso a paso.
+
+## 1. Autenticación
+
+### Inicio de Sesión
+1. Abre la aplicación AgrotechMobile en tu dispositivo Android.
+2. En la pantalla de login, ingresa tu **número de documento** en el campo "Documento".
+3. Ingresa tu **contraseña** en el campo correspondiente.
+4. Toca el botón "Ingresar" o presiona Enter.
+5. Si las credenciales son correctas, accederás automáticamente al dashboard principal.
+6. Si hay un error, se mostrará un mensaje indicando credenciales incorrectas o usuario inactivo.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/EJyQZH1ouog?si=hje1Iaa-JMJb4jwP" target="_blank">Ver tutorial en YouTube</a>
+
+### Recuperación de Contraseña
+1. En la pantalla de login, toca el enlace "¿Olvidaste tu contraseña?".
+2. Ingresa tu **número de identificación** en el campo correspondiente.
+3. Toca el botón "Enviar Enlace".
+4. Se enviará un email a tu correo registrado con un enlace de recuperación.
+5. Revisa tu bandeja de entrada y sigue el enlace para establecer una nueva contraseña.
+
+### Restablecimiento de Contraseña
+1. Una vez recibido el email, toca el enlace de recuperación.
+2. Serás redirigido a la página de restablecimiento.
+3. Ingresa tu nueva contraseña.
+4. Confirma la nueva contraseña.
+5. Toca "Guardar" para completar el proceso.
+
+
+
+## 2. Dashboard Principal (Home)
+
+### Visualización General
+1. Después del login, verás el dashboard con estadísticas generales.
+2. En la parte superior, se muestra un banner de bienvenida con la fecha actual.
+3. Abajo encontrarás tarjetas con estadísticas clave:
+   - **Lotes Totales**: Número de lotes registrados
+   - **Cultivos Activos**: Número de cultivos en crecimiento
+   - **Productos en Inventario**: Cantidad de materiales disponibles
+   - **Sensores Activos**: Número de sensores conectados
+
+### Carrusel de Sensores en Tiempo Real
+1. En la sección central, desliza horizontalmente el carrusel de sensores.
+2. Cada tarjeta muestra:
+   - Nombre del sensor
+   - Valor actual (temperatura, humedad, luz, etc.)
+   - Estado (En línea/Desconectado/Sincronizando)
+   - Última actualización
+3. Los colores indican alertas: rojo para valores altos/bajos, verde para óptimo.
+
+### Movimientos Financieros Recientes
+1. En la sección inferior derecha, verás los últimos 3 movimientos financieros.
+2. Cada entrada muestra:
+   - Tipo (Ingreso/Egreso) con icono correspondiente
+   - Descripción
+   - Monto con formato de moneda colombiana
+   - Fecha
+
+### Navegación
+Usa el menú lateral (sidebar) para acceder a diferentes módulos.
+
+## 3. Gestión IoT y Sensores
+
+### Configuración Inicial
+1. Desde el menú lateral, selecciona "Gestión de Brokers".
+2. Si no hay brokers, se abrirá automáticamente el modal de creación.
+3. Crea un broker MQTT con host, puerto, usuario, contraseña.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/Sl8D9TVs9iI?si=AIiNZo86YSdAqRgs" target="_blank">Ver tutorial en YouTube</a>
+
+### Modos de Vista
+1. Usa los botones "General" o "Lote" en la parte superior.
+2. **Modo General**: Ve todos los sensores de todos los lotes.
+3. **Modo Lote**: Filtra sensores por lote específico.
+
+### Configurar Lote IoT
+1. En modo lote, selecciona un lote.
+2. Toca "Configurar Lote" si no está configurado.
+3. Selecciona broker existente.
+4. Define tópicos MQTT para sensores.
+5. Establece umbrales mínimo/máximo para alertas.
+6. Toca "Crear Configuración".
+
+**Video explicativo**: <a href="https://youtube.com/shorts/y36UeOSD9I8?si=YYJyCe2iPrFEIZw1" target="_blank">Ver tutorial en YouTube</a>
+
+### Visualización de Sensores
+1. Los sensores aparecen en tarjetas paginadas (4 por página).
+2. Cada tarjeta muestra:
+   - Nombre y estado de conexión
+   - Valor actual con unidad
+   - Indicador de alerta (Óptimo/Alto/Bajo/Desconectado)
+   - Última actualización
+
+### Gráfico General
+1. Abajo, verás gráfico de líneas con todos los sensores.
+2. Selecciona sensores específicos para comparar.
+3. Filtra por lote en modo general.
+4. Los valores se normalizan al 0-100% basado en umbrales.
+
+### Reportes
+1. Toca "Descargar Reporte" para exportar trazabilidad de sensores.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/CQcpe24yPQE?si=dAY46aSU9Tn0GuY7" target="_blank">Ver tutorial en YouTube</a>
+
+## 4. Gestión de Cultivos
+
+### Submódulo de Lotes y Sublotes
+#### Gestión de Lotes
+1. Desde el menú lateral, selecciona "Gestión de Lotes".
+2. Verás estadísticas generales en tarjetas:
+   - Total de lotes
+   - En preparación
+   - Parcialmente ocupado
+   - En cultivo
+   - En mantenimiento
+
+#### Vista de Tabla
+1. En la sección principal, encontrarás una tabla con todos los lotes.
+2. Columnas: Nombre, Área (m²), Estado, Ubicación, Acciones.
+3. Usa los filtros por estado: Todos, En preparación, Parcialmente ocupado, En cultivación, En mantenimiento.
+4. Navega entre páginas si hay más de 10 lotes.
+
+#### Vista de Mapa
+1. El mapa muestra todos los lotes dibujados como polígonos.
+2. Haz clic en un lote para seleccionarlo y ver detalles.
+3. Usa zoom y pan para navegar.
+4. El panel lateral muestra información del lote seleccionado.
+
+#### Crear Nuevo Lote
+1. Toca el botón "Nuevo Lote".
+2. Completa el formulario:
+   - Nombre del lote
+   - Área en metros cuadrados
+   - Estado inicial
+3. Dibuja el polígono en el mapa usando las herramientas de dibujo.
+4. Toca "Guardar" para crear el lote.
+
+#### Editar Lote
+1. En la tabla, toca el botón de editar (lápiz) en la fila del lote.
+2. Modifica los datos necesarios.
+3. Redibuja el polígono si es necesario.
+4. Toca "Guardar" para actualizar.
+
+#### Ver Ubicación
+1. Toca el botón de ubicación (mapa) en la fila del lote.
+2. Se centrará el mapa en ese lote específico.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/HFdHThQiv3o?si=TqgjFqXVGoMcDOx3" target="_blank">Ver tutorial en YouTube</a>
+
+### Gestión de Cultivos
+#### Visualización General
+1. Desde el menú lateral, selecciona "Gestión de Cultivos".
+2. Verás estadísticas en tarjetas:
+   - Total de cultivos
+   - Activos (en crecimiento)
+   - Variedades (tipos diferentes)
+   - Total de plantas
+
+#### Vista de Lista vs Mapa
+1. Usa las pestañas "Listado" y "Mapa" en la parte superior.
+2. En vista de lista: cultivos en tarjetas con imagen, nombre, tipo, plantas, fecha de siembra.
+3. En vista de mapa: muestra sublotes con cultivos asignados.
+
+#### Filtros y Búsqueda
+1. Campo de búsqueda: filtra por nombre, descripción o tipo de cultivo.
+2. Filtro de estado: Todos, Activo, En Cosecha, Finalizado.
+3. Filtro de estado de sublotes: Todos, Disponible, En cultivación, En mantenimiento.
+
+#### Crear Nuevo Cultivo
+1. Toca el botón "Nuevo Cultivo".
+2. Completa el formulario:
+   - Nombre del cultivo
+   - Selecciona tipo de cultivo (o crea nuevo)
+   - Selecciona lote
+   - Selecciona sublote dentro del lote
+   - Fecha de plantado
+   - Cantidad de plantas
+   - Descripción opcional
+   - Sube imagen del cultivo
+3. Toca "Guardar".
+
+#### Acciones por Cultivo
+1. **Producción**: Ve a la página de producción del cultivo.
+2. **Trazabilidad**: Ve al historial completo del cultivo.
+3. **Registrar Cosecha**: Para cultivos no finalizados.
+4. **Ver Ubicación**: Muestra el mapa con la ubicación exacta.
+5. **Editar**: Modifica los datos del cultivo.
+6. **Eliminar**: Solo si no tiene producciones asociadas.
+
+#### Registrar Cosecha
+1. Toca el botón de cosecha ($) en una tarjeta de cultivo.
+2. Selecciona fecha de cosecha.
+3. Ingresa cantidad cosechada.
+4. Marca "Finalizar ciclo del cultivo" si es la cosecha final.
+5. Toca "Registrar Cosecha".
+
+**Video explicativo**: <a href="https://youtube.com/shorts/b0hA5fsiWsI?si=2mjjgJB2AAKUq2Be" target="_blank">Ver tutorial en YouTube</a>
+
+## 5. Gestión de Inventario
+
+### Dashboard de Inventario
+1. Desde el menú lateral, selecciona "Inventario".
+2. Verás estadísticas en tarjetas:
+   - Total de insumos
+   - Insumos activos
+   - Categorías diferentes
+   - Insumos por agotarse
+
+### Filtros y Búsqueda
+1. Campo de búsqueda: filtra por nombre, descripción o categoría.
+2. Filtro de estado: Todos, Activo, Agotado, En mantenimiento.
+3. Filtro de categoría: Todos, Semillas, Fertilizantes, etc.
+
+### Crear Nuevo Insumo
+1. Toca el botón "Nuevo Insumo".
+2. Completa el formulario:
+   - Nombre del insumo
+   - Selecciona categoría (o crea nueva)
+   - Cantidad inicial
+   - Unidad de medida
+   - Proveedor
+   - Fecha de compra
+   - Ubicación en almacén
+   - Descripción opcional
+   - Sube imagen del insumo
+3. Toca "Guardar".
+
+**Video explicativo**: <a href="https://youtube.com/shorts/KUwg7IpniME?si=TtGGan9luQ07uAGA" target="_blank">Ver tutorial en YouTube</a>
+
+## 6. Gestión Fitosanitaria
+
+### ¿Qué es la Gestión Fitosanitaria?
+La gestión fitosanitaria permite identificar, registrar y tratar enfermedades, plagas y malezas (EPAs) que afectan a los cultivos. Es fundamental para mantener la salud de las plantas y maximizar la producción.
+
+### Visualización de EPAs
+1. Desde el menú lateral, selecciona "Fitosanitario".
+2. Verás una tabla con todos los EPAs registrados.
+3. Columnas principales: Nombre, Tipo (Enfermedad/Plaga/Maleza), Fecha de detección, Estado, Acciones.
+
+### Filtros Disponibles
+1. **Búsqueda por nombre**: Localiza EPAs específicos rápidamente.
+2. **Filtro por tipo**: Enfermedades, Plagas, Malezas o Todos.
+3. **Filtro por estado**: Activos, Tratados, Controlados.
+
+### Registrar Nuevo EPA
+1. Toca el botón "Nuevo EPA" (+).
+2. Completa el formulario:
+   - **Nombre del EPA**: Identifica claramente la amenaza.
+   - **Tipo**: Selecciona Enfermedad, Plaga o Maleza.
+   - **Descripción detallada**: Síntomas, afectación, extensión.
+   - **Fecha de detección**: Cuándo se observó por primera vez.
+   - **Severidad**: Baja, Media, Alta, Crítica.
+   - **Cultivo afectado**: Selecciona el cultivo específico.
+   - **Ubicación**: Lote y sublote donde se encuentra.
+   - **Fotografía**: Sube imagen del EPA para referencia.
+3. Toca "Guardar" para registrar.
+
+### Acciones por EPA
+1. **Ver detalles**: Toca el nombre del EPA para información completa.
+2. **Editar**: Modifica información del EPA si cambian las condiciones.
+3. **Marcar como tratado**: Cuando se ha aplicado tratamiento exitoso.
+4. **Eliminar**: Solo para EPAs registrados por error.
+
+### Tratamientos Recomendados
+1. Cada EPA tiene tratamientos sugeridos basados en su tipo.
+2. Incluye productos químicos, dosis recomendadas y frecuencia de aplicación.
+3. Toca "Aplicar Tratamiento" para registrar una nueva aplicación.
+
+### Registro de Tratamientos
+1. Desde un EPA específico, toca "Nuevo Tratamiento".
+2. Selecciona producto del inventario disponible.
+3. Ingresa dosis aplicada por hectárea.
+4. Registra fecha y responsable de la aplicación.
+5. Agrega observaciones sobre efectividad.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/xOr639Vr-SM?si=lqTPm_vfonzRbcnu" target="_blank">Ver tutorial en YouTube</a>
+
+## 7. Gestión de Actividades
+
+### ¿Qué es la Gestión de Actividades?
+El módulo de actividades permite planificar, asignar y controlar todas las tareas agrícolas diarias. Facilita la coordinación del trabajo y el seguimiento del progreso de cada actividad.
+
+### Página Principal de Actividades
+1. Desde el menú lateral, selecciona "Actividades".
+2. Verás dos tarjetas principales de acceso rápido:
+   - **Asignar Nueva Actividad**: Crear y asignar tareas.
+   - **Ver Todas las Actividades**: Lista completa con filtros.
+
+### Actividades Recientes
+1. En la parte superior, se muestran las últimas 5 actividades.
+2. Cada actividad muestra:
+   - **Título**: Nombre descriptivo de la tarea.
+   - **Estado**: Pendiente, En Progreso, Completada, Cancelada.
+   - **Usuario asignado**: Quién debe realizarla.
+   - **Fecha límite**: Cuándo debe completarse.
+   - **Prioridad**: Alta, Media, Baja (con colores).
+
+### Crear Nueva Actividad
+1. Toca "Asignar Nueva Actividad".
+2. Completa el formulario detallado:
+   - **Título**: Nombre claro y descriptivo.
+   - **Descripción**: Instrucciones detalladas de qué hacer.
+   - **Tipo de actividad**: Siembra, Riego, Fertilización, Cosecha, etc.
+   - **Usuario asignado**: Selecciona de la lista de usuarios activos.
+   - **Cultivo relacionado**: Asocia con cultivo específico (opcional).
+   - **Lote/Sublote**: Ubicación específica de la tarea.
+   - **Fecha límite**: Cuándo debe completarse.
+   - **Prioridad**: Alta (rojo), Media (amarillo), Baja (verde).
+   - **Materiales requeridos**: Selecciona del inventario.
+   - **Archivos adjuntos**: Fotos, documentos o instrucciones adicionales.
+3. Toca "Asignar Actividad" para guardar.
+
+### Gestionar Actividades Existentes
+1. Ve a "Ver Todas las Actividades".
+2. Usa filtros para encontrar actividades específicas:
+   - **Por estado**: Todas, Pendientes, En Progreso, Completadas.
+   - **Por usuario**: Filtrar actividades de una persona específica.
+   - **Por fecha**: Rango de fechas límite.
+   - **Por prioridad**: Alta, Media, Baja.
+
+### Acciones por Actividad
+1. **Ver detalles**: Información completa de la actividad.
+2. **Marcar como completada**: Cuando la tarea está terminada.
+3. **Editar**: Modificar información si cambian los requisitos.
+4. **Reasignar**: Cambiar el usuario responsable.
+5. **Cancelar**: Para actividades que ya no son necesarias.
+
+### Responder a una Actividad Asignada
+1. Como usuario asignado, abre la actividad desde tus notificaciones.
+2. Lee las instrucciones detalladamente.
+3. Completa el formulario de respuesta:
+   - **Estado de progreso**: Actualización del avance.
+   - **Observaciones**: Comentarios sobre dificultades o hallazgos.
+   - **Fotos del trabajo**: Antes, durante y después.
+   - **Materiales utilizados**: Cantidades reales consumidas.
+   - **Tiempo empleado**: Horas dedicadas a la tarea.
+4. Toca "Enviar Respuesta" para actualizar el estado.
+
+### Reportes y Estadísticas
+1. Ve a la pestaña "Reportes" dentro de actividades.
+2. Visualiza métricas como:
+   - Actividades completadas por período.
+   - Productividad por usuario.
+   - Tareas pendientes por vencer.
+3. Exporta reportes en PDF para análisis.
+
+**Video explicativo**: <a href="https://youtube.com/shorts/BrG6wfBqsFg?si=PK57L-eQD5vU2IfO" target="_blank">Ver tutorial en YouTube</a>
+
+## 8. Gestión Financiera
+
+### Dashboard Financiero
+1. Desde el menú lateral, selecciona "Finanzas" o "Ingresos/Egresos".
+2. Verás gráfico de flujo de efectivo mensual.
+3. Abajo, tabla de transacciones recientes.
+
+### Gráfico de Flujo
+1. Muestra ingresos vs egresos por mes.
+2. Barras azules para ingresos, rojas para egresos.
+3. Línea de saldo acumulado.
+
+### Transacciones Recientes
+1. Tabla con columnas:
+   - Fecha
+   - Tipo (Ingreso/Egreso)
+   - Descripción
+   - Cantidad
+   - Precio Unitario
+   - Valor Total
+2. Los egresos aparecen en rojo con signo negativo.
+
+### Gestionar Transacciones
+1. Toca "Ver Todas".
+2. Verás formulario para agregar nuevas transacciones.
+3. Completa:
+   - Tipo (Ingreso/Egreso)
+   - Descripción
+   - Monto
+   - Fecha
+   - Categoría
+   - Asocia con cultivo o actividad
+4. Toca "Guardar".
+
+### Exportar Datos
+1. Toca el botón de descarga (Excel).
+2. Se abrirá nueva pestaña con archivo Excel de todas las transacciones.
+
+**Video explicativo**: <a href="https://example.com/video-finanzas" target="_blank">Ver tutorial en YouTube</a>
+
+## 9. Gestión de Usuarios
+
+### Visualización de Usuarios
+1. Desde el menú lateral, selecciona "Gestión de Usuarios".
+2. Verás tabla con todos los usuarios registrados.
+3. Columnas: Nombre, Email, Rol, Estado, Fecha de registro, Acciones.
+
+### Filtros y Búsqueda
+1. Busca por nombre o email.
+2. Filtra por rol: Todos, Administrador, Operario, Supervisor.
+3. Filtra por estado: Todos, Activo, Inactivo.
+
+### Crear Nuevo Usuario
+1. Toca "Nuevo Usuario".
+2. Completa el formulario:
+   - Nombre completo
+   - Email
+   - Número de documento
+   - Rol (Administrador/Operario/Supervisor)
+   - Contraseña inicial
+   - Confirmar contraseña
+3. Toca "Crear Usuario".
+
+### Gestionar Usuarios
+1. **Editar**: Modifica datos del usuario (excepto email).
+2. **Cambiar Estado**: Activar/desactivar usuario.
+3. **Resetear Contraseña**: Envía email de recuperación.
+4. **Eliminar**: Solo usuarios inactivos sin actividades asignadas.
+
+### Perfiles de Usuario
+1. **Administrador**: Acceso completo a todos los módulos.
+2. **Supervisor**: Gestión de cultivos, actividades, reportes.
+3. **Operario**: Registro de actividades, visualización limitada.
+ **Video explicativo**: <a href="https://example.com/video-usuarios" target="_blank">Ver tutorial en YouTube</a>
