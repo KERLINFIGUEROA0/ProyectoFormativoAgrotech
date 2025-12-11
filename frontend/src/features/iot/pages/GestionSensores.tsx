@@ -87,10 +87,6 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   // 1. Detectar si es una bomba
   const isBomba = sensor.nombre.toLowerCase().includes('bomba') || sensor.topic?.toLowerCase().includes('bomba');
 
-  // DEBUG: Log para verificar el nombre del sensor bomba
-  if (isBomba) {
-    console.log('DEBUG SensorCard - Nombre del sensor bomba:', sensor.nombre);
-  }
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();

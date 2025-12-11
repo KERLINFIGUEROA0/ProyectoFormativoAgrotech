@@ -35,7 +35,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
     if (selectedLoteId) {
       // Cargar cultivos activos del lote
       getCultivosActivosLote(selectedLoteId).then(response => {
-        console.log('Cultivos cargados:', response.data);
         const cultivosData = response.data || [];
         setCultivos(cultivosData);
 
@@ -91,8 +90,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
         fechaInicio: data.fechaInicio,
         fechaFin: data.fechaFin,
       };
-
-      console.log("Enviando datos:", payload);
 
       // Simular progreso gradual durante la recolección de datos
       setProgress(10);
@@ -154,8 +151,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
       setProgress(0);
     }
   };
-
-  console.log('Modal renderizando, cultivos:', cultivos, 'loteId:', selectedLoteId);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Descargar Reporte de Trazabilidad">

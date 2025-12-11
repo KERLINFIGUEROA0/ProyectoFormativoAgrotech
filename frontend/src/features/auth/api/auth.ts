@@ -135,7 +135,6 @@ export const crearUsuario = async (data: any) => {
 // Obtener usuarios
 export const getUsuarios = async () => {
   const res = await api.get("/usuarios")
-  console.log("API Response for getUsuarios:", res.data)
   return res.data
 };
 
@@ -184,7 +183,6 @@ export const reactivarUsuario = async (id: number) => {
 export const getRoles = async () => {
   try {
     const res = await api.get("/roles");
-    console.log("API Response for getRoles:", res.data);
     return res.data;
   } catch (error) {
     console.error("Error in getRoles API call:", error);

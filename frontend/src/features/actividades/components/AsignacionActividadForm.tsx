@@ -402,8 +402,6 @@ const AsignacionActividadForm: React.FC<AsignacionFormProps> = ({
     };
     // --- FIN MODIFICACIÓN ---
 
-    console.log("Payload que se enviará al backend:", JSON.stringify(payload, null, 2));
-
     setIsSubmitting(true);
     const toastId = toast.loading('Asignando actividades...');
 

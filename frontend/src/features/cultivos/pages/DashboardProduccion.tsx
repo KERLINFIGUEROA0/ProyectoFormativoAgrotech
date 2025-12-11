@@ -52,7 +52,6 @@ const fetchData = async () => {
       const produccionesData = produccionesRes.data || [];
 
       setProducciones(produccionesData);
-      console.log('[FRONTEND] Estado producciones actualizado:', produccionesData);
     } catch (error) {
       console.error('[FRONTEND] Error al cargar las producciones:', error);
       console.error('[FRONTEND] Error details:', (error as any)?.response?.data);

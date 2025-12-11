@@ -220,8 +220,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('Fecha enviada al backend:', formData.fecha);
-
     if (!formData.titulo || !formData.fecha || !formData.cultivo) {
       toast.error("Los campos Título, Fecha y Cultivo son obligatorios.");
       return;

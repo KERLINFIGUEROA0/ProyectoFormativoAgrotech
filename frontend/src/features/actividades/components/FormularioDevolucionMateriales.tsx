@@ -88,7 +88,6 @@ export const FormularioDevolucionMateriales: React.FC<Props> = ({ materiales, on
         };
       });
 
-      console.log('🚀 [FRONT] Payload completo enviado al padre:', payload);
       onChange(payload);
 
       // Notificar validez

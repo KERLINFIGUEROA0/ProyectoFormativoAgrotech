@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
-import { Trash2, FileSpreadsheet, Plus, Search, Filter } from 'lucide-react';
+import { Trash2,Search, Filter } from 'lucide-react';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
 import TransaccionForm from '../components/TransaccionForm';
@@ -17,7 +17,6 @@ import {
   Input,
   Card,
   CardBody,
-  CardHeader,
   Table,
   TableHeader,
   TableBody,
@@ -25,14 +24,8 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Spinner,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
 } from "@heroui/react";
-import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
-// ✅ IMPORTAR HELPER DE FECHAS
+import PermissionWrapper from "../../../components/PermissionWrapper";
 import { formatToTable } from '../../../utils/dateUtils.ts';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });

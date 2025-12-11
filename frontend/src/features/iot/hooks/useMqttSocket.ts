@@ -43,18 +43,15 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
 
     // Eventos de conexión
     socket.on('connect', () => {
-      console.log('Conectado al servidor MQTT');
       setIsConnected(true);
     });
 
     socket.on('disconnect', () => {
-      console.log('Desconectado del servidor MQTT');
       setIsConnected(false);
     });
 
     // Evento de estado de sensor
     socket.on('sensorStatus', ({ id, status }: { id: string; status: 'CONNECTED' | 'DISCONNECTED' }) => {
-      console.log(`Sensor ${id} cambió a ${status}`);
       setSensorStatuses(prev => ({
         ...prev,
         [id]: status
@@ -63,7 +60,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
 
     // Evento de estado de conexión de lote
     socket.on('estadoConexion', (data: ConnectionStatus) => {
-      console.log(`Lote ${data.loteId} cambió estado: ${data.connected ? 'Conectado' : 'Desconectado'}`);
       setConnectionStatuses(prev => {
         const existing = prev.find(c => c.loteId === data.loteId);
         if (existing) {
@@ -76,7 +72,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
 
     // Evento de nueva lectura del backend (lectura-sensor)
     socket.on('lectura-sensor', (payload: { loteId: number; loteNombre: string; datos: any[] }) => {
-      console.log(`Nueva lectura para lote ${payload.loteId}:`, payload.datos);
       // Actualizar lecturas más recientes con datos dinámicos
       setLatestReadings(prev => {
         const updated = [...prev];
@@ -112,7 +107,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
 
     // Evento de datos del sensor (mantener por compatibilidad)
     socket.on('sensorData', (data: SensorData) => {
-      console.log(`Datos del sensor ${data.id}:`, data.data);
       // Actualizar lecturas más recientes
       setLatestReadings(prev => {
         const sensorId = parseInt(data.id);
@@ -142,7 +136,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
 
     // Ping/Pong para mantener conexión
     socket.on('pong', () => {
-      console.log('Pong recibido');
     });
 
     // Cleanup
@@ -170,7 +163,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
   const sendCommand = (topic: string, message: string) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit('enviar-comando-mqtt', { topic, message });
-      console.log(`📤 Enviando comando: ${topic} -> ${message}`);
     } else {
       console.warn('⚠️ No se puede enviar comando: Socket desconectado');
     }

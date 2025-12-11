@@ -78,11 +78,7 @@ export const generateSensorReport = async (params: {
   date?: string;
 }) => {
   try {
-    console.log('API call params:', params);
     const response = await api.get("/informacion-sensor/report", { params });
-    console.log('API response status:', response.status);
-    console.log('API response headers:', response.headers);
-    console.log('API response.data (full):', JSON.stringify(response.data, null, 2));
 
     // More flexible validation - check what we actually received
     if (!response.data) {
@@ -90,16 +86,10 @@ export const generateSensorReport = async (params: {
       throw new Error('No data received from server');
     }
 
-    console.log('response.data.success:', response.data.success);
-    console.log('response.data.data exists:', !!response.data.data);
-    console.log('response.data.data type:', typeof response.data.data);
-
     // Try different possible structures
     if (response.data.data !== undefined) {
-      console.log('Returning response.data.data');
       return response.data.data;
     } else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
-      console.log('Returning response.data directly (no wrapper)');
       return response.data;
     } else {
       console.error('Unexpected response structure. Full response:', response.data);

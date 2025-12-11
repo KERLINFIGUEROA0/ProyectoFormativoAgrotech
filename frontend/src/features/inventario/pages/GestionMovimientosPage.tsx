@@ -232,9 +232,6 @@ const GestionMovimientosPage: React.FC = () => {
                 if (matchCantidadUnidad) {
                   cantidadExtraida = Number(matchCantidadUnidad[1]); // Ej: 20
                   unidadExtraida = matchCantidadUnidad[2]; // Ej: "kg", "L"
-                  console.log('🎯 EXTRAIDO de descripción:', descripcion, '-> cantidad:', cantidadExtraida, 'unidad:', unidadExtraida);
-                } else {
-                  console.log('❌ No se pudo extraer cantidad/unidad de:', descripcion);
                 }
 
                 // 2️⃣ SI NO SE EXTRAJO, USAR LA UNIDAD PREFERIDA DEL MATERIAL

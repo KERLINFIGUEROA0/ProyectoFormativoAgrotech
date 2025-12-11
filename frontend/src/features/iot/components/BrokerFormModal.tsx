@@ -16,7 +16,6 @@ import {
   CardHeader,
   CardBody,
   Divider,
-  Chip
 } from "@heroui/react";
 import type { Broker, Lote } from '../interfaces/iot';
 import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';

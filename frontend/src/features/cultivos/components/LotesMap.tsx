@@ -11,6 +11,12 @@ import {
 import type { Coordenada, Lote } from '../interfaces/cultivos';
 import websocketService from '../../../services/websocket.service';
 
+// Interfaces para datos de WebSocket
+interface LoteEstadoData {
+  loteId: number;
+  nuevoEstado: string;
+}
+
 
 interface SubloteConCultivo {
   id: number;
@@ -78,7 +84,6 @@ export default function LotesMap({
       ? JSON.parse(lote.coordenadas)
       : lote.coordenadas
   }));
-  console.log('Lotes en LotesMap:', parsedLotes);
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -99,11 +104,11 @@ export default function LotesMap({
   useEffect(() => {
     // Listener para cambios de estado de lotes
     const unsubscribeLoteEstado = websocketService.on('lote-estado-actualizado', (data) => {
-      console.log('🎯 Lote actualizado en tiempo real:', data);
+      const loteData = data as LoteEstadoData;
       // Actualizar el lote específico en la lista
       const updatedLotes = lotes.map(lote =>
-        lote.id === data.loteId
-          ? { ...lote, estado: data.nuevoEstado }
+        lote.id === loteData.loteId
+          ? { ...lote, estado: loteData.nuevoEstado }
           : lote
       );
       onLotesUpdate?.(updatedLotes);
@@ -111,10 +116,10 @@ export default function LotesMap({
 
     // Listener para lotes liberados
     const unsubscribeLoteLiberado = websocketService.on('lote-liberado', (data) => {
-      console.log('🎯 Lote liberado en tiempo real:', data);
+      const loteData = data as LoteEstadoData;
       // Actualizar el lote específico a "En preparación"
       const updatedLotes = lotes.map(lote =>
-        lote.id === data.loteId
+        lote.id === loteData.loteId
           ? { ...lote, estado: 'En preparación' }
           : lote
       );
@@ -122,16 +127,14 @@ export default function LotesMap({
     });
 
     // Listener para cambios de estado de sublotes
-    const unsubscribeSubloteEstado = websocketService.on('sublote-estado-actualizado', (data) => {
-      console.log('🎯 Sublote actualizado en tiempo real:', data);
+    const unsubscribeSubloteEstado = websocketService.on('sublote-estado-actualizado', () => {
       // Los sublotes se actualizan desde el componente padre
       // Aquí solo notificamos que hubo un cambio
       onSublotesUpdate?.(sublotesConCultivos);
     });
 
     // Listener para sublotes liberados
-    const unsubscribeSubloteLiberado = websocketService.on('sublote-liberado', (data) => {
-      console.log('🎯 Sublote liberado en tiempo real:', data);
+    const unsubscribeSubloteLiberado = websocketService.on('sublote-liberado', () => {
       // Los sublotes se actualizan desde el componente padre
       onSublotesUpdate?.(sublotesConCultivos);
     });

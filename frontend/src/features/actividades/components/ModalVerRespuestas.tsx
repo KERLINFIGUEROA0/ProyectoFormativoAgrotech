@@ -133,23 +133,14 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
 
   const handleAprobar = async (respuestaId: number) => {
     try {
-      console.log('🚀 Iniciando aprobación de respuesta ID:', respuestaId);
-
       // Calificar la respuesta - el backend ahora retorna si el usuario es pasante
       const resultadoCalificacion = await calificarRespuesta(respuestaId, { estado: 'aprobado' });
-
-      console.log('📋 Respuesta completa del backend:', JSON.stringify(resultadoCalificacion, null, 2));
-      console.log('👤 Usuario en respuesta:', resultadoCalificacion.usuario);
-      console.log('🔍 esPasante:', resultadoCalificacion.esPasante);
-      console.log('👥 TipoUsuario:', resultadoCalificacion.usuario?.tipoUsuario);
 
       // Recargar respuestas para actualizar la UI
       await cargarRespuestas();
 
       // Verificar si el usuario es pasante usando la información retornada por el backend
       if (resultadoCalificacion.esPasante) {
-        console.log('✅ Usuario aprobado es pasante, llamando función del padre para abrir modal de pago');
-
         // Llamar a la función del padre para abrir el modal de pago
         if (onOpenPago) {
           onOpenPago(actividad, [{
@@ -157,15 +148,10 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             nombre: resultadoCalificacion.usuario.nombre,
             apellidos: resultadoCalificacion.usuario.apellidos,
           }]);
-          console.log('✅ Función onOpenPago llamada exitosamente');
           // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
         } else {
           console.warn('⚠️ onOpenPago no está definido en las props');
         }
-      } else {
-        console.log('❌ Usuario aprobado no es pasante o esPasante es false/undefined');
-        console.log('Valor de esPasante:', resultadoCalificacion.esPasante);
-        console.log('Tipo de esPasante:', typeof resultadoCalificacion.esPasante);
       }
 
       // Verificar el caso general (todas respuestas aprobadas) - Solo si NO se abrió pago individual
@@ -173,11 +159,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       const respuestasActualizadas = await obtenerRespuestasPorActividad(actividad.id);
       const todasAprobadas = respuestasActualizadas.every(r => r.estado === 'aprobado');
       const totalRespuestas = respuestasActualizadas.length;
-
-      console.log('Estado después de recargar respuestas:');
-      console.log('Respuestas:', respuestasActualizadas.map(r => ({ nombre: r.usuario.nombre, estado: r.estado, tipoUsuario: r.usuario.tipoUsuario?.nombre })));
-      console.log('Todas aprobadas:', todasAprobadas);
-      console.log('Total respuestas:', totalRespuestas);
 
       // Si todas están aprobadas y hay pasantes que aún no se pagaron, mostrar modal general
       // Pero solo si no se abrió pago individual en esta misma aprobación
@@ -195,7 +176,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
 
         // Solo mostrar si hay pasantes que no se pagaron aún
         if (pasantesSinPagar.length > 0) {
-          console.log('Actividad completada, mostrando pasantes restantes:', pasantesSinPagar);
           if (onOpenPago) {
             onOpenPago(actividad, pasantesSinPagar);
             // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo

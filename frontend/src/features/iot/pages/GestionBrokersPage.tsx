@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Globe, Power, PowerOff, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, Power, PowerOff } from 'lucide-react';
 import {
   Modal,
   ModalContent,

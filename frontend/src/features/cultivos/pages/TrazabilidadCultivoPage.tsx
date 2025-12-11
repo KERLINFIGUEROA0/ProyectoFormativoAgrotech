@@ -78,10 +78,6 @@ export default function TrazabilidadCultivoPage() {
       setFechaInicio('');
       setFechaFin('');
     } catch (error: any) {
-      console.log('Error recibido en frontend al generar PDF:', error);
-      console.log('Error status:', error.response?.status);
-      console.log('Error data:', error.response?.data);
-      console.log('Error message:', error.response?.data?.message);
       if (error.response && error.response.status === 400) {
         toast.error('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
       } else {
