@@ -21,23 +21,16 @@ export default function ProduccionForm({ onSave, onCancel, initialData = {}, cul
   const [formData, setFormData] = useState({
     cantidad: '',
     fecha: getTodayDate(),
-    estado: 'En Proceso',
   });
 
-  // ✅ --- INICIO DE LA CORRECCIÓN --- ✅
-  // 1. Desestructuramos las propiedades de initialData para usarlas como dependencias.
-  const { cantidad, fecha, estado } = initialData;
+  const { cantidad, fecha } = initialData;
 
   useEffect(() => {
-    // 2. Usamos las variables desestructuradas para establecer el estado del formulario.
     setFormData({
       cantidad: cantidad || '',
       fecha: fecha ? new Date(fecha).toISOString().split('T')[0] : getTodayDate(),
-      estado: estado || 'En Proceso',
     });
-  // 3. El array de dependencias ahora usa valores primitivos, lo que rompe el bucle infinito.
-  }, [cantidad, fecha, estado]);
-  // ✅ --- FIN DE LA CORRECCIÓN --- ✅
+  }, [cantidad, fecha]);
 
   const handleCantidadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -61,7 +54,6 @@ export default function ProduccionForm({ onSave, onCancel, initialData = {}, cul
     const payload = {
       cantidad: cantidadNum,
       fecha: formData.fecha,
-      estado: formData.estado,
       cultivoId: initialData.cultivo?.id || cultivoId,
     };
 
@@ -84,15 +76,6 @@ export default function ProduccionForm({ onSave, onCancel, initialData = {}, cul
         onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
         className="w-full border-2 border-gray-200 rounded-lg p-2"
       />
-      <select
-        value={formData.estado}
-        onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value }))}
-        className="w-full border-2 border-gray-200 rounded-lg p-2 bg-white"
-      >
-        <option value="Programado">Programado</option>
-        <option value="En Proceso">En Proceso</option>
-        <option value="Cosechado">Cosechado</option>
-      </select>
       <div className="flex justify-end gap-3 mt-4">
         <Button onClick={onCancel} className="bg-gray-200 text-gray-800 font-light hover:bg-gray-300">Cancelar</Button>
         <Button onClick={handleSubmit} className="bg-green-600 text-white font-bold hover:bg-green-700">Guardar</Button>

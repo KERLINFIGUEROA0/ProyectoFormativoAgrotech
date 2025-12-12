@@ -12,7 +12,7 @@ Sistema integral de gestión agrícola con IoT que permite el control completo d
 - **MQTT**: 5.14.1 (Mensajería IoT)
 - **TypeORM**: 0.3.26 (ORM)
 - **JWT**: Autenticación
-- **Node.js**: v22.20.0
+- **Node.js**: v22.19.0
 
 ### Frontend
 - **React**: Framework para interfaz de usuario
@@ -37,7 +37,7 @@ Asegúrate de tener instalados los siguientes programas:
 
 ## Instalación y Configuración
 
-### Clonar el Repositorio
+### Clonar el Repositorio- Rama Oficial "Dev"
 ```bash
 git clone https://github.com/KERLINFIGUEROA0/ProyectoFormativoAgrotech.git
 cd ProyectoFormativoAgrotech
@@ -91,12 +91,12 @@ El sistema sigue una arquitectura modular con:
 - **Backend REST API** en NestJS con TypeORM
 - **Frontend React** para interfaz de usuario
 - **Base de datos PostgreSQL** con 25+ entidades relacionadas
-- **Redis** para cache y sesiones
+- **Redis** para cache 
 - **MQTT** para comunicación con dispositivos IoT
-- **Autenticación JWT** con roles (Administrador, Agricultor, Aprendiz)
+- **Autenticación JWT** con roles (Administrador, Instructor, Aprendiz, Pasante, Invitado)
 
 ## Desarrollado por
-- Andres Orlando Peña Guzman (El bendito)
+- Andres Orlando Peña Guzman 
 - Juan Camilo Brand
 - Julian David Rojas
 - Kerlin Jerlen Figueroa
