@@ -19,7 +19,7 @@ export default function PermissionRoute({
   permission,
   requireAll = false
 }: PermissionRouteProps) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, userPermissions } = useAuth();
   const { hasPermissionInModule, hasAnyPermissionInModule, loading: permLoading } = useModulePermissions();
   const location = useLocation();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -54,7 +54,8 @@ export default function PermissionRoute({
         duration: 5000,
       });
     }
-  }, [module, permission, hasPermissionInModule, hasAnyPermissionInModule, authLoading, permLoading, location.pathname, hasAccess]);
+  }, [module, permission, hasPermissionInModule, hasAnyPermissionInModule, authLoading, permLoading, location.pathname, hasAccess, userPermissions]);
+
 
   // Loading state
   if (authLoading || permLoading || hasAccess === null) {

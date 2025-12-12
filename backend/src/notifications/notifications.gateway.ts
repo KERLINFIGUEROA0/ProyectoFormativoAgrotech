@@ -8,12 +8,12 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { Inject, Logger, forwardRef } from '@nestjs/common';
 import { UsuariosService } from '../modules/usuarios/usuarios.service';
-import { AuthService } from '../auth/auth.service'; 
+import { AuthService } from '../auth/auth.service';
 
 @WebSocketGateway({
   cors: {
     origin: 'http://localhost:5173',
-    credentials: true, 
+    credentials: true,
   },
 })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -83,23 +83,36 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   async sendPermissionsUpdate(userId: number) {
     const socketId = this.connectedUsers.get(userId);
-    if (socketId) {
-      this.logger.log(`🚀 Enviando actualización de permisos al usuario ${userId}`);
+    if (!socketId) {
+      this.logger.warn(`⚠️ No socket found for user ${userId}, skipping permissions update`);
+      return;
+    }
 
-      const usuarioCompleto = await this.usuariosService.findByIdentificacion(
-        (await this.usuariosService.buscarPorId(userId)).identificacion
-      );
+    this.logger.log(`🚀 Sending permissions update to user ${userId}`);
 
-      if (usuarioCompleto) {
-        // --- CAMBIO CLAVE: Generar y enviar nuevo token ---
-        const newTokenData = await this.authService._createToken(usuarioCompleto);
+    try {
+      // Direct lookup - more reliable than nested calls
+      const usuarioCompleto = await this.usuariosService.buscarPorId(userId);
 
-        this.server.to(socketId).emit('permissions_updated', {
-          permisos: newTokenData.permisos,
-          modulos: newTokenData.modulos,
-          access_token: newTokenData.access_token, // Se envía el nuevo token
-        });
+      if (!usuarioCompleto) {
+        this.logger.error(`❌ User ${userId} not found, cannot send permissions update`);
+        return;
       }
+
+      // Generate new token with updated permissions
+      const newTokenData = await this.authService._createToken(usuarioCompleto);
+
+      this.server.to(socketId).emit('permissions_updated', {
+        permisos: newTokenData.permisos,
+        modulos: newTokenData.modulos,
+        access_token: newTokenData.access_token,
+      });
+
+      this.logger.log(`✅ Permissions update sent successfully to user ${userId}`);
+    } catch (error) {
+      this.logger.error(`❌ Error sending permissions update to user ${userId}: ${error.message}`);
+      // Don't throw - just log and continue to prevent propagation of 400 errors
     }
   }
 }
+

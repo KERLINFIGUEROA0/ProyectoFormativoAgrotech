@@ -58,16 +58,36 @@ export default function AppRouter() {
         >
           <Route path="/home" element={<HomePage />} />
           <Route path="/usuario" element={<UsuarioPage />} />
-          <Route path="/gestion-roles" element={<GestionRolesPage />} />
-          <Route path="/gestion-usuarios" element={<GestionUsuariosPage />} />
-          <Route path="/gestion-lotes" element={<GestionLotes />} />
+          <Route path="/gestion-roles" element={
+            <PermissionRoute module="Usuarios">
+              <GestionRolesPage />
+            </PermissionRoute>
+          } />
+          <Route path="/gestion-usuarios" element={
+            <PermissionRoute module="Usuarios">
+              <GestionUsuariosPage />
+            </PermissionRoute>
+          } />
+          <Route path="/gestion-lotes" element={
+            <PermissionRoute module="Cultivo">
+              <GestionLotes />
+            </PermissionRoute>
+          } />
           <Route path="/gestion-Sublotes" element={
             <PermissionRoute module="Cultivo">
               <GestionProduccion />
             </PermissionRoute>
           } />
-          <Route path="/gestion-brokers" element={<GestionBrokersPage />} />
-          <Route path="/gestion-sensores" element={<GestionSensoresPage />} />
+          <Route path="/gestion-brokers" element={
+            <PermissionRoute module="Iot">
+              <GestionBrokersPage />
+            </PermissionRoute>
+          } />
+          <Route path="/gestion-sensores" element={
+            <PermissionRoute module="Iot">
+              <GestionSensoresPage />
+            </PermissionRoute>
+          } />
 
           {/* Cultivos - Requiere permisos de Cultivo */}
           <Route path="/gestion-cultivos" element={
@@ -85,11 +105,21 @@ export default function AppRouter() {
               <TrazabilidadCultivoPage />
             </PermissionRoute>
           } />
-          <Route path="/cronograma" element={<GestionActiviadesPage />} />
-          <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
-          <Route path="/stock" element={<GestionInventarioPage />} />
-          <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
-          <Route path="/gestion-fichas" element={<GestionFichasPage />} />
+          <Route path="/stock" element={
+            <PermissionRoute module="Inventario">
+              <GestionInventarioPage />
+            </PermissionRoute>
+          } />
+          <Route path="/stock/:materialId" element={
+            <PermissionRoute module="Inventario">
+              <DetalleMaterialPage />
+            </PermissionRoute>
+          } />
+          <Route path="/gestion-fichas" element={
+            <PermissionRoute module="Usuarios">
+              <GestionFichasPage />
+            </PermissionRoute>
+          } />
           <Route path="/movimientos" element={
             <PermissionRoute module="Inventario">
               <GestionMovimientosPage />
