@@ -121,10 +121,28 @@ export class SensoresController {
   @Permission('Iot.DescargarPdf')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
     try {
-      const datos = await this.sensoresService.getFullTraceabilityData(dto);
+      // Intentar obtener datos de trazabilidad
+      let datos: any;
+
+      try {
+        datos = await this.sensoresService.getFullTraceabilityData(dto);
+      } catch (dataError) {
+        console.warn('No se pudieron obtener datos completos, generando reporte vacío:', dataError.message);
+
+        // Si no hay datos, crear un objeto de reporte vacío pero válido
+        datos = {
+          lote: `Lote #${dto.loteId}`,
+          rango: `${dto.fechaInicio} al ${dto.fechaFin}`,
+          fechaGeneracion: new Date().toISOString(),
+          cultivos: [],
+          sensores: {},
+          pagos: []
+        };
+      }
 
       if (dto.formato === 'pdf') {
         try {
+          // Generar PDF (vacío o con datos)
           const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
 
           res.set({
@@ -135,16 +153,24 @@ export class SensoresController {
           res.end(buffer);
         } catch (pdfError) {
           console.error('Error generando PDF IoT:', pdfError);
-          res.json({
-            error: 'Error generando PDF IoT',
-            datos: datos,
-            pdfError: pdfError.message
+          res.status(500).json({
+            success: false,
+            message: 'Error generando el PDF de trazabilidad',
+            error: pdfError.message,
+            datos: datos
           });
         }
+      } else {
+        // Si el formato es JSON o CSV, retornar los datos directamente
+        res.json({ success: true, data: datos });
       }
     } catch (error) {
       console.error('Error en descargarReporte IoT:', error);
-      res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al generar el reporte',
+        error: error.message
+      });
     }
   }
 }

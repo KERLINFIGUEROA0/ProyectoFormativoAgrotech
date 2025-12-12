@@ -8,7 +8,7 @@ import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('producciones')
 export class ProduccionesController {
-  constructor(private readonly produccionesService: ProduccionesService) {}
+  constructor(private readonly produccionesService: ProduccionesService) { }
 
   @Post()
   @Permission('Cultivo.RegistraryVerCosecha')
@@ -21,6 +21,15 @@ export class ProduccionesController {
   @Permission('Cultivo.RegistraryVerCosecha')
   async findAll() {
     const data = await this.produccionesService.findAll();
+    return { success: true, data };
+  }
+
+  // --- ✅ NUEVO: Endpoint para obtener producciones disponibles para venta ---
+  // IMPORTANTE: Esta ruta debe estar ANTES de ':id' para evitar que 'available-for-sale' sea interpretado como un ID
+  @Get('available-for-sale')
+  @Permission('Finanzas.Ver')
+  async findAvailableForSale() {
+    const data = await this.produccionesService.findAvailableForSale();
     return { success: true, data };
   }
 
@@ -61,14 +70,6 @@ export class ProduccionesController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.produccionesService.remove(id);
     return { success: true, message: 'Producción eliminada con éxito.' };
-  }
-
-  // --- ✅ NUEVO: Endpoint para obtener producciones disponibles para venta ---
-  @Get('available-for-sale')
-  @Permission('Cultivo.RegistraryVerCosecha')
-  async findAvailableForSale() {
-    const data = await this.produccionesService.findAvailableForSale();
-    return { success: true, data };
   }
 
   // --- ✅ DEBUG: Endpoint temporal para verificar permisos ---
