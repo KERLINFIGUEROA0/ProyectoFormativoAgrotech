@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Search, Shield, Users, Settings, Filter } from "lucide-react";
+import { Search, Shield, Users, Settings, Filter, Info } from "lucide-react";
 import type { PermisoRol, PermisoUsuario } from "../interfaces/usuarios";
 import {
   getPermissionsByRoleDetallado,
@@ -51,7 +51,7 @@ export default function PermissionsModal({
         .then((permissionsRes) => {
           setPermissions(permissionsRes);
         })
-        .catch((error) => {
+        .catch(() => {
           toast.error("Error al cargar los datos");
         })
         .finally(() => setLoading(false));
@@ -138,6 +138,22 @@ export default function PermissionsModal({
         </ModalHeader>
 
         <ModalBody>
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-900 font-semibold">
+                  Importante: Permiso "Ver" requerido
+                </p>
+                <p className="text-xs text-blue-800 mt-1">
+                  Para poder utilizar los demás permisos de un módulo (Crear, Editar, Eliminar, etc.),
+                  primero debes activar el permiso <strong>"Ver"</strong> de ese módulo.
+                  El permiso "Ver" es obligatorio para acceder al módulo.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {target.type === "usuario" && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg mb-4">
               <div className="flex items-center gap-2">
@@ -209,8 +225,8 @@ export default function PermissionsModal({
                         <div
                           key={perm.permisoId}
                           className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${perm.activo
-                              ? "border-green-200 bg-green-50 shadow-sm"
-                              : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                            ? "border-green-200 bg-green-50 shadow-sm"
+                            : "border-gray-200 bg-gray-50 hover:bg-gray-100"
                             }`}
                         >
                           <div className="flex-1">
