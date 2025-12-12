@@ -20,8 +20,9 @@ export default defineConfig({
 				},
 				{ label: 'Arquitectura Backend', slug: 'arquitectura' },
 				{ label: 'DTOs', slug: 'dtos' },
-				{ label: 'Manual de Usuario', slug: 'manual-de-usuario' },
-				
+				{ label: 'Manual de Usuario Web', slug: 'manual-de-usuario' },
+				{ label: 'Manual de Usuario Mobile', slug: 'manual-de-usuario-mobile' },
+
 			],
 		}),
 		astroMermaid({
