@@ -29,40 +29,26 @@ export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDiscon
 
   async handleConnection(client: Socket, ...args: any[]) {
     try {
-      this.logger.log(`🔍 Intentando conectar cliente ${client.id}`);
-
-      // Log de todas las cookies disponibles
-      const cookieHeader = client.handshake.headers.cookie;
-      this.logger.log(`📋 Cookie header: ${cookieHeader || 'NO HAY COOKIES'}`);
-
       // ✅ PRIORIDAD 1: Buscar token en cookies (nuevo método con cookies HttpOnly)
       let token = client.handshake.headers.cookie
         ?.split('; ')
         ?.find(c => c.startsWith('Authentication='))
         ?.split('=')[1];
 
-      this.logger.log(`🍪 Token desde cookie: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
-
       // Fallback 1: Buscar en auth (compatibilidad con versiones anteriores si envían token manualmente)
       if (!token) {
         token = client.handshake.auth?.token;
-        this.logger.log(`🔑 Token desde auth: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
       }
 
       // Fallback 2: Buscar en headers Authorization (compatibilidad con Postman/Otros)
       if (!token && client.handshake.headers.authorization) {
         token = client.handshake.headers.authorization.split(' ')[1];
-        this.logger.log(`📨 Token desde Authorization header: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
       }
 
       if (!token) {
-        // Lanzamos error para que el cliente reciba 'connect_error' y pare el bucle
-        this.logger.warn(`⛔ Cliente ${client.id} rechazado: Sin token.`);
         client.disconnect();
         return;
       }
-
-      this.logger.log(`✅ Token encontrado, validando...`);
 
       // Validar Token
       const payload = this.jwtService.verify(token);
@@ -70,17 +56,12 @@ export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDiscon
       // Guardar usuario en el socket para uso futuro
       client.data.user = payload;
 
-      this.logger.log(`✅ Cliente conectado: ${client.id} | Usuario: ${payload.nombre || payload.sub}`);
-
     } catch (error) {
-      // Este mensaje de error se envía al cliente en el evento 'connect_error'
-      this.logger.error(`❌ Error Auth WS: ${error.message}`);
       client.disconnect();
     }
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Cliente desconectado: ${client.id}`);
   }
 
   // Método para emitir eventos de actualización de lotes
