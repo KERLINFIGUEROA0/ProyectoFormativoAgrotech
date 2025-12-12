@@ -64,7 +64,6 @@ export default function UsuarioPage({ initialSection }: UsuarioPageProps): React
       resetForm();
       setIsModalOpen(false);
     } catch (error: any) {
-      console.error("Error al cambiar la contraseña:", error);
       toast.error(error.response?.data?.message || "Error al cambiar la contraseña. Verifique la contraseña actual.");
     }
   };

@@ -47,7 +47,6 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
       setCultivos(cultivosRes.data?.data || cultivosRes.data || []);
       setBrokers(brokersRes || []);
     } catch (error) {
-      console.error('Error cargando datos adicionales:', error);
     }
   };
 
@@ -60,7 +59,6 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
 
       // Nota: Mantenemos `sublotes` en estado; los puntos en mapa se generan dentro del componente de mapa cuando se requiera.
     } catch (error) {
-      console.error('Error cargando sublotes:', error);
       toast.error('Error al cargar los sublotes');
     } finally {
       setLoading(false);
@@ -87,7 +85,6 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
       setSelectedSublote(null);
       onSubloteCreated?.();
     } catch (error) {
-      console.error('Error guardando sublote:', error);
       toast.error('Error al guardar el sublote');
     }
   };
@@ -113,7 +110,6 @@ export default function LoteSublotesModal({ isOpen, onClose, lote, onSubloteCrea
       setIsDeleteModalOpen(false);
       setSubloteToDelete(null);
     } catch (error) {
-      console.error('Error eliminando sublote:', error);
       toast.error('Error al eliminar el sublote');
     }
   };

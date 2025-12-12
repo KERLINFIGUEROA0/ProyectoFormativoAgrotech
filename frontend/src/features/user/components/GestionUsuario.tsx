@@ -211,14 +211,12 @@ export default function GestionUsuarios(): ReactElement {
           ).length;
           rolePermissions[role.id] = activePermissions;
         } catch (error) {
-          console.error(`Error cargando permisos del rol ${role.id}:`, error);
           rolePermissions[role.id] = 0;
         }
       }
 
       setUserRolePermissions(rolePermissions);
     } catch (error) {
-      console.error("Error cargando permisos de roles:", error);
     }
   };
 
@@ -262,7 +260,6 @@ export default function GestionUsuarios(): ReactElement {
       // Cargar permisos de roles después de tener los roles
       await fetchRolePermissions();
     } catch (error: unknown) {
-      console.error("Error cargando datos:", error);
       const errorMessage =
         (error as any).response?.data?.message || "Error al cargar datos.";
       toast.error(errorMessage);
@@ -361,7 +358,6 @@ export default function GestionUsuarios(): ReactElement {
 
       // Solo mostrar console.error para errores inesperados (no 400 de validación)
       if (axiosError.response?.status !== 400) {
-        console.error("Error guardando usuario:", error);
       }
 
       toast.error(errorMessage, { id: toastId });
@@ -384,7 +380,6 @@ export default function GestionUsuarios(): ReactElement {
       );
       await fetchData();
     } catch (error: unknown) {
-      console.error("Error cambiando estado:", error);
       const errorMessage =
         (error as any).response?.data?.message || "Error al cambiar estado.";
       toast.error(errorMessage, { id: toastId });
@@ -482,7 +477,6 @@ export default function GestionUsuarios(): ReactElement {
         toast.success("Usuarios exportados exitosamente.", { id: toastId });
       }
     } catch (error) {
-      console.error("Error al exportar:", error);
       toast.error("Error al exportar usuarios. Intente nuevamente.", { id: toastId });
     }
   };
@@ -541,7 +535,6 @@ export default function GestionUsuarios(): ReactElement {
       }
       await fetchData();
     } catch (error: unknown) {
-      console.error("Error al cargar Excel:", error);
       const errorMessage =
         (error as any).response?.data?.message ||
         "Error al procesar el archivo. Verifique el formato y los datos.";

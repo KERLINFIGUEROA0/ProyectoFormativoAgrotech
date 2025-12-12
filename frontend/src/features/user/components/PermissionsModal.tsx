@@ -52,7 +52,6 @@ export default function PermissionsModal({
           setPermissions(permissionsRes);
         })
         .catch((error) => {
-          console.error("Error loading permissions:", error);
           toast.error("Error al cargar los datos");
         })
         .finally(() => setLoading(false));
@@ -79,7 +78,6 @@ export default function PermissionsModal({
         toast.success(estado ? "Permiso activado" : "Permiso desactivado");
       })
       .catch((error) => {
-        console.error("Error al actualizar el permiso:", error);
 
         // Revertir el cambio en la UI si el API call falla
         setPermissions((prev) =>

@@ -475,7 +475,6 @@ const GestionActividadesPage: React.FC = () => {
     } catch (error) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar la actividad';
       toast.error(errorMessage);
-      console.error('Error deleting actividad:', error);
       setShowDeleteModal(false);
       setActividadToDelete(null);
     }

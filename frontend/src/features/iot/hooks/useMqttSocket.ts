@@ -164,7 +164,6 @@ export const useMqttSocket = (apiUrl: string = 'http://localhost:3000/mqtt') => 
     if (socketRef.current?.connected) {
       socketRef.current.emit('enviar-comando-mqtt', { topic, message });
     } else {
-      console.warn('⚠️ No se puede enviar comando: Socket desconectado');
     }
   };
 

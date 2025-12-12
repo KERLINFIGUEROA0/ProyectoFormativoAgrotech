@@ -33,7 +33,6 @@ export default function FormularioRecuperarClave(): ReactElement {
         }
       }
       toast.error(mensajeError);
-      console.error(err); 
     } finally {
       setCargando(false);
     }

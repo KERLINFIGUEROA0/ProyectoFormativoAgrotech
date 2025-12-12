@@ -60,7 +60,6 @@ const GestionPagosPage: React.FC = () => {
       const data = responseData.data || [];
       setPagos(data);
     } catch (error) {
-      console.error('Error al cargar pagos:', error);
       toast.error('Error al cargar los pagos');
     } finally {
       setLoading(false);
@@ -103,7 +102,6 @@ const GestionPagosPage: React.FC = () => {
       setEditingPago(null);
       cargarPagos();
     } catch (error: any) {
-      console.error('Error al actualizar pago:', error);
       toast.error(error.response?.data?.message || 'Error al actualizar el pago');
     }
   };

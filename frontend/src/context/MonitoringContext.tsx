@@ -48,7 +48,6 @@ export const MonitoringProvider = ({ children }: { children: ReactNode }) => {
         return h.length > 30 ? h.slice(1) : h;
       });
     } catch (error) {
-      console.error("Error obteniendo datos:", error);
     }
   };
 

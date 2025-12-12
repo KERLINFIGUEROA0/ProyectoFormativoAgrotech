@@ -56,7 +56,6 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
       setExistingRespuesta(userRespuesta || null);
       setDescripcion(userRespuesta?.descripcion || '');
     } catch (error) {
-      console.error('Error al cargar respuesta existente:', error);
       setExistingRespuesta(null);
       setDescripcion('');
     } finally {
@@ -77,7 +76,6 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
       window.URL.revokeObjectURL(url);
       toast.success('Archivo descargado correctamente');
     } catch (error) {
-      console.error('Error al descargar archivo:', error);
       toast.error('Error al descargar el archivo');
     }
   };
@@ -125,7 +123,6 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
         setDatosDevolucion([]);
       }
     } catch (error) {
-      console.error('Error al enviar respuesta:', error);
       alert('Error al enviar la respuesta. Intente nuevamente.');
     } finally {
       setIsSubmitting(false);
@@ -275,7 +272,6 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
                           });
                         }
                       } catch (error) {
-                        console.error('Error al parsear archivos iniciales:', error);
                       }
                       return null;
                     })()}

@@ -15,7 +15,6 @@ export default function CultivoStats({ cultivoId }: CultivoStatsProps) {
         const response = await getStatsPorCultivo(cultivoId);
         setStats(response.data);
       } catch (error) {
-        console.error('Error al cargar estadísticas del cultivo:', error);
       }
     };
 

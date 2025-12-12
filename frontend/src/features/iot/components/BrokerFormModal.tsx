@@ -78,7 +78,6 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
           const lotesData = await listarLotes();
           setLotes(lotesData);
         } catch (error) {
-          console.error('Error cargando datos:', error);
         }
       };
       cargarDatos();

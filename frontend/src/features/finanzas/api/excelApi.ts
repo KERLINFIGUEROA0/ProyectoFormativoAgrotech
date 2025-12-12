@@ -37,7 +37,6 @@ export const exportarExcelCultivo = async (cultivoId: number) => {
     document.body.removeChild(a);
     return true;
   } catch (error) {
-    console.error('Error:', error);
     throw error;
   }
 };
@@ -78,7 +77,6 @@ export const exportarExcelGeneral = async () => {
     document.body.removeChild(a);
     return true;
   } catch (error) {
-    console.error('Error:', error);
     throw error;
   }
 };

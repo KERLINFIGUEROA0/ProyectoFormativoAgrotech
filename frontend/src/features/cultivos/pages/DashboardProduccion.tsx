@@ -53,8 +53,6 @@ const fetchData = async () => {
 
       setProducciones(produccionesData);
     } catch (error) {
-      console.error('[FRONTEND] Error al cargar las producciones:', error);
-      console.error('[FRONTEND] Error details:', (error as any)?.response?.data);
       toast.error("Error al cargar las producciones.");
       return; // Si no podemos cargar producciones, no continuamos
     }
@@ -71,7 +69,6 @@ const fetchData = async () => {
       if (statsResult.status === 'fulfilled') {
         setStats(statsResult.value.data);
       } else {
-        console.error('Error en stats:', statsResult.reason);
         setStats(null);
       }
 
@@ -80,7 +77,6 @@ const fetchData = async () => {
         const laborCosts = pagosResult.value.data ? pagosResult.value.data.reduce((sum: number, pago: any) => sum + Number(pago.monto), 0) : 0;
         setTotalLaborCosts(laborCosts);
       } else {
-        console.error('Error en pagos:', pagosResult.reason);
         setTotalLaborCosts(0);
       }
 
@@ -89,16 +85,13 @@ const fetchData = async () => {
         const materialCosts = materialCostsResult.value.data?.totalMaterialCosts || 0;
         setTotalMaterialCosts(materialCosts);
       } else {
-        console.error('Error en materialCosts:', materialCostsResult.reason);
         setTotalMaterialCosts(0);
       }
 
     } catch (error) {
-      console.error('Error en datos adicionales:', error);
       // No mostrar error al usuario, solo log
     }
   }catch (error) {
-    console.error('Error general:', error);
     toast.error("Error al cargar los datos.");
   }
   ;

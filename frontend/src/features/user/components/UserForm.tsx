@@ -42,7 +42,6 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
       const opciones = await getFichasOpcionesFromUsuarios();
       setFichasOpciones(opciones);
     } catch (error) {
-      console.error('Error cargando opciones de fichas:', error);
     } finally {
       setLoadingFichas(false);
     }
@@ -59,7 +58,6 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
       setIsFichaModalOpen(false);
       setFichaFormData({});
     } catch (error) {
-      console.error('Error creando ficha:', error);
       throw error; 
     }
   };

@@ -369,7 +369,6 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
           setTopicos(topicosConUmbrales);
         } catch (error) {
-          console.error('Error cargando sensores existentes:', error);
           // Fallback: solo cargar los tópicos sin umbrales, también sanitizados
           setTopicos(brokerLote.topicos.map(topic => ({ topic: topic.trim().replace(/\|/g, '') })));
         }
@@ -1038,7 +1037,6 @@ export default function GestionSensoresPage(): ReactElement {
         setIsBrokerModalOpen(true);
       }
     } catch (error) {
-      console.error("Error cargando estructura", error);
     }
   };
 
@@ -1048,7 +1046,6 @@ export default function GestionSensoresPage(): ReactElement {
       const brokerLotesRes = await listarBrokerLotesPorLote(loteId);
       setBrokerLotes(brokerLotesRes || []);
     } catch (error) {
-      console.error("Error cargando configuraciones BrokerLote", error);
       setBrokerLotes([]);
     }
   };
@@ -1185,7 +1182,6 @@ export default function GestionSensoresPage(): ReactElement {
         });
       }
     } catch (error) {
-      console.error("Error fetching data", error);
     }
   };
 

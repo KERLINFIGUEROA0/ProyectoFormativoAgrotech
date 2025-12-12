@@ -42,7 +42,6 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
         const response = await getAvailableForSale();
         setProductions(response.data);
       } catch (error) {
-        console.error("Error al cargar producciones:", error);
         toast.error("Error al cargar producciones disponibles");
       }
     };

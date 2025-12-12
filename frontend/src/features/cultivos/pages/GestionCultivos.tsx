@@ -72,7 +72,6 @@ export default function GestionCultivosPage(): ReactElement {
           const sublotesRes = await obtenerSublotesPorLote(lote.id);
           return sublotesRes.data?.data || [];
         } catch (error) {
-          console.error(`Error obteniendo sublotes del lote ${lote.id}:`, error);
           return [];
         }
       });
@@ -204,7 +203,6 @@ export default function GestionCultivosPage(): ReactElement {
       setCultivoCosecha(null);
       await fetchData(); // Recargar datos para ver cambios
     } catch (error: any) {
-      console.error('Error al registrar cosecha:', error);
       toast.error(error.response?.data?.message || "Error al registrar la cosecha.");
     }
   };
@@ -279,7 +277,6 @@ export default function GestionCultivosPage(): ReactElement {
       await fetchData();
       closeModal();
     } catch (error: any) {
-      console.error("Error en handleSave:", error);
       toast.error(error.response?.data?.message || "Error al guardar.", { id: toastId });
     }
   };

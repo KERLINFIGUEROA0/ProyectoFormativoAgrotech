@@ -93,7 +93,6 @@ export default function GestionProduccion(): ReactElement {
             const brokersRes = await listarBrokers();
             setBrokers(brokersRes || []);
           } catch (error) {
-            console.warn('No se pudieron cargar brokers (permisos insuficientes):', error);
             setBrokers([]);
           }
         } else {
@@ -123,7 +122,6 @@ export default function GestionProduccion(): ReactElement {
       const sublotesData = response.data?.data || [];
       setSublotes(sublotesData);
     } catch (error) {
-      console.error('Error cargando sublotes:', error);
       toast.error('Error al cargar los sublotes');
     } finally {
       setLoadingSublotes(false);
@@ -215,7 +213,6 @@ export default function GestionProduccion(): ReactElement {
       setIsFormOpen(false);
       setEditingSublote(null);
     } catch (error) {
-      console.error('Error guardando sublote:', error);
       toast.error('Error al guardar el sublote');
     }
   };
@@ -240,7 +237,6 @@ export default function GestionProduccion(): ReactElement {
       setIsDeleteModalOpen(false);
       setSubloteToDelete(null);
     } catch (error) {
-      console.error('Error eliminando sublote:', error);
       toast.error('Error al eliminar el sublote');
     }
   };

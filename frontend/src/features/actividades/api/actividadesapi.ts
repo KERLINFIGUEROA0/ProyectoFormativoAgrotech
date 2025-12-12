@@ -44,7 +44,6 @@ export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]>
     const { data } = await api.get<{ data: UsuarioSimple[] }>('/usuarios/asignables');
     return data.data; // Devolvemos el array de usuarios
   } catch (error) {
-    console.error('Error al obtener usuarios asignables:', error);
     return [];
   }
 };

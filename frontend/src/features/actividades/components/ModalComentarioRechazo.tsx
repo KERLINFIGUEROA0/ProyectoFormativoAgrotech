@@ -28,7 +28,6 @@ const ModalComentarioRechazo: React.FC<ModalComentarioRechazoProps> = ({
       setComentario('');
       onClose();
     } catch (error) {
-      console.error('Error al rechazar respuesta:', error);
     } finally {
       setIsSubmitting(false);
     }

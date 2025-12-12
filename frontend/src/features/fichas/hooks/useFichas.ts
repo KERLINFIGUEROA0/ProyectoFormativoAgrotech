@@ -15,7 +15,6 @@ export const useFichas = () => {
       setFichas(data);
     } catch (error) {
       toast.error('Error al cargar las fichas');
-      console.error('Error loading fichas:', error);
     } finally {
       setLoading(false);
     }
@@ -26,7 +25,6 @@ export const useFichas = () => {
       const data = await getFichasOpciones();
       setOpciones(data);
     } catch (error) {
-      console.error('Error loading ficha options:', error);
     }
   };
 

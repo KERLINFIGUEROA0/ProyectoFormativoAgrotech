@@ -51,7 +51,6 @@ export default function DashboardFinanciero(): ReactElement {
 
       } catch (error) {
         toast.error("Error al cargar los datos del dashboard.");
-        console.error("Error al cargar datos del dashboard:", error);
       } finally {
         setLoading(false);
       }

@@ -41,7 +41,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
         // Para reporte de lote completo, dejar fechas libres (usuario elige el rango)
         // Solo se configuran automáticamente cuando se selecciona un cultivo específico
       }).catch(error => {
-        console.error('Error cargando cultivos:', error);
         setCultivos([]);
       });
     } else {
@@ -143,7 +142,6 @@ const ModalDescargarTrazabilidad: React.FC<Props> = ({ isOpen, onClose }) => {
       }, 500);
 
     } catch (error: any) {
-      console.error("Error generando reporte", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Error desconocido";
       alert("Error al generar el reporte: " + errorMessage);
     } finally {

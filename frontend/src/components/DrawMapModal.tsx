@@ -249,7 +249,6 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
         setShowSuggestions(data.length > 0);
         setSelectedSuggestionIndex(-1);
       } catch (error) {
-        console.error("Error en la búsqueda de sugerencias:", error);
         setSuggestions([]);
         setShowSuggestions(false);
       } finally {
@@ -294,7 +293,6 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
         setSuggestions([]);
       }
     } catch (error) {
-      console.error("Error en la búsqueda:", error);
     }
   };
 

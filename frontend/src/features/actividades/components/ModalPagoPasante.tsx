@@ -99,7 +99,6 @@ const ModalPagoPasante: React.FC<ModalPagoPasanteProps> = ({
       onPagoSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error al registrar pagos:', error);
       const errorMessage = error.response?.data?.message || 'Error al registrar los pagos';
       toast.error(errorMessage);
     } finally {

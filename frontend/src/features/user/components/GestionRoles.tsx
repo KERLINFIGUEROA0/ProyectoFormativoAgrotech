@@ -52,7 +52,6 @@ export default function GestionRoles(): ReactElement {
       setRoles(finalRoles);
       setFilteredRoles(finalRoles);
     } catch (error) {
-      console.error("Error al obtener roles y usuarios:", error);
       toast.error("No se pudieron cargar los datos de roles.");
     }
   };

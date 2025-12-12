@@ -65,7 +65,6 @@ export default function GestionTransaccionesPage(): ReactElement {
         setCultivos(response.data.data || []);
       }
     } catch (error) {
-      console.error('Error al cargar cultivos:', error);
       toast.error("Error al cargar los cultivos");
     }
   };
@@ -83,7 +82,6 @@ export default function GestionTransaccionesPage(): ReactElement {
       fetchData();
     } catch (error) {
       toast.error(`Error al eliminar la ${tipo === 'ingreso' ? 'venta' : 'gasto'}.`);
-      console.error('Error al eliminar:', error);
     } finally {
       setDeleteModal({ isOpen: false, item: null });
     }
@@ -308,7 +306,6 @@ export default function GestionTransaccionesPage(): ReactElement {
                                 toast.success('Factura descargada con éxito');
                               } catch (error) {
                                 toast.error('Error al descargar la factura');
-                                console.error('Error:', error);
                               }
                             }}
                             title="Descargar Factura"

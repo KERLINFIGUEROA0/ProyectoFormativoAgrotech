@@ -82,7 +82,6 @@ export const generateSensorReport = async (params: {
 
     // More flexible validation - check what we actually received
     if (!response.data) {
-      console.error('No response.data received');
       throw new Error('No data received from server');
     }
 
@@ -92,14 +91,11 @@ export const generateSensorReport = async (params: {
     } else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
       return response.data;
     } else {
-      console.error('Unexpected response structure. Full response:', response.data);
       throw new Error(`Invalid response structure from server. Expected data property, got: ${JSON.stringify(response.data)}`);
     }
   } catch (error) {
-    console.error('API call failed:', error);
     if (error && typeof error === 'object' && 'response' in error) {
       const axiosError = error as any;
-      console.error('Error details:', axiosError.response?.data || axiosError.message);
     }
     throw error;
   }

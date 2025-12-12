@@ -52,7 +52,6 @@ export const usePermissionGuard = ({
     if (!module) return;
 
     const handlePermissionsChanged = (event: CustomEvent) => {
-      console.log('🔄 Permissions changed event received:', event.detail);
       const hasAccess = checkCurrentPermissions();
 
       if (!hasAccess) {

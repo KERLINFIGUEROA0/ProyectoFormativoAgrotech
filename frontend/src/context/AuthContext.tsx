@@ -68,7 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserData(usuario);
           }
         } catch (profileError) {
-          console.warn("⚠️ Error obteniendo perfil completo:", profileError);
           // Crear userData básico desde el token
           setUserData({
             tipo: "CC",
@@ -130,7 +129,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }`;
               cookieUpdated = true;
             } catch (error) {
-              console.error("⚠️ Error actualizando cookie desde WebSocket:", error);
             }
           }
 
@@ -139,7 +137,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
               await api.post('/auth/refresh');
             } catch (error) {
-              console.error("❌ Error crítico: No se pudo actualizar cookie JWT:", error);
               toast.error("Error actualizando permisos. Por favor, recarga la página.");
               return;
             }
@@ -160,7 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Escuchar evento de token expirado
     const handleTokenExpired = () => {
-      console.warn("🔴 Token expirado detectado. Cerrando sesión...");
       logout('expired');
     };
 
@@ -197,7 +193,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       toast.success(data.message || "Ha iniciado sesión correctamente");
     } catch (error: any) {
-      console.error("Error en login:", error);
       throw error;
     }
   };
@@ -224,7 +219,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success("Has cerrado sesión");
       }
     } catch (error) {
-      console.error("Error en logout:", error);
     } finally {
       setIsLoggingOut(false);
     }

@@ -67,7 +67,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       const pagosArray = pagosData?.data || (Array.isArray(pagosData) ? pagosData : []);
       setPagos(pagosArray);
     } catch (error) {
-      console.error('Error al cargar respuestas y pagos:', error);
       setRespuestas([]);
       setPagos([]);
     } finally {
@@ -119,7 +118,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       // Limpiar el URL del objeto
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
-      console.error('Error al descargar archivo:', error);
       alert('Error al descargar el archivo. Verifica que tengas permisos.');
     }
   };
@@ -143,7 +141,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
           }]);
           // Nota: Ya NO cerramos el modal de respuestas para mantener el flujo de trabajo
         } else {
-          console.warn('⚠️ onOpenPago no está definido en las props');
         }
       }
 
@@ -179,7 +176,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
       // Notificar al componente padre para recargar actividades
       onSuccess?.();
     } catch (error) {
-      console.error('Error al aprobar respuesta:', error);
       alert('Error al aprobar respuesta');
     }
   };
@@ -198,7 +194,6 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
         // Notificar al componente padre para recargar actividades
         onSuccess?.();
       } catch (error) {
-        console.error('Error al rechazar respuesta:', error);
         alert('Error al rechazar respuesta');
       }
     }

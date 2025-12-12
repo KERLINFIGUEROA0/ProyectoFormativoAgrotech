@@ -29,7 +29,6 @@ export default function GestionTratamientosPage() {
       setTratamientos(Array.isArray(tratamientosData) ? tratamientosData : []);
       setCultivos(cultivosData.data || []);
     } catch (error) {
-      console.error("Error fetching data:", error); // Log the actual error
       toast.error('Error al cargar los datos.');
     } finally {
       setLoading(false);
@@ -52,7 +51,6 @@ export default function GestionTratamientosPage() {
           window.history.replaceState(newState, '');
         }
       } catch (e) {
-         console.warn("Could not modify history state:", e);
       }
     }
   }, [location.state]);
@@ -89,7 +87,6 @@ const handleSave = async (data: Partial<Tratamiento>) => {
     fetchData();
     handleCloseModal();
   } catch (error) {
-    console.error("Error en API:", error); // Loguear el error completo
 
     // --- ✨ CORRECCIÓN LÍNEA 101: Asegurar que displayMessage sea string ---
     let displayMessage = 'Error al guardar el tratamiento.'; // Mensaje por defecto
@@ -108,7 +105,6 @@ const handleSave = async (data: Partial<Tratamiento>) => {
             displayMessage = apiError.message;
         }
     } catch (parseError) {
-        console.error("Error parsing API error message:", parseError);
         // displayMessage se queda con el valor por defecto
     }
     toast.error(displayMessage, { id: toastId });

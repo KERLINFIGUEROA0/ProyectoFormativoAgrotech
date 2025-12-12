@@ -42,7 +42,6 @@ export default function GestionFichas(): ReactElement {
       setFilteredFichas(fichasWithCount);
     } catch (error) {
       toast.error('Error al cargar las fichas');
-      console.error('Error loading fichas:', error);
     }
   };
 
@@ -91,7 +90,6 @@ export default function GestionFichas(): ReactElement {
     } catch (error) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar la ficha';
       toast.error(errorMessage);
-      console.error('Error deleting ficha:', error);
       setShowDeleteModal(false);
       setFichaToDelete(null);
     }
@@ -119,7 +117,6 @@ export default function GestionFichas(): ReactElement {
     } catch (error) {
       const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al guardar la ficha';
       toast.error(errorMessage);
-      console.error('Error saving ficha:', error);
     }
   };
 

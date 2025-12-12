@@ -67,7 +67,6 @@ export default function HomePage() {
         const latestSensorsRes = response.data?.data || response.data || [];
         setLatestData(latestSensorsRes);
       } catch (error) {
-        console.error("Error fetching sensor data", error);
       }
     };
 
@@ -161,7 +160,6 @@ export default function HomePage() {
       setLatestData(latestSensors);
 
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
       toast.error('Error al cargar los datos del dashboard');
     } finally {
       setLoading(false);
