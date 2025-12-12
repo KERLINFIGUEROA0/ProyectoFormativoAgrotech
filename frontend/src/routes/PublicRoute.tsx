@@ -1,5 +1,3 @@
-// src/routes/PublicRoute.tsx
-
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { JSX } from "react";
@@ -8,7 +6,6 @@ import { Spinner } from "@heroui/react";
 export default function PublicRoute({ children }: { children: JSX.Element }): JSX.Element {
   const { isAuthenticated, loading } = useAuth();
 
-  // Mientras se verifica la autenticación, mostramos un indicador de carga para evitar parpadeos
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -17,11 +14,9 @@ export default function PublicRoute({ children }: { children: JSX.Element }): JS
     );
   }
 
-  // Si el usuario YA está autenticado, lo redirigimos a la página de inicio
   if (isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
 
-  // Si no está autenticado, el usuario no ha iniciado sesión, así que mostramos la ruta pública
   return children;
 }

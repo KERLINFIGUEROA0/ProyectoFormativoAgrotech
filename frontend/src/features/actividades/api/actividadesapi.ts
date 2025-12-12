@@ -8,23 +8,18 @@ import type {
   UsuarioSimple,
   CultivoSimple,
 } from '../interfaces/actividades';
-// --- AÑADIR ESTE IMPORT ---
 import type { Material } from '../../inventario/interfaces/inventario';
 
-// --- FUNCIONES EXISTENTES (sin cambios) ---
-
 export const registrarActividad = async (formData: FormData) => {
-  // ... (sin cambios)
   const response = await api.post("/actividades/registrar", formData, {
     headers: {
-      'Content-Type': 'multipart/form-data', 
+      'Content-Type': 'multipart/form-data',
     },
   });
   return response.data;
 };
 
 export const listarActividades = async () => {
-  // ... (sin cambios)
   const response = await api.get("/actividades/listar");
   return response.data;
 };
@@ -33,13 +28,11 @@ export const actualizarActividad = async (
   id: number,
   actividadData: UpdateActividadPayload,
 ) => {
-  // ... (sin cambios)
   const response = await api.patch(`/actividades/${id}`, actividadData);
   return response.data;
 };
 
 export const eliminarActividad = async (id: number) => {
-  // ... (sin cambios)
   const response = await api.delete(`/actividades/${id}`);
   return response.data;
 };
@@ -57,25 +50,25 @@ export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]>
 };
 
 export const obtenerCultivosParaActividades = async (): Promise<CultivoSimple[]> => {
-    // Cambiar a endpoint de actividades para usar permisos de Actividades
-    const response = await api.get('/actividades/cultivos-disponibles');
-    return response.data.data.map((cultivo: any) => ({
-      id: cultivo.id,
-      nombre: cultivo.nombre,
-      loteId: cultivo.lote?.id
-    }));
+  // Cambiar a endpoint de actividades para usar permisos de Actividades
+  const response = await api.get('/actividades/cultivos-disponibles');
+  return response.data.data.map((cultivo: any) => ({
+    id: cultivo.id,
+    nombre: cultivo.nombre,
+    loteId: cultivo.lote?.id
+  }));
 };
 
 export const obtenerLotesParaActividades = async () => {
-    // Cambiar a endpoint de actividades
-    const response = await api.get('/actividades/lotes-disponibles');
-    return response.data.data;
+  // Cambiar a endpoint de actividades
+  const response = await api.get('/actividades/lotes-disponibles');
+  return response.data.data;
 };
 
 export const obtenerSublotesParaActividades = async (loteId?: number) => {
-    // Cambiar a endpoint de actividades
-    const response = await api.get(`/actividades/sublotes-disponibles/${loteId}`);
-    return response.data.data;
+  // Cambiar a endpoint de actividades
+  const response = await api.get(`/actividades/sublotes-disponibles/${loteId}`);
+  return response.data.data;
 };
 
 export const asignarActividad = async (
@@ -155,7 +148,6 @@ export const calificarActividad = async (id: number, calificacionData: Calificar
   return response.data;
 };
 
-// --- AÑADIR ESTA NUEVA FUNCIÓN ---
 /**
  * Obtiene la lista de materiales activos del inventario para actividades.
  */

@@ -35,7 +35,6 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rutas públicas (sin cambios) */}
         <Route element={
           <PublicRoute>
             <Outlet />
@@ -48,7 +47,6 @@ export default function AppRouter() {
           <Route path="/restablecer" element={<NuevaContraseñaPage />} />
         </Route>
 
-        {/* Rutas privadas */}
         <Route
           element={
             <PrivateRoute>
@@ -89,7 +87,6 @@ export default function AppRouter() {
             </PermissionRoute>
           } />
 
-          {/* Cultivos - Requiere permisos de Cultivo */}
           <Route path="/gestion-cultivos" element={
             <PermissionRoute module="Cultivo">
               <GestionCultivosPage />
@@ -126,7 +123,6 @@ export default function AppRouter() {
             </PermissionRoute>
           } />
 
-          {/* Finanzas - Requiere permisos de Finanzas */}
           <Route path="/ingresos" element={
             <PermissionRoute module="Finanzas">
               <DashboardFinanciero />
@@ -138,14 +134,12 @@ export default function AppRouter() {
             </PermissionRoute>
           } />
 
-          {/* Fitosanitario - Requiere permisos de Fitosanitario */}
           <Route path="/fitosanitario" element={
             <PermissionRoute module="Fitosanitario">
               <GestionFitosanitarioPage />
             </PermissionRoute>
           } />
 
-          {/* Actividades - Requiere permisos de Actividades */}
           <Route path="/gestion-actividades" element={
             <PermissionRoute module="Actividades">
               <ActividadesPrincipal />
