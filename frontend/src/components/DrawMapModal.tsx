@@ -3,7 +3,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, AlertCircle } from "lucide-react";
+import { api } from "../lib/axios";
 
 // --- Configuración de íconos (Tu código) ---
 delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
@@ -79,6 +80,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
 }) => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const existingLotsLayerRef = useRef<L.LayerGroup | null>(null);
   const [area, setArea] = useState<number>(0);
   const [coordinates, setCoordinates] = useState<[number, number][]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -86,6 +88,25 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
+  const [existingLots, setExistingLots] = useState<any[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // Fetch existing lots when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchExistingLots = async () => {
+        try {
+          const response = await api.get("/lotes/listar");
+          if (response.data && response.data.data) {
+            setExistingLots(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching existing lots:", error);
+        }
+      };
+      fetchExistingLots();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && mapContainerRef.current && !mapRef.current) {
@@ -99,6 +120,11 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
           maxZoom: 20,
         }
       ).addTo(map);
+
+      // Create layer group for existing lots
+      const existingLotsLayer = new L.LayerGroup();
+      map.addLayer(existingLotsLayer);
+      existingLotsLayerRef.current = existingLotsLayer;
 
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);
@@ -122,7 +148,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
 
       const drawControl = new L.Control.Draw({
         edit: {
-          featureGroup: drawnItems, // Ya no pasamos nada de íconos aquí, la modificación global se encarga
+          featureGroup: drawnItems,
         },
         draw: {
           polygon: {
@@ -136,7 +162,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
             },
             shapeOptions: {
               color: "#4CAF50",
-            }, // Asignamos el ícono para DIBUJAR (esto estaba bien)
+            },
             icon: new L.Icon.Default(),
             touchIcon: new L.Icon.Default(),
           },
@@ -175,6 +201,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
           setCoordinates(coords);
           const calculatedArea = L.GeometryUtil.geodesicArea(latlngs);
           setArea(Math.abs(calculatedArea));
+          setErrorMessage(""); // Clear any previous errors
         }
       });
 
@@ -200,7 +227,6 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
             ]);
 
             if (coords.length > 8) {
-              // Limpiamos la capa si excede los puntos
               drawnItems.clearLayers();
               setArea(0);
               setCoordinates([]);
@@ -213,6 +239,7 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
             setCoordinates(coords);
             const calculatedArea = L.GeometryUtil.geodesicArea(latlngs);
             setArea(Math.abs(calculatedArea));
+            setErrorMessage(""); // Clear any previous errors
           }
         });
       });
@@ -225,8 +252,42 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
         mapRef.current.remove();
         mapRef.current = null;
       }
+      if (existingLotsLayerRef.current) {
+        existingLotsLayerRef.current = null;
+      }
     };
-  }, [isOpen, initialCoordinates]); // Agregamos initialCoordinates aquí
+  }, [isOpen, initialCoordinates]);
+
+  // Display existing lots on the map
+  useEffect(() => {
+    if (mapRef.current && existingLotsLayerRef.current && existingLots.length > 0) {
+      // Clear previous layers
+      existingLotsLayerRef.current.clearLayers();
+
+      existingLots.forEach((lote) => {
+        if (lote.coordenadas?.type === 'polygon' && Array.isArray(lote.coordenadas.coordinates)) {
+          const coords = lote.coordenadas.coordinates.map((c: any) => [c.lat, c.lng]);
+
+          const polygon = L.polygon(coords, {
+            color: "#EF4444",
+            fillColor: "#EF4444",
+            fillOpacity: 0.3,
+            weight: 2,
+            interactive: true,
+          });
+
+          // Add tooltip with lot name
+          polygon.bindTooltip(lote.nombre || "Lote sin nombre", {
+            permanent: false,
+            direction: "center",
+            className: "lot-tooltip",
+          });
+
+          existingLotsLayerRef.current?.addLayer(polygon);
+        }
+      });
+    }
+  }, [existingLots, mapRef.current]);
 
   // Función debounced para búsqueda de sugerencias
   const debouncedSearch = useCallback(
@@ -344,7 +405,8 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
 
   const handleConfirm = () => {
     if (coordinates.length > 0 && area > 0) {
-      onConfirm(coordinates, area); // onClose(); // Dejamos que el padre cierre el modal
+      setErrorMessage(""); // Clear any errors before confirming
+      onConfirm(coordinates, area);
     }
   };
 
@@ -361,6 +423,8 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
       setShowSuggestions(false);
       setIsSearching(false);
       setSelectedSuggestionIndex(-1);
+      setExistingLots([]);
+      setErrorMessage("");
     }
   }, [isOpen]);
 
@@ -444,9 +508,8 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
                       <div
                         key={suggestion.place_id}
                         onClick={() => handleSuggestionSelect(suggestion)}
-                        className={`px-4 py-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
-                          index === selectedSuggestionIndex ? 'bg-blue-50' : ''
-                        }`}
+                        className={`px-4 py-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${index === selectedSuggestionIndex ? 'bg-blue-50' : ''
+                          }`}
                       >
                         <div className="text-sm font-medium text-gray-900 truncate">
                           {suggestion.display_name.split(',')[0]}
@@ -481,12 +544,26 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
               />
             </div>
 
+            {/* Error message display */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Error de validación</p>
+                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
             {/* Sección de instrucciones */}
-            <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-              <p>
+            <div className="text-sm text-gray-600 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <p className="font-semibold text-blue-900 mb-2">
                 <strong>Instrucciones:</strong>
               </p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
+              <ul className="list-disc list-inside space-y-1">
+                <li className="text-blue-800">
+                  <strong className="text-red-600">Las áreas rojas representan lotes existentes.</strong> Dibuja tu nuevo lote fuera de estas áreas.
+                </li>
                 <li>
                   Usa la herramienta de dibujo (polígono) para trazar el área deseada (mínimo 3 puntos, máximo 8 puntos)
                 </li>
@@ -494,10 +571,9 @@ const DrawMapModal: React.FC<DrawMapModalProps> = ({
                   Puedes editar el polígono después de dibujarlo usando las herramientas de edición
                 </li>
                 <li>
-                  Busca ubicaciones con autocompletado: escribe y selecciona de la lista desplegable, o presiona Enter para buscar directamente
+                  Busca ubicaciones con autocompletado: escribe y selecciona de la lista desplegable
                 </li>
                 <li>El área se calcula automáticamente para polígonos</li>
-                <li>Confirma para guardar o cancela para descartar</li>
               </ul>
             </div>
           </div>

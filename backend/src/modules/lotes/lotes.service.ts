@@ -1,6 +1,6 @@
 // src/modules/lotes/lotes.service.ts
 
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Lote } from './entities/lote.entity';
@@ -10,6 +10,7 @@ import { UpdateLoteEstadoDto } from './dto/update-lote-estado.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { AppWebSocketGateway } from '../../websocket/websocket.gateway';
+import { polygon as turfPolygon, booleanIntersects } from '@turf/turf';
 
 @Injectable()
 export class LotesService {
@@ -18,7 +19,7 @@ export class LotesService {
     private readonly loteRepository: Repository<Lote>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly websocketGateway: AppWebSocketGateway,
-  ) {}
+  ) { }
 
   private async clearCache(id?: number) {
     await this.cacheManager.del('lotes_todos');
@@ -30,7 +31,88 @@ export class LotesService {
     }
   }
 
+  /**
+   * Verifica si las coordenadas de un polígono se superponen con lotes existentes
+   * @param coordenadas - Coordenadas del polígono a validar
+   * @param excludeLoteId - ID del lote a excluir de la validación (para edición)
+   * @returns Objeto con información de superposición
+   */
+  private async checkPolygonOverlap(
+    coordenadas: { type: 'point' | 'polygon'; coordinates: any },
+    excludeLoteId?: number,
+  ): Promise<{ isOverlapping: boolean; overlappingLote?: Lote }> {
+    // Solo validar polígonos, no puntos
+    if (!coordenadas || coordenadas.type !== 'polygon' || !Array.isArray(coordenadas.coordinates)) {
+      return { isOverlapping: false };
+    }
+
+    // Obtener TODOS los lotes (filtraremos en memoria)
+    const todosLosLotes = await this.loteRepository.find();
+
+    // Filtrar solo los que tienen coordenadas de tipo polígono
+    const lotesExistentes = todosLosLotes.filter(
+      lote => lote.coordenadas?.type === 'polygon' && Array.isArray(lote.coordenadas.coordinates)
+    );
+
+    // Convertir las coordenadas nuevas a formato Turf.js
+    // Turf espera coordenadas en formato [lng, lat] y el primer y último punto deben ser iguales
+    const newCoords = coordenadas.coordinates as Array<{ lat: number; lng: number }>;
+    const turfCoords = newCoords.map((c) => [c.lng, c.lat]);
+
+    // Cerrar el polígono si no está cerrado
+    if (turfCoords.length > 0) {
+      const firstPoint = turfCoords[0];
+      const lastPoint = turfCoords[turfCoords.length - 1];
+      if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+        turfCoords.push([...firstPoint]);
+      }
+    }
+
+    const newPolygon = turfPolygon([[...turfCoords]]);
+
+    // Verificar superposición con cada lote existente
+    for (const lote of lotesExistentes) {
+      // Excluir el lote actual si estamos editando
+      if (excludeLoteId && lote.id === excludeLoteId) {
+        continue;
+      }
+
+      if (lote.coordenadas?.type === 'polygon' && Array.isArray(lote.coordenadas.coordinates)) {
+        const existingCoords = lote.coordenadas.coordinates as Array<{ lat: number; lng: number }>;
+        const existingTurfCoords = existingCoords.map((c) => [c.lng, c.lat]);
+
+        // Cerrar el polígono si no está cerrado
+        if (existingTurfCoords.length > 0) {
+          const firstPoint = existingTurfCoords[0];
+          const lastPoint = existingTurfCoords[existingTurfCoords.length - 1];
+          if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+            existingTurfCoords.push([...firstPoint]);
+          }
+        }
+
+        const existingPolygon = turfPolygon([[...existingTurfCoords]]);
+
+        // Verificar si hay intersección
+        if (booleanIntersects(newPolygon, existingPolygon)) {
+          return { isOverlapping: true, overlappingLote: lote };
+        }
+      }
+    }
+
+    return { isOverlapping: false };
+  }
+
   async crear(dto: CreateLoteDto): Promise<Lote> {
+    // Verificar superposición de coordenadas si es un polígono
+    if (dto.coordenadas) {
+      const overlapCheck = await this.checkPolygonOverlap(dto.coordenadas as any);
+      if (overlapCheck.isOverlapping && overlapCheck.overlappingLote) {
+        throw new BadRequestException(
+          `Las coordenadas del lote se superponen con el lote existente: "${overlapCheck.overlappingLote.nombre}". Por favor, elige coordenadas diferentes.`
+        );
+      }
+    }
+
     // Convertimos el área a string antes de crear y asignamos estado por defecto
     const loteData = {
       ...dto,
@@ -73,6 +155,17 @@ export class LotesService {
 
   async actualizar(id: number, dto: UpdateLoteDto): Promise<Lote> {
     const lote = await this.buscarPorId(id);
+
+    // Verificar superposición si se están actualizando las coordenadas
+    if (dto.coordenadas) {
+      const overlapCheck = await this.checkPolygonOverlap(dto.coordenadas as any, id);
+      if (overlapCheck.isOverlapping && overlapCheck.overlappingLote) {
+        throw new BadRequestException(
+          `Las coordenadas actualizadas se superponen con el lote existente: "${overlapCheck.overlappingLote.nombre}". Por favor, elige coordenadas diferentes.`
+        );
+      }
+    }
+
     // Si se actualiza el área, también la convertimos a string
     if (dto.area) {
       dto.area = String(dto.area) as any;

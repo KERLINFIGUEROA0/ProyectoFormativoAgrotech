@@ -25,7 +25,7 @@ import { TipoUsuarioModule } from './modules/tipo_usuario/tipo_usuario.module';
 import { TratamientosModule } from './modules/tratamientos/tratamientos.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { VentasModule } from './modules/ventas/ventas.module';
-import { EpaTratamientoModule } from './modules/epa_tratamiento/epa_tratamiento.module'; 
+import { EpaTratamientoModule } from './modules/epa_tratamiento/epa_tratamiento.module';
 import { CultivosEpaModule } from './modules/cultivos_epa/cultivos_epa.module';
 import { RolPermisoModule } from './modules/rol_permiso/rol_permiso.module';
 import { PermisosModule } from './modules/permisos/permisos.module';
