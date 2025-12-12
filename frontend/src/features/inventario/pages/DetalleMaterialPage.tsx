@@ -65,7 +65,7 @@ interface StockBarProps {
 
 const StockBar = ({ label, valorActual, valorMinimo, valorObjetivo, unidad }: StockBarProps) => {
   const stockPercentage = Math.min((valorActual / valorObjetivo) * 100, 100);
-  
+
   let statusColor = "bg-green-600";
   let statusLabel = "Stock Estable";
   let statusIconColor = "text-green-700";
@@ -119,12 +119,12 @@ export default function DetalleMaterialPage() {
       obtenerMaterialPorId(id),
       listarMovimientosPorMaterial(id)
     ])
-    .then(([resMaterial, resMovimientos]) => {
-      setMaterial(resMaterial.data);
-      setMovimientos(resMovimientos.data || []);
-    })
-    .catch(() => toast.error("No se pudo cargar el detalle del material."))
-    .finally(() => setLoading(false));
+      .then(([resMaterial, resMovimientos]) => {
+        setMaterial(resMaterial.data);
+        setMovimientos(resMovimientos.data || []);
+      })
+      .catch(() => toast.error("No se pudo cargar el detalle del material."))
+      .finally(() => setLoading(false));
 
   }, [materialId]);
 
@@ -173,9 +173,9 @@ export default function DetalleMaterialPage() {
   // 4. Calculamos paquetes (Sacos/Tarros)
   let stockPaquetes = 0;
   if (material.pesoPorUnidad && material.pesoPorUnidad > 0) {
-     stockPaquetes = Math.ceil(material.cantidad / material.pesoPorUnidad);
+    stockPaquetes = Math.ceil(material.cantidad / material.pesoPorUnidad);
   } else {
-     stockPaquetes = material.cantidad; // Fallback si no hay peso definido
+    stockPaquetes = material.cantidad; // Fallback si no hay peso definido
   }
 
   // 5. Mínimos y Objetivos
@@ -252,7 +252,7 @@ export default function DetalleMaterialPage() {
 
         {/* Columna Derecha - Stock y Movimientos */}
         <div className="space-y-6">
-          
+
           {/* --- ✅ 5. SECCIÓN DE STOCK VISUAL --- */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StockBar
@@ -268,7 +268,7 @@ export default function DetalleMaterialPage() {
               valorActual={esLiquido ? Number((stockTotalVisual * 1).toFixed(2)) : Number(stockTotalVisual.toFixed(2))}
               valorMinimo={esLiquido ? Number((stockMinimoVisual * 1).toFixed(2)) : Number(stockMinimoVisual.toFixed(2))}
               valorObjetivo={esLiquido ? Number((stockObjetivoVisual * 1).toFixed(2)) : Number(stockObjetivoVisual.toFixed(2))}
-              unidad="kg"
+              unidad={mostrarUnidad(unidadPreferidaRaw)}
             />
           </div>
 
@@ -276,43 +276,43 @@ export default function DetalleMaterialPage() {
           {material.tipoConsumo === 'consumible' && (
             <div className="bg-white p-4 rounded-xl shadow-md border border-blue-100">
               <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                 📏 Disponibilidad en otras medidas
+                📏 Disponibilidad en otras medidas
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {/* CASO 1: LÍQUIDOS (Mostrar Litros, ml, cm3) */}
                 {esLiquido && (
-                   <>
-                     <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
-                       <div className="text-xs text-gray-500">Litros</div>
-                       <div className="font-bold text-gray-800">{convertirStockAUnidad(stockTotalBase, 'l').toLocaleString('es-CO')} L</div>
-                     </div>
-                     <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
-                       <div className="text-xs text-gray-500">Mililitros</div>
-                       <div className="font-bold text-blue-600">{convertirStockAUnidad(stockTotalBase, 'ml').toLocaleString('es-CO')} ml</div>
-                     </div>
-                      <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
-                       <div className="text-xs text-gray-500">cm³ (cc)</div>
-                       <div className="font-bold text-gray-600">{convertirStockAUnidad(stockTotalBase, 'cm3').toLocaleString('es-CO')} cm³</div>
-                     </div>
-                   </>
+                  <>
+                    <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
+                      <div className="text-xs text-gray-500">Litros</div>
+                      <div className="font-bold text-gray-800">{convertirStockAUnidad(stockTotalBase, 'l').toLocaleString('es-CO')} L</div>
+                    </div>
+                    <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
+                      <div className="text-xs text-gray-500">Mililitros</div>
+                      <div className="font-bold text-blue-600">{convertirStockAUnidad(stockTotalBase, 'ml').toLocaleString('es-CO')} ml</div>
+                    </div>
+                    <div className="p-2 bg-cyan-50 rounded border border-cyan-100 text-center">
+                      <div className="text-xs text-gray-500">cm³ (cc)</div>
+                      <div className="font-bold text-gray-600">{convertirStockAUnidad(stockTotalBase, 'cm3').toLocaleString('es-CO')} cm³</div>
+                    </div>
+                  </>
                 )}
 
                 {/* CASO 2: SÓLIDOS (Mostrar Kg, lb, g) */}
                 {(esSolido || (!esLiquido && !esSolido)) && (
-                   <>
-                     <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
-                       <div className="text-xs text-gray-500">Kilogramos</div>
-                       <div className="font-bold text-gray-800">{convertirStockAUnidad(stockTotalBase, 'kg').toLocaleString('es-CO')} kg</div>
-                     </div>
-                     <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
-                       <div className="text-xs text-gray-500">Gramos</div>
-                       <div className="font-bold text-blue-600">{convertirStockAUnidad(stockTotalBase, 'g').toLocaleString('es-CO')} g</div>
-                     </div>
-                     <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
-                       <div className="text-xs text-gray-500">Miligramos</div>
-                       <div className="font-bold text-gray-600">{convertirStockAUnidad(stockTotalBase, 'mg').toExponential(2)} mg</div>
-                     </div>
-                   </>
+                  <>
+                    <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
+                      <div className="text-xs text-gray-500">Kilogramos</div>
+                      <div className="font-bold text-gray-800">{convertirStockAUnidad(stockTotalBase, 'kg').toLocaleString('es-CO')} kg</div>
+                    </div>
+                    <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
+                      <div className="text-xs text-gray-500">Gramos</div>
+                      <div className="font-bold text-blue-600">{convertirStockAUnidad(stockTotalBase, 'g').toLocaleString('es-CO')} g</div>
+                    </div>
+                    <div className="p-2 bg-amber-50 rounded border border-amber-100 text-center">
+                      <div className="text-xs text-gray-500">Miligramos</div>
+                      <div className="font-bold text-gray-600">{convertirStockAUnidad(stockTotalBase, 'mg').toExponential(2)} mg</div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -330,25 +330,25 @@ export default function DetalleMaterialPage() {
 
                 // CASO A: HERRAMIENTAS (No Consumibles) -> Siempre son Unidades
                 if (material.tipoConsumo === 'no_consumible') {
-                    cantidadVisual = Number(mov.cantidad);
-                    unidadVisual = 'Und';
+                  cantidadVisual = Number(mov.cantidad);
+                  unidadVisual = 'Und';
                 }
                 // CASO B: INSUMOS (Consumibles) -> Mostrar en la unidad del material
                 else {
-                    // 1. Detectar unidad (Usamos la del material que ya tienes cargado en el estado)
-                    const unidadPreferidaRaw = material.medidasDeContenido || material.unidadBase || 'Unidad';
-                    const unidadCalculo = normalizarUnidad(unidadPreferidaRaw); // Usa tu helper existente
-                    const unidadVisualLabel = mostrarUnidad(unidadPreferidaRaw); // Usa tu helper existente
+                  // 1. Detectar unidad (Usamos la del material que ya tienes cargado en el estado)
+                  const unidadPreferidaRaw = material.medidasDeContenido || material.unidadBase || 'Unidad';
+                  const unidadCalculo = normalizarUnidad(unidadPreferidaRaw); // Usa tu helper existente
+                  const unidadVisualLabel = mostrarUnidad(unidadPreferidaRaw); // Usa tu helper existente
 
-                    // 2. Calcular cantidad
-                    // Aquí está la clave: convertirStockAUnidad transforma 50000 -> 50
-                    const cantidadConvertida = convertirStockAUnidad(Number(mov.cantidad), unidadCalculo);
+                  // 2. Calcular cantidad
+                  // Aquí está la clave: convertirStockAUnidad transforma 50000 -> 50
+                  const cantidadConvertida = convertirStockAUnidad(Number(mov.cantidad), unidadCalculo);
 
-                    cantidadVisual = Number.isInteger(cantidadConvertida)
-                        ? cantidadConvertida
-                        : parseFloat(cantidadConvertida.toFixed(4));
+                  cantidadVisual = Number.isInteger(cantidadConvertida)
+                    ? cantidadConvertida
+                    : parseFloat(cantidadConvertida.toFixed(4));
 
-                    unidadVisual = unidadVisualLabel;
+                  unidadVisual = unidadVisualLabel;
                 }
 
                 return (

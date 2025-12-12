@@ -16,8 +16,8 @@ const UNIDADES_LIQUIDAS = ['L', 'l', 'ml', 'mL', 'Litro', 'Mililitro', 'gal', 'o
 
 // --- ✅ CORRECCIÓN 2: Recibimos 'unidadMedida' como parámetro ---
 const renderCantidadAmigable = (
-  cantidadTotal: number | null | undefined, 
-  pesoPorUnidad: number | null | undefined, 
+  cantidadTotal: number | null | undefined,
+  pesoPorUnidad: number | null | undefined,
   tipoEmpaque: string,
   unidadMedida: string | null | undefined // Nuevo parámetro
 ) => {
@@ -33,17 +33,17 @@ const renderCantidadAmigable = (
   // Caso 2: Consumibles (Abonos, Químicos)
   const cantidad = cantidadTotal || 0;
   const paquetesEstimados = cantidad / pesoPorUnidad;
-  
+
   // Calculamos el total (asumiendo que la DB guarda en gramos/mililitros)
   const totalEnUnidadMayor = cantidad / 1000;
 
   const paquetesVisual = Number.isInteger(paquetesEstimados)
-      ? paquetesEstimados
-      : paquetesEstimados.toFixed(1);
+    ? paquetesEstimados
+    : paquetesEstimados.toFixed(1);
 
   const totalVisual = Number.isInteger(totalEnUnidadMayor)
-      ? totalEnUnidadMayor
-      : totalEnUnidadMayor.toFixed(2);
+    ? totalEnUnidadMayor
+    : totalEnUnidadMayor.toFixed(2);
 
   // --- ✅ Lógica dinámica para detectar si es líquido ---
   const esLiquido = unidadMedida && UNIDADES_LIQUIDAS.includes(unidadMedida);
@@ -54,8 +54,8 @@ const renderCantidadAmigable = (
         {paquetesVisual} {tipoEmpaque}s
       </div>
       <div className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full mt-1">
-        {/* Mostrar total disponible en kg */}
-        Total: {esLiquido ? (Number(totalVisual) * 1).toFixed(2) : totalVisual} kg
+        {/* Mostrar total disponible con la unidad correcta */}
+        Total: {esLiquido ? (Number(totalVisual) * 1).toFixed(2) : totalVisual} {esLiquido ? 'L' : (unidadMedida || 'unidad')}
       </div>
     </div>
   );
@@ -126,7 +126,7 @@ export default function GestionInventarioPage() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10); 
+  const [itemsPerPage] = useState(10);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Material | null; direction: 'ascending' | 'descending' }>({ key: 'nombre', direction: 'ascending' });
 
@@ -591,7 +591,7 @@ export default function GestionInventarioPage() {
           <TableBody>
             {currentMateriales.map((mat) => {
               const status = getStatusInfo(mat.cantidad, mat.pesoPorUnidad);
-                          const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
+              const textoContenido = formatarContenido(mat.pesoPorUnidad, (mat.medidasDeContenido ?? null) as string | number | null);
 
               return (
                 <TableRow key={mat.id || `mat-${Math.random()}`} className={!mat.estado ? 'bg-red-50' : ''}>
@@ -628,7 +628,7 @@ export default function GestionInventarioPage() {
                       variant="flat"
                       color={
                         status.text === 'Crítico' ? 'danger' :
-                        status.text === 'Stock Bajo' ? 'warning' : 'success'
+                          status.text === 'Stock Bajo' ? 'warning' : 'success'
                       }
                     >
                       {status.text}
@@ -646,12 +646,12 @@ export default function GestionInventarioPage() {
                     </PermissionWrapper>
                   </TableCell>
                   <TableCell>
-                   <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                     <PermissionWrapper module="Inventario" permission="Editar">
-                       <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
-                         <Edit size={16} />
-                       </Button>
-                     </PermissionWrapper>
+                    <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <PermissionWrapper module="Inventario" permission="Editar">
+                        <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
+                          <Edit size={16} />
+                        </Button>
+                      </PermissionWrapper>
 
                       {mat.estado && (
                         <PermissionWrapper module="Inventario" permission="ActualizarStock">
@@ -731,7 +731,7 @@ export default function GestionInventarioPage() {
               <p className="text-sm text-gray-600">
                 Agregar {selectedMaterialForStock?.tipoEmpaque || 'unidades'} al stock existente.
                 {selectedMaterialForStock?.tipoConsumo === 'consumible' && selectedMaterialForStock?.pesoPorUnidad
-                  ? ` Cada ${selectedMaterialForStock.tipoEmpaque} contiene ${selectedMaterialForStock.pesoPorUnidad / 1000} ${selectedMaterialForStock.medidasDeContenido === 'L' || selectedMaterialForStock.medidasDeContenido === 'ml' ? 'L' : 'kg'}.`
+                  ? ` Cada ${selectedMaterialForStock.tipoEmpaque} contiene ${selectedMaterialForStock.pesoPorUnidad / 1000} ${selectedMaterialForStock.medidasDeContenido || 'unidad'}.`
                   : ''
                 }
               </p>

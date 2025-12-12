@@ -5,7 +5,6 @@ import { useNavigate, Link } from "react-router-dom";
 import logo from "../../../assets/logo.png";
 import type { LoginData } from "../interfaces/InterAuth";
 import { useAuth } from "../../../context/AuthContext";
-import { login as loginApi } from "../api/auth";
 import { toast } from "sonner";
 
 export default function FormularioLogin(): ReactElement {
@@ -33,18 +32,15 @@ export default function FormularioLogin(): ReactElement {
     const startTime = Date.now();
 
     try {
-      const res = await loginApi(
-        formulario.identificacion,
-        formulario.password
-      );
-      
+      // Llamar directamente al login del contexto con credenciales
+      await login(formulario.identificacion, formulario.password);
+
       const elapsedTime = Date.now() - startTime;
       if (elapsedTime < minLoadingTime) {
         await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
       }
 
-      login(res.access_token);
-      toast.success("Inicio de sesión exitoso");
+      // El toast ya se muestra en AuthContext, pero podemos dejarlo aquí también
       navigate("/home", { replace: true });
 
     } catch (error: unknown) {
@@ -52,14 +48,16 @@ export default function FormularioLogin(): ReactElement {
       if (elapsedTime < minLoadingTime) {
         await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
       }
-      
+
       let mensajeBackend = "Error desconocido";
       if (typeof error === "object" && error !== null && "response" in error) {
-        const response = (error as any).response; 
+        const response = (error as any).response;
 
         if (response?.data?.message) {
           mensajeBackend = response.data.message;
         }
+      } else if (error instanceof Error) {
+        mensajeBackend = error.message;
       }
 
       if (mensajeBackend.includes("inactivo")) {

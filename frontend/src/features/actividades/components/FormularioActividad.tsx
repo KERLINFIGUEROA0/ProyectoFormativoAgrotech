@@ -19,8 +19,6 @@ interface FormularioActividadProps {
   onCancel: () => void;
 }
 
-const estados: EstadoActividad[] = ["pendiente", "en proceso", "completado"];
-
 interface MaterialSeleccionado extends MaterialUsado {
   nombre: string;
   stockDisponible: number;
@@ -32,7 +30,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
   onSubmit,
   onCancel,
 }) => {
-  const { userData, token } = useAuth();
+  const { userData } = useAuth();
   const isEditing = Boolean(actividadInicial?.id);
 
   // --- CORRECCIÓN 1: Añadir horas y tarifaHora al estado ---
@@ -72,7 +70,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
     } else {
       setUsuarioId(null);
     }
-  }, [userData, token]);
+  }, [userData]);
 
   // Precargar datos de edición (MODIFICADO)
   useEffect(() => {
@@ -90,7 +88,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
         horas: '', // <-- NO precargar en edición
         tarifaHora: '', // <-- NO precargar en edición
       });
-      
+
       // Precargar materiales (Tu código ya estaba correcto aquí)
       if (actividadInicial.actividadMaterial && materialesDisponibles.length > 0) {
         const materialesCargados = actividadInicial.actividadMaterial.map(am => {
@@ -101,7 +99,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
             materialId: materialId,
             cantidadUsada: am.cantidadUsada,
             nombre: materialNombre,
-            stockDisponible: materialInfo?.cantidad || 0, 
+            stockDisponible: materialInfo?.cantidad || 0,
           };
         });
         setMaterialesSeleccionados(materialesCargados);
@@ -173,35 +171,35 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
       );
       return;
     }
-    
+
     const existente = materialesSeleccionados.find(m => m.materialId === id);
     if (existente) {
-        const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
-        const stockDisponible = calcularStockDisponible(material);
-        if (nuevaCantidadTotal > stockDisponible) {
-            const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
-            toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${stockDisponible} ${unidad}`);
-            return;
-        }
-        
-        // --- USA (prev) ---
-        setMaterialesSeleccionados((prevMateriales) => 
-            prevMateriales.map(m => 
-                m.materialId === id ? { ...m, cantidadUsada: nuevaCantidadTotal } : m
-            )
-        );
+      const nuevaCantidadTotal = existente.cantidadUsada + cantidad;
+      const stockDisponible = calcularStockDisponible(material);
+      if (nuevaCantidadTotal > stockDisponible) {
+        const unidad = material.tipoConsumo === 'consumible' && material.cantidadPorUnidad ? (material.medidasDeContenido || 'unidades') : material.tipoEmpaque;
+        toast.error(`Stock insuficiente. Ya seleccionó ${existente.cantidadUsada} + ${cantidad} = ${nuevaCantidadTotal}. Disponible: ${stockDisponible} ${unidad}`);
+        return;
+      }
+
+      // --- USA (prev) ---
+      setMaterialesSeleccionados((prevMateriales) =>
+        prevMateriales.map(m =>
+          m.materialId === id ? { ...m, cantidadUsada: nuevaCantidadTotal } : m
+        )
+      );
 
     } else {
-        // --- USA (prev) ---
-        setMaterialesSeleccionados((prevMateriales) => [
-          ...prevMateriales,
-          {
-            materialId: material.id,
-            nombre: material.nombre,
-            cantidadUsada: cantidad,
-            stockDisponible: calcularStockDisponible(material),
-          },
-        ]);
+      // --- USA (prev) ---
+      setMaterialesSeleccionados((prevMateriales) => [
+        ...prevMateriales,
+        {
+          materialId: material.id,
+          nombre: material.nombre,
+          cantidadUsada: cantidad,
+          stockDisponible: calcularStockDisponible(material),
+        },
+      ]);
     }
 
     // Limpiar inputs (sin cambios)
@@ -285,7 +283,7 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               {isEditing ? "Editar Actividad" : "Nueva Actividad"}
             </h3>
           </div>
-          
+
           {/* Nombre */}
           <div>
             <Input
@@ -327,25 +325,6 @@ const FormularioActividad: React.FC<FormularioActividadProps> = ({
               {cultivos.map((c) => (
                 <SelectItem key={c.id.toString()}>
                   {c.nombre}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-
-          {/* Estado */}
-          <div>
-            <Select
-              name="estado"
-              selectedKeys={[formData.estado]}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setFormData(prev => ({ ...prev, estado: selected as EstadoActividad }));
-              }}
-              label="Estado"
-            >
-              {estados.map((estado) => (
-                <SelectItem key={estado}>
-                  {estado}
                 </SelectItem>
               ))}
             </Select>

@@ -7,20 +7,19 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { jwtDecode } from "jwt-decode";
-import { obtenerPerfil } from "../features/auth/api/auth";
+import { api } from "../lib/axios";
 import type { UsuarioData } from "../types/auth";
 import websocketService from "../services/websocket.service";
 
 interface AuthContextType {
-  token: string | null;
   loading: boolean;
   isLoggingOut: boolean;
+  isAuthenticated: boolean;
   userPermissions: string[] | null;
   userModules: Record<string, string[]> | null;
   userData: UsuarioData | null;
-  login: (token: string) => void;
-  logout: () => void;
+  login: (identificacion: string, password: string, id_ficha?: string) => Promise<void>;
+  logout: (reason?: 'manual' | 'expired') => Promise<void>;
   refreshPermissions: () => Promise<void>;
   refreshUserData: () => Promise<void>;
 }
@@ -28,9 +27,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userPermissions, setUserPermissions] = useState<string[] | null>(null);
   const [userModules, setUserModules] = useState<Record<
     string,
@@ -38,126 +37,122 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   > | null>(null);
   const [userData, setUserData] = useState<UsuarioData | null>(null);
 
-  const fetchAndSetData = useCallback(async () => {
-    if (!token) {
-      setUserPermissions(null);
-      setUserData(null);
-      return;
-    }
+  // Función para verificar autenticación usando la cookie
+  const checkAuth = useCallback(async () => {
     try {
-      const userProfile = await obtenerPerfil();
+      // Llamar al endpoint protegido que usa la cookie
+      const { data } = await api.get("/auth/profile");
 
-      if (userProfile && userProfile.identificacion) {
-        const usuario: UsuarioData = {
-          tipo: userProfile.tipoIdentificacion || "CC",
-          identificacion: userProfile.identificacion,
-          nombres: userProfile.nombres || "",
-          apellidos: userProfile.apellidos || "",
-          email: userProfile.correo || "",
-          telefono: userProfile.telefono || "",
-          fotoUrl: userProfile.fotoUrl || "",
-          rolNombre: userProfile.rolNombre || "",
-        };
-        setUserData(usuario);
+      // data contiene: { id, identificacion, rolId, rolNombre, permisos, modulos }
+      if (data) {
+        setUserPermissions(data.permisos || []);
+        setUserModules(data.modulos || {});
+        setIsAuthenticated(true);
 
-        setUserPermissions(userProfile.permisos || []);
-        setUserModules(userProfile.modulos || {});
-        localStorage.setItem(
-          "permissions",
-          JSON.stringify(userProfile.permisos || [])
-        );
-        localStorage.setItem(
-          "modules",
-          JSON.stringify(userProfile.modulos || {})
-        );
-      } else {
-        console.warn("⚠️ User profile missing identificacion:", userProfile);
+        // Obtener datos completos del perfil
+        try {
+          const profileRes = await api.get("/usuarios/perfil");
+          const userProfile = profileRes.data.data;
+
+          if (userProfile && userProfile.identificacion) {
+            const usuario: UsuarioData = {
+              tipo: userProfile.tipoIdentificacion || "CC",
+              identificacion: userProfile.identificacion,
+              nombres: userProfile.nombres || "",
+              apellidos: userProfile.apellidos || "",
+              email: userProfile.correo || "",
+              telefono: userProfile.telefono || "",
+              fotoUrl: userProfile.fotoUrl || "",
+              rolNombre: userProfile.rolNombre || data.rolNombre || "",
+            };
+            setUserData(usuario);
+          }
+        } catch (profileError) {
+          console.warn("⚠️ Error obteniendo perfil completo:", profileError);
+          // Crear userData básico desde el token
+          setUserData({
+            tipo: "CC",
+            identificacion: data.identificacion || "",
+            nombres: "",
+            apellidos: "",
+            email: "",
+            telefono: "",
+            fotoUrl: "",
+            rolNombre: data.rolNombre || "",
+          });
+        }
       }
     } catch (error) {
-      console.error("Error fetching user data or permissions:", error);
-      localStorage.removeItem("token");
-      localStorage.removeItem("permissions");
-      setToken(null);
+      // No hay sesión válida
+      setIsAuthenticated(false);
       setUserPermissions(null);
+      setUserModules(null);
       setUserData(null);
+    } finally {
+      setLoading(false);
     }
-  }, [token]);
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    if (savedToken) {
-      setToken(savedToken);
-
-      // Decodificar el token para obtener el nombre del usuario
-      try {
-        const decoded: any = jwtDecode(savedToken);
-        if (decoded.nombre) {
-          setUserData((prev) =>
-            prev
-              ? { ...prev, nombres: decoded.nombre }
-              : {
-                  tipo: "CC",
-                  identificacion: decoded.identificacion || "",
-                  nombres: decoded.nombre,
-                  apellidos: "",
-                  email: decoded.username || "",
-                  telefono: "",
-                  fotoUrl: "",
-                  rolNombre: decoded.rolNombre || "",
-                }
-          );
-        }
-      } catch (error) {
-        console.error("Error decodificando token guardado:", error);
-      }
-
-      const savedPerms = localStorage.getItem("permissions");
-      const savedModules = localStorage.getItem("modules");
-      setUserPermissions(savedPerms ? JSON.parse(savedPerms) : []);
-      setUserModules(savedModules ? JSON.parse(savedModules) : {});
-    }
-    setLoading(false);
   }, []);
 
+  // Verificar sesión al montar el componente
   useEffect(() => {
-    fetchAndSetData();
-  }, [token, fetchAndSetData]);
+    checkAuth();
+  }, [checkAuth]);
 
+  // Conectar WebSocket cuando hay autenticación
   useEffect(() => {
-    // Solo conectar WebSocket si hay token válido
-    if (token) {
-      websocketService.connect(token);
+    if (isAuthenticated) {
+      // Conectar WebSocket usando cookies automáticamente
+      websocketService.connect();
     } else {
       websocketService.disconnect();
     }
 
-    // Escuchar actualizaciones de permisos (aceptamos `unknown` y lo estrechamos localmente)
+    // Escuchar actualizaciones de permisos
     const unsubscribePermissions = websocketService.on(
       "permissions_updated",
-      (data: unknown) => {
+      async (data: unknown) => {
         const payload = data as {
           permisos: string[];
           modulos: Record<string, string[]>;
-          access_token: string;
+          access_token?: string;
         };
-        console.log("✨ Permisos y nuevo token recibidos:", payload);
 
-        if (payload?.access_token && payload?.permisos && payload?.modulos) {
+        if (payload?.permisos && payload?.modulos) {
+          // 1. Actualizar estado de React (UI inmediata)
           setUserPermissions(payload.permisos);
           setUserModules(payload.modulos);
-          localStorage.setItem("permissions", JSON.stringify(payload.permisos));
-          localStorage.setItem("modules", JSON.stringify(payload.modulos));
 
-          setToken(payload.access_token);
-          localStorage.setItem("token", payload.access_token);
+          // 2. Actualizar cookie JWT inmediatamente con el token del WebSocket
+          let cookieUpdated = false;
+          if (payload.access_token) {
+            try {
+              document.cookie = `Authentication=${payload.access_token}; path=/; max-age=${8 * 60 * 60}; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''
+                }`;
+              cookieUpdated = true;
+            } catch (error) {
+              console.error("⚠️ Error actualizando cookie desde WebSocket:", error);
+            }
+          }
 
-          // Emitir evento personalizado para que otros componentes sepan que los permisos cambiaron
+          // 3. Llamar a /auth/refresh como respaldo si es necesario
+          if (!cookieUpdated) {
+            try {
+              await api.post('/auth/refresh');
+            } catch (error) {
+              console.error("❌ Error crítico: No se pudo actualizar cookie JWT:", error);
+              toast.error("Error actualizando permisos. Por favor, recarga la página.");
+              return;
+            }
+          }
+
+          // 4. Emitir evento personalizado
           window.dispatchEvent(
             new CustomEvent("permissionsChanged", {
               detail: { permisos: payload.permisos, modulos: payload.modulos },
             })
           );
 
+          // 5. Notificar al usuario
           toast.info("Tus permisos han sido actualizados.");
         }
       }
@@ -166,76 +161,89 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Escuchar evento de token expirado
     const handleTokenExpired = () => {
       console.warn("🔴 Token expirado detectado. Cerrando sesión...");
-      logout();
-      toast.error(
-        "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
-      );
+      logout('expired');
     };
 
     window.addEventListener("tokenExpired", handleTokenExpired);
 
     return () => {
-      // Limpiar listeners al desmontar
       unsubscribePermissions();
       window.removeEventListener("tokenExpired", handleTokenExpired);
     };
-  }, [token]);
+  }, [isAuthenticated]); // ✅ CRITICAL: Solo ejecutar cuando cambia isAuthenticated
 
-  const login = (newToken: string) => {
-    localStorage.setItem("token", newToken);
-    setToken(newToken);
-    setIsLoggingOut(false);
-
-    // Decodificar el token para obtener el nombre del usuario
+  const login = async (identificacion: string, password: string, id_ficha?: string) => {
     try {
-      const decoded: any = jwtDecode(newToken);
-      if (decoded.nombre) {
-        // Actualizar userData con el nombre del token
-        setUserData((prev) =>
-          prev
-            ? { ...prev, nombres: decoded.nombre }
-            : {
-                tipo: "CC",
-                identificacion: decoded.identificacion || "",
-                nombres: decoded.nombre,
-                apellidos: "",
-                email: decoded.username || "",
-                telefono: "",
-                fotoUrl: "",
-                rolNombre: decoded.rolNombre || "",
-              }
-        );
+      // Llamar al endpoint de login - el backend establecerá la cookie
+      const { data } = await api.post("/auth/login", {
+        identificacion,
+        password,
+        id_ficha,
+      });
+
+      // data contiene { message, user, permisos, modulos } pero NO el token
+      if (data.user && data.user.estado === false) {
+        throw new Error("Usuario inactivo. Por favor, contacte al administrador.");
       }
-    } catch (error) {
-      console.error("Error decodificando token:", error);
+
+      // Guardar datos en memoria (React state)
+      setUserPermissions(data.permisos || []);
+      setUserModules(data.modulos || {});
+      setIsAuthenticated(true);
+      setIsLoggingOut(false);
+
+      // Obtener perfil completo
+      await checkAuth();
+
+      toast.success(data.message || "Ha iniciado sesión correctamente");
+    } catch (error: any) {
+      console.error("Error en login:", error);
+      throw error;
     }
   };
 
-  const logout = () => {
-    setIsLoggingOut(true);
-    localStorage.removeItem("token");
-    localStorage.removeItem("permissions");
-    localStorage.removeItem("modules");
-    setToken(null);
-    setUserPermissions(null);
-    setUserModules(null);
-    setUserData(null);
+  const logout = async (reason: 'manual' | 'expired' = 'manual') => {
+    try {
+      setIsLoggingOut(true);
+
+      // Llamar al endpoint de logout para borrar la cookie
+      await api.post("/auth/logout");
+
+      // Limpiar estado (memoria)
+      setIsAuthenticated(false);
+      setUserPermissions(null);
+      setUserModules(null);
+      setUserData(null);
+
+      websocketService.disconnect();
+
+      // Mostrar notificación basada en la razón del logout
+      if (reason === 'expired') {
+        toast.error("Debe iniciar sesión nuevamente");
+      } else {
+        toast.success("Has cerrado sesión");
+      }
+    } catch (error) {
+      console.error("Error en logout:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const refreshPermissions = async () => {
-    await fetchAndSetData();
+    await checkAuth();
   };
 
   const refreshUserData = async () => {
-    await fetchAndSetData();
+    await checkAuth();
   };
 
   return (
     <AuthContext.Provider
       value={{
-        token,
         loading,
         isLoggingOut,
+        isAuthenticated,
         userPermissions,
         userModules,
         userData,

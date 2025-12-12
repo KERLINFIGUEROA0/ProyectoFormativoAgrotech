@@ -37,7 +37,24 @@ export const useModulePermissions = () => {
 
     if (!modules[moduleName]?.hasAnyPermission) return false;
 
-    if (!permission) return true; // Si solo pregunta por módulo, verificar si tiene algún permiso
+    // Si pide Ver específicamente, validar directamente
+    if (permission === 'Ver') {
+      const fullPermissionName = `${moduleName}.Ver`;
+      return modules[moduleName].permissions.includes(fullPermissionName);
+    }
+
+    // Para cualquier otro permiso, PRIMERO validar que tenga Ver
+    const viewPermission = `${moduleName}.Ver`;
+    const hasView = modules[moduleName].permissions.includes(viewPermission);
+
+    if (permission && !hasView) {
+      return false; // Sin Ver, no puede usar otros permisos
+    }
+
+    // Si solo pregunta por módulo (sin permiso específico), verificar si tiene Ver
+    if (!permission) {
+      return hasView;
+    }
 
     const fullPermissionName = `${moduleName}.${permission}`;
     return modules[moduleName].permissions.includes(fullPermissionName);

@@ -1,65 +1,45 @@
 import { io, Socket, type ManagerOptions, type SocketOptions } from 'socket.io-client';
-import { jwtDecode } from 'jwt-decode';
-
-interface JwtPayload {
-  exp?: number;
-  iat?: number;
-  sub?: string;
-}
 
 class WebSocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, ((data: unknown) => void)[]> = new Map();
   private currentToken: string | undefined;
 
-  // Método para verificar si un token es válido (no expirado)
-  private isTokenValid(token: string): boolean {
-    try {
-      const decoded: JwtPayload = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      return decoded.exp ? decoded.exp > currentTime : false;
-    } catch (error) {
-      console.error('Error decodificando token:', error);
-      return false;
-    }
-  }
+  // Método para conectar (ahora usa cookies automáticamente)
+  connect() {
 
-  // Método para conectar explícitamente pasando el token (opcional)
-  connect(token?: string) {
-    // 1. Evitar reconexiones si ya estamos conectados con el mismo token
-    if (this.socket?.connected && this.currentToken === token) {
+    // 1. Si ya está conectado, no hacer nada
+    if (this.socket?.connected) {
       return;
     }
 
-    // 2. Limpieza previa
-    if (this.socket) {
-      this.socket.disconnect();
+    // 2. Si hay un socket CONECTÁNDOSE (no conectado aún), no interrumpirlo
+    if (this.socket && !this.socket.connected && this.socket.io['_readyState'] === 'opening') {
+      return;
+    }
+
+    // 3. Solo desconectar si el socket está realmente roto o desconectado
+    if (this.socket && this.socket.disconnected) {
+      this.socket.removeAllListeners();
       this.socket = null;
     }
 
-    this.currentToken = token;
-
-    if (token && !this.isTokenValid(token)) {
-      console.warn('⚠️ Token expirado al intentar conectar WS.');
-      window.dispatchEvent(new CustomEvent('tokenExpired'));
-      return;
-    }
+    // Ya no guardamos ni validamos el token aquí, las cookies lo manejan automáticamente
+    this.currentToken = undefined;
 
     const API_URL = import.meta.env.VITE_BACKEND_URL;
 
-    // --- CONFIGURACIÓN BLINDADA ---
+    // --- CONFIGURACIÓN PARA COOKIES ---
     const options: Partial<ManagerOptions & SocketOptions> = {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 3000,   // Aumentamos a 3s para no saturar el navegador en el bucle
+      reconnectionDelay: 3000,
 
-      // ❌ ELIMINAMOS extraHeaders (No funcionan bien en websockets puros de navegador)
+      // ✅ IMPORTANTE: Enviar cookies automáticamente
+      withCredentials: true,
 
-      // ✅ USAMOS auth: La forma nativa de Socket.IO para enviar credenciales
-      auth: {
-        token: token
-      }
+      // ❌ YA NO ENVIAMOS TOKEN EN AUTH - Las cookies se envían automáticamente
     };
 
     this.socket = io(API_URL, options);
@@ -86,13 +66,8 @@ class WebSocketService {
       // Si el servidor nos desconecta, evaluamos por qué
       if (reason === 'io server disconnect') {
         console.warn('🔴 El servidor forzó la desconexión.');
-        // Solo intentamos reconectar si estamos seguros de que el token es válido
-        if (this.currentToken && this.isTokenValid(this.currentToken)) {
-           // Pequeño delay antes de reintentar manual
-           setTimeout(() => this.socket?.connect(), 1000);
-        } else {
-           window.dispatchEvent(new CustomEvent('tokenExpired'));
-        }
+        // Emitimos evento de sesión expirada
+        window.dispatchEvent(new CustomEvent('tokenExpired'));
       } else {
         console.warn(`🔴 Desconexión por red/transporte: ${reason}`);
         // Aquí la reconexión automática de Socket.IO (reconnection: true) hará su trabajo

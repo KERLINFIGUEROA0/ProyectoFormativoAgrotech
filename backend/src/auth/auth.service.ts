@@ -9,7 +9,7 @@ export class AuthService {
   constructor(
     private readonly usuariosService: UsuariosService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async _createToken(usuario: Usuario) {
     const permisosRol = (usuario.tipoUsuario?.rolPermisos ?? [])
@@ -19,7 +19,7 @@ export class AuthService {
     const permisosUsuario = (usuario.usuarioPermisos ?? [])
       .map((up) => up.permiso?.nombre)
       .filter(Boolean) as string[];
-      
+
     const permisos = Array.from(new Set([...permisosRol, ...permisosUsuario]));
 
     const modulos = (usuario.tipoUsuario?.rolPermisos ?? [])
@@ -77,6 +77,22 @@ export class AuthService {
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
     // Usamos el nuevo método para generar la respuesta
+    return this._createToken(usuario);
+  }
+
+  /**
+   * Refresca el token del usuario obteniendo permisos actualizados desde la BD
+   * Útil para actualizar permisos en tiempo real sin cerrar sesión
+   */
+  async refreshToken(jwtPayload: any) {
+    // jwtPayload viene de req.user (datos del JWT actual)
+    const usuario = await this.usuariosService.findByIdentificacion(jwtPayload.identificacion);
+    if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
+    if (usuario.estado === false) {
+      throw new UnauthorizedException('El usuario se encuentra inactivo.');
+    }
+
+    // Generar nuevo token con permisos actualizados desde BD
     return this._createToken(usuario);
   }
 }

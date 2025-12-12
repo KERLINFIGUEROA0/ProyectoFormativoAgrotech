@@ -6,20 +6,24 @@ import {
   Param,
   HttpException,
   HttpStatus,
-  UseGuards, 
+  UseGuards,
 } from '@nestjs/common';
 import { UsuarioPermisoService } from './usuarios_permisos.service';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
-import { PermissionGuard } from '../../authorization/permission.guard'; 
-import { Permission } from '../../authorization/permission.decorator'; 
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
+import { NotificationsGateway } from '../../notifications/notifications.gateway';
 
 @Controller('usuario-permisos')
-@UseGuards(JwtAuthGuard, PermissionGuard) 
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class UsuarioPermisoController {
-  constructor(private readonly usuarioPermisoService: UsuarioPermisoService) {}
+  constructor(
+    private readonly usuarioPermisoService: UsuarioPermisoService,
+    private readonly notificationsGateway: NotificationsGateway,
+  ) { }
 
   @Get('usuario/:usuarioId')
-  @Permission('Usuarios.Asignar') 
+  @Permission('Usuarios.Asignar')
   async getPermissionsForUser(@Param('usuarioId') usuarioId: string) {
     try {
       const permissions =
@@ -42,12 +46,16 @@ export class UsuarioPermisoController {
   }
 
   @Post('toggle')
-  @Permission('Usuarios.Asignar') 
+  @Permission('Usuarios.Asignar')
   async togglePermission(
     @Body() dto: { usuarioId: number; permisoId: number; estado: boolean },
   ) {
     try {
       const result = await this.usuarioPermisoService.togglePermission(dto);
+
+      // Emitir WebSocket para actualizar permisos en tiempo real
+      await this.notificationsGateway.sendPermissionsUpdate(dto.usuarioId);
+
       return {
         success: true,
         message: 'Permiso de usuario actualizado correctamente.',

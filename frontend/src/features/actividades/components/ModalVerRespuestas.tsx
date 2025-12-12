@@ -5,6 +5,7 @@ import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { obtenerRespuestasPorActividad, calificarRespuesta, obtenerPagosPorActividad } from '../api/actividadesapi';
 import { formatDateOnly } from '../../../utils/dateUtils';
 import ModalComentarioRechazo from './ModalComentarioRechazo';
+import { api } from '../../../lib/axios';
 
 // Función helper para extraer el nombre original del archivo
 const getOriginalFilename = (fullFilename: string): string => {
@@ -96,23 +97,15 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
 
   const downloadFile = async (filename: string) => {
     try {
-      const token = localStorage.getItem('token');
       // Usar el endpoint del backend con el nombre original como parámetro
       const originalName = getOriginalFilename(filename);
-      const url = `${import.meta.env.VITE_BACKEND_URL}/actividades/descargar/${filename}?nombre=${encodeURIComponent(originalName)}`;
+      const url = `/actividades/descargar/${filename}?nombre=${encodeURIComponent(originalName)}`;
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await api.get(url, {
+        responseType: 'blob'
       });
 
-      if (!response.ok) {
-        throw new Error('Error al descargar el archivo');
-      }
-
-      const blob = await response.blob();
+      const blob = response.data;
       const downloadUrl = window.URL.createObjectURL(blob);
 
       // Crear un enlace temporal para descargar

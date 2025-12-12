@@ -26,6 +26,7 @@ import {
 } from '../api/mqttConfigApi';
 // Asegúrate de importar 'actualizarLote'
 import { obtenerLotes } from '../../cultivos/api/lotesApi';
+import { api } from '../../../lib/axios';
 
 // --- COMPONENTES ---
 import Modal from '../../../components/Modal';
@@ -346,8 +347,8 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
         // Cargar sensores existentes para obtener sus umbrales actuales
         try {
-          const sensoresResponse = await fetch(`http://localhost:3000/sensores?loteId=${loteId}`);
-          const sensoresData = await sensoresResponse.json();
+          const sensoresResponse = await api.get(`/sensores?loteId=${loteId}`);
+          const sensoresData = sensoresResponse.data;
 
           // Filtrar sensores que corresponden a los tópicos de esta configuración
           const sensoresConfiguracion = sensoresData.data.filter((sensor: any) =>
@@ -356,9 +357,11 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
           // Crear el array de tópicos con sus umbrales actuales
           const topicosConUmbrales = brokerLote.topicos.map(topic => {
-            const sensorExistente = sensoresConfiguracion.find((sensor: any) => sensor.topic === topic);
+            // Sanitizar el tópico eliminando pipes y trim
+            const sanitizedTopic = topic.trim().replace(/\|/g, '');
+            const sensorExistente = sensoresConfiguracion.find((sensor: any) => sensor.topic === sanitizedTopic);
             return {
-              topic,
+              topic: sanitizedTopic,
               min: sensorExistente?.valor_minimo_alerta || undefined,
               max: sensorExistente?.valor_maximo_alerta || undefined,
             };
@@ -367,8 +370,8 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
           setTopicos(topicosConUmbrales);
         } catch (error) {
           console.error('Error cargando sensores existentes:', error);
-          // Fallback: solo cargar los tópicos sin umbrales
-          setTopicos(brokerLote.topicos.map(topic => ({ topic })));
+          // Fallback: solo cargar los tópicos sin umbrales, también sanitizados
+          setTopicos(brokerLote.topicos.map(topic => ({ topic: topic.trim().replace(/\|/g, '') })));
         }
       } else {
         setSelectedBrokerId(null);
@@ -391,8 +394,11 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
   }, [selectedBrokerId, puerto, topicPrueba]);
 
   const handleAddTopico = () => {
-    if (nuevoTopico.trim() && !topicos.some(t => t.topic === nuevoTopico.trim())) {
-      setTopicos([...topicos, { topic: nuevoTopico.trim(), min: nuevoMin, max: nuevoMax }]);
+    // Sanitizar el tópico: eliminar pipes y hacer trim
+    const sanitizedTopic = nuevoTopico.trim().replace(/\|/g, '');
+
+    if (sanitizedTopic && !topicos.some(t => t.topic === sanitizedTopic)) {
+      setTopicos([...topicos, { topic: sanitizedTopic, min: nuevoMin, max: nuevoMax }]);
       setNuevoTopico('');
       setNuevoMin(undefined);
       setNuevoMax(undefined);
@@ -414,21 +420,14 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
 
     const toastId = toast.loading("Probando conexión...");
     try {
-      const response = await fetch('http://localhost:3000/mqtt-config/broker-lotes/test-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          brokerId: selectedBrokerId,
-          puerto: puerto,
-          topicos: topicos.map(t => t.topic),
-          topicPrueba: topicPrueba || undefined
-        })
+      const response = await api.post('/mqtt-config/broker-lotes/test-connection', {
+        brokerId: selectedBrokerId,
+        puerto: puerto,
+        topicos: topicos.map(t => t.topic),
+        topicPrueba: topicPrueba || undefined
       });
 
-      const result = await response.json();
+      const result = response.data;
       setTestResult(result);
 
       if (result.connected) {
@@ -641,7 +640,7 @@ function BrokerLoteModal({ isOpen, onClose, onSuccess, onUpdate, onDelete, onEdi
               <Input
                 value={nuevoTopico}
                 onChange={(e) => setNuevoTopico(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTopico()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTopico()}
                 placeholder="Ej: temperatura/lote1"
                 fullWidth
               />

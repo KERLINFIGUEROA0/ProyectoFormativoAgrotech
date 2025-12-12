@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:15
+    platform: linux/amd64
     container_name: db-formativo
     restart: always
     environment:
@@ -16,6 +17,7 @@ services:
 
   redis:
     image: redis:alpine
+    platform: linux/amd64
     container_name: agro-tech-redis
     restart: always
     ports:

@@ -63,7 +63,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
         brokerId: null,
       });
     }
-  }, [initialData]);
+  }, [initialData?.id]); // ✅ Solo ejecutar cuando cambia el ID (mount o cambio de sublote)
 
 
   const handlePuntoSeleccionado = (lat: number, lng: number) => {
@@ -195,6 +195,7 @@ export default function SubloteForm({ initialData = {}, lotes = [], lotePadre, i
           value={formData.nombre}
           onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
           placeholder="Ej: Punto Norte, Sector A"
+          autoFocus
           fullWidth
         />
 

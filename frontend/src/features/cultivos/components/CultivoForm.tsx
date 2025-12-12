@@ -314,8 +314,8 @@ export default function CultivoForm({
       tipoCultivoId: showNewTipoInput
         ? null
         : tipoCultivoId
-        ? parseInt(tipoCultivoId, 10)
-        : null,
+          ? parseInt(tipoCultivoId, 10)
+          : null,
       loteId: parseInt(loteId, 10), // Enviar Lote como número
       Fecha_Plantado: formData.Fecha_Plantado,
       descripcion: formData.descripcion,
@@ -378,10 +378,10 @@ export default function CultivoForm({
             !formData.loteId
               ? "Primero elige un lote"
               : isLoadingSublotes
-              ? "Cargando..."
-              : tieneSublotes
-              ? "Selecciona una división (Requerido)"  // <--- Cambio aquí
-              : "Lote completo (Sin divisiones)"
+                ? "Cargando..."
+                : tieneSublotes
+                  ? "Selecciona una división (Requerido)"  // <--- Cambio aquí
+                  : "Lote completo (Sin divisiones)"
           }
           selectedKeys={formData.subloteId ? [formData.subloteId.toString()] : []}
           onSelectionChange={(keys) => {
@@ -402,10 +402,10 @@ export default function CultivoForm({
         >
           {Array.isArray(sublotes)
             ? sublotes.map((sub) => (
-                <SelectItem key={sub.id.toString()} textValue={sub.nombre}>
-                  {sub.nombre} ({sub.estado})
-                </SelectItem>
-              ))
+              <SelectItem key={sub.id.toString()} textValue={sub.nombre}>
+                {sub.nombre} ({sub.estado})
+              </SelectItem>
+            ))
             : []}
         </Select>
       </div>
@@ -416,7 +416,7 @@ export default function CultivoForm({
       {formData.loteId && tieneSublotes && !formData.subloteId && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700 flex items-center gap-2">
-             <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.Por favor selecciona un Sublote específico.
+            <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.Por favor selecciona un Sublote específico.
           </p>
         </div>
       )}
@@ -449,8 +449,8 @@ export default function CultivoForm({
             showNewTipoInput
               ? ["otro"]
               : formData.tipoCultivoId
-              ? [formData.tipoCultivoId.toString()]
-              : []
+                ? [formData.tipoCultivoId.toString()]
+                : []
           }
           onSelectionChange={(keys) => {
             const value = Array.from(keys)[0] as string;
@@ -505,20 +505,6 @@ export default function CultivoForm({
         onChange={handleChange}
         fullWidth
       />
-
-      <Select
-        label="Estado del Cultivo"
-        placeholder="Seleccionar estado"
-        selectedKeys={[formData.Estado || "Activo"]}
-        onSelectionChange={(keys) => {
-          const value = Array.from(keys)[0] as string;
-          handleChange({ target: { name: "Estado", value } } as any);
-        }}
-        fullWidth
-      >
-        <SelectItem key="Activo">Activo</SelectItem>
-        <SelectItem key="Cosecha">En Cosecha</SelectItem>
-      </Select>
 
       <Textarea
         label="Descripción"

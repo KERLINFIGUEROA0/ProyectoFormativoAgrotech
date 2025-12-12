@@ -31,6 +31,7 @@ import { Permission } from '../../authorization/permission.decorator';
 import { JwtAuthGuard } from '../../authorization/jwt.guard';
 import { CambiarPasswordDto } from './dto/cambiar-password.dto';
 import { FichasService } from '../../modules/fichas/fichas.service';
+import { NotificationsGateway } from '../../notifications/notifications.gateway';
 
 
 @Controller('usuarios')
@@ -39,10 +40,11 @@ export class UsuariosController {
   constructor(
     private readonly usuariosService: UsuariosService,
     private readonly fichasService: FichasService,
-  ) {}
+    private readonly notificationsGateway: NotificationsGateway,
+  ) { }
   @Post('crear')
   @Permission('Usuarios.Crear')
-  
+
   async crear(@Body() data: CreateUsuarioDto) {
     try {
       const usuario = await this.usuariosService.crear(data);
@@ -65,7 +67,7 @@ export class UsuariosController {
   @Post('cargar-excel')
   @UseInterceptors(FileInterceptor('file'))
   @Permission('Usuarios.Crear')
-  
+
   async cargarExcel(@UploadedFile() file: Express.Multer.File) {
     try {
       const resultado = await this.usuariosService.cargarDesdeExcel(file);
@@ -87,7 +89,7 @@ export class UsuariosController {
   }
   @Get('exportar-excel')
   @Permission('Usuarios.Ver')
-  
+
   async exportarExcel(@Res() res: Response) {
     try {
       const buffer = await this.usuariosService.exportarExcel();
@@ -107,7 +109,7 @@ export class UsuariosController {
 
   @Get()
   @Permission('Usuarios.Ver')
-  
+
   async buscarTodos() {
     try {
       const usuarios = await this.usuariosService.buscarTodos();
@@ -132,7 +134,7 @@ export class UsuariosController {
   }
   @Get('buscar')
   @Permission('Usuarios.Ver')
-  
+
   async buscar(
     @Query() criterios: { nombre?: string; identificacion?: string; rol?: string },
   ) {
@@ -173,7 +175,7 @@ export class UsuariosController {
           id_ficha: u.ficha.id_ficha,
         } : undefined,
       }));
-      
+
       return {
         success: true,
         data: data,
@@ -192,7 +194,7 @@ export class UsuariosController {
 
   @Get('buscar/:id')
   @Permission('Usuarios.Ver')
-  
+
   async buscarPorId(@Param('id') id: number) {
     try {
       const usuario = await this.usuariosService.buscarPorId(id);
@@ -235,10 +237,10 @@ export class UsuariosController {
       );
     }
   }
-  
+
   @Delete('eliminar/:id')
   @Permission('Usuarios.Desactivar')
-  
+
   async eliminar(@Param('id') id: number) {
     try {
       await this.usuariosService.eliminar(id);
@@ -281,7 +283,7 @@ export class UsuariosController {
 
   @Get('identificacion/:identificacion')
   @Permission('Usuarios.Ver')
-  
+
   async findByIdentificacion(@Param('identificacion') identificacion: string) {
     try {
       const usuario =
@@ -337,60 +339,60 @@ export class UsuariosController {
     }
   }
   @Get('perfil')
-   async obtenerPerfil(@Req() req) {
-     try {
-       const usuarioId = req.user.id;
-       const usuario = await this.usuariosService.buscarPorId(usuarioId);
+  async obtenerPerfil(@Req() req) {
+    try {
+      const usuarioId = req.user.id;
+      const usuario = await this.usuariosService.buscarPorId(usuarioId);
 
-       const permisosRol = (usuario.tipoUsuario?.rolPermisos ?? [])
-         .map((rp) => rp.permiso?.nombre)
-         .filter(Boolean) as string[];
+      const permisosRol = (usuario.tipoUsuario?.rolPermisos ?? [])
+        .map((rp) => rp.permiso?.nombre)
+        .filter(Boolean) as string[];
 
-       const permisosUsuario = (usuario.usuarioPermisos ?? [])
-         .map((up) => up.permiso?.nombre)
-         .filter(Boolean) as string[];
+      const permisosUsuario = (usuario.usuarioPermisos ?? [])
+        .map((up) => up.permiso?.nombre)
+        .filter(Boolean) as string[];
 
-       const permisos = Array.from(new Set([...permisosRol, ...permisosUsuario]));
+      const permisos = Array.from(new Set([...permisosRol, ...permisosUsuario]));
 
-       const modulos = (usuario.tipoUsuario?.rolPermisos ?? [])
-         .map((rp) => rp.permiso)
-         .concat((usuario.usuarioPermisos ?? []).map((up) => up.permiso))
-         .filter(Boolean)
-         .reduce((acc: Record<string, string[]>, p: any) => {
-           const moduloNombre = p?.modulo?.nombre || 'General';
-           acc[moduloNombre] = acc[moduloNombre] || [];
-           if (!acc[moduloNombre].includes(p.nombre)) {
-             acc[moduloNombre].push(p.nombre);
-           }
-           return acc;
-         }, {});
+      const modulos = (usuario.tipoUsuario?.rolPermisos ?? [])
+        .map((rp) => rp.permiso)
+        .concat((usuario.usuarioPermisos ?? []).map((up) => up.permiso))
+        .filter(Boolean)
+        .reduce((acc: Record<string, string[]>, p: any) => {
+          const moduloNombre = p?.modulo?.nombre || 'General';
+          acc[moduloNombre] = acc[moduloNombre] || [];
+          if (!acc[moduloNombre].includes(p.nombre)) {
+            acc[moduloNombre].push(p.nombre);
+          }
+          return acc;
+        }, {});
 
-       return {
-         success: true,
-         message: 'Perfil obtenido correctamente',
-         data: {
-           tipoIdentificacion: usuario.Tipo_Identificacion,
-           identificacion: usuario.identificacion,
-           nombres: usuario.nombre,
-           apellidos: usuario.apellidos,
-           correo: usuario.correo,
-           telefono: usuario.telefono,
-           rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
-           permisos,
-           modulos,
-         },
-       };
-     } catch (error) {
-       throw new HttpException(
-         {
-           success: false,
-           message: 'Error al obtener perfil',
-           error: error.message,
-         },
-         HttpStatus.BAD_REQUEST,
-       );
-     }
-   }
+      return {
+        success: true,
+        message: 'Perfil obtenido correctamente',
+        data: {
+          tipoIdentificacion: usuario.Tipo_Identificacion,
+          identificacion: usuario.identificacion,
+          nombres: usuario.nombre,
+          apellidos: usuario.apellidos,
+          correo: usuario.correo,
+          telefono: usuario.telefono,
+          rolNombre: usuario.tipoUsuario?.nombre || 'Usuario',
+          permisos,
+          modulos,
+        },
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Error al obtener perfil',
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
   @Put('editarperfil')
 
   async editarPerfil(@Req() req, @Body() data: UpdatePerfilDto) {

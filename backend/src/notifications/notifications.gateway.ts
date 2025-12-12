@@ -8,10 +8,13 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { Inject, Logger, forwardRef } from '@nestjs/common';
 import { UsuariosService } from '../modules/usuarios/usuarios.service';
-import { AuthService } from '../auth/auth.service'; // <-- AÑADIR IMPORT
+import { AuthService } from '../auth/auth.service'; 
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: 'http://localhost:5173',
+    credentials: true, 
+  },
 })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -25,16 +28,30 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     @Inject(forwardRef(() => UsuariosService))
     private usuariosService: UsuariosService,
     private authService: AuthService, // <-- INYECTAR AUTHSERVICE
-  ) {}
+  ) { }
 
   async handleConnection(client: Socket) {
     try {
-      // ✅ ESTRATEGIA DUAL: Busca en 'auth' (Frontend) o 'headers' (Postman/Otros)
-      let token = client.handshake.auth?.token;
+      this.logger.log(`🔍 [Notifications] Intentando conectar cliente ${client.id}`);
 
-      // Fallback: Si no viene en auth, busca en headers
+      // ✅ PRIORIDAD 1: Buscar token en cookies (nuevo método con cookies HttpOnly)
+      let token = client.handshake.headers.cookie
+        ?.split('; ')
+        ?.find(c => c.startsWith('Authentication='))
+        ?.split('=')[1];
+
+      this.logger.log(`🍪 [Notifications] Token desde cookie: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
+
+      // Fallback 1: Buscar en auth (compatibilidad con versiones anteriores)
+      if (!token) {
+        token = client.handshake.auth?.token;
+        this.logger.log(`🔑 [Notifications] Token desde auth: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
+      }
+
+      // Fallback 2: Buscar en headers Authorization (Postman)
       if (!token && client.handshake.headers.authorization) {
         token = client.handshake.headers.authorization.split(' ')[1];
+        this.logger.log(`📨 [Notifications] Token desde Authorization header: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
       }
 
       if (!token) {
@@ -42,6 +59,8 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         client.disconnect();
         return;
       }
+
+      this.logger.log(`✅ [Notifications] Token encontrado, validando...`);
 
       const payload = this.jwtService.verify(token);
       this.connectedUsers.set(payload.sub, client.id);
@@ -66,15 +85,15 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     const socketId = this.connectedUsers.get(userId);
     if (socketId) {
       this.logger.log(`🚀 Enviando actualización de permisos al usuario ${userId}`);
-      
+
       const usuarioCompleto = await this.usuariosService.findByIdentificacion(
         (await this.usuariosService.buscarPorId(userId)).identificacion
       );
-      
+
       if (usuarioCompleto) {
         // --- CAMBIO CLAVE: Generar y enviar nuevo token ---
         const newTokenData = await this.authService._createToken(usuarioCompleto);
-        
+
         this.server.to(socketId).emit('permissions_updated', {
           permisos: newTokenData.permisos,
           modulos: newTokenData.modulos,

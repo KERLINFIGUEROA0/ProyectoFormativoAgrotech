@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import * as cookieParser from 'cookie-parser';
 
 // --- CONFIGURACIÓN DE ZONA HORARIA ---
 process.env.TZ = 'America/Bogota';
@@ -14,11 +15,15 @@ async function bootstrap() {
   // --- WebSocket Adapter (usar configuración por defecto) ---
   // app.useWebSocketAdapter(new IoAdapter(app));
 
+  // --- 1. Habilitar lectura de cookies ---
+  app.use(cookieParser());
+
+  // --- 2. CORS estricto para cookies ---
   app.enableCors({
     origin: ['http://localhost:5173'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
-    credentials: true,
+    credentials: true, // Permite enviar/recibir cookies
   });
 
   // --- 3. Añade esta línea para servir los archivos de la carpeta 'uploads' ---

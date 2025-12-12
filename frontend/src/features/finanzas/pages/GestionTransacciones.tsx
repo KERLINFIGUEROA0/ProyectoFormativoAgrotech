@@ -1,11 +1,12 @@
 import { useState, useEffect, type ReactElement } from 'react';
 import { toast } from 'sonner';
 import { FaTrash, FaDownload, FaArrowUp, FaArrowDown, FaFileExcel } from 'react-icons/fa';
-import { Trash2,Search, Filter } from 'lucide-react';
+import { Trash2, Search, Filter } from 'lucide-react';
 import { obtenerTransacciones, eliminarTransaccion } from '../api/transaccionesApi';
 import { exportarExcelCultivo, exportarExcelGeneral } from '../api/excelApi';
 import TransaccionForm from '../components/TransaccionForm';
 import type { Transaccion, TransaccionData } from '../interfaces/finanzas';
+import { api } from '../../../lib/axios';
 import {
   Modal,
   ModalContent,
@@ -29,7 +30,6 @@ import PermissionWrapper from "../../../components/PermissionWrapper";
 import { formatToTable } from '../../../utils/dateUtils.ts';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
-const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 interface Cultivo {
   id: number;
@@ -53,21 +53,16 @@ export default function GestionTransaccionesPage(): ReactElement {
     }
   };
 
-  useEffect(() => { 
+  useEffect(() => {
     fetchData();
     cargarCultivos();
   }, []);
 
   const cargarCultivos = async () => {
     try {
-      const response = await fetch(`${API_URL}/finanzas/cultivos-disponibles`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setCultivos(data.data || []);
+      const response = await api.get('/finanzas/cultivos-disponibles');
+      if (response.data.success) {
+        setCultivos(response.data.data || []);
       }
     } catch (error) {
       console.error('Error al cargar cultivos:', error);
@@ -109,19 +104,7 @@ export default function GestionTransaccionesPage(): ReactElement {
         produccion: data.produccionId
       } : data;
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Error del servidor');
-      }
+      await api.post(endpoint, payload);
 
       toast.success("Transacción registrada con éxito", { id: toastId });
       closeModal();
@@ -135,14 +118,14 @@ export default function GestionTransaccionesPage(): ReactElement {
   const openModal = () => {
     setIsModalOpen(true);
   };
-  
+
   const closeModal = () => {
     setIsModalOpen(false);
   };
-  
+
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredTransacciones = transacciones.filter(t => 
+
+  const filteredTransacciones = transacciones.filter(t =>
     t && t.descripcion && t.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -310,15 +293,10 @@ export default function GestionTransaccionesPage(): ReactElement {
                             size="sm"
                             onClick={async () => {
                               try {
-                                const response = await fetch(`${API_URL}/finanzas/transacciones/${t.id}/factura`, {
-                                  headers: {
-                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                                  }
+                                const response = await api.get(`/finanzas/transacciones/${t.id}/factura`, {
+                                  responseType: 'blob'
                                 });
-                                if (!response.ok) {
-                                  throw new Error('Error al descargar la factura');
-                                }
-                                const blob = await response.blob();
+                                const blob = response.data;
                                 const url = window.URL.createObjectURL(blob);
                                 const a = document.createElement('a');
                                 a.href = url;
@@ -359,65 +337,65 @@ export default function GestionTransaccionesPage(): ReactElement {
           </Table>
         </CardBody>
       </Card>
-     {/* Modal Nueva Transacción */}
-     <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="2xl" scrollBehavior="inside">
-       <ModalContent>
-         {(onClose) => (
-           <>
-             <ModalHeader className="flex flex-col gap-1 text-gray-800">
-               Registrar Nueva Venta
-               <span className="text-sm font-normal text-gray-500">Ingresa la información de la venta (tipo: Ingreso)</span>
-             </ModalHeader>
-             <ModalBody>
-               <TransaccionForm
-                 onSave={handleSave}
-                 onCancel={onClose}
-               />
-             </ModalBody>
-           </>
-         )}
-       </ModalContent>
-     </Modal>
+      {/* Modal Nueva Transacción */}
+      <Modal isOpen={isModalOpen} onOpenChange={closeModal} size="2xl" scrollBehavior="inside">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 text-gray-800">
+                Registrar Nueva Venta
+                <span className="text-sm font-normal text-gray-500">Ingresa la información de la venta (tipo: Ingreso)</span>
+              </ModalHeader>
+              <ModalBody>
+                <TransaccionForm
+                  onSave={handleSave}
+                  onCancel={onClose}
+                />
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
-     {/* Modal Confirmación Eliminar */}
-     <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete} size="sm">
-       <ModalContent>
-         <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
-           <div className="flex flex-col items-center gap-3">
-             <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-               <Trash2 className="text-red-600" size={24} />
-             </div>
-             <h4 className="text-lg font-semibold text-center">¿Eliminar transacción?</h4>
-           </div>
-         </ModalHeader>
-         <ModalBody className="text-center">
-           <Card className="border border-gray-100 bg-gray-50/50">
-             <CardBody className="py-4">
-               <div className="font-medium text-gray-800">{deleteModal.item?.tipo === 'ingreso' ? 'Venta' : 'Gasto'}</div>
-               <div className="text-sm text-gray-500 mt-1">Transacción financiera</div>
-             </CardBody>
-           </Card>
-           <p className="text-sm text-gray-500 mt-4">Esta acción no se puede deshacer.</p>
-           <div className="flex gap-3 mt-6 w-full justify-center">
-             <Button
-               onClick={cancelDelete}
-               color="default"
-               variant="light"
-               className="flex-1 max-w-[120px] font-semibold"
-             >
-               Cancelar
-             </Button>
-             <Button
-               onClick={confirmDelete}
-               color="danger"
-               className="flex-1 max-w-[120px] font-semibold"
-             >
-               Eliminar
-             </Button>
-           </div>
-         </ModalBody>
-       </ModalContent>
-     </Modal>
-   </div>
- );
+      {/* Modal Confirmación Eliminar */}
+      <Modal isOpen={deleteModal.isOpen} onOpenChange={cancelDelete} size="sm">
+        <ModalContent>
+          <ModalHeader className="flex flex-col items-center justify-center text-center pb-2">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h4 className="text-lg font-semibold text-center">¿Eliminar transacción?</h4>
+            </div>
+          </ModalHeader>
+          <ModalBody className="text-center">
+            <Card className="border border-gray-100 bg-gray-50/50">
+              <CardBody className="py-4">
+                <div className="font-medium text-gray-800">{deleteModal.item?.tipo === 'ingreso' ? 'Venta' : 'Gasto'}</div>
+                <div className="text-sm text-gray-500 mt-1">Transacción financiera</div>
+              </CardBody>
+            </Card>
+            <p className="text-sm text-gray-500 mt-4">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3 mt-6 w-full justify-center">
+              <Button
+                onClick={cancelDelete}
+                color="default"
+                variant="light"
+                className="flex-1 max-w-[120px] font-semibold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                color="danger"
+                className="flex-1 max-w-[120px] font-semibold"
+              >
+                Eliminar
+              </Button>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
 }

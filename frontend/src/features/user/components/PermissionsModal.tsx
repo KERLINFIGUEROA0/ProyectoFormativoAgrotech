@@ -60,22 +60,36 @@ export default function PermissionsModal({
   }, [isOpen, target]);
 
   const handleToggle = (permisoId: number, estado: boolean) => {
+    // Guardar el estado anterior por si necesitamos revertir
+    const previousState = permissions.find(p => p.permisoId === permisoId)?.activo;
+
+    // Actualizar UI optimistamente
+    setPermissions((prev) =>
+      prev.map((p) =>
+        p.permisoId === permisoId ? { ...p, activo: estado } : p
+      )
+    );
+
     const togglePromise = target.type === "rol"
       ? toggleRolePermission(target.id, permisoId, estado)
       : toggleUserPermission(target.id, permisoId, estado);
 
     togglePromise
       .then(() => {
-        setPermissions((prev) =>
-          prev.map((p) =>
-            p.permisoId === permisoId ? { ...p, activo: estado } : p
-          )
-        );
         toast.success(estado ? "Permiso activado" : "Permiso desactivado");
       })
       .catch((error) => {
         console.error("Error al actualizar el permiso:", error);
-        toast.error("Error al actualizar el permiso");
+
+        // Revertir el cambio en la UI si el API call falla
+        setPermissions((prev) =>
+          prev.map((p) =>
+            p.permisoId === permisoId ? { ...p, activo: previousState ?? false } : p
+          )
+        );
+
+        const errorMessage = error?.response?.data?.message || "Error al actualizar el permiso";
+        toast.error(errorMessage);
       });
   };
 
@@ -135,7 +149,7 @@ export default function PermissionsModal({
                 </p>
               </div>
               <p className="text-xs text-amber-700 mt-1">
-               Permisos adicionales solo para este usuario.
+                Permisos adicionales solo para este usuario.
               </p>
             </div>
           )}
@@ -196,11 +210,10 @@ export default function PermissionsModal({
                       {modulePermissions.map((perm) => (
                         <div
                           key={perm.permisoId}
-                          className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${
-                            perm.activo
+                          className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${perm.activo
                               ? "border-green-200 bg-green-50 shadow-sm"
                               : "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                          }`}
+                            }`}
                         >
                           <div className="flex-1">
                             <p className="font-medium text-gray-900">{perm.nombre}</p>

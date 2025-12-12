@@ -1,21 +1,11 @@
-import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/pagos`;
+import { api } from '../../../lib/axios';
 
 export const getPagosByCultivo = async (cultivoId: number) => {
-  const response = await axios.get(`${API_BASE_URL}/cultivo/${cultivoId}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
+  const response = await api.get(`/pagos/cultivo/${cultivoId}`);
   return response;
 };
 
 export const getAllPagos = async () => {
-  const response = await axios.get(API_BASE_URL, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
+  const response = await api.get('/pagos');
   return response;
 };

@@ -21,48 +21,29 @@ interface TransaccionFormProps {
 }
 
 export default function TransaccionForm({ onSave, onCancel }: TransaccionFormProps): ReactElement {
-   const getTodayDate = () => {
-     const today = new Date();
-     const year = today.getFullYear();
-     const month = String(today.getMonth() + 1).padStart(2, '0');
-     const day = String(today.getDate()).padStart(2, '0');
-     return `${year}-${month}-${day}`;
-   };
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-   const [formData, setFormData] = useState<Partial<TransaccionData>>({
-     fecha: getTodayDate(),
-     tipo: 'ingreso', // Todas las ventas son ingresos
-   });
-   const [productions, setProductions] = useState<Produccion[]>([]);
-   const [selectedProduction, setSelectedProduction] = useState<Produccion | null>(null);
+  const [formData, setFormData] = useState<Partial<TransaccionData>>({
+    fecha: getTodayDate(),
+    tipo: 'ingreso', // Todas las ventas son ingresos
+  });
+  const [productions, setProductions] = useState<Produccion[]>([]);
+  const [selectedProduction, setSelectedProduction] = useState<Produccion | null>(null);
 
   useEffect(() => {
     const fetchAvailableProductions = async () => {
       try {
-        // Intentar usar el endpoint específico, si falla usar alternativa
         const response = await getAvailableForSale();
         setProductions(response.data);
       } catch (error) {
-        console.warn("Endpoint /producciones/available-for-sale no disponible, usando alternativa");
-        try {
-          // Usar ruta directa para obtener todas las producciones
-          const produccionesResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/producciones`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          });
-
-          if (produccionesResponse.ok) {
-            const prodData = await produccionesResponse.json();
-            const availableProductions = (prodData.data || []).filter((p: Produccion) => p.cantidad > 0);
-            setProductions(availableProductions);
-          } else {
-            throw new Error("No se pudieron cargar las producciones");
-          }
-        } catch (fallbackError) {
-          console.error("Error en fallback:", fallbackError);
-          toast.error("Error al cargar producciones disponibles");
-        }
+        console.error("Error al cargar producciones:", error);
+        toast.error("Error al cargar producciones disponibles");
       }
     };
 
@@ -184,15 +165,13 @@ export default function TransaccionForm({ onSave, onCancel }: TransaccionFormPro
       </div>
 
       {selectedProduction && formData.cantidad && (
-        <div className={`p-4 rounded-lg border ${
-          formData.cantidad > selectedProduction.cantidad
+        <div className={`p-4 rounded-lg border ${formData.cantidad > selectedProduction.cantidad
             ? 'bg-red-50 border-red-200 text-red-700'
             : 'bg-green-50 border-green-200 text-green-700'
-        }`}>
+          }`}>
           <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-full ${
-              formData.cantidad > selectedProduction.cantidad ? 'bg-red-100' : 'bg-green-100'
-            }`}>
+            <div className={`p-2 rounded-full ${formData.cantidad > selectedProduction.cantidad ? 'bg-red-100' : 'bg-green-100'
+              }`}>
               <Archive size={16} className={formData.cantidad > selectedProduction.cantidad ? "text-red-600" : "text-green-600"} />
             </div>
             <div className="text-sm">

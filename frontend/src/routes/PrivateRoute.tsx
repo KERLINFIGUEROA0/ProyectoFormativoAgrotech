@@ -1,18 +1,10 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { JSX } from "react";
-import { useEffect } from "react";
-import { toast } from "sonner";
 import { Spinner } from "@heroui/react";
 
 export default function PrivateRoute({ children }: { children: JSX.Element }) {
-  const { token, loading, isLoggingOut } = useAuth();
-
-  useEffect(() => {
-    if (!loading && !token && !isLoggingOut) {
-      toast.error("Debes iniciar sesión primero");
-    }
-  }, [token, loading, isLoggingOut]);
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -22,7 +14,7 @@ export default function PrivateRoute({ children }: { children: JSX.Element }) {
     );
   }
 
-  return token ? children : <Navigate to="/" replace />;
+  return isAuthenticated ? children : <Navigate to="/" replace />;
 }
 
 

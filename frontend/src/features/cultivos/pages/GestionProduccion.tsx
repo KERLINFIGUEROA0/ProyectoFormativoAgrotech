@@ -283,13 +283,12 @@ export default function GestionProduccion(): ReactElement {
                     </div>
                     <div className="flex justify-between items-center py-1">
                       <span className="text-sm text-gray-600">Estado:</span>
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
-                        lote.estado === 'Activo'
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${lote.estado === 'Activo'
                           ? 'bg-green-100 text-green-800 border border-green-200'
                           : lote.estado === 'Inactivo'
-                          ? 'bg-red-100 text-red-800 border border-red-200'
-                          : 'bg-gray-100 text-gray-800 border border-gray-200'
-                      }`}>
+                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            : 'bg-gray-100 text-gray-800 border border-gray-200'
+                        }`}>
                         {lote.estado}
                       </span>
                     </div>
@@ -371,11 +370,10 @@ export default function GestionProduccion(): ReactElement {
                     {sublotesFiltrados.map((sublote) => (
                       <Card
                         key={sublote.id}
-                        className={`cursor-pointer transition-all duration-300 hover:scale-[1.02] border-2 ${
-                          editingSublote?.id === sublote.id
+                        className={`cursor-pointer transition-all duration-300 hover:scale-[1.02] border-2 ${editingSublote?.id === sublote.id
                             ? 'border-primary bg-primary-50/50 shadow-lg ring-2 ring-primary-200'
                             : 'border-gray-200 hover:border-primary-300 hover:shadow-xl bg-white'
-                        }`}
+                          }`}
                         shadow="sm"
                         onClick={() => setEditingSublote(sublote)}
                       >
@@ -383,12 +381,11 @@ export default function GestionProduccion(): ReactElement {
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0 space-y-2">
                               <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${
-                                  sublote.estado === 'Disponible' ? 'bg-green-500' :
-                                  sublote.estado === 'En siembra' ? 'bg-blue-500' :
-                                  sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
-                                  'bg-gray-500'
-                                }`}></div>
+                                <div className={`w-3 h-3 rounded-full ${sublote.estado === 'Disponible' ? 'bg-green-500' :
+                                    sublote.estado === 'En siembra' ? 'bg-blue-500' :
+                                      sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
+                                        'bg-gray-500'
+                                  }`}></div>
                                 <h5 className="font-bold text-gray-900 truncate text-base">{sublote.nombre}</h5>
                               </div>
 
@@ -398,21 +395,19 @@ export default function GestionProduccion(): ReactElement {
                               </div>
 
                               <div className="flex items-center justify-between">
-                                <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full ${
-                                  sublote.estado === 'Disponible'
+                                <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full ${sublote.estado === 'Disponible'
                                     ? 'bg-green-100 text-green-800 border border-green-200'
                                     : sublote.estado === 'En siembra'
-                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                    : sublote.estado === 'En cosecha'
-                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                                    : 'bg-gray-100 text-gray-800 border border-gray-200'
-                                }`}>
-                                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                                    sublote.estado === 'Disponible' ? 'bg-green-500' :
-                                    sublote.estado === 'En siembra' ? 'bg-blue-500' :
-                                    sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
-                                    'bg-gray-500'
-                                  }`}></div>
+                                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                      : sublote.estado === 'En cosecha'
+                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                  }`}>
+                                  <div className={`w-2 h-2 rounded-full mr-2 ${sublote.estado === 'Disponible' ? 'bg-green-500' :
+                                      sublote.estado === 'En siembra' ? 'bg-blue-500' :
+                                        sublote.estado === 'En cosecha' ? 'bg-yellow-500' :
+                                          'bg-gray-500'
+                                    }`}></div>
                                   {sublote.estado}
                                 </span>
                               </div>
@@ -499,7 +494,7 @@ export default function GestionProduccion(): ReactElement {
 
           {/* Panel Derecho - Formulario (cuando está abierto) */}
           {isFormOpen && (
-            <Modal isOpen={isFormOpen} onOpenChange={() => setIsFormOpen(false)} size="2xl" scrollBehavior="inside">
+            <Modal isOpen={isFormOpen} onOpenChange={() => setIsFormOpen(false)} size="2xl">
               <ModalContent>
                 <ModalHeader>
                   <div className="flex items-center gap-3">

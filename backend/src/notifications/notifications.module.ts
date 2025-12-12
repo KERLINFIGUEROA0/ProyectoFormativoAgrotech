@@ -5,11 +5,10 @@ import { UsuariosModule } from '../modules/usuarios/usuarios.module';
 
 @Module({
   imports: [
-    AuthModule,
+    forwardRef(() => AuthModule),
     forwardRef(() => UsuariosModule),
   ],
   providers: [NotificationsGateway],
   exports: [NotificationsGateway],
 })
-export class NotificationsModule {}
-
+export class NotificationsModule { }

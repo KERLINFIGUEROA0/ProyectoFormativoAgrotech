@@ -18,7 +18,7 @@ export class UsuarioPermisoService {
     @InjectRepository(Permiso)
     private permisoRepo: Repository<Permiso>,
     private readonly notificationsGateway: NotificationsGateway,
-  ) {}
+  ) { }
 
   async getPermissionsForUser(userId: number) {
     const user = await this.usuarioRepo.findOne({
@@ -74,7 +74,6 @@ export class UsuarioPermisoService {
     });
   }
 
-  // El método togglePermission se mantiene sin cambios, ya que su lógica es correcta
   async togglePermission(dto: {
     usuarioId: number;
     permisoId: number;
@@ -89,7 +88,8 @@ export class UsuarioPermisoService {
       },
     });
 
-    let result;
+    let result: any = {};
+    let autoActivatedView = false;
 
     if (estado) {
       if (!usuarioPermisoExistente) {
@@ -99,8 +99,44 @@ export class UsuarioPermisoService {
         const permiso = await this.permisoRepo.findOneBy({ id: permisoId });
         if (!permiso) throw new NotFoundException(`Permiso con id ${permisoId} no encontrado.`);
 
+        // ✅ VALIDAR SI NECESITA AUTO-ACTIVAR "Ver"
+        const [moduleName, action] = permiso.nombre.split('.');
+
+        // Si NO es el permiso "Ver" y es de un módulo, verificar prerequisito
+        if (action !== 'Ver' && moduleName) {
+          const viewPermissionName = `${moduleName}.Ver`;
+          const viewPermission = await this.permisoRepo.findOne({ where: { nombre: viewPermissionName } });
+
+          if (viewPermission) {
+            // Verificar si ya tiene Ver (en rol o individual)
+            const usuarioCompleto = await this.usuarioRepo.findOne({
+              where: { id: usuarioId },
+              relations: ['tipoUsuario', 'tipoUsuario.rolPermisos', 'tipoUsuario.rolPermisos.permiso', 'usuarioPermisos', 'usuarioPermisos.permiso'],
+            });
+
+            const permisosRol = (usuarioCompleto?.tipoUsuario?.rolPermisos || []).map(rp => rp.permiso?.nombre).filter(Boolean);
+            const permisosUsuario = (usuarioCompleto?.usuarioPermisos || []).map(up => up.permiso?.nombre).filter(Boolean);
+            const todosPermisos = [...permisosRol, ...permisosUsuario];
+
+            const hasView = todosPermisos.includes(viewPermissionName);
+
+            // Si NO tiene Ver, activarlo automáticamente
+            if (!hasView) {
+              const nuevoViewPermiso = this.usuarioPermisoRepo.create({ usuario, permiso: viewPermission });
+              await this.usuarioPermisoRepo.save(nuevoViewPermiso);
+              autoActivatedView = true;
+            }
+          }
+        }
+
+        // Activar el permiso solicitado
         const nuevoUsuarioPermiso = this.usuarioPermisoRepo.create({ usuario, permiso });
         result = await this.usuarioPermisoRepo.save(nuevoUsuarioPermiso);
+
+        if (autoActivatedView) {
+          result.autoActivatedView = true;
+          result.message = `Permiso ${permiso.nombre} activado. Se activó automáticamente ${moduleName}.Ver como prerequisito.`;
+        }
       } else {
         result = usuarioPermisoExistente;
       }

@@ -1,21 +1,18 @@
 // api/auth.ts
 
-import axios  from "axios";
+import axios from "axios";
 import type { Permiso, UpdatePerfilDto, LoginResponse, User } from "../interfaces/InterAuth";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Enviar cookies automáticamente
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// ❌ ELIMINADO: El interceptor que leía el token de localStorage
+// El token ahora viaja en la cookie HttpOnly automáticamente
+
 
 export const login = async (identifier: string, password: string): Promise<LoginResponse> => {
   const res = await axios.post(`${API_URL}/auth/login`, {
@@ -23,7 +20,7 @@ export const login = async (identifier: string, password: string): Promise<Login
     password,
   });
 
-  if (res.data.user && res.data.user.estado === false) { 
+  if (res.data.user && res.data.user.estado === false) {
     throw new Error("Usuario inactivo. Por favor, contacte al administrador.");
   }
 

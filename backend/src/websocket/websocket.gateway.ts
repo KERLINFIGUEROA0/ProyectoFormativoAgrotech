@@ -12,7 +12,10 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGatewayDecorator({
-  cors: true, // Habilitar CORS básico
+  cors: {
+    origin: 'http://localhost:5173',
+    credentials: true, // Permitir cookies
+  },
 })
 export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -22,16 +25,34 @@ export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDiscon
 
   constructor(
     private readonly jwtService: JwtService
-  ) {}
+  ) { }
 
   async handleConnection(client: Socket, ...args: any[]) {
     try {
-      // ✅ ESTRATEGIA DUAL: Busca en 'auth' (Frontend) o 'headers' (Postman/Otros)
-      let token = client.handshake.auth?.token;
+      this.logger.log(`🔍 Intentando conectar cliente ${client.id}`);
 
-      // Fallback: Si no viene en auth, busca en headers
+      // Log de todas las cookies disponibles
+      const cookieHeader = client.handshake.headers.cookie;
+      this.logger.log(`📋 Cookie header: ${cookieHeader || 'NO HAY COOKIES'}`);
+
+      // ✅ PRIORIDAD 1: Buscar token en cookies (nuevo método con cookies HttpOnly)
+      let token = client.handshake.headers.cookie
+        ?.split('; ')
+        ?.find(c => c.startsWith('Authentication='))
+        ?.split('=')[1];
+
+      this.logger.log(`🍪 Token desde cookie: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
+
+      // Fallback 1: Buscar en auth (compatibilidad con versiones anteriores si envían token manualmente)
+      if (!token) {
+        token = client.handshake.auth?.token;
+        this.logger.log(`🔑 Token desde auth: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
+      }
+
+      // Fallback 2: Buscar en headers Authorization (compatibilidad con Postman/Otros)
       if (!token && client.handshake.headers.authorization) {
         token = client.handshake.headers.authorization.split(' ')[1];
+        this.logger.log(`📨 Token desde Authorization header: ${token ? 'ENCONTRADO' : 'NO ENCONTRADO'}`);
       }
 
       if (!token) {
@@ -40,6 +61,8 @@ export class AppWebSocketGateway implements OnGatewayConnection, OnGatewayDiscon
         client.disconnect();
         return;
       }
+
+      this.logger.log(`✅ Token encontrado, validando...`);
 
       // Validar Token
       const payload = this.jwtService.verify(token);

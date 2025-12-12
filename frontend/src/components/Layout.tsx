@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "sonner"; 
 
 export default function Layout() {
   const [activeSection, setActiveSection] = useState("home");
@@ -13,18 +12,17 @@ export default function Layout() {
   const location = useLocation(); // 1. Importamos y usamos el hook de ubicación
 
   useEffect(() => {
-    const currentPath = location.pathname.substring(1); 
+    const currentPath = location.pathname.substring(1);
     setActiveSection(currentPath || "home");
   }, [location]); // Se ejecuta cada vez que la URL cambia
 
   const handleLogout = () => {
     logout();
     navigate("/");
-    toast.success("Has cerrado sesión");
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-50"> 
+    <div className="flex h-screen w-full bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}

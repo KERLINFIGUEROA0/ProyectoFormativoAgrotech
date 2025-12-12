@@ -19,7 +19,7 @@ export default function PermissionRoute({
   permission,
   requireAll = false
 }: PermissionRouteProps) {
-  const { token, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { hasPermissionInModule, hasAnyPermissionInModule, loading: permLoading } = useModulePermissions();
   const location = useLocation();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -66,7 +66,7 @@ export default function PermissionRoute({
   }
 
   // No autenticado
-  if (!token) {
+  if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
