@@ -102,7 +102,6 @@ const ModalResponderActividad: React.FC<ModalResponderActividadProps> = ({
 
       // Agregar materiales devueltos si existen
       if (datosDevolucion.length > 0) {
-        console.log('Materiales devueltos a enviar:', datosDevolucion);
         formData.append('materialesDevueltos', JSON.stringify(datosDevolucion));
       } else {
         // Enviar array vacío para evitar errores de validación

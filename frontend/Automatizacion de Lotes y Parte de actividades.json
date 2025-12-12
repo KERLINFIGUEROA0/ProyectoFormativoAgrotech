@@ -1,0 +1,1002 @@
+{
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        672
+      ],
+      "id": "007e0a7b-3f75-4462-a818-508c3a2a8ec0",
+      "name": "Telegram Trigger",
+      "webhookId": "66288e9e-364e-4f70-a078-64fafaeafe20"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/lote",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "id": "b0b177d4-03ac-431c-a20d-8a27660ef42d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7ce92a0d-0de4-4d6a-ad81-f1e5562f1a3c",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/crearlote",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "18641d0e-bd00-41a4-97c3-7db37e261fd9",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "guide_step_by_step",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  },
+                  {
+                    "id": "id-new-1",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "create_for_me",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-new-2",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "hola",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-new-3",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/verlotes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-new-4",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/veractividades",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-new-5",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/descargar_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-new-6",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/descargar_act_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -224,
+        576
+      ],
+      "id": "a85eb675-1df6-4a92-9562-e143d3ad185a",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-1",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "guide_step_by_step",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-2",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "create_for_me",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        0,
+        1440
+      ],
+      "id": "8a6647ab-12c6-4721-a346-7a1db02215d7",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "¡Hola! Veo que quieres gestionar un lote. ¿Qué prefieres?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "1) Guíame paso a paso",
+                    "additionalFields": {
+                      "callback_data": "guide_step_by_step"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "2) Créalo por mí",
+                    "additionalFields": {
+                      "callback_data": "create_for_me"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "a098bb1c-e5c4-4804-b40d-b08d76886c79",
+      "name": "Enviar Opciones Iniciales",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1248
+      ],
+      "webhookId": "c95e3176-00b2-4115-91b6-c69b2ba5b624"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "text": "¡Claro! Sigue esta guía para crear tu lote manualmente en la aplicación:\n\n1️⃣ Navega: En el menú principal, ve a la sección de \"Gestión de Lotes\".\n\n2️⃣ Inicia: Presiona el botón para \"Crear Lote\".\n\n3️⃣ Nombra: Escribe un nombre para tu lote (ej. \"Lote Principal\").\n\n4️⃣ Dibuja: Presiona el botón \"Dibujar Lote\" para abrir el mapa.\n\n5️⃣ Crea Puntos: En el mapa, selecciona la herramienta de polígono (la que tiene tres puntos) y haz clic en el mapa para crear al menos 3 puntos.\n\n6️⃣ Guarda el Dibujo Inicial: Presiona \"Save\" en los controles del mapa.\n\n7️⃣ Ajusta (Editar): Ahora, selecciona la herramienta de edición (la de 'cuadritos'). Arrastra los puntos para ajustar la forma del lote.\n\n8️⃣ Guarda el Ajuste: ¡Importante! Después de mover los puntos, debes presionar \"Save\" OTRA VEZ en los controles del mapa para confirmar los cambios.\n\n9️⃣ Verifica: Asegúrate de que el área calculada sea menor a 3000 m². Si te pasas, el sistema no te dejará guardarlo.\n\n🔟 Guarda el Lote: Cierra el mapa. De vuelta en el formulario (donde pusiste el nombre), presiona el botón grande que dice \"Guardar Lote\".\n\n✅ ¡Y listo! Con eso tu lote quedará registrado.",
+        "additionalFields": {}
+      },
+      "id": "e7fcc5dd-cff5-4158-ba86-95cbe6181da4",
+      "name": "Enviar Guía Paso a Paso",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        1536
+      ],
+      "webhookId": "9f5f6e4d-facb-4423-91d6-3fac3425f619"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst messageText = $input.item.json.message.text;\nconst chatId = $input.item.json.message.chat.id;\n\nlet lotName = '';\nlet coordinates = [];\n\ntry {\n  const firstBracketIndex = messageText.indexOf('[');\n  if (firstBracketIndex === -1) throw new Error('No se encontraron coordenadas en el formato esperado');\n  \n  lotName = messageText.substring(0, firstBracketIndex).trim();\n  \n  if (lotName.startsWith('/lote')) lotName = lotName.replace('/lote', '').trim();\n  if (lotName.startsWith('/coordenada')) lotName = lotName.replace('/coordenada', '').trim();\n  if (lotName.startsWith('/crearlote')) lotName = lotName.replace('/crearlote', '').trim();\n  \n  const coordString = messageText.substring(firstBracketIndex);\n  coordinates = JSON.parse(coordString);\n  \n  if (!Array.isArray(coordinates) || coordinates.length < 3)\n    throw new Error('Se necesitan al menos 3 coordenadas para formar un polígono');\n  \n  // Calcular el área usando la fórmula de Shoelace con conversión a metros\n  // Primero calculamos el centroide para obtener la latitud promedio\n  let sumLat = 0;\n  for (let i = 0; i < coordinates.length; i++) {\n    sumLat += coordinates[i].lat;\n  }\n  const avgLat = sumLat / coordinates.length;\n  \n  // Factor de conversión de grados a metros\n  const latToMeters = 111320; // 1 grado de latitud ≈ 111320 metros\n  const lngToMeters = 111320 * Math.cos(avgLat * Math.PI / 180); // ajustado por latitud\n  \n  // Convertir coordenadas a metros relativos\n  const coordsInMeters = coordinates.map(coord => ({\n    x: coord.lng * lngToMeters,\n    y: coord.lat * latToMeters\n  }));\n  \n  // Cerrar el polígono si no está cerrado\n  const firstCoord = coordsInMeters[0];\n  const lastCoord = coordsInMeters[coordsInMeters.length - 1];\n  if (firstCoord.x !== lastCoord.x || firstCoord.y !== lastCoord.y) {\n    coordsInMeters.push(firstCoord);\n  }\n  \n  // Aplicar fórmula de Shoelace\n  let area = 0;\n  for (let i = 0; i < coordsInMeters.length - 1; i++) {\n    const x1 = coordsInMeters[i].x;\n    const y1 = coordsInMeters[i].y;\n    const x2 = coordsInMeters[i + 1].x;\n    const y2 = coordsInMeters[i + 1].y;\n    area += (x1 * y2 - x2 * y1);\n  }\n  area = Math.abs(area / 2);\n\n  // Retornar resultado con formato correcto para el backend\n  return [{\n    json: {\n      nombre: lotName,\n      area: Math.round(area * 100) / 100,\n      estado: 'Activo',\n      coordenadas: {\n        type: 'polygon',\n        coordinates: coordinates\n      },\n      chatId: chatId\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      error: true,\n      errorMessage: error.message,\n      chatId: chatId,\n      originalMessage: messageText\n    }\n  }];\n}\n"
+      },
+      "id": "b7546dde-470f-4a89-99d7-ddc17eeba924",
+      "name": "Procesar Datos y Calcular Área",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fleta-unfelonious-unpatronizingly.ngrok-free.dev/lotes/crear",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "81542e72-8944-4d51-baeb-8ede499a5e27",
+      "name": "Crear Lote en Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        672,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Procesar Datos y Calcular Área').first().json.chatId }}",
+        "text": "=¡Lote creado con éxito! ✅\n\nNombre: {{ $('Procesar Datos y Calcular Área').first().json.nombre }}\nÁrea Calculada: {{ $('Procesar Datos y Calcular Área').first().json.area }} m²",
+        "additionalFields": {}
+      },
+      "id": "1c26e03e-45e0-4934-a9b0-cf73b43a473a",
+      "name": "Confirmar Creación",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        864
+      ],
+      "webhookId": "f1414a37-8ec9-4a1d-90d2-66ef208b8af6"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-1",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "[",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "id-2",
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "[",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notContains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0081812-ab33-456a-9669-3551415f26a8",
+      "name": "Verificar Formato de Datos",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        0,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Formato para enviar los datos del lote. Por favor, envía los datos en el formato correcto:|/crearlote Nombre del Lote [{\"lat\": latitud1, \"lng\": longitud1}, {\"lat\": latitud2, \"lng\": longitud2}]Ejemplo: /crearlote Lote Norte [{\"lat\": 4.1, \"lng\": -75.1}, {\"lat\": 4.2, \"lng\": -75.2}, {\"lat\": 4.15, \"lng\": -75.15}]",
+        "additionalFields": {}
+      },
+      "id": "a31f80c6-c625-4b92-bda7-7e12f18d7a17",
+      "name": "Error de Formato",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        672
+      ],
+      "webhookId": "f69cdba1-39ed-47c2-b0ab-98baac2d52b3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "¡Hola! 👋 Bienvenido al bot de gestión de lotes.\n\nPuedes usar los siguientes comandos:\n\n📋 /lote - Para ver la guía paso a paso de cómo crear un lote manualmente en la aplicación\n\n📍 /crearlote - Para crear un lote automáticamente enviándome el nombre y las coordenadas\n\n📊 /verlotes - Para ver la lista de todos tus lotes registrados\n\n📅 /veractividades - Para ver la lista de todas las actividades registradas\n\n¿Qué te gustaría hacer?",
+        "additionalFields": {}
+      },
+      "id": "57a22027-9b6a-4868-bd51-81e7663af969",
+      "name": "Mensaje de Bienvenida",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        576
+      ],
+      "webhookId": "506d942d-befb-4fff-931c-9cc8500feedc"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "nombre",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "area",
+              "value": "={{ $json.area }}",
+              "type": "number"
+            },
+            {
+              "id": "id-3",
+              "name": "estado",
+              "value": "={{ $json.estado }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "coordenadas",
+              "value": "={{ JSON.stringify($json.coordenadas) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "431ae1e2-c9bd-4fca-95ca-0e27476e3312",
+      "name": "Preparar Datos para API",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "text": "📍 Perfecto! Para crear el lote automáticamente, envíame los datos en el siguiente formato:\n\n/crearlote Nombre del Lote [{\"lat\": latitud1, \"lng\": longitud1}, {\"lat\": latitud2, \"lng\": longitud2}, ...]\n\n📝 Ejemplo:\n/crearlote Lote Norte [{\"lat\": 1.8924872, \"lng\": -76.0910928}, {\"lat\": 1.8924256, \"lng\": -76.0912377}, {\"lat\": 1.8922808, \"lng\": -76.0911706}]\n\n⚠️ Importante:\n• Necesitas mínimo 3 coordenadas\n• El formato debe ser exacto (con comillas y comas)\n• Las coordenadas deben formar un polígono cerrado",
+        "additionalFields": {}
+      },
+      "id": "e78f05f3-746e-4e4f-9ae6-d7bfff1354f8",
+      "name": "Solicitar Datos del Lote",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        1344
+      ],
+      "webhookId": "e1637946-78c1-499b-bbec-d109e8a9cd7a"
+    },
+    {
+      "parameters": {
+        "url": "https://fleta-unfelonious-unpatronizingly.ngrok-free.dev/lotes/listar",
+        "options": {}
+      },
+      "id": "15eebf1c-b7d9-4996-93cf-3bd0ef94a9cd",
+      "name": "Obtener Lotes del Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener los lotes del backend desde la propiedad data\nconst response = $input.first().json;\nconst lotes = response.data;\n\n// Obtener el chatId del trigger original\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\n\n// Verificar si hay lotes\nif (!lotes || !Array.isArray(lotes) || lotes.length === 0) {\n  return [{\n    json: {\n      chatId: chatId,\n      message: \"📋 No hay lotes registrados en el sistema.\"\n    }\n  }];\n}\n\n// Formatear la lista de lotes\nlet message = \"📋 *Lista de Lotes Registrados*\\n\\n\";\n\nlotes.forEach((lote, index) => {\n  message += `${index + 1}. *${lote.nombre}*\\n`;\n  message += `   📏 Área: ${lote.area} m²\\n`;\n  message += `   📊 Estado: ${lote.estado}\\n`;\n  \n  // Si hay coordenadas, mostrar la cantidad de puntos\n  if (lote.coordenadas && lote.coordenadas.coordinates) {\n    const numPuntos = lote.coordenadas.coordinates.length;\n    message += `   📍 Puntos: ${numPuntos}\\n`;\n  }\n  \n  message += \"\\n\";\n});\n\nmessage += `\\n✅ Total de lotes: ${lotes.length}`;\n\nreturn [{\n  json: {\n    chatId: chatId,\n    message: message\n  }\n}];"
+      },
+      "id": "8a5af875-2ad7-44d9-b0e9-2b0aae49fcb4",
+      "name": "Formatear Lista de Lotes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "id": "ac53ef8a-3e7e-4f35-8749-8a3be007cae6",
+      "name": "Enviar Lista de Lotes",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        1056
+      ],
+      "webhookId": "dbec9eba-cf2f-4971-8ca7-d408d6f6b776"
+    },
+    {
+      "parameters": {
+        "url": "https://fleta-unfelonious-unpatronizingly.ngrok-free.dev/actividades/listar",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "ec1ab330-eb1e-4357-9230-a0c24fb0f0a3",
+      "name": "Obtener Actividades del Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener las actividades del backend\nconst allItems = $input.all();\nlet actividades = [];\n\nif (allItems.length > 1) {\n  actividades = allItems.map(item => item.json);\n} else if (allItems.length === 1) {\n  const inputData = allItems[0].json;\n  \n  if (Array.isArray(inputData)) {\n    actividades = inputData;\n  } else if (inputData.data && Array.isArray(inputData.data)) {\n    actividades = inputData.data;\n  } else if (inputData.id && inputData.titulo) {\n    actividades = [inputData];\n  }\n}\n\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\n\nif (!actividades || actividades.length === 0) {\n  return [{\n    json: {\n      chatId: chatId,\n      message: \"📅 No hay actividades registradas en el sistema.\"\n    }\n  }];\n}\n\n// Formatear la lista de actividades\nlet message = \"📅 *Lista de Actividades Registradas*\\n\\n\";\n\nactividades.forEach((actividad, index) => {\n  message += `${index + 1}. *${actividad.titulo || 'Sin título'}*\\n`;\n  message += `   ID: ${actividad.id}\\n`;\n  \n  if (actividad.descripcion) {\n    message += `   📝 ${actividad.descripcion}\\n`;\n  }\n  \n  if (actividad.fecha) {\n    message += `   📆 Fecha: ${actividad.fecha}\\n`;\n  }\n  \n  if (actividad.cultivo && actividad.cultivo.nombre) {\n    message += `   🌱 Cultivo: ${actividad.cultivo.nombre}\\n`;\n  }\n  \n  if (actividad.estado) {\n    const estadoEmoji = actividad.estado === 'pendiente' ? '⏳' : actividad.estado === 'completada' ? '✅' : '📊';\n    message += `   ${estadoEmoji} Estado: ${actividad.estado}\\n`;\n  }\n  \n  // Parsear asignados\n  if (actividad.asignados) {\n    try {\n      const asignadosArray = JSON.parse(actividad.asignados);\n      if (asignadosArray.length > 0) {\n        message += `   👥 Asignados: ${asignadosArray.join(', ')}\\n`;\n      }\n    } catch (e) {\n      message += `   👥 Asignados: ${actividad.asignados}\\n`;\n    }\n  }\n  \n  // Mostrar archivos iniciales de la actividad\n  if (actividad.archivoInicial) {\n    try {\n      const archivosInicialesArray = JSON.parse(actividad.archivoInicial);\n      if (archivosInicialesArray.length > 0) {\n        message += `\\n   📎 *Archivos de la actividad (${archivosInicialesArray.length}):*\\n`;\n        archivosInicialesArray.forEach((archivo, aIndex) => {\n          // Extraer nombre limpio del archivo (después del timestamp y hash)\n          const partes = archivo.split('-');\n          const nombreLimpio = partes.length >= 3 ? partes.slice(2).join('-') : archivo;\n          message += `      ${aIndex + 1}. ${nombreLimpio}\\n`;\n          message += `         📥 /descargar_act_${actividad.id}_${archivo}\\n`;\n        });\n      }\n    } catch (e) {\n      // Si no se puede parsear, ignorar\n    }\n  }\n  \n  // Mostrar respuestas si existen\n  if (actividad.respuestas && Array.isArray(actividad.respuestas) && actividad.respuestas.length > 0) {\n    message += `\\n   💬 *Respuestas (${actividad.respuestas.length}):*\\n`;\n    \n    actividad.respuestas.forEach((respuesta, rIndex) => {\n      message += `\\n   ${rIndex + 1}) `;\n      \n      if (respuesta.usuario) {\n        message += `👤 ${respuesta.usuario.nombre} ${respuesta.usuario.apellidos}\\n`;\n      }\n      \n      if (respuesta.descripcion) {\n        message += `      📝 ${respuesta.descripcion}\\n`;\n      }\n      \n      if (respuesta.fechaEnvio) {\n        message += `      🕒 ${respuesta.fechaEnvio}\\n`;\n      }\n      \n      if (respuesta.estado) {\n        message += `      📊 Estado: ${respuesta.estado}\\n`;\n      }\n      \n      // Indicar si hay archivos adjuntos en la respuesta\n      if (respuesta.archivos) {\n        try {\n          const archivosArray = JSON.parse(respuesta.archivos);\n          if (archivosArray.length > 0) {\n            message += `      📎 ${archivosArray.length} archivo(s) adjunto(s)\\n`;\n            message += `      📥 Para descargar: /descargar_${actividad.id}_${respuesta.id}\\n`;\n          }\n        } catch (e) {\n          message += `      📎 Archivos adjuntos\\n`;\n          message += `      📥 Para descargar: /descargar_${actividad.id}_${respuesta.id}\\n`;\n        }\n      }\n    });\n  } else {\n    message += `\\n   ℹ️ Sin respuestas aún\\n`;\n  }\n  \n  message += \"\\n\";\n});\n\nmessage += `✅ Total de actividades: ${actividades.length}`;\n\nreturn [{\n  json: {\n    chatId: chatId,\n    message: message\n  }\n}];"
+      },
+      "id": "53374b31-f999-4449-a5ee-e51e3cfded53",
+      "name": "Formatear Lista de Actividades",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "id": "ec32ff94-e549-4e85-8d44-ec634a8e3b30",
+      "name": "Enviar Lista de Actividades",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        384
+      ],
+      "webhookId": "82d104e7-00e0-4b1c-9e9d-aa34b506c35f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer actividadId y respuestaId del comando /descargar_X_Y\nconst messageText = $input.first().json.message.text;\nconst chatId = $input.first().json.message.chat.id;\n\n// Formato esperado: /descargar_actividadId_respuestaId\nconst parts = messageText.split('_');\n\nif (parts.length !== 3) {\n  return [{\n    json: {\n      error: true,\n      chatId: chatId,\n      message: '❌ Formato de comando inválido. Usa: /descargar_actividadId_respuestaId'\n    }\n  }];\n}\n\nconst actividadId = parseInt(parts[1]);\nconst respuestaId = parseInt(parts[2]);\n\nif (isNaN(actividadId) || isNaN(respuestaId)) {\n  return [{\n    json: {\n      error: true,\n      chatId: chatId,\n      message: '❌ IDs inválidos. Deben ser números.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    actividadId: actividadId,\n    respuestaId: respuestaId,\n    chatId: chatId\n  }\n}];"
+      },
+      "id": "5298af84-2e54-4ee4-a127-70e92cb6ecde",
+      "name": "Extraer IDs de Descarga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://fleta-unfelonious-unpatronizingly.ngrok-free.dev/actividades/{{ $json.actividadId }}/respuestas/{{ $json.respuestaId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "f00b4915-76af-472b-8d20-b11a07ec95f3",
+      "name": "Obtener Archivos de Respuesta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar la respuesta del backend y preparar archivos para enviar\nconst respuesta = $input.first().json;\nconst chatId = $('Extraer IDs de Descarga').first().json.chatId;\n\n// Verificar si hay archivos\nif (!respuesta.archivos) {\n  return [{\n    json: {\n      chatId: chatId,\n      message: '❌ Esta respuesta no tiene archivos adjuntos.',\n      hasFiles: false\n    }\n  }];\n}\n\n// Parsear el array de archivos\nlet archivosArray = [];\ntry {\n  archivosArray = JSON.parse(respuesta.archivos);\n} catch (e) {\n  return [{\n    json: {\n      chatId: chatId,\n      message: '❌ Error al procesar los archivos adjuntos.',\n      hasFiles: false\n    }\n  }];\n}\n\nif (!Array.isArray(archivosArray) || archivosArray.length === 0) {\n  return [{\n    json: {\n      chatId: chatId,\n      message: '❌ Esta respuesta no tiene archivos adjuntos.',\n      hasFiles: false\n    }\n  }];\n}\n\n// Preparar información de la respuesta\nconst usuario = respuesta.usuario ? `${respuesta.usuario.nombre} ${respuesta.usuario.apellidos}` : 'Usuario desconocido';\nconst descripcion = respuesta.descripcion || 'Sin descripción';\nconst fechaEnvio = respuesta.fechaEnvio || 'Fecha desconocida';\n\n// Crear un item por cada archivo usando el endpoint correcto\nconst items = archivosArray.map((archivo, index) => {\n  // El nombre del archivo viene del backend\n  const nombreArchivo = archivo;\n  \n  // URL del endpoint de descarga del backend\n  const baseUrl = 'https://fleta-unfelonious-unpatronizingly.ngrok-free.dev';\n  const fileUrl = `${baseUrl}/actividades/descargar/${nombreArchivo}`;\n  \n  return {\n    json: {\n      chatId: chatId,\n      fileUrl: fileUrl,\n      fileName: nombreArchivo,\n      caption: `📎 Archivo ${index + 1} de ${archivosArray.length}\\n👤 ${usuario}\\n📝 ${descripcion}\\n🕒 ${fechaEnvio}`,\n      hasFiles: true\n    }\n  };\n});\n\nreturn items;"
+      },
+      "id": "c5dec100-e57c-48b1-97ed-04e6c1fc473b",
+      "name": "Procesar Archivos para Descarga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $json.caption }}"
+        }
+      },
+      "id": "f9e9d051-31e6-4789-99cd-b0f531c13a40",
+      "name": "Enviar Archivos a Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        192
+      ],
+      "webhookId": "c41670ce-e358-4131-b728-b4658d55c777"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer actividadId y nombre de archivo del comando /descargar_act_X_filename\nconst messageText = $input.first().json.message.text;\nconst chatId = $input.first().json.message.chat.id;\n\n// Formato esperado: /descargar_act_actividadId_nombreArchivo\nconst parts = messageText.split('_');\n\nif (parts.length < 4) {\n  return [{\n    json: {\n      error: true,\n      chatId: chatId,\n      message: '❌ Formato de comando inválido.'\n    }\n  }];\n}\n\nconst actividadId = parseInt(parts[2]);\nconst nombreArchivo = parts.slice(3).join('_'); // Reunir el nombre del archivo\n\nif (isNaN(actividadId)) {\n  return [{\n    json: {\n      error: true,\n      chatId: chatId,\n      message: '❌ ID de actividad inválido.'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    actividadId: actividadId,\n    nombreArchivo: nombreArchivo,\n    chatId: chatId\n  }\n}];"
+      },
+      "id": "7d42f2e2-7dbb-4886-8368-eb0de8447ce4",
+      "name": "Extraer Datos Archivo Actividad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://fleta-unfelonious-unpatronizingly.ngrok-free.dev/actividades/descargar/{{ $json.nombreArchivo }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "44a1e3b9-20d0-450b-9ada-0c67f5f23205",
+      "name": "Descargar Archivo Actividad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Extraer Datos Archivo Actividad').first().json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=📎 Archivo de la actividad ID: {{ $('Extraer Datos Archivo Actividad').first().json.actividadId }}"
+        }
+      },
+      "id": "92e6211d-c74d-4184-866f-2b277b6a0f84",
+      "name": "Enviar Archivo Actividad",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "webhookId": "8c1bdacb-541b-4b1f-83a7-6acda25bbf6a"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Enviar Opciones Iniciales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verificar Formato de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mensaje de Bienvenida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtener Lotes del Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtener Actividades del Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer IDs de Descarga",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer Datos Archivo Actividad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Enviar Guía Paso a Paso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitar Datos del Lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Lote en Backend": {
+      "main": [
+        [
+          {
+            "node": "Confirmar Creación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Formato de Datos": {
+      "main": [
+        [
+          {
+            "node": "Procesar Datos y Calcular Área",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error de Formato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Datos y Calcular Área": {
+      "main": [
+        [
+          {
+            "node": "Preparar Datos para API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Datos para API": {
+      "main": [
+        [
+          {
+            "node": "Crear Lote en Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Lotes del Backend": {
+      "main": [
+        [
+          {
+            "node": "Formatear Lista de Lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Lista de Lotes": {
+      "main": [
+        [
+          {
+            "node": "Enviar Lista de Lotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Actividades del Backend": {
+      "main": [
+        [
+          {
+            "node": "Formatear Lista de Actividades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Lista de Actividades": {
+      "main": [
+        [
+          {
+            "node": "Enviar Lista de Actividades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer IDs de Descarga": {
+      "main": [
+        [
+          {
+            "node": "Obtener Archivos de Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Archivos de Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Procesar Archivos para Descarga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Archivos para Descarga": {
+      "main": [
+        [
+          {
+            "node": "Enviar Archivos a Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Datos Archivo Actividad": {
+      "main": [
+        [
+          {
+            "node": "Descargar Archivo Actividad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Archivo Actividad": {
+      "main": [
+        [
+          {
+            "node": "Enviar Archivo Actividad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9564b6ca-4ce1-45e1-8092-51a27876c793",
+  "meta": {
+    "instanceId": "535b83bdf44eb18d55aa7037bb5415e046bef8acea333434e4fb81608840eef3"
+  },
+  "id": "xBvk5dtX5nuPawwW",
+  "tags": []
+}

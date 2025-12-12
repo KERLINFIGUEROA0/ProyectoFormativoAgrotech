@@ -50,7 +50,6 @@ export class CultivosService {
     if (loteId) {
       await this.cacheManager.del(`/lotes/${loteId}`);
     }
-    console.log('🧹 Caché de lotes invalidada.');
   }
 
   async crear(dto: CreateCultivoDto): Promise<Cultivo> {
@@ -165,7 +164,6 @@ export class CultivosService {
       // 2. Notificar a todos los clientes conectados (Tiempo Real)
       if (nuevoEstadoNotificacion) {
         this.webSocketGateway.emitLoteEstadoActualizado(lote.id, nuevoEstadoNotificacion);
-        console.log(`🚀 WebSocket emitido: Lote ${lote.id} ahora está ${nuevoEstadoNotificacion}`);
       }
 
       return cultivoGuardado;
@@ -315,8 +313,6 @@ export class CultivosService {
     const cultivoRepo = manager ? manager.getRepository(Cultivo) : this.cultivoRepository;
     const subloteRepo = manager ? manager.getRepository(Sublote) : this.subloteRepository;
 
-    console.log(`🔄 Recalculando estado para Lote ${loteId}...`);
-
     // 1. REGLA DE ORO: ¿Cuántos cultivos ACTIVOS quedan en este lote?
     // (Ignoramos los finalizados/cancelados)
     const totalCultivosActivos = await cultivoRepo.count({
@@ -331,7 +327,6 @@ export class CultivosService {
     // CASO 1: Si NO hay cultivos activos, el lote ESTÁ LIBRE.
     if (totalCultivosActivos === 0) {
       await loteRepo.update(loteId, { estado: 'En preparación' });
-      console.log(`✅ Lote ${loteId} liberado completamente: 'En preparación'`);
       return { liberado: true };
     }
 
@@ -356,7 +351,6 @@ export class CultivosService {
     }
 
     await loteRepo.update(loteId, { estado: nuevoEstado });
-    console.log(`ℹ️ Lote ${loteId} actualizado a: ${nuevoEstado}`);
 
     return { liberado: false, nuevoEstado };
   }

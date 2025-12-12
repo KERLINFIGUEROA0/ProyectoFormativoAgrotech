@@ -154,7 +154,6 @@ export class SensoresService {
              configTopic,
              payload
            );
-           console.log(`📡 Comando de frecuencia enviado a ${configTopic} via broker ${broker.nombre}`);
          } catch (error) {
            console.warn(`No se pudo enviar comando MQTT via broker ${broker.nombre}: ${error.message}`);
          }

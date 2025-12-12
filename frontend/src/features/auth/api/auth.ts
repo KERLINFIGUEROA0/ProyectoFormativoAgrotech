@@ -23,7 +23,7 @@ export const login = async (identifier: string, password: string): Promise<Login
     password,
   });
 
-  if (res.data.user && res.data.user.estado === false) { // Corregido: 'usuario' a 'user' según la respuesta del backend
+  if (res.data.user && res.data.user.estado === false) { 
     throw new Error("Usuario inactivo. Por favor, contacte al administrador.");
   }
 
@@ -118,14 +118,22 @@ export const deleteRole = async (id: number) => {
 
 // Crear usuario
 export const crearUsuario = async (data: any) => {
-  const res = await api.post("/usuarios/crear", data);
-  return res.data;
+  try {
+    const res = await api.post("/usuarios/crear", data);
+    return res.data;
+  } catch (error: any) {
+    // Para errores de validación (400), no mostrar logs de consola
+    if (error.response?.status === 400) {
+      throw error;
+    }
+    // Para otros errores, no mostrar logs de consola
+    throw error;
+  }
 };
 
 // Obtener usuarios
 export const getUsuarios = async () => {
   const res = await api.get("/usuarios")
-  console.log("API Response for getUsuarios:", res.data)
   return res.data
 };
 
@@ -137,8 +145,17 @@ export const getUsuariosTodos = async () => {
 
 // Actualizar usuario
 export const updateUsuario = async (id: number, data: any) => {
-  const res = await api.put(`/usuarios/actualizar/${id}`, data);
-  return res.data;
+  try {
+    const res = await api.put(`/usuarios/actualizar/${id}`, data);
+    return res.data;
+  } catch (error: any) {
+    // Para errores de validación (400), no mostrar logs de consola
+    if (error.response?.status === 400) {
+      throw error;
+    }
+    // Para otros errores, no mostrar logs de consola
+    throw error;
+  }
 };
 
 // Eliminar usuario (desactivar)
@@ -164,10 +181,8 @@ export const reactivarUsuario = async (id: number) => {
 export const getRoles = async () => {
   try {
     const res = await api.get("/roles");
-    console.log("API Response for getRoles:", res.data);
     return res.data;
   } catch (error) {
-    console.error("Error in getRoles API call:", error);
     throw error;
   }
 };

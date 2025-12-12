@@ -32,6 +32,7 @@ interface MenuItemType {
   notification?: number;
   children?: MenuItemType[];
   module?: string; // Módulo para permisos
+  permission?: string; // Permiso específico requerido
 }
 
 interface SidebarProps {
@@ -62,7 +63,7 @@ const baseMenuItems: MenuItemType[] = [
     id: "cultivos",
     label: "Cultivos",
     icon: Sprout,
-    module: "Cultivos",
+    module: "Cultivo",
     children: [
       { id: "gestion-cultivos", label: "Gestion de cultivos", icon: Sprout },
       { id: "gestion-lotes", label: "Gestion de lotes", icon: Sprout },
@@ -98,7 +99,7 @@ const baseMenuItems: MenuItemType[] = [
     children: [
       { id: "gestion-actividades", label: "Gestion de Actividades ", icon: Activity },
       { id: "cronograma", label: "Cronograma", icon: Calendar },
-      { id: "pagos-pasante", label: "Mis Pagos", icon: TrendingUp },
+      { id: "pagos-pasante", label: "Mis Pagos", icon: TrendingUp, permission: "Actividades.VerPagos" },
     ],
   },
   // ---------------------------------
@@ -134,7 +135,7 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { hasAnyPermissionInModule } = useModulePermissions();
+  const { hasAnyPermissionInModule, hasPermissionInModule } = useModulePermissions();
 
   // Filtrar menús basados en permisos
   const menuItems = baseMenuItems.filter((item) => {
@@ -267,7 +268,19 @@ export default function Sidebar({
               {/* Submenú */}
               {item.children && openMenu === item.id && !collapsed && (
                 <div className="pl-4 mt-2 flex flex-col gap-2">
-                  {item.children.map((child) => {
+                  {item.children
+                    .filter((child) => {
+                      // Si el elemento hijo tiene un permiso específico, verificar que el usuario lo tenga
+                      if (child.permission) {
+                        const [moduleName, permissionName] = child.permission.includes('.')
+                          ? child.permission.split('.')
+                          : [item.module, child.permission];
+                        return hasPermissionInModule(moduleName || '', permissionName);
+                      }
+                      // Si no tiene permiso específico, mostrarlo
+                      return true;
+                    })
+                    .map((child) => {
                     const ChildIcon = child.icon;
                     const isChildActive = activeSection === child.id;
 

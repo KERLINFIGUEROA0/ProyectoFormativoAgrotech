@@ -10,7 +10,7 @@ export class TrazabilidadController {
   constructor(private readonly trazabilidadService: TrazabilidadService) {}
 
   @Get('cultivo/:id')
-  @Permission('Cultivos.Ver') // Reutilizamos el permiso de ver cultivos
+  @Permission('Cultivo.VerTrazabilidad') // Permiso específico para ver trazabilidad
   async obtenerTrazabilidad(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const userIdentificacion = req.user?.identificacion;
     const data = await this.trazabilidadService.obtenerTrazabilidadPorCultivo(id, userIdentificacion);

@@ -192,6 +192,30 @@ export class VentasService {
   }
 
   // --- 👇 CORRECCIÓN 5: Se añade el método 'remove' que faltaba ---
+  async update(id: number, dto: Partial<CreateVentaDto>): Promise<Venta> {
+    const venta = await this.ventaRepository.findOne({
+      where: { id },
+      relations: ['produccion']
+    });
+    if (!venta) {
+      throw new NotFoundException(`La venta con ID ${id} no fue encontrada.`);
+    }
+
+    // Actualizar campos
+    if (dto.descripcion !== undefined) venta.descripcion = dto.descripcion;
+    if (dto.fecha !== undefined) venta.fecha = dto.fecha;
+    if (dto.monto !== undefined) {
+      venta.precioUnitario = dto.monto;
+      venta.valorTotalVenta = dto.monto * (venta.cantidadVenta || 0);
+    }
+    if (dto.cantidad !== undefined) {
+      venta.cantidadVenta = dto.cantidad;
+      venta.valorTotalVenta = (venta.precioUnitario as any) * dto.cantidad;
+    }
+
+    return this.ventaRepository.save(venta);
+  }
+
   async remove(id: number): Promise<void> {
     const venta = await this.ventaRepository.findOneBy({ id });
     if (!venta) {
@@ -208,5 +232,41 @@ export class VentasService {
     }
 
     await this.ventaRepository.delete(id);
+  }
+
+  async getEstadisticas() {
+    const ingresos = await this.ventaRepository.sum('valorTotalVenta') || 0;
+    const egresosPagos = await this.pagoRepository.sum('monto') || 0;
+    const egresosGastos = await this.gastoRepository.sum('monto') || 0;
+    const egresos = egresosPagos + egresosGastos;
+    return { ingresos, egresos, balance: ingresos - egresos };
+  }
+
+  async getDistribucionEgresos() {
+    const gastosData: any[] = await this.gastoRepository.query(`
+      SELECT "Tipo_Gasto" as nombre, SUM("Monto") as monto
+      FROM gastos
+      GROUP BY "Tipo_Gasto"
+      ORDER BY monto DESC
+    `);
+
+    const pagosData: any[] = await this.pagoRepository.query(`
+      SELECT 'Pagos' as nombre, SUM("monto") as monto
+      FROM pagos
+    `);
+
+    const result = gastosData.map(item => ({
+      nombre: item.nombre,
+      monto: parseFloat(item.monto) || 0
+    }));
+
+    if (pagosData.length > 0 && pagosData[0].monto > 0) {
+      result.push({
+        nombre: 'Pagos',
+        monto: parseFloat(pagosData[0].monto) || 0
+      });
+    }
+
+    return result;
   }
 }

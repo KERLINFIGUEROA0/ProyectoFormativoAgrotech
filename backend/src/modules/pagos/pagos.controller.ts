@@ -2,11 +2,13 @@ import { Controller, Get, Post, Put, Body, Param, ParseIntPipe, UseGuards, Reque
 import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 import { UsuariosService } from '../usuarios/usuarios.service';
 
 @Controller('pagos')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class PagosController {
   constructor(
     private readonly pagosService: PagosService,
@@ -14,6 +16,7 @@ export class PagosController {
   ) {}
 
   @Post()
+  @Permission('Actividades.Pagar')
   create(@Body() createPagoDto: CreatePagoDto | CreatePagoDto[]) {
     // Si es un array, crear múltiples pagos
     if (Array.isArray(createPagoDto)) {
@@ -24,34 +27,42 @@ export class PagosController {
   }
 
   @Get()
+  @Permission('Finanzas.Ver')
   async findAll(@Request() req: any) {
     const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
     let userRole = user?.tipoUsuario?.nombre;
     if (!userRole) userRole = req.user.rolNombre;
-    return this.pagosService.findAll(user?.identificacion, userRole);
+    const data = await this.pagosService.findAll(user?.identificacion, userRole);
+    return { success: true, data };
   }
 
   @Get('usuario/:id')
-  findByUsuario(@Param('id', ParseIntPipe) id: number) {
-    return this.pagosService.findByUsuario(id);
+  @Permission('Finanzas.Ver')
+  async findByUsuario(@Param('id', ParseIntPipe) id: number) {
+    const data = await this.pagosService.findByUsuario(id);
+    return { success: true, data };
   }
 
   @Get('cultivo/:id')
+  @Permission('Finanzas.Ver')
   findByCultivo(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByCultivo(id);
   }
 
   @Get('actividad/:id')
+  @Permission('Finanzas.Ver')
   findByActividad(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findByActividad(id);
   }
 
   @Get(':id')
+  @Permission('Finanzas.Ver')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.pagosService.findOne(id);
   }
 
   @Put(':id')
+  @Permission('Actividades.Pagar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updatePagoDto: UpdatePagoDto, @Request() req: any) {
     const user = await this.usuariosService.findByIdentificacion(req.user.identificacion);
     let userRole = user?.tipoUsuario?.nombre;

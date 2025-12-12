@@ -11,6 +11,7 @@ import { getMaterialCosts } from '../api/cultivosApi';
 import ProduccionForm from '../components/ProduccionForm';
 import type { Produccion, Stats} from '../interfaces/cultivos';
 import { formatDateOnly } from '../../../utils/dateUtils';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 const StatCard = ({ title, value, icon, isCurrency = true }: any) => {
   const formattedValue = isCurrency
@@ -39,30 +40,69 @@ export default function DashboardProduccion() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduccion, setEditingProduccion] = useState<Produccion | null>(null);
 
-  const fetchData = async () => {
-    if (!cultivoId) return;
+const fetchData = async () => {
+  if (!cultivoId) return;
+  try {
+    const id = parseInt(cultivoId);
+
+    // Cargar producciones primero (lo más importante)
     try {
-      const id = parseInt(cultivoId);
-      const [produccionesRes, statsRes, pagosRes, materialCostsRes] = await Promise.all([
-        getProduccionesPorCultivo(id),
+      const produccionesRes = await getProduccionesPorCultivo(id);
+      // ✅ CORRECCIÓN: El backend devuelve { success: true, data: [...] }, así que data es el array directamente
+      const produccionesData = produccionesRes.data || [];
+
+      setProducciones(produccionesData);
+    } catch (error) {
+      console.error('[FRONTEND] Error al cargar las producciones:', error);
+      console.error('[FRONTEND] Error details:', (error as any)?.response?.data);
+      toast.error("Error al cargar las producciones.");
+      return; // Si no podemos cargar producciones, no continuamos
+    }
+
+    // Cargar datos adicionales (no críticos)
+    try {
+      const [statsResult, pagosResult, materialCostsResult] = await Promise.allSettled([
         getStatsPorCultivo(id),
         getPagosByCultivo(id),
         getMaterialCosts(id)
       ]);
-      setProducciones(produccionesRes.data || []);
-      setStats(statsRes.data);
 
-      // Calcular total de costos de mano de obra (pagos a pasantes)
-      const laborCosts = pagosRes.data ? pagosRes.data.reduce((sum: number, pago: any) => sum + Number(pago.monto), 0) : 0;
-      setTotalLaborCosts(laborCosts);
+      // Procesar stats
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value.data);
+      } else {
+        console.error('Error en stats:', statsResult.reason);
+        setStats(null);
+      }
 
-      // Calcular total de costos de materiales
-      const materialCosts = materialCostsRes.data?.totalMaterialCosts || 0;
-      setTotalMaterialCosts(materialCosts);
+      // Procesar pagos
+      if (pagosResult.status === 'fulfilled') {
+        const laborCosts = pagosResult.value.data ? pagosResult.value.data.reduce((sum: number, pago: any) => sum + Number(pago.monto), 0) : 0;
+        setTotalLaborCosts(laborCosts);
+      } else {
+        console.error('Error en pagos:', pagosResult.reason);
+        setTotalLaborCosts(0);
+      }
+
+      // Procesar costos de materiales
+      if (materialCostsResult.status === 'fulfilled') {
+        const materialCosts = materialCostsResult.value.data?.totalMaterialCosts || 0;
+        setTotalMaterialCosts(materialCosts);
+      } else {
+        console.error('Error en materialCosts:', materialCostsResult.reason);
+        setTotalMaterialCosts(0);
+      }
+
     } catch (error) {
-      toast.error("Error al cargar los datos de producción.");
+      console.error('Error en datos adicionales:', error);
+      // No mostrar error al usuario, solo log
     }
-  };
+  }catch (error) {
+    console.error('Error general:', error);
+    toast.error("Error al cargar los datos.");
+  }
+  ;
+};
 
   useEffect(() => {
     fetchData();
@@ -123,9 +163,11 @@ export default function DashboardProduccion() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <Button onClick={() => handleOpenModal()} className="bg-green-600 text-white font-bold hover:bg-green-700" startContent={<Plus />}>
-           Registrar Cosecha
-        </Button>
+        <PermissionWrapper module="Cultivo" permission="RegistraryVerCosecha">
+          <Button onClick={() => handleOpenModal()} className="bg-green-600 text-white font-bold hover:bg-green-700" startContent={<Plus />}>
+             Registrar Cosecha
+          </Button>
+        </PermissionWrapper>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -174,24 +216,28 @@ export default function DashboardProduccion() {
                   <TableCell className="text-right font-semibold">{disponible.toLocaleString('es-CO')} kg</TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center items-center gap-2">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="primary"
-                        onClick={() => handleOpenModal(p)}
-                      >
-                        <Edit size={16} />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="danger"
-                        onClick={() => handleDelete(p.id)}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
+                      <PermissionWrapper module="Cultivo" permission="RegistraryVerCosecha">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          color="primary"
+                          onClick={() => handleOpenModal(p)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                      </PermissionWrapper>
+                      <PermissionWrapper module="Cultivo" permission="RegistraryVerCosecha">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          color="danger"
+                          onClick={() => handleDelete(p.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </PermissionWrapper>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -11,6 +11,7 @@ import type { Actividad, UsuarioSimple, CultivoSimple } from '../interfaces/acti
 
 import AsignacionActividadForm from '../components/AsignacionActividadForm';
 import { Modal, ModalContent, ModalHeader, ModalBody, Card, CardBody } from '@heroui/react';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // --- Componente de Tarjeta de Acceso Rápido (sin cambios) ---
 interface QuickAccessCardProps {
@@ -159,30 +160,33 @@ const ActividadesPrincipal: React.FC = () => {
   }, [cargarActividades, cargarDatosSecundarios]);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión Actividades</h1>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <QuickAccessCard
-            title="Asignación de Actividades"
-            description="Asigna tareas específicas a los aprendices"
-            icon={<ClipboardList className="w-6 h-6 text-blue-600" />}
-            colorClass="border-blue-500"
-            action={() => setIsAsignacionModalOpen(true)}
-          />
-          <QuickAccessCard
-            title="Gestión de Actividades"
-            description="Consulta y administra todas las actividades"
-            icon={<Users className="w-6 h-6 text-orange-600" />}
-            colorClass="border-orange-500"
-            link="/cronograma"
-          />
+    <PermissionWrapper module="Actividades" permission="Ver">
+      <div className="p-6 bg-gray-50 min-h-screen space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Gestión Actividades</h1>
         </div>
-      </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-800">Accesos Rápidos</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <PermissionWrapper module="Actividades" permission="Asignar">
+              <QuickAccessCard
+                title="Asignación de Actividades"
+                description="Asigna tareas específicas a los aprendices"
+                icon={<ClipboardList className="w-6 h-6 text-blue-600" />}
+                colorClass="border-blue-500"
+                action={() => setIsAsignacionModalOpen(true)}
+              />
+            </PermissionWrapper>
+            <QuickAccessCard
+              title="Gestión de Actividades"
+              description="Consulta y administra todas las actividades"
+              icon={<Users className="w-6 h-6 text-orange-600" />}
+              colorClass="border-orange-500"
+              link="/cronograma"
+            />
+          </div>
+        </div>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -229,6 +233,7 @@ const ActividadesPrincipal: React.FC = () => {
         </ModalContent>
       </Modal>
     </div>
+    </PermissionWrapper>
   );
 };
 

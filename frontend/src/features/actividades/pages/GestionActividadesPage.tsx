@@ -21,6 +21,7 @@ import ModalVerRespuestas from '../components/ModalVerRespuestas';
 import ModalPagoPasante from '../components/ModalPagoPasante';
 import { useAuth } from '../../../context/AuthContext';
 import { Modal, ModalContent, ModalHeader, ModalBody, Button, Select, SelectItem, Card,CardBody } from '@heroui/react';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 import type {
   Actividad,
   UpdateActividadPayload,
@@ -510,22 +511,23 @@ const GestionActividadesPage: React.FC = () => {
     );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full space-y-6">
-      {/* (Cabecera y botones sin cambios) */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Gestión de Actividades
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            className="bg-transparent p-3 border-none"
-            onClick={mostrarNotificacionesPendientes}
-            title="Mostrar notificaciones de actividades pendientes"
-          >
-            <Bell className="w-6 h-6 text-black animate-bounce" />
-          </Button>
+    <PermissionWrapper module="Actividades" permission="Ver">
+      <div className="p-6 bg-gray-50 min-h-full space-y-6">
+        {/* (Cabecera y botones sin cambios) */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-800">
+            Gestión de Actividades
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button
+              className="bg-transparent p-3 border-none"
+              onClick={mostrarNotificacionesPendientes}
+              title="Mostrar notificaciones de actividades pendientes"
+            >
+              <Bell className="w-6 h-6 text-black animate-bounce" />
+            </Button>
+          </div>
         </div>
-      </div>
 
       {/* (Stats sin cambios) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -704,6 +706,7 @@ const GestionActividadesPage: React.FC = () => {
         />
       )}
     </div>
+    </PermissionWrapper>
   );
 };
 

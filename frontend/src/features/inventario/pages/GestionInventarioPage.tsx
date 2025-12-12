@@ -7,6 +7,7 @@ import { listarMateriales, crearMaterial, actualizarMaterial, subirImagenMateria
 import MaterialForm from '../components/MaterialForm';
 import { type Material, type MaterialData } from '../interfaces/inventario';
 import { Modal, ModalContent, ModalHeader, ModalBody, Button, Input, Select, SelectItem, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Switch, Pagination } from '@heroui/react';
+import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -393,9 +394,11 @@ export default function GestionInventarioPage() {
       <header className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800">Gestión De Inventario</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />} className="text-white font-bold">
-            Añadir Producto
-          </Button>
+          <PermissionWrapper module="Inventario" permission="Crear">
+            <Button onClick={() => openModal()} color="success" startContent={<Plus size={16} />} className="text-white font-bold">
+              Añadir Producto
+            </Button>
+          </PermissionWrapper>
         </div>
       </header>
 
@@ -441,6 +444,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroTipoCategoria(selected as string || null);
             }}
+            aria-label="Filtrar por categoría"
           >
             {tiposCategoriaUnicos.filter(cat => cat).map(cat => <SelectItem key={cat}>{cat}</SelectItem>)}
           </Select>
@@ -454,6 +458,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroUbicacion(selected as string || null);
             }}
+            aria-label="Filtrar por ubicación"
           >
             {ubicacionesUnicas.filter(ubi => ubi).map(ubi => <SelectItem key={ubi}>{ubi}</SelectItem>)}
           </Select>
@@ -467,6 +472,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0];
               setFiltroProveedor(selected as string || null);
             }}
+            aria-label="Filtrar por proveedor"
           >
             {proveedoresUnicos.filter(prov => prov).map(prov => <SelectItem key={prov}>{prov}</SelectItem>)}
           </Select>
@@ -480,6 +486,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0] as "Todos" | "Activo" | "Inactivo";
               setFiltroEstadoMaterial(selected);
             }}
+            aria-label="Filtrar por estado del material"
           >
             <SelectItem key="Estado">Todos</SelectItem>
             <SelectItem key="Activo">Activos</SelectItem>
@@ -495,6 +502,7 @@ export default function GestionInventarioPage() {
               const selected = Array.from(keys)[0] as "Todos" | "Normal" | "Stock Bajo" | "Crítico";
               setFiltroEstadoStock(selected);
             }}
+            aria-label="Filtrar por estado de stock"
           >
             <SelectItem key="Todos">Stock</SelectItem>
             <SelectItem key="Normal">Normal</SelectItem>
@@ -627,24 +635,30 @@ export default function GestionInventarioPage() {
                     </Chip>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch
-                      size="sm"
-                      color="success"
-                      isSelected={mat.estado}
-                      onValueChange={() => handleToggleEstado(mat)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <PermissionWrapper module="Inventario" permission="Editar">
+                      <Switch
+                        size="sm"
+                        color="success"
+                        isSelected={mat.estado}
+                        onValueChange={() => handleToggleEstado(mat)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </PermissionWrapper>
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
-                        <Edit size={16} />
-                      </Button>
+                   <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                     <PermissionWrapper module="Inventario" permission="Editar">
+                       <Button onClick={() => openModal(mat)} color="primary" variant="light" isIconOnly title="Editar">
+                         <Edit size={16} />
+                       </Button>
+                     </PermissionWrapper>
 
                       {mat.estado && (
-                        <Button onClick={() => openStockModal(mat)} color="success" variant="light" isIconOnly title="Actualizar Stock">
-                          <PlusCircle size={16} />
-                        </Button>
+                        <PermissionWrapper module="Inventario" permission="ActualizarStock">
+                          <Button onClick={() => openStockModal(mat)} color="success" variant="light" isIconOnly title="Actualizar Stock">
+                            <PlusCircle size={16} />
+                          </Button>
+                        </PermissionWrapper>
                       )}
 
                       {mat.estado && mat.cantidad <= 10 && (

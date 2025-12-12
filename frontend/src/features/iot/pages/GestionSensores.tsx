@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 
 // Hero UI Components
-import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Input,ModalContent, ModalHeader, ModalBody } from "@heroui/react";
+import { Select, SelectItem, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Input, ModalContent, ModalHeader, ModalBody } from "@heroui/react";
 
 // --- APIS ---
 import {
@@ -31,11 +31,12 @@ import { obtenerLotes } from '../../cultivos/api/lotesApi';
 import Modal from '../../../components/Modal';
 import BrokerFormModal from '../components/BrokerFormModal';
 import ModalDescargarTrazabilidad from '../components/ModalDescargarTrazabilidad';
-  
+
 // --- INTERFACES ---
 import type { Sensor, LatestSensorData, Broker, BrokerLote, CreateBrokerLoteDto } from '../interfaces/iot';
 import type { Lote } from '../../cultivos/interfaces/cultivos';
 import { usePermissionGuard } from '../../../hooks/usePermissionGuard';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // --- HOOKS ---
 
@@ -86,10 +87,6 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
   // 1. Detectar si es una bomba
   const isBomba = sensor.nombre.toLowerCase().includes('bomba') || sensor.topic?.toLowerCase().includes('bomba');
 
-  // DEBUG: Log para verificar el nombre del sensor bomba
-  if (isBomba) {
-    console.log('DEBUG SensorCard - Nombre del sensor bomba:', sensor.nombre);
-  }
 
   const getDisplayData = (sensor: Sensor, valor: number | null) => {
     const name = sensor.nombre.toLowerCase();
@@ -146,11 +143,11 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
 
   // MODIFICACIÓN DE COLORES PARA BOMBA:
   if (isBomba && valor !== null) {
-      if (Number(valor) === 1) {
-          valorColor = "text-green-600"; // Color para ON
-      } else {
-          valorColor = "text-red-500"; // Color para OFF
-      }
+    if (Number(valor) === 1) {
+      valorColor = "text-green-600"; // Color para ON
+    } else {
+      valorColor = "text-red-500"; // Color para OFF
+    }
   }
 
   // Si el sistema NO está grabando, quitamos colores de alerta para indicar "congelado"
@@ -170,138 +167,143 @@ function SensorCard({ sensor, latestData, isSystemRecording, onViewHistory, onTo
 
       {/* Content */}
       <div className="relative z-10">
-      <div className="flex justify-between items-start mb-0.5">
-        <div className="flex items-center gap-2 w-full pr-3">
-          <div className={`p-1.5 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-sm border border-gray-300 ${bellAnimation}`}>
-            <Bell className={`w-5 h-5 ${bellColor}`} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
-            <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${
-              isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
-              isOnline ? 'bg-green-100 text-green-700 border border-green-200' :
-              !tieneDatos ? 'bg-gray-100 text-gray-700 border border-gray-200' :
-              isActive ? 'bg-green-100 text-green-700 border border-green-200' :
-              'bg-gray-100 text-gray-700 border border-gray-200'
-            }`}>
-              {isDisconnected ? '● DESCONECTADO' : isOnline ? '● EN LÍNEA' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
-            </span>
-          </div>
-        </div>
-        
-        <div className="absolute top-1.5 right-1.5">
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-6 h-6 min-w-6"
-              >
-                <MoreVertical size={12} />
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Acciones del sensor"
-              variant="flat"
-              onAction={(key) => {
-                switch (key) {
-                  case 'toggle':
-                    onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo');
-                    break;
-                  case 'history':
-                    onViewHistory(sensor);
-                    break;
-                  case 'delete':
-                    onRemoveFromLote(sensor);
-                    break;
-                }
-              }}
-            >
-              <DropdownSection title="Estado">
-                <DropdownItem
-                  key="toggle"
-                  startContent={isActive ? <PowerOff size={14} /> : <Power size={14} />}
-                  color={isActive ? "danger" : "success"}
-                >
-                  {isActive ? 'Desactivar' : 'Activar'}
-                </DropdownItem>
-              </DropdownSection>
-
-              <DropdownSection title="Acciones">
-                <DropdownItem
-                  key="history"
-                  startContent={<ChartIcon size={14} />}
-                  color="primary"
-                >
-                  Ver Historial
-                </DropdownItem>
-              </DropdownSection>
-
-              <DropdownSection title="Peligroso">
-                <DropdownItem
-                  key="delete"
-                  startContent={<X size={14} />}
-                  color="danger"
-                  className="text-danger"
-                >
-                  Eliminar del Lote
-                </DropdownItem>
-              </DropdownSection>
-            </DropdownMenu>
-          </Dropdown>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col justify-center items-center py-0.5">
-        {valor !== null ? (
-          <>
-            <div className={`text-xl font-bold ${valorColor} flex items-baseline gap-1 drop-shadow-sm`}>
-              {isBomba ? (
-                // Lógica especial para Bomba
-                <span>{Number(valor) === 1 ? 'ON' : 'OFF'}</span>
-              ) : (
-                // Lógica normal para sensores numéricos
-                Number(valor).toFixed(1)
-              )}
-              <span className="text-[11px] font-semibold text-gray-500">{unit}</span>
+        <div className="flex justify-between items-start mb-0.5">
+          <div className="flex items-center gap-2 w-full pr-3">
+            <div className={`p-1.5 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-sm border border-gray-300 ${bellAnimation}`}>
+              <Bell className={`w-5 h-5 ${bellColor}`} />
             </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-gray-800 text-[10px] truncate leading-tight" title={sensor.nombre}>{sensor.nombre}</h3>
+              <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full inline-block shadow-sm ${isDisconnected ? 'bg-red-100 text-red-700 border border-red-200' :
+                isOnline ? 'bg-green-100 text-green-700 border border-green-200' :
+                  !tieneDatos ? 'bg-gray-100 text-gray-700 border border-gray-200' :
+                    isActive ? 'bg-green-100 text-green-700 border border-green-200' :
+                      'bg-gray-100 text-gray-700 border border-gray-200'
+                }`}>
+                {isDisconnected ? '● DESCONECTADO' : isOnline ? '● EN LÍNEA' : !tieneDatos ? '● SINCRONIZANDO' : isActive ? '● EN LÍNEA' : '● INACTIVO'}
+              </span>
+            </div>
+          </div>
 
-            {/* Indicador de estado - SIEMPRE visible para mantener altura consistente */}
-            {!isSystemRecording ? (
+          <div className="absolute top-1.5 right-1.5">
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <div>
+                  <PermissionWrapper module="Iot" permission="Editar">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      className="w-6 h-6 min-w-6"
+                    >
+                      <MoreVertical size={12} />
+                    </Button>
+                  </PermissionWrapper>
+                </div>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Acciones del sensor"
+                variant="flat"
+                onAction={(key) => {
+                  switch (key) {
+                    case 'toggle':
+                      onToggleEstado(sensor.id, isActive ? 'Inactivo' : 'Activo');
+                      break;
+                    case 'history':
+                      onViewHistory(sensor);
+                      break;
+                    case 'delete':
+                      onRemoveFromLote(sensor);
+                      break;
+                  }
+                }}
+              >
+                <DropdownSection title="Estado">
+                  <DropdownItem
+                    key="toggle"
+                    startContent={isActive ? <PowerOff size={14} /> : <Power size={14} />}
+                    color={isActive ? "danger" : "success"}
+                  >
+                    {isActive ? 'Desactivar' : 'Activar'}
+                  </DropdownItem>
+                </DropdownSection>
+
+                <DropdownSection title="Acciones">
+                  <DropdownItem
+                    key="history"
+                    startContent={<ChartIcon size={14} />}
+                    color="primary"
+                  >
+                    Ver Historial
+                  </DropdownItem>
+                </DropdownSection>
+
+                <DropdownSection title="Peligroso">
+                  <DropdownItem
+                    key="delete"
+                    startContent={<X size={14} />}
+                    color="danger"
+                    className="text-danger"
+                  >
+                    <PermissionWrapper module="Iot" permission="Eliminar">
+                      Eliminar del Lote
+                    </PermissionWrapper>
+                  </DropdownItem>
+                </DropdownSection>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center items-center py-0.5">
+          {valor !== null ? (
+            <>
+              <div className={`text-xl font-bold ${valorColor} flex items-baseline gap-1 drop-shadow-sm`}>
+                {isBomba ? (
+                  // Lógica especial para Bomba
+                  <span>{Number(valor) === 1 ? 'ON' : 'OFF'}</span>
+                ) : (
+                  // Lógica normal para sensores numéricos
+                  Number(valor).toFixed(1)
+                )}
+                <span className="text-[11px] font-semibold text-gray-500">{unit}</span>
+              </div>
+
+              {/* Indicador de estado - SIEMPRE visible para mantener altura consistente */}
+              {!isSystemRecording ? (
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">
                   <Pause size={7} className="inline mr-1" /> ⏸️ Congelado
                 </div>
-            ) : !tieneDatos && !isOnline ? (
+              ) : !tieneDatos && !isOnline ? (
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 shadow-sm">
                   <RefreshCw size={7} className="inline mr-1 animate-spin" /> Sincronizando...
                 </div>
-            ) : alertMessage ? (
+              ) : alertMessage ? (
                 <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${alertMessage === 'ALTO' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                   <AlertTriangle size={7} className="inline mr-1" /> ⚠️ {alertMessage}
                 </div>
-            ) : isBomba ? (
+              ) : isBomba ? (
                 // 3. Estado "Normal" personalizado para Bomba
                 <div className={`mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full border shadow-sm ${Number(valor) === 1 ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                   {Number(valor) === 1 ? '⚡ Funcionando' : 'zzz Apagado'}
                 </div>
-            ) : (
+              ) : (
                 <div className="mt-0.5 text-[8px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 shadow-sm">
                   <div className="inline mr-1 w-1.5 h-1.5 bg-green-500 rounded-full" /> ✅ Normal
                 </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center">
-            <span className="text-base font-bold text-gray-300">N/A</span>
-            <p className="text-[8px] text-gray-400">Esperando datos </p>
-          </div>
-        )}
-      </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center">
+              <span className="text-base font-bold text-gray-300">N/A</span>
+              <p className="text-[8px] text-gray-400">Esperando datos </p>
+            </div>
+          )}
+        </div>
 
-      <div className="pt-1 border-t border-gray-100 flex justify-center items-center text-[8px] text-gray-600 bg-gray-50/50 rounded-b-xl">
-          <span className="flex items-center gap-1 font-medium"><Clock size={7} className="text-gray-400"/> {latestData?.fechaRegistro ? subtract5Hours(latestData.fechaRegistro)?.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</span>
-      </div>
+        <div className="pt-1 border-t border-gray-100 flex justify-center items-center text-[8px] text-gray-600 bg-gray-50/50 rounded-b-xl">
+          <span className="flex items-center gap-1 font-medium"><Clock size={7} className="text-gray-400" /> {latestData?.fechaRegistro ? subtract5Hours(latestData.fechaRegistro)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
+        </div>
 
       </div>
     </div>
@@ -807,7 +809,7 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
 
         const registroTime = new Date(r.fechaRegistro);
         return {
-          time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+          time: registroTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
           fecha: registroTime.toLocaleDateString('es-CO'),
           valor: valor,
           timestamp: registroTime.getTime(),
@@ -896,8 +898,8 @@ function SensorChartsCarousel({ sensor, onClose }: SensorChartsCarouselProps) {
               } else if (name.includes('humedad')) {
                 unit = '%';
               } else if (name.includes('gas') || topic.includes('gas') ||
-                        name.includes('co2') || topic.includes('co2') ||
-                        name.includes('ppm') || topic.includes('ppm')) {
+                name.includes('co2') || topic.includes('co2') ||
+                name.includes('ppm') || topic.includes('ppm')) {
                 unit = 'ppm';
               }
 
@@ -984,11 +986,11 @@ export default function GestionSensoresPage(): ReactElement {
   // Protección de permisos en tiempo real
   usePermissionGuard({ module: 'Iot' });
 
-  
+
 
   const [sensores, setSensores] = useState<Sensor[]>([]);
   const [latestData, setLatestData] = useState<LatestSensorData[]>([]);
-  
+
   // Estados de Filtros
   const [modoVista, setModoVista] = useState<'GENERAL' | 'LOTE'>('GENERAL');
   const [lotes, setLotes] = useState<Lote[]>([]);
@@ -1107,7 +1109,7 @@ export default function GestionSensoresPage(): ReactElement {
                 // Usar la fecha real del registro para monitoreo preciso
                 const registroTime = new Date(r.fechaRegistro);
                 return {
-                  time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+                  time: registroTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
                   valor: valor,
                   fecha: registroTime.toLocaleDateString('es-CO'),
                   timestamp: registroTime.getTime(),
@@ -1136,7 +1138,7 @@ export default function GestionSensoresPage(): ReactElement {
           if (latestSensorData && sensor) {
             // Usar la fecha real del registro del sensor para monitoreo real
             const registroTime = latestSensorData.fechaRegistro ? new Date(latestSensorData.fechaRegistro) : new Date();
-            const timeLabel = registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+            const timeLabel = registroTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
             const dateLabel = registroTime.toLocaleDateString('es-CO');
 
             // Aplicar la misma transformación que en la tarjeta
@@ -1218,7 +1220,7 @@ export default function GestionSensoresPage(): ReactElement {
               }
               const registroTime = new Date(r.fechaRegistro);
               return {
-                time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+                time: registroTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
                 valor: valor,
                 fecha: registroTime.toLocaleDateString('es-CO'),
                 timestamp: registroTime.getTime(),
@@ -1256,7 +1258,7 @@ export default function GestionSensoresPage(): ReactElement {
             // Usar fecha real del registro
             const registroTime = new Date(r.fechaRegistro);
             return {
-              time: registroTime.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+              time: registroTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
               valor: valor,
               fecha: registroTime.toLocaleDateString('es-CO'),
               timestamp: registroTime.getTime(),
@@ -1510,11 +1512,10 @@ export default function GestionSensoresPage(): ReactElement {
                   variant={modoVista === m.id ? "solid" : "light"}
                   color={m.color as any}
                   size="sm"
-                  className={`text-xs font-bold transition-all ${
-                    modoVista === m.id
-                      ? 'shadow-md'
-                      : 'hover:shadow-sm'
-                  }`}
+                  className={`text-xs font-bold transition-all ${modoVista === m.id
+                    ? 'shadow-md'
+                    : 'hover:shadow-sm'
+                    }`}
                   startContent={<m.icon size={14} />}
                 >
                   {m.label}
@@ -1528,12 +1529,12 @@ export default function GestionSensoresPage(): ReactElement {
                 <Select
                   selectedKeys={filtroId === 'TODOS' ? [] : [filtroId.toString()]}
                   onSelectionChange={(keys) => {
-                      const selected = Array.from(keys);
-                      const value = selected.length > 0 ? selected[0] : 'TODOS';
-                      setFiltroId(value === 'TODOS' ? 'TODOS' : Number(value));
-                      setLatestData([]);
-                      setSensorHistories({});
-                      setPaginaSensores(0);
+                    const selected = Array.from(keys);
+                    const value = selected.length > 0 ? selected[0] : 'TODOS';
+                    setFiltroId(value === 'TODOS' ? 'TODOS' : Number(value));
+                    setLatestData([]);
+                    setSensorHistories({});
+                    setPaginaSensores(0);
                   }}
                   className="min-w-40 max-w-56"
                   size="sm"
@@ -1553,43 +1554,49 @@ export default function GestionSensoresPage(): ReactElement {
           <div className="flex items-center gap-2">
             {/* BOTONES DE ACCIÓN */}
             <div className="flex items-center gap-2">
-               <Button
-                 onClick={() => openBrokerModal()}
-                 variant="solid"
-                 color="success"
-                 size="sm"
-                 startContent={<Server size={14} />}
-                 className="text-white font-bold"
-               >
-                 Crear Broker
-               </Button>
+              <PermissionWrapper module="Iot" permission="Crear">
+                <Button
+                  onClick={() => openBrokerModal()}
+                  variant="solid"
+                  color="success"
+                  size="sm"
+                  startContent={<Server size={14} />}
+                  className="text-white font-bold"
+                >
+                  Crear Broker
+                </Button>
+              </PermissionWrapper>
 
-               {/* BOTÓN DE DESCARGA DE TRAZABILIDAD - DISPONIBLE EN AMBOS MODOS */}
-               <Button
-                 onClick={() => setIsTrazabilidadModalOpen(true)}
-                 variant="solid"
-                 color="danger"
-                 size="sm"
-                 startContent={<Download size={14} />}
-                 className="text-white font-bold"
-               >
-                 Descargar Reporte
-               </Button>
+              {/* BOTÓN DE DESCARGA DE TRAZABILIDAD - DISPONIBLE EN AMBOS MODOS */}
+              <PermissionWrapper module="Iot" permission="DescargarPdf">
+                <Button
+                  onClick={() => setIsTrazabilidadModalOpen(true)}
+                  variant="solid"
+                  color="danger"
+                  size="sm"
+                  startContent={<Download size={14} />}
+                  className="text-white font-bold"
+                >
+                  Descargar Reporte
+                </Button>
+              </PermissionWrapper>
 
-               {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                 <Button
-                   onClick={() => openBrokerLoteModal()}
-                   variant="solid"
-                   color="success"
-                   size="sm"
-                   startContent={<Layers size={14} />}
-                   className="text-white font-bold"
-                 >
-                   Configurar Lote
-                 </Button>
-               )}
+              {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
+                <PermissionWrapper module="Iot" permission="Crear">
+                  <Button
+                    onClick={() => openBrokerLoteModal()}
+                    variant="solid"
+                    color="success"
+                    size="sm"
+                    startContent={<Layers size={14} />}
+                    className="text-white font-bold"
+                  >
+                    Configurar Lote
+                  </Button>
+                </PermissionWrapper>
+              )}
 
-             </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1598,24 +1605,24 @@ export default function GestionSensoresPage(): ReactElement {
       <div className={`flex-1 bg-gray-50/50 rounded-lg p-3 border transition-colors duration-500 ${isSystemRecording && filtroId !== 'TODOS' ? 'border-green-200 bg-green-50/10' : 'border-gray-200'} overflow-hidden flex flex-col`}>
 
         <div className="flex justify-between items-center mb-3 px-2">
-            <div className="flex items-center gap-3">
-              <h2 className="text-sm font-semibold text-gray-700">
-                {modoVista === 'GENERAL' ? 'Todos los Sensores' :
-                 `Lote: ${lotes.find(l=>l.id===filtroId)?.nombre || 'Seleccionar'}`}
-              </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-700">
+              {modoVista === 'GENERAL' ? 'Todos los Sensores' :
+                `Lote: ${lotes.find(l => l.id === filtroId)?.nombre || 'Seleccionar'}`}
+            </h2>
 
-              {/* Estado del sistema */}
-              {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
-                isSystemRecording ?
-                  <span className="text-xs text-green-600 font-semibold animate-pulse flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div> GRABANDO
-                  </span>
-                  :
-                  <span className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                    <Pause size={10}/> PAUSADO
-                  </span>
-              )}
-            </div>
+            {/* Estado del sistema */}
+            {modoVista === 'LOTE' && filtroId !== 'TODOS' && (
+              isSystemRecording ?
+                <span className="text-xs text-green-600 font-semibold animate-pulse flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div> GRABANDO
+                </span>
+                :
+                <span className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                  <Pause size={10} /> PAUSADO
+                </span>
+            )}
+          </div>
         </div>
 
         {/* Leyenda de Colores de Estado - Una sola línea */}
@@ -1701,9 +1708,8 @@ export default function GestionSensoresPage(): ReactElement {
                 {Array.from({ length: Math.max(totalPaginas, 1) }, (_, i) => (
                   <div
                     key={i}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
-                      i === paginaSensores ? 'bg-blue-500 scale-125' : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${i === paginaSensores ? 'bg-blue-500 scale-125' : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
                   />
                 ))}
               </div>
@@ -1723,15 +1729,15 @@ export default function GestionSensoresPage(): ReactElement {
       {sensoresFiltrados.length > 0 && (
         <div className={`flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-100 p-3 animate-in fade-in slide-in-from-bottom-4 ${!isSystemRecording ? 'opacity-70 grayscale' : ''}`}>
           <div className="flex justify-between items-start mb-3">
-           <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-             <TrendingUp size={14} className="text-blue-600"/>
-             {/* Título Dinámico */}
-             {sensoresGrafica.length > 0
-               ? `${sensoresGrafica.length} Sensores Seleccionados`
-               : 'Todos los Sensores'
-             }
-             {!isSystemRecording && " (Congelado)"}
-           </h3>
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <TrendingUp size={14} className="text-blue-600" />
+              {/* Título Dinámico */}
+              {sensoresGrafica.length > 0
+                ? `${sensoresGrafica.length} Sensores Seleccionados`
+                : 'Todos los Sensores'
+              }
+              {!isSystemRecording && " (Congelado)"}
+            </h3>
             <div className="flex items-center gap-2">
               {/* FILTRO POR LOTE EN MODO GENERAL */}
               {modoVista === 'GENERAL' && (
@@ -1902,9 +1908,9 @@ export default function GestionSensoresPage(): ReactElement {
                       // Detectar unidad simple basada en nombre (puedes mejorar esto)
                       let unidad = '';
                       const n = nombreReal?.toLowerCase() || '';
-                      if(n.includes('temp')) unidad = '°C';
-                      else if(n.includes('hum')) unidad = '%';
-                      else if(n.includes('luz')) unidad = 'lx';
+                      if (n.includes('temp')) unidad = '°C';
+                      else if (n.includes('hum')) unidad = '%';
+                      else if (n.includes('luz')) unidad = 'lx';
 
                       return [
                         <span className="font-semibold ml-2">

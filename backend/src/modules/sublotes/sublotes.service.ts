@@ -65,7 +65,6 @@ export class SublotesService {
     // Si no hay cultivos activos (ni en sublotes ni directos), el lote está en preparación
     if (cultivosEnSublotes === 0 && cultivosDirectosEnLote === 0) {
       await loteRepo.update(loteId, { estado: 'En preparación' });
-      console.log(`Lote ${loteId} cambió a estado: En preparación (sin cultivos activos)`);
       return;
     }
 
@@ -87,12 +86,10 @@ export class SublotesService {
       }
 
       await loteRepo.update(loteId, { estado: nuevoEstado });
-      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (${cultivosEnSublotes}/${totalSublotesActivos} sublotes con cultivos activos)`);
     } else {
       // No hay sublotes activos, pero hay cultivos directos
       const nuevoEstado = cultivosDirectosEnLote > 0 ? 'En cultivación' : 'En preparación';
       await loteRepo.update(loteId, { estado: nuevoEstado });
-      console.log(`Lote ${loteId} cambió a estado: ${nuevoEstado} (sin sublotes activos, ${cultivosDirectosEnLote} cultivos directos activos)`);
     }
   }
 
@@ -126,7 +123,6 @@ export class SublotesService {
     });
 
     const subloteGuardado = await this.subloteRepository.save(sublote);
-    console.log('Sublote guardado:', subloteGuardado.id);
 
     // Actualizar el estado del lote después de crear el sublote
     await this.actualizarEstadoLote(loteId);

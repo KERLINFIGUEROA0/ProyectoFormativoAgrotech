@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, ParseIntPipe, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { SensoresService } from './sensores.service';
 import { CreateSensoreDto } from './dto/create-sensore.dto';
@@ -6,22 +6,35 @@ import { UpdateSensoreDto } from './dto/update-sensore.dto';
 import { UpdateSensoreEstadoDto } from './dto/update-sensore-estado.dto';
 import { GenerarReporteTrazabilidadDto } from './dto/generar-reporte.dto';
 import { PdfService } from '../pdf/pdf.service';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('sensores')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class SensoresController {
   constructor(
     private readonly sensoresService: SensoresService,
     private readonly pdfService: PdfService,
-  ) {}
+  ) { }
 
   @Post('crear')
+  @Permission('Iot.Crear')
   async create(@Body() createSensoreDto: CreateSensoreDto) {
     const nuevo = await this.sensoresService.create(createSensoreDto);
     return { success: true, message: `Sensor "${nuevo.nombre}" creado.`, data: nuevo };
   }
 
   @Get('listar')
+  @Permission('Iot.Ver')
   async findAll() {
+    const sensores = await this.sensoresService.findAll();
+    return { success: true, data: sensores };
+  }
+
+  // Endpoint público para dashboard - solo requiere autenticación
+  @Get('dashboard/listar')
+  async findAllParaDashboard() {
     const sensores = await this.sensoresService.findAll();
     return { success: true, data: sensores };
   }
@@ -29,6 +42,7 @@ export class SensoresController {
   // --- ENDPOINT PARA ACTUALIZAR ---
   // Usa Put para reemplazar/actualizar el recurso completo.
   @Put('actualizar/:id')
+  @Permission('Iot.Editar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateSensoreDto: UpdateSensoreDto) {
     const actualizado = await this.sensoresService.update(id, updateSensoreDto);
     return {
@@ -40,6 +54,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ACTIVAR/DESACTIVAR SENSOR ---
   @Patch('actualizar/:id/estado')
+  @Permission('Iot.Editar')
   async updateEstado(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSensoreEstadoDto) {
     const actualizado = await this.sensoresService.updateEstado(id, dto.estado);
     return {
@@ -51,6 +66,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ELIMINAR ---
   @Delete('eliminar/:id')
+  @Permission('Iot.Eliminar')
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.sensoresService.remove(id);
     return {
@@ -61,6 +77,7 @@ export class SensoresController {
 
   // --- ENDPOINT PARA ELIMINAR SENSORES AUTOMÁTICOS ---
   @Delete('eliminar-automaticos')
+  @Permission('Iot.Eliminar')
   async eliminarSensoresAutomaticos() {
     const resultado = await this.sensoresService.eliminarSensoresAutomaticos();
     return {
@@ -69,20 +86,11 @@ export class SensoresController {
       eliminados: resultado.eliminados
     };
   }
-
-  /**
-   * Obtiene sensores por surco
-   */
-  @Get('por-surco/:surcoId')
-  async findBySurco(@Param('surcoId', ParseIntPipe) surcoId: number) {
-    const sensores = await this.sensoresService.findBySublote(surcoId);
-    return { success: true, data: sensores };
-  }
-
   /**
    * Obtiene sensores por cultivo
    */
   @Get('por-cultivo/:cultivoId')
+  @Permission('Iot.Ver')
   async findByCultivo(@Param('cultivoId', ParseIntPipe) cultivoId: number) {
     const sensores = await this.sensoresService.findByCultivo(cultivoId);
     return { success: true, data: sensores };
@@ -93,6 +101,7 @@ export class SensoresController {
    * Elimina un sensor específico de un lote
    */
   @Delete('eliminar-de-lote/:sensorId')
+  @Permission('Iot.Eliminar')
   async eliminarSensorDeLote(@Param('sensorId', ParseIntPipe) sensorId: number) {
     await this.sensoresService.eliminarSensorDeLote(sensorId);
     return {
@@ -101,77 +110,40 @@ export class SensoresController {
     };
   }
 
-  /**
-   * Sincroniza sensores para un lote basado en los tópicos de su broker
-   */
-  @Post('sincronizar-lote/:loteId')
-  async sincronizarSensoresLote(@Param('loteId', ParseIntPipe) loteId: number) {
-    const result = await this.sensoresService.sincronizarSensoresLote(loteId);
-    return { success: true, message: result.message, sensoresCreados: result.sensoresCreados };
-  }
-
-  /**
-   * Obtiene cultivos activos de un lote para el selector de reportes
-   */
   @Get('cultivos-activos-lote/:loteId')
+  @Permission('Iot.Ver')
   async getCultivosActivosLote(@Param('loteId', ParseIntPipe) loteId: number) {
     const cultivos = await this.sensoresService.getCultivosActivosLote(loteId);
     return { success: true, data: cultivos };
   }
 
   @Post('reporte-trazabilidad')
+  @Permission('Iot.DescargarPdf')
   async descargarReporte(@Body() dto: GenerarReporteTrazabilidadDto, @Res() res: Response) {
-    console.log('Recibiendo solicitud de reporte:', dto);
     try {
       const datos = await this.sensoresService.getFullTraceabilityData(dto);
-      console.log('Datos obtenidos, generando reporte...');
 
       if (dto.formato === 'pdf') {
-        console.log('Intentando generar PDF...');
         try {
           const buffer = await this.pdfService.generarReporteTrazabilidad(datos);
-          console.log('PDF generado exitosamente, tamaño:', buffer.length);
 
           res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.pdf`,
+            'Content-Disposition': `attachment; filename=trazabilidad_iot_${dto.loteId}.pdf`,
             'Content-Length': buffer.length,
           });
           res.end(buffer);
         } catch (pdfError) {
-          console.error('Error generando PDF:', pdfError);
-          // Si falla el PDF, devolver JSON para debugging
+          console.error('Error generando PDF IoT:', pdfError);
           res.json({
-            error: 'Error generando PDF',
+            error: 'Error generando PDF IoT',
             datos: datos,
             pdfError: pdfError.message
           });
         }
-      } else if (dto.formato === 'csv') {
-        console.log('Generando CSV...');
-        try {
-          const csvContent = await this.pdfService.generarReporteTrazabilidadCSV(datos);
-          console.log('CSV generado exitosamente, tamaño:', csvContent.length);
-
-          res.set({
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': `attachment; filename=trazabilidad_${dto.loteId}.csv`,
-          });
-          res.send('\uFEFF' + csvContent); // BOM for Excel compatibility
-        } catch (csvError) {
-          console.error('Error generando CSV:', csvError);
-          res.json({
-            error: 'Error generando CSV',
-            datos: datos,
-            csvError: csvError.message
-          });
-        }
-      } else {
-        // Devolver JSON para testing
-        res.json(datos);
       }
     } catch (error) {
-      console.error('Error en descargarReporte:', error);
+      console.error('Error en descargarReporte IoT:', error);
       res.status(500).json({ message: 'Error interno del servidor', error: error.message });
     }
   }

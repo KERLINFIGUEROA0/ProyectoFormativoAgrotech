@@ -23,6 +23,8 @@ import CultivoForm from '../components/CultivoForm';
 import LotesMap from '../components/LotesMap';
 import ModalUbicacionCultivo from '../components/ModalUbicacionCultivo';
 import type { Cultivo, TipoCultivo, Lote, Sublote } from '../interfaces/cultivos';
+import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
+
 
 
 export default function GestionCultivosPage(): ReactElement {
@@ -286,15 +288,17 @@ export default function GestionCultivosPage(): ReactElement {
     <div className="h-full flex flex-col space-y-6 p-6 bg-gray-50">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-black-900">Gestión Cultivos</h1>
-        <Button
-          onPress={() => openModal()}
-          color="success"
-          className="text-white font-bold shadow-md shadow-green-500/30"
-          size="md"
-          startContent={<Plus size={20} strokeWidth={2.5} />}
-        >
-          Nuevo Cultivo
-        </Button>
+        <PermissionWrapper module='Cultivo' permission='Crear'>
+          <Button
+            onPress={() => openModal()}
+            color="success"
+            className="text-white font-bold shadow-md shadow-green-500/30"
+            size="md"
+            startContent={<Plus size={20} strokeWidth={2.5} />}
+          >
+            Nuevo Cultivo
+          </Button>
+        </PermissionWrapper>
       </div>
 
       {/* Main Stats Grid */}
@@ -391,13 +395,13 @@ export default function GestionCultivosPage(): ReactElement {
       {/* --- CONTENEDOR PRINCIPAL TIPO "TARJETA FLOTANTE" --- */}
       {/* Esta es la Card grande blanca que contiene todo lo demás */}
       <Card className="flex-1 shadow-medium border border-gray-200 overflow-hidden bg-white">
-        
+
         {/* Cabecera del Contenedor (Tabs y Filtros) */}
         <CardHeader className="flex flex-col sm:flex-row gap-4 justify-between items-center p-4 border-b border-gray-100 bg-white sticky top-0 z-20">
-          
+
           {/* Navegación Tabs */}
-          <Tabs 
-            selectedKey={activeTab} 
+          <Tabs
+            selectedKey={activeTab}
             onSelectionChange={(key) => setActiveTab(key as 'lista' | 'mapa')}
             variant="solid"
             color="primary"
@@ -458,6 +462,7 @@ export default function GestionCultivosPage(): ReactElement {
                 classNames={{
                   trigger: "bg-gray-50 border-gray-200 hover:border-gray-300",
                 }}
+                aria-label="Filtrar por estado del cultivo"
               >
                 <SelectItem key="todos">Todos</SelectItem>
                 <SelectItem key="Activo">Activo</SelectItem>
@@ -471,7 +476,7 @@ export default function GestionCultivosPage(): ReactElement {
         {/* Cuerpo del Contenedor (Scrollable) */}
         <CardBody className="p-0 overflow-hidden bg-gray-50/30">
           <ScrollShadow className="h-full w-full p-6">
-            
+
             {activeTab === 'lista' ? (
               <>
                 {filteredCultivos.length === 0 ? (
@@ -502,19 +507,21 @@ export default function GestionCultivosPage(): ReactElement {
 
                           {/* Botón Ubicación (Arriba a la izquierda) */}
                           <div className="absolute top-2 left-2">
-                            <Tooltip content="Ver ubicación exacta">
-                              <Button
-                                isIconOnly
-                                className="bg-blue-500/90 backdrop-blur-sm text-white hover:bg-blue-600 min-w-8 w-8 h-8"
-                                size="sm"
-                                variant="solid"
-                                radius="md"
-                                onPress={() => handleVerUbicacion(cultivo)}
-                                aria-label="Ver ubicación"
-                              >
-                                <MapPin size={14} />
-                              </Button>
-                            </Tooltip>
+                            <SmartPermissionWrapper module="Cultivo" action="Ver">
+                              <Tooltip content="Ver ubicación exacta">
+                                <Button
+                                  isIconOnly
+                                  className="bg-blue-500/90 backdrop-blur-sm text-white hover:bg-blue-600 min-w-8 w-8 h-8"
+                                  size="sm"
+                                  variant="solid"
+                                  radius="md"
+                                  onPress={() => handleVerUbicacion(cultivo)}
+                                  aria-label="Ver ubicación"
+                                >
+                                  <MapPin size={14} />
+                                </Button>
+                              </Tooltip>
+                            </SmartPermissionWrapper>
                           </div>
 
                           {/* Estado (Chip pequeño arriba a la derecha) */}
@@ -522,8 +529,8 @@ export default function GestionCultivosPage(): ReactElement {
                             <Chip
                               color={
                                 cultivo.Estado === 'Activo' ? 'success' :
-                                cultivo.Estado === 'En Cosecha' ? 'warning' :
-                                cultivo.Estado === 'Finalizado' ? 'default' : 'primary'
+                                  cultivo.Estado === 'En Cosecha' ? 'warning' :
+                                    cultivo.Estado === 'Finalizado' ? 'default' : 'primary'
                               }
                               variant="solid"
                               size="sm"
@@ -571,62 +578,70 @@ export default function GestionCultivosPage(): ReactElement {
                         {/* 3. FOOTER (Botones en una sola línea) */}
                         <div className="p-3 flex items-center gap-2">
                           {/* Botón Producción (Verde con texto blanco) */}
-                          <Button
-                            className="flex-1 font-semibold text-xs h-9 bg-green-600 text-white hover:bg-green-700"
-                            size="sm"
-                            variant="solid"
-                            radius="md"
-                            startContent={<DollarSign size={14} className="text-white" />}
-                            onPress={() => navigate(`/cultivos/${cultivo.id}/produccion`)}
-                          >
-                            Producción
-                          </Button>
+                          <PermissionWrapper module="Cultivo" permission="RegistraryVerCosecha">
+                            <Button
+                              className="flex-1 font-semibold text-xs h-9 bg-green-600 text-white hover:bg-green-700"
+                              size="sm"
+                              variant="solid"
+                              radius="md"
+                              startContent={<DollarSign size={14} className="text-white" />}
+                              onPress={() => navigate(`/cultivos/${cultivo.id}/produccion`)}
+                            >
+                              Producción
+                            </Button>
+                          </PermissionWrapper>
 
                           {/* Botón Trazabilidad (Azul con texto blanco) */}
-                          <Button
-                            className="flex-1 font-semibold text-xs h-9 bg-blue-600 text-white hover:bg-blue-700"
-                            size="sm"
-                            variant="solid"
-                            radius="md"
-                            startContent={<BookCheck size={14} className="text-white" />}
-                            onPress={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)}
-                          >
-                            Trazabilidad
-                          </Button>
+                          <PermissionWrapper module="Cultivo" permission="VerTrazabilidad">
+                            <Button
+                              className="flex-1 font-semibold text-xs h-9 bg-blue-600 text-white hover:bg-blue-700"
+                              size="sm"
+                              variant="solid"
+                              radius="md"
+                              startContent={<BookCheck size={14} className="text-white" />}
+                              onPress={() => navigate(`/cultivos/${cultivo.id}/trazabilidad`)}
+                            >
+                              Trazabilidad
+                            </Button>
+                          </PermissionWrapper>
 
-  
+
                           {/* Botón Registrar Cosecha (Solo si no está finalizado) */}
                           {cultivo.Estado !== 'Finalizado' && (
-                            <Tooltip content="Registrar cosecha">
-                              <Button
-                                isIconOnly
-                                className="bg-green-600 text-white hover:bg-green-700 min-w-9 w-9 h-9"
-                                size="sm"
-                                variant="solid"
-                                radius="md"
-                                onPress={() => handleClickCosecha(cultivo)}
-                                aria-label="Registrar cosecha"
-                              >
-                                <DollarSign size={16} />
-                              </Button>
-                            </Tooltip>
+                            <PermissionWrapper module="Cultivo" permission="RegistraryVerCosecha">
+                              <Tooltip content="Registrar cosecha">
+                                <Button
+                                  isIconOnly
+                                  className="bg-green-600 text-white hover:bg-green-700 min-w-9 w-9 h-9"
+                                  size="sm"
+                                  variant="solid"
+                                  radius="md"
+                                  onPress={() => handleClickCosecha(cultivo)}
+                                  aria-label="Registrar cosecha"
+                                >
+                                  <DollarSign size={16} />
+                                </Button>
+                              </Tooltip>
+                            </PermissionWrapper>
                           )}
 
 
                           {/* Botón Editar (Azul con icono blanco) */}
-                          <Tooltip content="Editar cultivo">
-                            <Button
-                              isIconOnly
-                              className="bg-blue-600 text-white hover:bg-blue-700 min-w-9 w-9 h-9"
-                              size="sm"
-                              variant="solid"
-                              radius="md"
-                              onPress={() => openModal(cultivo)}
-                              aria-label="Editar cultivo"
-                            >
-                              <Edit size={16} />
-                            </Button>
-                          </Tooltip>
+                          <PermissionWrapper module="Cultivo" permission="Editar">
+                            <Tooltip content="Editar cultivo">
+                              <Button
+                                isIconOnly
+                                className="bg-blue-600 text-white hover:bg-blue-700 min-w-9 w-9 h-9"
+                                size="sm"
+                                variant="solid"
+                                radius="md"
+                                onPress={() => openModal(cultivo)}
+                                aria-label="Editar cultivo"
+                              >
+                                <Edit size={16} />
+                              </Button>
+                            </Tooltip>
+                          </PermissionWrapper>
                         </div>
                       </Card>
                     ))}
@@ -636,42 +651,44 @@ export default function GestionCultivosPage(): ReactElement {
             ) : (
               /* VISTA DE MAPA */
               <div className="h-full w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner relative">
-                <LotesMap
-                  lotes={lotes}
-                  selectedLote={selectedLote}
-                  onSelectLote={handleSelectLote}
-                  sublotesConCultivos={sublotesConCultivos}
-                  selectedSubloteCultivo={selectedSubloteCultivo}
-                  onSelectSubloteCultivo={setSelectedSubloteCultivo}
-                  customInfo={(lote) => (
-                    <div className="p-3 min-w-[180px]">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-bold text-gray-800">{lote.nombre}</h4>
-                        <Chip size="sm" color={lote.estado === 'Activo' ? 'success' : 'default'} variant="flat" className="h-5 text-[10px]">
-                          {lote.estado}
-                        </Chip>
+                <SmartPermissionWrapper module="Cultivo" action="Ver">
+                  <LotesMap
+                    lotes={lotes}
+                    selectedLote={selectedLote}
+                    onSelectLote={handleSelectLote}
+                    sublotesConCultivos={sublotesConCultivos}
+                    selectedSubloteCultivo={selectedSubloteCultivo}
+                    onSelectSubloteCultivo={setSelectedSubloteCultivo}
+                    customInfo={(lote) => (
+                      <div className="p-3 min-w-[180px]">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-gray-800">{lote.nombre}</h4>
+                          <Chip size="sm" color={lote.estado === 'Activo' ? 'success' : 'default'} variant="flat" className="h-5 text-[10px]">
+                            {lote.estado}
+                          </Chip>
+                        </div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <MapIcon size={12} /> Área: {lote.area} m²
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 flex items-center gap-1">
-                        <MapIcon size={12}/> Área: {lote.area} m²
+                    )}
+                  />
+                  {/* Panel lateral informativo sobre el mapa */}
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-lg z-[400] border border-gray-100 w-64">
+                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+                      <MapIcon size={16} className="text-blue-500" /> Explorador de Lotes
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-0">
+                      Selecciona un lote para ver los detalles del lote, los sublotes que tiene y sus cultivos asociados.
+                    </p>
+                    {selectedLote && (
+                      <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-2">
+                        <p className="text-xs font-semibold text-blue-700">Lote seleccionado:</p>
+                        <p className="text-sm font-bold text-blue-900">{selectedLote.nombre}</p>
                       </div>
-                    </div>
-                  )}
-                />
-                {/* Panel lateral informativo sobre el mapa */}
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-lg z-[400] border border-gray-100 w-64">
-                  <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
-                    <MapIcon size={16} className="text-blue-500"/> Explorador de Lotes
-                  </h4>
-                  <p className="text-xs text-gray-500 mb-0">
-                    Selecciona un lote para ver los detalles del lote, los sublotes que tiene y sus cultivos asociados.
-                  </p>
-                  {selectedLote && (
-                    <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-2">
-                      <p className="text-xs font-semibold text-blue-700">Lote seleccionado:</p>
-                      <p className="text-sm font-bold text-blue-900">{selectedLote.nombre}</p>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </SmartPermissionWrapper>
               </div>
             )}
           </ScrollShadow>

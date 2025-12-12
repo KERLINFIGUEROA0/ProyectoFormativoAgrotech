@@ -16,7 +16,6 @@ import {
   CardHeader,
   CardBody,
   Divider,
-  Chip
 } from "@heroui/react";
 import type { Broker, Lote } from '../interfaces/iot';
 import { listarLotes, crearBroker, actualizarBroker, probarConexionBroker } from '../api/mqttConfigApi';
@@ -520,10 +519,10 @@ export default function BrokerFormModal({ isOpen, onClose, onSuccess, broker, br
               </form>
             </ModalBody>
             <ModalFooter>
-              <Button color="danger" variant="light" onPress={onClose}>
+              <Button onPress={onClose} variant="light" color="default">
                 Cancelar
               </Button>
-              <Button color="primary" onPress={() => handleSubmit(null)} type="submit" form="broker-form">
+              <Button className="bg-green-600 text-white font-bold hover:bg-green-700" onPress={() => handleSubmit(null)} type="submit" form="broker-form">
                 {broker ? 'Actualizar' : 'Guardar y Configurar'}
               </Button>
             </ModalFooter>

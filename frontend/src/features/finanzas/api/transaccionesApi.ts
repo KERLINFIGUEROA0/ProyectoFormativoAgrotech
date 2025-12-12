@@ -4,14 +4,20 @@ import type { TransaccionData } from "../interfaces/finanzas";
 
 export const obtenerTransacciones = async () => {
   // Obtener ingresos, egresos y pagos por separado y combinarlos
-  const [ventasRes, gastosRes, pagosRes] = await Promise.all([
-    api.get("/ventas"),
-    api.get("/gastos-produccion"),
-    api.get("/pagos")
+  // Usar Promise.allSettled para manejar errores de permisos individualmente
+  const [ventasRes, gastosRes, pagosRes] = await Promise.allSettled([
+    api.get("/finanzas/transacciones"), // ✅ Endpoint correcto para ventas
+    api.get("/gastos-produccion"),      // ✅ Endpoint correcto para gastos
+    api.get("/pagos")                   // ✅ Mantener pagos como está
   ]);
 
 
-  const ingresos = (ventasRes.data?.data || []).map((v: any) => ({
+  // Extraer datos de las respuestas, manejando errores de permisos
+  const ventasData = ventasRes.status === 'fulfilled' ? (ventasRes.value.data?.data || ventasRes.value.data || []) : [];
+  const gastosData = gastosRes.status === 'fulfilled' ? (gastosRes.value.data?.data || gastosRes.value.data || []) : [];
+  const pagosData = pagosRes.status === 'fulfilled' ? (pagosRes.value.data?.data || pagosRes.value.data || []) : [];
+
+  const ingresos = ventasData.map((v: any) => ({
     ...v,
     id: v.id,
     tipo: 'ingreso',
@@ -21,7 +27,7 @@ export const obtenerTransacciones = async () => {
     fecha: v.fecha, // Ya es string YYYY-MM-DD
   }));
 
-  const egresos = (gastosRes.data?.data || []).map((g: any) => ({
+  const egresos = gastosData.map((g: any) => ({
     ...g,
     id: `gasto-${g.id}`,
     tipo: 'egreso',
@@ -32,7 +38,7 @@ export const obtenerTransacciones = async () => {
     fecha: new Date(g.fecha).toISOString().split('T')[0], // Convertir a string YYYY-MM-DD
   }));
 
-  const pagosEgresos = (pagosRes.data || []).map((p: any) => ({
+  const pagosEgresos = pagosData.map((p: any) => ({
     ...p,
     id: `pago-${p.id}`,
     tipo: 'egreso',
@@ -65,7 +71,14 @@ export const crearTransaccion = async (data: TransaccionData) => {
     const response = await api.post("/gastos-produccion", payload);
     return response.data;
   } else {
-    const response = await api.post("/ventas", data);
+    const payload = {
+      descripcion: data.descripcion,
+      cantidad: data.cantidad,
+      monto: data.monto,
+      fecha: data.fecha,
+      produccionId: data.produccionId
+    };
+    const response = await api.post("/finanzas/transacciones", payload);
     return response.data;
   }
 };
@@ -79,7 +92,14 @@ export const actualizarTransaccion = async (id: string | number, data: Partial<T
     const response = await api.patch(`/gastos-produccion/${actualId}`, data);
     return response.data;
   } else {
-    const response = await api.patch(`/ventas/${actualId}`, data);
+    const payload = {
+      descripcion: data.descripcion,
+      cantidad: data.cantidad,
+      monto: data.monto,
+      fecha: data.fecha,
+      produccionId: data.produccionId
+    };
+    const response = await api.put(`/finanzas/transacciones/${actualId}`, payload);
     return response.data;
   }
 };
@@ -99,7 +119,7 @@ export const eliminarTransaccion = async (id: string | number) => {
     const response = await api.delete(`/pagos/${actualId}`);
     return response.data;
   } else {
-    const response = await api.delete(`/ventas/${actualId}`);
+    const response = await api.delete(`/finanzas/transacciones/${actualId}`);
     return response.data;
   }
 };
@@ -127,4 +147,15 @@ export const obtenerDistribucionEgresos = async () => {
 export const obtenerGastos = async () => {
   const response = await api.get("/gastos-produccion");
   return response.data; // Asumimos que devuelve { data: [...] }
+};
+
+// Nuevas funciones para obtener datos limitados con permisos compuestos
+export const obtenerCosechasDisponibles = async () => {
+  const response = await api.get("/finanzas/cosechas-disponibles");
+  return response.data; // Devuelve cosechas disponibles para venta
+};
+
+export const obtenerMaterialesDisponibles = async () => {
+  const response = await api.get("/finanzas/materiales-disponibles");
+  return response.data; // Devuelve materiales disponibles para gastos
 };

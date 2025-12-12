@@ -14,6 +14,7 @@ import type { Epa, EpaData } from '../interfaces/fitosanitario';
 import TratamientosRecomendadosModal from '../components/TratamientosRecomendadosModal';
 import EpaForm from '../components/EpaForm';
 import { Card, CardBody, CardHeader, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Select, SelectItem, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input } from '@heroui/react';
+import PermissionWrapper, { SmartPermissionWrapper } from "../../../components/PermissionWrapper";
 
 
 export default function GestionFitosanitarioPage() {
@@ -192,14 +193,16 @@ export default function GestionFitosanitarioPage() {
         <h1 className="text-3xl font-bold text-gray-800">
           Gestión de Fitosanitario
         </h1>
-        <Button
-          onClick={() => handleOpenFormModal()}
-          color="success"
-          startContent={<Plus />}
-          className="text-white font-bold"
-        >
-          Nuevo EPA
-        </Button>
+        <PermissionWrapper module="Fitosanitario" permission="Crear">
+          <Button
+            onClick={() => handleOpenFormModal()}
+            color="success"
+            startContent={<Plus />}
+            className="text-white font-bold"
+          >
+            Nuevo EPA
+          </Button>
+        </PermissionWrapper>
       </div>
 
       <Card className="p-6">
@@ -290,27 +293,31 @@ export default function GestionFitosanitarioPage() {
                         >
                           <Eye size={16} />
                         </Button>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenFormModal(epa);
-                          }}
-                          color="success"
-                          variant="light"
-                          size="sm"
-                          isIconOnly
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        <Button
-                          onClick={(e) => confirmDelete(e, epa)}
-                          color="danger"
-                          variant="light"
-                          size="sm"
-                          isIconOnly
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                        <PermissionWrapper module="Fitosanitario" permission="Editar">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenFormModal(epa);
+                            }}
+                            color="success"
+                            variant="light"
+                            size="sm"
+                            isIconOnly
+                          >
+                            <Edit size={16} />
+                          </Button>
+                        </PermissionWrapper>
+                        <PermissionWrapper module="Fitosanitario" permission="Eliminar">
+                          <Button
+                            onClick={(e) => confirmDelete(e, epa)}
+                            color="danger"
+                            variant="light"
+                            size="sm"
+                            isIconOnly
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </PermissionWrapper>
                       </div>
                     </TableCell>
                   </TableRow>

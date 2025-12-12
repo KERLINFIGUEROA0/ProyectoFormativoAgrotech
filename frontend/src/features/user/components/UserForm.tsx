@@ -7,7 +7,6 @@ import type { FichaOption } from '../../fichas/interfaces/fichas';
 import { getFichasOpcionesFromUsuarios, createFicha } from '../../fichas/api/fichas';
 import FichaFormComponent from '../../fichas/components/FichaForm';
 import type { FichaForm } from '../../fichas/interfaces/fichas';
-import { api } from '../../../lib/axios';
 
 interface UserFormProps {
   initialData: Partial<UsuarioForm>;
@@ -85,6 +84,12 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
   };
 
   const validateAndSave = async () => {
+    // Validar tipo de identificación
+    if (!form.tipo) {
+      toast.error("El tipo de identificación es obligatorio.");
+      return;
+    }
+    
     const idDigits = String(form.identificacion ?? "").replace(/\D+/g, "");
     if (idDigits.length < 6 || idDigits.length > 10) {
       toast.error("Identificación debe tener entre 6 y 10 dígitos");
@@ -118,24 +123,6 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
       return;
     }
 
-    // Verificar unicidad de identificación si es creación o si cambió
-    if (!editingId || form.identificacion !== initialData.identificacion) {
-      try {
-        const response = await api.get(`/usuarios/identificacion/${form.identificacion}`);
-        if (response.data.success) {
-          toast.error("La identificación ya está registrada.");
-          return;
-        }
-      } catch (error: any) {
-        if (error.response?.status !== 404) {
-          // Si no es 404 (no encontrado), es otro error
-          console.error("Error verificando identificación:", error);
-          toast.error("Error al verificar la identificación. Intente nuevamente.");
-          return;
-        }
-        // Si es 404, significa que no existe, está bien
-      }
-    }
 
     await onSave(form as UsuarioForm);
   };
@@ -152,19 +139,22 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Identificación
+                Tipo de Identificación <span className="text-red-500">*</span>
               </label>
               <Select
-                placeholder="Seleccione tipo"
+                placeholder="Seleccione el tipo de identificación"
                 className="w-full"
-                selectedKeys={new Set([String(form.tipo ?? "CC")])}
+                selectedKeys={form.tipo && ['CC', 'TI'].includes(String(form.tipo)) ? new Set([String(form.tipo)]) : new Set()}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
-                  handleFormChange('tipo', selected as string);
+                  if (selected) {
+                    handleFormChange('tipo', selected as string);
+                  }
                 }}
+                aria-label="Seleccionar tipo de identificación"
               >
-                <SelectItem key="CC">Cédula de Ciudadanía</SelectItem>
-                <SelectItem key="TI">Tarjeta de Identidad</SelectItem>
+                <SelectItem key="CC">Cédula de Ciudadanía (CC)</SelectItem>
+                <SelectItem key="TI">Tarjeta de Identidad (TI)</SelectItem>
               </Select>
             </div>
             <div>
@@ -260,6 +250,7 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
                   const selected = Array.from(keys)[0];
                   handleFormChange('rolId', selected ? Number(selected) : 0);
                 }}
+                aria-label="Seleccionar rol del usuario"
               >
                 {roles.map((rol) => (
                   <SelectItem key={rol.id.toString()}>
@@ -285,6 +276,7 @@ export default function UserForm({ initialData, roles, onSave, onCancel, editing
                       handleFormChange('id_ficha', selected as string);
                     }}
                     disabled={loadingFichas}
+                    aria-label="Seleccionar ficha de formación"
                   >
                     {fichasOpciones.map((ficha) => (
                       <SelectItem key={ficha.value}>

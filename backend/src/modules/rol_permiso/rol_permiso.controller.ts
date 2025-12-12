@@ -14,12 +14,12 @@ import { PermissionGuard } from '../../authorization/permission.guard';
 import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('rol-permisos')
-@UseGuards(JwtAuthGuard, PermissionGuard) // <-- AÑADIR SEGURIDAD
+@UseGuards(JwtAuthGuard, PermissionGuard) 
 export class RolPermisoController {
   constructor(private readonly rolPermisoService: RolPermisoService) {}
 
   @Get('rol/:rolId')
-  @Permission('Usuarios.VerPermisos') // <-- AÑADIR PERMISO
+  @Permission('Usuarios.Asignar') 
   async getPermissionsByRole(@Param('rolId') rolId: string) {
     try {
       const permissions = await this.rolPermisoService.getPermissionsByRole(
@@ -43,7 +43,7 @@ export class RolPermisoController {
   }
 
   @Post('toggle')
-  @Permission('Usuarios.Asignar') // <-- AÑADIR PERMISO
+  @Permission('Usuarios.Asignar') 
   async togglePermission(
     @Body() dto: { rolId: number; permisoId: number; estado: boolean },
   ) {
@@ -60,7 +60,7 @@ export class RolPermisoController {
   }
 
   @Get('rol/:rolId/detallado')
-  @Permission('Usuarios.VerPermisos') // <-- AÑADIR PERMISO
+  @Permission('Usuarios.Asignar') 
   async getPermissionsByRoleDetallado(@Param('rolId') rolId: string) {
     try {
       const permissions = await this.rolPermisoService.getPermissionsByRoleDetallado(

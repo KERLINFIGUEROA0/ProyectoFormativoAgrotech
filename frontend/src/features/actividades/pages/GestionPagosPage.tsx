@@ -3,6 +3,7 @@ import { DollarSign, Calendar, Clock, Edit, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { obtenerTodosPagos, actualizarPago } from '../api/actividadesapi';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Card, CardHeader, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/react';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // Actualizamos la interfaz para incluir 'responsable' en la actividad
 interface Pago {
@@ -55,7 +56,8 @@ const GestionPagosPage: React.FC = () => {
 
   const cargarPagos = async () => {
     try {
-      const data = await obtenerTodosPagos();
+      const responseData = await obtenerTodosPagos();
+      const data = responseData.data || [];
       setPagos(data);
     } catch (error) {
       console.error('Error al cargar pagos:', error);
@@ -115,21 +117,22 @@ const GestionPagosPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <DollarSign className="w-8 h-8 text-blue-600" />
+    <PermissionWrapper module="Actividades" permission="VerPagos">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <DollarSign className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
+              <p className="text-blue-600 font-medium">Administración completa del sistema</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Pagos</h1>
-            <p className="text-blue-600 font-medium">Administración completa del sistema</p>
-          </div>
+          <p className="text-gray-600 mt-2">
+            Visualiza quién realizó el pago (Instructor) y quién lo recibió (Beneficiario).
+          </p>
         </div>
-        <p className="text-gray-600 mt-2">
-          Visualiza quién realizó el pago (Instructor) y quién lo recibió (Beneficiario).
-        </p>
-      </div>
 
       {/* Tabla de pagos */}
       <Card className="shadow-lg">
@@ -328,6 +331,7 @@ const GestionPagosPage: React.FC = () => {
           </Modal>
         )}
       </div>
+    </PermissionWrapper>
   );
 };
 

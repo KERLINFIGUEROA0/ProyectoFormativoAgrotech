@@ -9,7 +9,7 @@ import { PERMISSIONS_KEY } from './permission.decorator';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private reflector: Reflector) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(

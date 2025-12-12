@@ -52,10 +52,44 @@ export const useModulePermissions = () => {
     return hasPermissionInModule(moduleName);
   };
 
+  const hasPermissionByAction = (action: string): boolean => {
+    if (loading || !userModules) return false;
+
+    // Buscar en todos los módulos si alguno tiene el permiso de la acción específica
+    const modules = getModulePermissions();
+
+    for (const [moduleName, moduleData] of Object.entries(modules)) {
+      const fullPermissionName = `${moduleName}.${action}`;
+      if (moduleData.permissions.includes(fullPermissionName)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const getModulesWithPermission = (action: string): string[] => {
+    if (loading || !userModules) return [];
+
+    const modules = getModulePermissions();
+    const modulesWithPermission: string[] = [];
+
+    for (const [moduleName, moduleData] of Object.entries(modules)) {
+      const fullPermissionName = `${moduleName}.${action}`;
+      if (moduleData.permissions.includes(fullPermissionName)) {
+        modulesWithPermission.push(moduleName);
+      }
+    }
+
+    return modulesWithPermission;
+  };
+
   return {
     modulePermissions: getModulePermissions(),
     hasPermissionInModule,
     hasAnyPermissionInModule,
+    hasPermissionByAction,
+    getModulesWithPermission,
     getActiveModules,
     loading,
   };

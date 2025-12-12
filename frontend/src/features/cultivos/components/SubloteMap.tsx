@@ -50,6 +50,7 @@ interface SubloteMapProps {
    tempLocation?: { lat: number; lng: number } | null;
    center?: [number, number];
    zoom?: number;
+   canCreate?: boolean;
 }
 
 // Componente para manejar clics en el mapa
@@ -71,7 +72,8 @@ export default function SubloteMap({
    height = '400px',
    tempLocation,
    center,
-   zoom
+   zoom,
+   canCreate = false
 }: SubloteMapProps): ReactElement {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -266,11 +268,10 @@ export default function SubloteMap({
           </div>
         </div>
         <div className="mt-2 pt-2 border-t border-gray-200">
-          <div className="text-xs text-gray-600">
-            <p>🖱️ <strong>Clic:</strong> Seleccionar punto y abrir modal para crear sublote, 
-            y procura que al editarlo quede  dentro del lote.</p>
-          </div>
-        </div>
+           <div className="text-xs text-gray-600">
+             <p><strong>Clic:</strong> {canCreate ? 'Seleccionar punto y abrir modal para crear sublote' : 'Solo zoom - sin permisos para crear sublotes'}, y procura que al editarlo quede dentro del lote.</p>
+           </div>
+         </div>
       </div>
 
       {/* Información del lote */}

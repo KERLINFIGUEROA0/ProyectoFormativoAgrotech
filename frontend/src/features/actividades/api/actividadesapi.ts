@@ -57,28 +57,25 @@ export const obtenerUsuariosParaActividades = async (): Promise<UsuarioSimple[]>
 };
 
 export const obtenerCultivosParaActividades = async (): Promise<CultivoSimple[]> => {
-   // ... (sin cambios)
-   const response = await api.get('/cultivos/listar');
-   return response.data.data.map((cultivo: any) => ({
-     id: cultivo.id,
-     nombre: cultivo.nombre,
-     loteId: cultivo.lote?.id
-   }));
+    // Cambiar a endpoint de actividades para usar permisos de Actividades
+    const response = await api.get('/actividades/cultivos-disponibles');
+    return response.data.data.map((cultivo: any) => ({
+      id: cultivo.id,
+      nombre: cultivo.nombre,
+      loteId: cultivo.lote?.id
+    }));
 };
 
 export const obtenerLotesParaActividades = async () => {
-   const response = await api.get('/lotes/listar');
-   return response.data.data;
+    // Cambiar a endpoint de actividades
+    const response = await api.get('/actividades/lotes-disponibles');
+    return response.data.data;
 };
 
 export const obtenerSublotesParaActividades = async (loteId?: number) => {
-   if (loteId) {
-     const response = await api.get(`/sublotes/lotes/${loteId}/sublotes`);
-     return response.data.data;
-   } else {
-     const response = await api.get('/sublotes/listar');
-     return response.data.data;
-   }
+    // Cambiar a endpoint de actividades
+    const response = await api.get(`/actividades/sublotes-disponibles/${loteId}`);
+    return response.data.data;
 };
 
 export const asignarActividad = async (
@@ -160,16 +157,13 @@ export const calificarActividad = async (id: number, calificacionData: Calificar
 
 // --- AÑADIR ESTA NUEVA FUNCIÓN ---
 /**
- * Obtiene la lista de materiales activos del inventario.
+ * Obtiene la lista de materiales activos del inventario para actividades.
  */
 export const obtenerMaterialesDisponibles = async (): Promise<Material[]> => {
-  // Reutilizamos el endpoint del módulo de inventario
-  const response = await api.get('/materiales');
-  // Filtramos solo los que están activos y tienen stock
-  const materialesActivos = (response.data.data || []).filter(
-    (m: Material) => m.estado === true && m.cantidad > 0,
-  );
-  return materialesActivos;
+  // Usar endpoint de actividades para mantener permisos consistentes
+  const response = await api.get('/actividades/materiales-disponibles');
+  // Los materiales ya vienen filtrados del backend
+  return response.data.data || [];
 };
 
 /**
@@ -214,6 +208,7 @@ export const registrarPagosPasantes = async (pagos: Array<{
  */
 export const obtenerPagosUsuario = async (userId: number) => {
   const response = await api.get(`/pagos/usuario/${userId}`);
+  // El backend retorna { success: true, data }
   return response.data;
 };
 
@@ -222,6 +217,7 @@ export const obtenerPagosUsuario = async (userId: number) => {
  */
 export const obtenerTodosPagos = async () => {
   const response = await api.get('/pagos');
+  // El backend retorna { success: true, data }
   return response.data;
 };
 

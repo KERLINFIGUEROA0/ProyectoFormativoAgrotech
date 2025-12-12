@@ -1,14 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, NotFoundException, UseGuards } from '@nestjs/common';
 import { TipoSensorService } from './tipo_sensor.service';
 // --- CORRECCIÓN AQUÍ: Cambia el guion bajo (_) por un guion medio (-) ---
 import { CreateTipoSensorDto } from './dto/create-tipo_sensor.dto';
 import { UpdateTipoSensorDto } from './dto/update-tipo_sensor.dto';
+import { JwtAuthGuard } from '../../authorization/jwt.guard';
+import { PermissionGuard } from '../../authorization/permission.guard';
+import { Permission } from '../../authorization/permission.decorator';
 
 @Controller('tipo-sensor')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class TipoSensorController {
   constructor(private readonly tipoSensorService: TipoSensorService) {}
 
   @Post('crear')
+  @Permission('Iot.Crear')
   async create(@Body() createTipoSensorDto: CreateTipoSensorDto) {
     const nuevo = await this.tipoSensorService.create(createTipoSensorDto);
     return {
@@ -19,6 +24,7 @@ export class TipoSensorController {
   }
 
   @Get('listar')
+  @Permission('Iot.Ver')
   async findAll() {
     const tipos = await this.tipoSensorService.findAll();
     return {
@@ -29,6 +35,7 @@ export class TipoSensorController {
 
   // ... (el resto del código sigue igual)
   @Get(':id')
+  @Permission('Iot.Ver')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const tipo = await this.tipoSensorService.findOne(id);
     if (!tipo) {
@@ -41,6 +48,7 @@ export class TipoSensorController {
   }
 
   @Patch('actualizar/:id')
+  @Permission('Iot.Editar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateTipoSensorDto: UpdateTipoSensorDto) {
     const actualizado = await this.tipoSensorService.update(id, updateTipoSensorDto);
     return {
@@ -51,6 +59,7 @@ export class TipoSensorController {
   }
 
   @Delete('eliminar/:id')
+  @Permission('Iot.Eliminar')
   async remove(@Param('id', ParseIntPipe) id: number) {
     const resultado = await this.tipoSensorService.remove(id);
     return resultado;

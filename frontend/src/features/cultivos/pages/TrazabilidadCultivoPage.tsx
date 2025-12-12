@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Sprout, ClipboardList, Package, DollarSign, ArrowLeft, FileText } from 'lucide-react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from '@heroui/react';
 import { obtenerTrazabilidad, generarPdfTrazabilidad } from '../api/cultivosApi';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 // Mapeo de iconos para cada tipo de evento
 const iconMap: any = {
@@ -77,10 +78,6 @@ export default function TrazabilidadCultivoPage() {
       setFechaInicio('');
       setFechaFin('');
     } catch (error: any) {
-      console.log('Error recibido en frontend al generar PDF:', error);
-      console.log('Error status:', error.response?.status);
-      console.log('Error data:', error.response?.data);
-      console.log('Error message:', error.response?.data?.message);
       if (error.response && error.response.status === 400) {
         toast.error('Estás seleccionando una fecha que no corresponde a este cultivo. La fecha de inicio debe ser posterior o igual a la fecha de plantado.');
       } else {
@@ -111,13 +108,15 @@ export default function TrazabilidadCultivoPage() {
           <ArrowLeft size={18} />
           Volver a Gestión de Cultivos
         </Link>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
-        >
-          <FileText size={18} />
-          Generar PDF de Trazabilidad
-        </button>
+        <PermissionWrapper module="Cultivo" permission="DescargarTrazabilidad">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+          >
+            <FileText size={18} />
+            Generar PDF de Trazabilidad
+          </button>
+        </PermissionWrapper>
       </div>
 
       <div className="relative pl-8">

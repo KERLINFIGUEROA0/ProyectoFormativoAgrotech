@@ -416,8 +416,7 @@ export default function CultivoForm({
       {formData.loteId && tieneSublotes && !formData.subloteId && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700 flex items-center gap-2">
-             <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.
-             Por favor selecciona un <b>Sublote</b> específico.
+             <b>Atención:</b> Este lote está dividido. No puedes asignar un cultivo a todo el lote.Por favor selecciona un Sublote específico.
           </p>
         </div>
       )}

@@ -3,6 +3,7 @@ import React from 'react';
 import { Edit, Trash2, Eye, MessageSquare, FileText, CheckCircle } from 'lucide-react'; // Importamos íconos
 import type { Actividad } from '../interfaces/actividades';
 import { getEstadoBadgeClass, getEstadoTexto } from '../utils/estadoUtils';
+import PermissionWrapper from '../../../components/PermissionWrapper';
 
 interface ActividadCardProps {
   actividad: Actividad;
@@ -108,21 +109,27 @@ const ActividadCard: React.FC<ActividadCardProps> = ({ actividad, onEdit, onDele
                 );
               })()
             )}
-            {currentUserRole && (currentUserRole.toLowerCase() === 'instructor' || currentUserRole.toLowerCase() === 'admin') && onVerRespuestas && (
-              <button
-                onClick={() => onVerRespuestas(actividad)}
-                className="p-1.5 text-purple-500 hover:bg-purple-100 rounded-full"
-                title="Ver Respuestas"
-              >
-                <FileText size={16} />
+            <PermissionWrapper module="Actividades" permission="VerPagos">
+              {currentUserRole && (currentUserRole.toLowerCase() === 'instructor' || currentUserRole.toLowerCase() === 'admin') && onVerRespuestas && (
+                <button
+                  onClick={() => onVerRespuestas(actividad)}
+                  className="p-1.5 text-purple-500 hover:bg-purple-100 rounded-full"
+                  title="Ver Respuestas"
+                >
+                  <FileText size={16} />
+                </button>
+              )}
+            </PermissionWrapper>
+            <PermissionWrapper module="Actividades" permission="Editar">
+              <button onClick={() => onEdit(actividad)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar">
+                <Edit size={16} />
               </button>
-            )}
-            <button onClick={() => onEdit(actividad)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full" title="Editar">
-              <Edit size={16} />
-            </button>
-            <button onClick={() => onDelete(actividad.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full" title="Eliminar">
-              <Trash2 size={16} />
-            </button>
+            </PermissionWrapper>
+            <PermissionWrapper module="Actividades" permission="Eliminar">
+              <button onClick={() => onDelete(actividad.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-full" title="Eliminar">
+                <Trash2 size={16} />
+              </button>
+            </PermissionWrapper>
             <button onClick={() => onView(actividad)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-full" title="Ver Detalles">
               <Eye size={16} /> {/* Ícono de Ojo para ver detalles */}
             </button>

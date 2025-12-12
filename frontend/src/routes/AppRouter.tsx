@@ -1,6 +1,6 @@
 // src/routes/AppRouter.tsx
 
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom"; 
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import LoginPage from "../features/auth/pages/LoginPage";
 import RecuperarPage from "../features/auth/pages/RecuperarPage";
 import ResetPasswordSent from "../features/auth/pages/ResetPasswordSent";
@@ -37,10 +37,10 @@ export default function AppRouter() {
       <Routes>
         {/* Rutas públicas (sin cambios) */}
         <Route element={
-            <PublicRoute>
-              <Outlet />
-            </PublicRoute>
-          }
+          <PublicRoute>
+            <Outlet />
+          </PublicRoute>
+        }
         >
           <Route path="/" element={<LoginPage />} />
           <Route path="/recuperar" element={<RecuperarPage />} />
@@ -61,20 +61,35 @@ export default function AppRouter() {
           <Route path="/gestion-roles" element={<GestionRolesPage />} />
           <Route path="/gestion-usuarios" element={<GestionUsuariosPage />} />
           <Route path="/gestion-lotes" element={<GestionLotes />} />
-          <Route path="/gestion-Sublotes" element={<GestionProduccion />} />
+          <Route path="/gestion-Sublotes" element={
+            <PermissionRoute module="Cultivo">
+              <GestionProduccion />
+            </PermissionRoute>
+          } />
           <Route path="/gestion-brokers" element={<GestionBrokersPage />} />
           <Route path="/gestion-sensores" element={<GestionSensoresPage />} />
-          <Route path="/gestion-cultivos" element={<GestionCultivosPage />} />
-          <Route path="/cultivos/:cultivoId/produccion" element={<DashboardProduccion />} /> 
-          <Route path="/ingresos" element={<DashboardFinanciero />} />
-          <Route path="/egresos" element={<GestionTransaccionesPage />} />
-          <Route path="/gestion-actividades" element={<ActividadesPrincipal />} />
-          <Route path="/cultivos/:cultivoId/trazabilidad" element={<TrazabilidadCultivoPage />} />
+
+          {/* Cultivos - Requiere permisos de Cultivo */}
+          <Route path="/gestion-cultivos" element={
+            <PermissionRoute module="Cultivo">
+              <GestionCultivosPage />
+            </PermissionRoute>
+          } />
+          <Route path="/cultivos/:cultivoId/produccion" element={
+            <PermissionRoute module="Cultivo">
+              <DashboardProduccion />
+            </PermissionRoute>
+          } />
+          <Route path="/cultivos/:cultivoId/trazabilidad" element={
+            <PermissionRoute module="Cultivo">
+              <TrazabilidadCultivoPage />
+            </PermissionRoute>
+          } />
           <Route path="/cronograma" element={<GestionActiviadesPage />} />
           <Route path="/fitosanitario" element={<GestionFitosanitarioPage />} />
           <Route path="/stock" element={<GestionInventarioPage />} />
           <Route path="/stock/:materialId" element={<DetalleMaterialPage />} />
-           <Route path="/gestion-fichas" element={<GestionFichasPage />} />
+          <Route path="/gestion-fichas" element={<GestionFichasPage />} />
           <Route path="/movimientos" element={
             <PermissionRoute module="Inventario">
               <GestionMovimientosPage />
