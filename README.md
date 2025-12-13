@@ -70,6 +70,13 @@ npm install
 npm run dev  # Servidor en http://localhost:4321
 ```
 
+## Credenciales de Usuario 
+
+- **Usuario**: 1000000000
+- **Contraseña**: @dmin123
+
+
+
 ### Contenido de la Documentación
 
 - **Inicio**: Visión general del sistema y tecnologías
