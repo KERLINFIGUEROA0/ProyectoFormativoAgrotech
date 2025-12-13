@@ -14,6 +14,8 @@ async function seed() {
   await AppDataSource.initialize();
   console.log('🌱 Iniciando el seeder de permisos y roles...');
 
+
+  //roles
   const tipoUsuarioRepo = AppDataSource.getRepository(TipoUsuario);
   const roleDefinitions = [
     { nombre: 'Admin', descripcion: 'Administrador total' },
