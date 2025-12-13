@@ -83,20 +83,13 @@ export class UnitConversionUtil {
   static convertirABase(cantidad: number, unidad: UnidadMedida): number {
     const factor = this.factoresConversion[unidad];
 
-    // Debug logging to identify conversion issues
-    console.log(`🔄 Conversión: ${cantidad} ${unidad} -> factor: ${factor}`);
-
     if (factor === undefined) {
-      console.error(`❌ Error crítico: Unidad '${unidad}' no tiene factor de conversión.`);
       // Fallback seguro: si es mg y no está en el mapa por alguna razón extraña
       if (unidad === UnidadMedida.MILIGRAMO) return cantidad * 0.001;
       throw new Error(`Unidad de medida ${unidad} no soportada o mal escrita.`);
     }
 
-    const resultado = cantidad * factor;
-    console.log(`✅ Resultado: ${cantidad} * ${factor} = ${resultado}`);
-
-    return resultado;
+    return cantidad * factor;
   }
 
   /**
