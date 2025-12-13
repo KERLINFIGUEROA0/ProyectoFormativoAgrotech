@@ -7,8 +7,8 @@
     "dev": "concurrently \"vite\" \"cd ../documentacion && npm run dev\"",
     "build": "vite build",
     "lint": "eslint .",
-    "pstall -review": "vite preview",
-    "postinstall": "npm in-prefix ../documentacion"
+    "preview": "vite preview",
+    "postinstall": "npm install --prefix ../documentacion"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
