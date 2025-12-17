@@ -70,7 +70,7 @@ export class SensoresService {
     private readonly mqttClientService: MqttClientService,
     @Inject(forwardRef(() => MqttConfigService))
     private readonly mqttConfigService: MqttConfigService,
-  ) {}
+  ) { }
 
   /**
    * 🕒 WATCHDOG: Detecta sensores muertos.
@@ -97,9 +97,9 @@ export class SensoresService {
       for (const sensor of sensoresCaidos) {
         // Solo si tiene tópico configurado (es un sensor IoT real)
         if (sensor.topic) {
-            sensor.estado = 'Desconectado';
-            await this.sensorRepo.save(sensor);
-            this.logger.warn(`❌ Sensor [${sensor.nombre}] marcado DESCONECTADO (Inactividad > ${SEGUNDOS_LIMITE}s).`);
+          sensor.estado = 'Desconectado';
+          await this.sensorRepo.save(sensor);
+          this.logger.warn(`❌ Sensor [${sensor.nombre}] marcado DESCONECTADO (Inactividad > ${SEGUNDOS_LIMITE}s).`);
         }
       }
     }
@@ -126,7 +126,7 @@ export class SensoresService {
    */
   async actualizarFrecuenciaEscaneo(id: number, segundos: number): Promise<Sensor> {
     const sensor = await this.findOne(id);
-    
+
     // 1. Actualizar en Base de Datos
     sensor.frecuencia_escaneo = segundos;
     const sensorActualizado = await this.sensorRepo.save(sensor);
@@ -134,31 +134,31 @@ export class SensoresService {
     // 2. (Opcional) Enviar comando al dispositivo IoT vía MQTT
     // Esto permite que el dispositivo físico sepa que debe cambiar su ritmo.
     if (sensor.topic && sensor.lote) {
-       // Construimos un tópico de configuración, ej: "granja/lote1/sensorLuz/config"
-       const configTopic = `${sensor.topic}/config`;
-       const payload = JSON.stringify({
-         tipo: 'UPDATE_INTERVAL',
-         valor: segundos
-       });
+      // Construimos un tópico de configuración, ej: "granja/lote1/sensorLuz/config"
+      const configTopic = `${sensor.topic}/config`;
+      const payload = JSON.stringify({
+        tipo: 'UPDATE_INTERVAL',
+        valor: segundos
+      });
 
-       // Enviar a todos los brokers del lote
-       const brokerLotes = await this.brokerLoteRepo.find({
-         where: { lote: { id: sensor.lote.id } },
-         relations: ['broker']
-       });
-       const brokers = brokerLotes.map(bl => bl.broker);
-       for (const broker of brokers) {
-         try {
-           await this.mqttClientService.publishToBroker(
-             broker.id,
-             configTopic,
-             payload
-           );
-         } catch (error) {
-           console.warn(`No se pudo enviar comando MQTT via broker ${broker.nombre}: ${error.message}`);
-         }
-       }
-     }
+      // Enviar a todos los brokers del lote
+      const brokerLotes = await this.brokerLoteRepo.find({
+        where: { lote: { id: sensor.lote.id } },
+        relations: ['broker']
+      });
+      const brokers = brokerLotes.map(bl => bl.broker);
+      for (const broker of brokers) {
+        try {
+          await this.mqttClientService.publishToBroker(
+            broker.id,
+            configTopic,
+            payload
+          );
+        } catch (error) {
+          console.warn(`No se pudo enviar comando MQTT via broker ${broker.nombre}: ${error.message}`);
+        }
+      }
+    }
 
     return sensorActualizado;
   }
@@ -235,7 +235,7 @@ export class SensoresService {
         where: { id: sensorGuardado.id },
         relations: ['sublote', 'sublote.lote'],
       });
-      
+
       if (sensorCompleto) {
         await this.mqttClientService.subscribeToNewSensor(sensorCompleto);
       }
@@ -247,11 +247,11 @@ export class SensoresService {
   }
 
   async findAll(): Promise<Sensor[]> {
-  // Agrega 'sublote.cultivo' a la lista de relaciones
-  return this.sensorRepo.find({
-    relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
-  });
- }
+    // Agrega 'sublote.cultivo' a la lista de relaciones
+    return this.sensorRepo.find({
+      relations: ['lote', 'sublote', 'sublote.lote', 'sublote.cultivo']
+    });
+  }
 
   async update(id: number, updateSensoreDto: UpdateSensoreDto): Promise<Sensor> {
     const sensor = await this.findOne(id);
@@ -561,23 +561,23 @@ export class SensoresService {
 
       // 2. Procesar Cultivos (Si el array está vacío, este bucle no corre y no pasa nada)
       for (const c of cultivos) {
-         // ... (tu lógica de procesamiento de cultivos existente) ...
-         // ... asegúrate de usar el operador ?. (optional chaining) ...
-         // Ejemplo: c.tipoCultivo?.nombre || 'Sin tipo'
+        // ... (tu lógica de procesamiento de cultivos existente) ...
+        // ... asegúrate de usar el operador ?. (optional chaining) ...
+        // Ejemplo: c.tipoCultivo?.nombre || 'Sin tipo'
 
-         const datosCultivo: any = {
-            nombre: c.nombre,
-            tipo: c.tipoCultivo?.nombre || 'Sin tipo', // ✅ Protección contra null
-            diasSembrado: c.Fecha_Plantado ? Math.floor((new Date().getTime() - new Date(c.Fecha_Plantado).getTime()) / (1000 * 3600 * 24)) : 0,
-            fechaSiembra: c.Fecha_Plantado,
-            resumenFinanciero: {
-                totalInversion: 0, totalVentas: 0, gananciaNeta: 0,
-                detalleMateriales: [], detalleGastos: [], detalleVentas: []
-            },
-            actividadesLog: [],
-            produccionTotalKg: 0,
-            estadoActual: c.Estado || 'Activo'
-         };
+        const datosCultivo: any = {
+          nombre: c.nombre,
+          tipo: c.tipoCultivo?.nombre || 'Sin tipo', // ✅ Protección contra null
+          diasSembrado: c.Fecha_Plantado ? Math.floor((new Date().getTime() - new Date(c.Fecha_Plantado).getTime()) / (1000 * 3600 * 24)) : 0,
+          fechaSiembra: c.Fecha_Plantado,
+          resumenFinanciero: {
+            totalInversion: 0, totalVentas: 0, gananciaNeta: 0,
+            detalleMateriales: [], detalleGastos: [], detalleVentas: []
+          },
+          actividadesLog: [],
+          produccionTotalKg: 0,
+          estadoActual: c.Estado || 'Activo'
+        };
 
         // A. Procesar Actividades y Materiales
         if (c.actividades) {
@@ -594,58 +594,51 @@ export class SensoresService {
               costoManoObra: (act.horas || 0) * (act.tarifaHora || 0)
             });
 
-            // Costos de materiales
-            if (act.actividadMaterial) {
-              for (const am of act.actividadMaterial) {
-                if (am.material) {
-                  // Usar la cantidad y unidad ORIGINAL en que se gastó el material
-                  const cantidadOriginal = am.cantidadUsada || 0;
-                  const unidadOriginal = am.unidadMedida || 'unidad';
-                  const precioMaterial = am.material.precio || 0;
-                  const pesoPorUnidad = am.material.pesoPorUnidad || 1;
+            // ❌ ELIMINADO: Ya no procesamos materiales desde actividadMaterial
+            // Ahora SOLO usamos los gastos registrados en la tabla Gasto (transacciones reales)
+            // Esto evita duplicados y datos incorrectos de devoluciones
 
-                  // Precio por unidad base (gramo/ml) = precio_total / peso_total
-                  const precioPorUnidadBase = precioMaterial / pesoPorUnidad;
-
-                  // Convertir la cantidad original a unidades base para calcular el costo
-                  const cantidadBase = am.cantidadUsadaBase || am.cantidadUsada || 0;
-                  const costoTotal = precioPorUnidadBase * cantidadBase;
-
-                  // Calcular precio unitario en la UNIDAD ORIGINAL
-                  // precio_unitario_original = costo_total / cantidad_original
-                  const precioUnitarioOriginal = cantidadOriginal > 0 ? costoTotal / cantidadOriginal : 0;
-
-                  datosCultivo.resumenFinanciero.totalInversion += costoTotal;
-                  datosCultivo.resumenFinanciero.detalleMateriales.push({
-                    fecha: act.fecha,
-                    nombre: am.material.nombre,
-                    tipo: 'Material',
-                    cantidad: cantidadOriginal, // Mostrar cantidad original
-                    unidad: unidadOriginal.toLowerCase(), // Mostrar unidad original
-                    precioUnitario: precioUnitarioOriginal, // Precio por unidad original
-                    costoTotal: costoTotal
-                  });
-                }
-              }
-            }
-
-            // Costos de mano de obra
+            // Costos de mano de obra (estimado si no hay pagos)
             if (act.horas && act.tarifaHora) {
+              // Nota: Esto es un estimado. Los pagos reales aparecerán en la sección de pagos
               datosCultivo.resumenFinanciero.totalInversion += (act.horas * act.tarifaHora);
             }
           }
         }
 
-        // B. Gastos adicionales
+        // B. Gastos/Transacciones Reales (ÚNICA FUENTE DE VERDAD)
+        // Incluye: consumo de materiales, daños, depreciación, etc.
         if (c.gastos) {
           for (const g of c.gastos) {
             datosCultivo.resumenFinanciero.totalInversion += Number(g.monto);
-            datosCultivo.resumenFinanciero.detalleGastos.push({
-              fecha: g.fecha,
-              descripcion: g.descripcion,
-              monto: Number(g.monto),
-              tipo: g.tipo
-            });
+
+            // Separar materiales de otros gastos basado en la descripción
+            const esGastoMaterial = g.descripcion && (
+              g.descripcion.includes('Consumo:') ||
+              g.descripcion.includes('Daño') ||
+              g.descripcion.includes('Depreciación')
+            );
+
+            if (esGastoMaterial) {
+              // Es un gasto de material (consumo, daño, etc.)
+              datosCultivo.resumenFinanciero.detalleMateriales.push({
+                fecha: g.fecha,
+                nombre: g.descripcion, // La descripción ya incluye el nombre del material
+                tipo: 'Material',
+                cantidad: g.cantidad || 0,
+                unidad: g.unidad || 'unidad',
+                precioUnitario: g.precioUnitario || 0,
+                costoTotal: Number(g.monto)
+              });
+            } else {
+              // Otros gastos (mano de obra real, servicios, etc.)
+              datosCultivo.resumenFinanciero.detalleGastos.push({
+                fecha: g.fecha,
+                descripcion: g.descripcion,
+                monto: Number(g.monto),
+                tipo: g.tipo
+              });
+            }
           }
         }
 
@@ -720,204 +713,204 @@ export class SensoresService {
 
       // Procesar sensores solo si existen
       if (sensores && sensores.length > 0) {
-          for (const s of sensores) {
-        // A. Obtener TODOS los registros históricos (Top 10 Max/Min y Últimos 10)
-        // 🔥 IMPORTANTE: NO FILTRAMOS POR FECHA AQUÍ para asegurar que salgan tus pruebas recientes
-        // y los máximos históricos reales.
+        for (const s of sensores) {
+          // A. Obtener TODOS los registros históricos (Top 10 Max/Min y Últimos 10)
+          // 🔥 IMPORTANTE: NO FILTRAMOS POR FECHA AQUÍ para asegurar que salgan tus pruebas recientes
+          // y los máximos históricos reales.
 
-        // 1. Valores que excedieron el umbral máximo (últimos 10)
-        const valoresSobreUmbralMax = s.valor_maximo_alerta ? await this.infoSensorRepo.find({
+          // 1. Valores que excedieron el umbral máximo (últimos 10)
+          const valoresSobreUmbralMax = s.valor_maximo_alerta ? await this.infoSensorRepo.find({
             where: {
-                sensor: { id: s.id },
-                valor: MoreThan(s.valor_maximo_alerta)
+              sensor: { id: s.id },
+              valor: MoreThan(s.valor_maximo_alerta)
             },
             order: { fechaRegistro: 'DESC' },
             take: 10
-        }) : [];
+          }) : [];
 
-        // 2. Valores que bajaron del umbral mínimo (últimos 10)
-        const valoresBajoUmbralMin = s.valor_minimo_alerta ? await this.infoSensorRepo.find({
+          // 2. Valores que bajaron del umbral mínimo (últimos 10)
+          const valoresBajoUmbralMin = s.valor_minimo_alerta ? await this.infoSensorRepo.find({
             where: {
-                sensor: { id: s.id },
-                valor: LessThan(s.valor_minimo_alerta)
+              sensor: { id: s.id },
+              valor: LessThan(s.valor_minimo_alerta)
             },
             order: { fechaRegistro: 'DESC' },
             take: 10
-        }) : [];
+          }) : [];
 
-        // 3. Últimos 10 Registros (Tiempo Real / Lo que acabas de manipular)
-        const ultimos10 = await this.infoSensorRepo.find({
+          // 3. Últimos 10 Registros (Tiempo Real / Lo que acabas de manipular)
+          const ultimos10 = await this.infoSensorRepo.find({
             where: { sensor: { id: s.id } },
             order: { fechaRegistro: 'DESC' },
             take: 10
-        });
+          });
 
-        // 4. Evolución Diaria (Solo dentro del rango solicitado por el usuario)
-        // Aquí sí usamos el filtro para que el gráfico de tendencias coincida con el reporte financiero
-        const registrosRango = await this.infoSensorRepo.createQueryBuilder('info')
-          .where('info.sensorId = :sid', { sid: s.id })
-          .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: `${fechaInicio} 00:00:00`, fin: `${fechaFin} 23:59:59` })
-          .orderBy('info.fechaRegistro', 'ASC')
-          .getMany();
+          // 4. Evolución Diaria (Solo dentro del rango solicitado por el usuario)
+          // Aquí sí usamos el filtro para que el gráfico de tendencias coincida con el reporte financiero
+          const registrosRango = await this.infoSensorRepo.createQueryBuilder('info')
+            .where('info.sensorId = :sid', { sid: s.id })
+            .andWhere('info.fechaRegistro BETWEEN :inicio AND :fin', { inicio: `${fechaInicio} 00:00:00`, fin: `${fechaFin} 23:59:59` })
+            .orderBy('info.fechaRegistro', 'ASC')
+            .getMany();
 
-        // Calcular estadísticas globales (Basadas en los últimos 1000 datos para rendimiento, o rango)
-        // Usaremos 'registrosRango' para el promedio del periodo reportado.
-        const valoresRango = registrosRango.map(r => Number(r.valor));
+          // Calcular estadísticas globales (Basadas en los últimos 1000 datos para rendimiento, o rango)
+          // Usaremos 'registrosRango' para el promedio del periodo reportado.
+          const valoresRango = registrosRango.map(r => Number(r.valor));
 
-        // Obtener Mínimo y Máximo GLOBAL de toda la historia (consulta rápida)
-        const extremos = await this.infoSensorRepo.createQueryBuilder('info')
+          // Obtener Mínimo y Máximo GLOBAL de toda la historia (consulta rápida)
+          const extremos = await this.infoSensorRepo.createQueryBuilder('info')
             .select('MAX(info.valor)', 'max')
             .addSelect('MIN(info.valor)', 'min')
             .addSelect('COUNT(info.id)', 'count')
             .where('info.sensorId = :sid', { sid: s.id })
             .getRawOne();
 
-        const stats = {
+          const stats = {
             maximo: extremos.max ? Number(extremos.max) : 0,
             minimo: extremos.min ? Number(extremos.min) : 0,
             // Promedio solo del periodo seleccionado para coherencia con "Evolución Diaria"
             promedio: valoresRango.length > 0
-                ? Number((valoresRango.reduce((a, b) => a + b, 0) / valoresRango.length).toFixed(2))
-                : 0,
+              ? Number((valoresRango.reduce((a, b) => a + b, 0) / valoresRango.length).toFixed(2))
+              : 0,
             totalRegistros: Number(extremos.count) || 0
-        };
+          };
 
-        // =========================================================
-        // 🚨 NUEVA LÓGICA: DETECCIÓN DE CICLOS DE BOMBA (ON/OFF)
-        // =========================================================
-        let ciclosRiego: Array<{inicio: Date, fin: Date, duracion: string, valorPromedio: number}> = [];
+          // =========================================================
+          // 🚨 NUEVA LÓGICA: DETECCIÓN DE CICLOS DE BOMBA (ON/OFF)
+          // =========================================================
+          let ciclosRiego: Array<{ inicio: Date, fin: Date, duracion: string, valorPromedio: number }> = [];
 
-        // Identificamos si es una bomba buscando palabras clave en el nombre
-        const esBomba = s.nombre.toLowerCase().includes('bomba') ||
-                        s.nombre.toLowerCase().includes('riego');
+          // Identificamos si es una bomba buscando palabras clave en el nombre
+          const esBomba = s.nombre.toLowerCase().includes('bomba') ||
+            s.nombre.toLowerCase().includes('riego');
 
-        if (esBomba && registrosRango.length > 0) {
+          if (esBomba && registrosRango.length > 0) {
             let inicioCiclo: Date | null = null;
 
             registrosRango.forEach((reg, index) => {
-                const valor = Number(reg.valor);
-                const esEncendido = valor >= 1; // Asumimos 1 o más es ON
+              const valor = Number(reg.valor);
+              const esEncendido = valor >= 1; // Asumimos 1 o más es ON
 
-                // Detectar flanco de subida (0 -> 1) o inicio si ya estaba en 1
-                if (esEncendido && !inicioCiclo) {
-                    inicioCiclo = new Date(reg.fechaRegistro);
+              // Detectar flanco de subida (0 -> 1) o inicio si ya estaba en 1
+              if (esEncendido && !inicioCiclo) {
+                inicioCiclo = new Date(reg.fechaRegistro);
+              }
+
+              // Detectar flanco de bajada (1 -> 0) o fin de datos
+              const esUltimo = index === registrosRango.length - 1;
+              if ((!esEncendido || esUltimo) && inicioCiclo) {
+                const finCiclo = new Date(reg.fechaRegistro);
+
+                // Calcular duración en minutos
+                const diffMs = finCiclo.getTime() - inicioCiclo.getTime();
+                const duracionMin = Math.round(diffMs / 60000);
+
+                // Solo guardamos si duró al menos 1 minuto (filtrar ruido) o si es evento real
+                if (diffMs > 0) {
+                  ciclosRiego.push({
+                    inicio: inicioCiclo,
+                    fin: finCiclo,
+                    duracion: `${duracionMin} min`,
+                    valorPromedio: valor // Por si la bomba es variable
+                  });
                 }
-
-                // Detectar flanco de bajada (1 -> 0) o fin de datos
-                const esUltimo = index === registrosRango.length - 1;
-                if ((!esEncendido || esUltimo) && inicioCiclo) {
-                    const finCiclo = new Date(reg.fechaRegistro);
-
-                    // Calcular duración en minutos
-                    const diffMs = finCiclo.getTime() - inicioCiclo.getTime();
-                    const duracionMin = Math.round(diffMs / 60000);
-
-                    // Solo guardamos si duró al menos 1 minuto (filtrar ruido) o si es evento real
-                    if (diffMs > 0) {
-                        ciclosRiego.push({
-                            inicio: inicioCiclo,
-                            fin: finCiclo,
-                            duracion: `${duracionMin} min`,
-                            valorPromedio: valor // Por si la bomba es variable
-                        });
-                    }
-                    inicioCiclo = null; // Reset
-                }
+                inicioCiclo = null; // Reset
+              }
             });
 
             // Invertimos para que en el PDF salgan los más recientes primero en la tabla
             ciclosRiego.reverse();
-        }
+          }
 
-        // Procesar Evolución Diaria (Agrupar por día)
-        const agrupadoPorDia: any = registrosRango.reduce((acc, curr) => {
-          // Ajuste de zona horaria manual si es necesario, o usar string directo
-          const fechaObj = new Date(curr.fechaRegistro);
-          const dia = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+          // Procesar Evolución Diaria (Agrupar por día)
+          const agrupadoPorDia: any = registrosRango.reduce((acc, curr) => {
+            // Ajuste de zona horaria manual si es necesario, o usar string directo
+            const fechaObj = new Date(curr.fechaRegistro);
+            const dia = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
 
-          if (!acc[dia]) acc[dia] = { sum: 0, count: 0, fecha: curr.fechaRegistro };
-          acc[dia].sum += Number(curr.valor);
-          acc[dia].count += 1;
-          return acc;
-        }, {});
+            if (!acc[dia]) acc[dia] = { sum: 0, count: 0, fecha: curr.fechaRegistro };
+            acc[dia].sum += Number(curr.valor);
+            acc[dia].count += 1;
+            return acc;
+          }, {});
 
-        const muestreoDiario = Object.keys(agrupadoPorDia).map(key => ({
+          const muestreoDiario = Object.keys(agrupadoPorDia).map(key => ({
             dia: key,
             // Guardamos el promedio calculado del día
             promedioCalculado: Number((agrupadoPorDia[key].sum / agrupadoPorDia[key].count).toFixed(2)),
             // Guardamos un dato de referencia para la fecha
             fecha: agrupadoPorDia[key].fecha
-        })).sort((a, b) => new Date(a.dia).getTime() - new Date(b.dia).getTime());
+          })).sort((a, b) => new Date(a.dia).getTime() - new Date(b.dia).getTime());
 
-        // Determinar la unidad de medida basada en el nombre del sensor
-        const determinarUnidad = (nombreSensor: string): string => {
-          const nombre = nombreSensor.toLowerCase();
-          if (nombre.includes('luz') || nombre.includes('radiacion')) return 'lux';
-          if (nombre.includes('temperatura')) return '°C';
-          if (nombre.includes('humedad')) return '%';
-          return 'unidad'; // Fallback para sensores desconocidos
-        };
+          // Determinar la unidad de medida basada en el nombre del sensor
+          const determinarUnidad = (nombreSensor: string): string => {
+            const nombre = nombreSensor.toLowerCase();
+            if (nombre.includes('luz') || nombre.includes('radiacion')) return 'lux';
+            if (nombre.includes('temperatura')) return '°C';
+            if (nombre.includes('humedad')) return '%';
+            return 'unidad'; // Fallback para sensores desconocidos
+          };
 
-        // Mapear para el PDF
-        reporte.sensores[s.nombre] = {
-          unidad: esBomba ? 'estado' : determinarUnidad(s.nombre),
-          umbralMinimo: s.valor_minimo_alerta,
-          umbralMaximo: s.valor_maximo_alerta,
-          stats,
+          // Mapear para el PDF
+          reporte.sensores[s.nombre] = {
+            unidad: esBomba ? 'estado' : determinarUnidad(s.nombre),
+            umbralMinimo: s.valor_minimo_alerta,
+            umbralMaximo: s.valor_maximo_alerta,
+            stats,
 
-          // Enviamos los datos procesados específicamente para las tablas
-          muestreoDiario: muestreoDiario || [], // Para la tabla de Evolución
+            // Enviamos los datos procesados específicamente para las tablas
+            muestreoDiario: muestreoDiario || [], // Para la tabla de Evolución
 
-          valoresSobreUmbralMax: valoresSobreUmbralMax.map(p => ({
+            valoresSobreUmbralMax: valoresSobreUmbralMax.map(p => ({
               fecha: p.fechaRegistro,
               valor: Number(p.valor)
-          })) || [],
+            })) || [],
 
-          valoresBajoUmbralMin: valoresBajoUmbralMin.map(p => ({
+            valoresBajoUmbralMin: valoresBajoUmbralMin.map(p => ({
               fecha: p.fechaRegistro,
               valor: Number(p.valor)
-          })) || [],
+            })) || [],
 
-          // ✅ ESTO ES LO QUE NECESITAS: El dato más reciente absoluto
-          ultimoRegistro: ultimos10.length > 0 ? {
+            // ✅ ESTO ES LO QUE NECESITAS: El dato más reciente absoluto
+            ultimoRegistro: ultimos10.length > 0 ? {
               valor: Number(ultimos10[0].valor),
               fecha: ultimos10[0].fechaRegistro
-          } : null,
+            } : null,
 
-          // Lista cruda de los últimos 10 para la tabla "Últimos 10 Registros"
-          ultimos10: ultimos10.map(u => {
+            // Lista cruda de los últimos 10 para la tabla "Últimos 10 Registros"
+            ultimos10: ultimos10.map(u => {
               const valor = Number(u.valor);
               let estado = 'Normal';
 
               // Determinar estado basado en umbrales
               if (s.valor_maximo_alerta && valor > s.valor_maximo_alerta) {
-                  estado = 'Alto';
+                estado = 'Alto';
               } else if (s.valor_minimo_alerta && valor < s.valor_minimo_alerta) {
-                  estado = 'Bajo';
+                estado = 'Bajo';
               }
 
               return {
-                  fecha: u.fechaRegistro,
-                  valor: valor,
-                  estado: estado
+                fecha: u.fechaRegistro,
+                valor: valor,
+                estado: estado
               };
-          }) || [],
+            }) || [],
 
-          // 🔥 NUEVO: Historial completo para la tabla grande (del periodo seleccionado)
-          historialDetallado: registrosRango.map(r => ({
+            // 🔥 NUEVO: Historial completo para la tabla grande (del periodo seleccionado)
+            historialDetallado: registrosRango.map(r => ({
               fecha: r.fechaRegistro,
               valor: Number(r.valor)
-          })) || [],
+            })) || [],
 
-          esBomba: esBomba, // Flag para el PDF
-          ciclosRiego: ciclosRiego || [], // <--- ENVIAMOS LOS CICLOS PROCESADOS
+            esBomba: esBomba, // Flag para el PDF
+            ciclosRiego: ciclosRiego || [], // <--- ENVIAMOS LOS CICLOS PROCESADOS
 
-          recomendaciones: this.generarRecomendaciones(s.nombre, stats) || [],
-        };
+            recomendaciones: this.generarRecomendaciones(s.nombre, stats) || [],
+          };
+        }
       }
-     }
 
-     return reporte;
+      return reporte;
     } catch (error) {
       console.error('Error generando reporte de trazabilidad:', error);
       throw error;

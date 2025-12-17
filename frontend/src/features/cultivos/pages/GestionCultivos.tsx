@@ -53,6 +53,13 @@ export default function GestionCultivosPage(): ReactElement {
   const [showUbicacionModal, setShowUbicacionModal] = useState(false);
   const [selectedCultivoUbicacion, setSelectedCultivoUbicacion] = useState<any>(null);
 
+  // Estados para modal de detalles de cultivo
+  const [showDetallesModal, setShowDetallesModal] = useState(false);
+  const [selectedCultivoDetalles, setSelectedCultivoDetalles] = useState<Cultivo | null>(null);
+
+  // Estados para cultivos a nivel de lote en el mapa
+  const [selectedLoteCultivo, setSelectedLoteCultivo] = useState<any | null>(null);
+
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -157,6 +164,37 @@ export default function GestionCultivosPage(): ReactElement {
       };
     });
 
+  // Obtener lotes con cultivos (cultivos asignados directamente al lote, no a sublotes)
+  const lotesConCultivos = cultivos
+    .filter(cultivo => {
+      // El cultivo está asignado a un lote
+      const cultivoData = cultivo as any;
+      if (!cultivoData.lote) return false;
+
+      // Verificar que el cultivo NO esté asignado a sublotes
+      // Si tiene sublotes, entonces no está directamente en el lote
+      const tieneSublotes = allSublotes.some(s => s.cultivo?.id === cultivo.id);
+      return !tieneSublotes;
+    })
+    .map(cultivo => {
+      const cultivoData = cultivo as any;
+      const lote = lotes.find(l => l.id === cultivoData.lote?.id);
+
+      return {
+        id: cultivo.id,
+        nombre: cultivo.nombre,
+        coordenadas: lote?.coordenadas,
+        cultivo: {
+          id: cultivo.id,
+          nombre: cultivo.nombre,
+          tipoCultivo: cultivo.tipoCultivo,
+          estado: cultivo.Estado
+        },
+        lote: lote
+      };
+    })
+    .filter(item => item.coordenadas); // Solo incluir lotes que tengan coordenadas
+
   const openModal = (cultivo: Cultivo | null = null) => {
     setEditingCultivo(cultivo);
     setIsModalOpen(true);
@@ -211,6 +249,12 @@ export default function GestionCultivosPage(): ReactElement {
   const handleVerUbicacion = (cultivo: any) => {
     setSelectedCultivoUbicacion(cultivo);
     setShowUbicacionModal(true);
+  };
+
+  // Handler para abrir el modal de detalles
+  const handleVerDetalles = (cultivo: Cultivo) => {
+    setSelectedCultivoDetalles(cultivo);
+    setShowDetallesModal(true);
   };
 
   const handleSelectLote = async (lote: Lote | null) => {
@@ -492,7 +536,10 @@ export default function GestionCultivosPage(): ReactElement {
                         isPressable={false} // Importante para que los botones internos funcionen
                       >
                         {/* 1. IMAGEN DE CABECERA (Más bajita y elegante) */}
-                        <div className="relative h-40 w-full overflow-hidden">
+                        <div
+                          className="relative h-40 w-full overflow-hidden cursor-pointer"
+                          onClick={() => handleVerDetalles(cultivo)}
+                        >
                           <img
                             src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${cultivo.img}`}
                             alt={cultivo.nombre}
@@ -500,7 +547,7 @@ export default function GestionCultivosPage(): ReactElement {
                             onError={(e) => { e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlhYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBpbWFnZW48L3RleHQ+PC9zdmc+'; }}
                           />
                           {/* Gradiente sutil para que el texto se lea bien */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
                           {/* Botón Ubicación (Arriba a la izquierda) */}
                           <div className="absolute top-2 left-2">
@@ -656,6 +703,9 @@ export default function GestionCultivosPage(): ReactElement {
                     sublotesConCultivos={sublotesConCultivos}
                     selectedSubloteCultivo={selectedSubloteCultivo}
                     onSelectSubloteCultivo={setSelectedSubloteCultivo}
+                    lotesConCultivos={lotesConCultivos}
+                    selectedLoteCultivo={selectedLoteCultivo}
+                    onSelectLoteCultivo={setSelectedLoteCultivo}
                     customInfo={(lote) => (
                       <div className="p-3 min-w-[180px]">
                         <div className="flex items-center justify-between mb-2">
@@ -804,6 +854,102 @@ export default function GestionCultivosPage(): ReactElement {
           cultivo={selectedCultivoUbicacion}
         />
       )}
+
+      {/* Modal de Detalles de Cultivo */}
+      <Modal
+        isOpen={showDetallesModal}
+        onOpenChange={setShowDetallesModal}
+        size="2xl"
+        backdrop="blur"
+        placement="center"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Leaf className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">{selectedCultivoDetalles?.nombre}</h3>
+                    <p className="text-sm text-gray-500 font-normal">{selectedCultivoDetalles?.tipoCultivo?.nombre}</p>
+                  </div>
+                </div>
+              </ModalHeader>
+              <ModalBody className="py-6">
+                {selectedCultivoDetalles && (
+                  <div className="space-y-4">
+                    {/* Imagen del cultivo */}
+                    <div className="relative w-full h-64 rounded-lg overflow-hidden border border-gray-200">
+                      <img
+                        src={`${import.meta.env.VITE_BACKEND_URL}/uploads/${selectedCultivoDetalles.img}`}
+                        alt={selectedCultivoDetalles.nombre}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlhYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBpbWFnZW48L3RleHQ+PC9zdmc+'; }}
+                      />
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <BookCheck size={16} className="text-green-600" />
+                        Descripción
+                      </h4>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {selectedCultivoDetalles.descripcion || 'No hay descripción disponible para este cultivo.'}
+                      </p>
+                    </div>
+
+                    {/* Información adicional en grid */}
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                        <p className="text-xs text-green-700 font-medium mb-1">Cantidad</p>
+                        <p className="text-lg font-bold text-green-900">{selectedCultivoDetalles.cantidad} plantas</p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <p className="text-xs text-blue-700 font-medium mb-1">Fecha Plantado</p>
+                        <p className="text-lg font-bold text-blue-900">
+                          {new Date(selectedCultivoDetalles.Fecha_Plantado).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
+                        </p>
+                      </div>
+                      <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3">
+                        <p className="text-xs text-yellow-700 font-medium mb-1">Tipo de Cultivo</p>
+                        <p className="text-lg font-bold text-yellow-900">{selectedCultivoDetalles.tipoCultivo?.nombre}</p>
+                      </div>
+                      <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
+                        <p className="text-xs text-purple-700 font-medium mb-1">Estado</p>
+                        <Chip
+                          color={
+                            selectedCultivoDetalles.Estado === 'Activo' ? 'success' :
+                              selectedCultivoDetalles.Estado === 'En Cosecha' ? 'warning' :
+                                selectedCultivoDetalles.Estado === 'Finalizado' ? 'default' : 'primary'
+                          }
+                          variant="solid"
+                          size="sm"
+                          classNames={{ content: "font-semibold text-white" }}
+                        >
+                          {getEstadoDisplay(selectedCultivoDetalles.Estado)}
+                        </Chip>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter className="border-t border-gray-100">
+                <Button
+                  color="default"
+                  variant="light"
+                  onPress={onClose}
+                  className="font-semibold"
+                >
+                  Cerrar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

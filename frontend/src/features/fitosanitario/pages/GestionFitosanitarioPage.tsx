@@ -42,6 +42,11 @@ export default function GestionFitosanitarioPage() {
   const [deletingEpa, setDeletingEpa] = useState<Epa | null>(null);
   // --- FIN DE ESTADOS PARA ELIMINAR ---
 
+  // --- ESTADOS PARA MODAL DE IMAGEN AMPLIADA ---
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  // --- FIN DE ESTADOS PARA IMAGEN ---
+
   const navigate = useNavigate();
 
   // Carga inicial de datos locales
@@ -267,8 +272,8 @@ export default function GestionFitosanitarioPage() {
                       <Chip
                         color={
                           epa.tipoEnfermedad === 'Enfermedad' ? 'danger' :
-                          epa.tipoEnfermedad === 'Plaga' ? 'warning' :
-                          'success'
+                            epa.tipoEnfermedad === 'Plaga' ? 'warning' :
+                              'success'
                         }
                         variant="flat"
                       >
@@ -403,25 +408,36 @@ export default function GestionFitosanitarioPage() {
           </ModalHeader>
           <ModalBody>
             <div className="space-y-4">
-              <img
-                className="w-full h-48 object-cover rounded-lg border"
-                src={
-                  selectedEpaForDetail?.img
-                    ? `${
-                        import.meta.env.VITE_BACKEND_URL
+              <div className="relative">
+                <img
+                  className="w-full h-48 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                  src={
+                    selectedEpaForDetail?.img
+                      ? `${import.meta.env.VITE_BACKEND_URL
                       }/uploads/${selectedEpaForDetail.img}`
-                    : 'https://placehold.co/300x200'
-                }
-                alt={selectedEpaForDetail?.nombre}
-              />
+                      : 'https://placehold.co/300x200'
+                  }
+                  alt={selectedEpaForDetail?.nombre}
+                  onClick={() => {
+                    const imgUrl = selectedEpaForDetail?.img
+                      ? `${import.meta.env.VITE_BACKEND_URL}/uploads/${selectedEpaForDetail.img}`
+                      : 'https://placehold.co/300x200';
+                    setSelectedImage(imgUrl);
+                    setIsImageModalOpen(true);
+                  }}
+                />
+                <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                  Click para ampliar
+                </div>
+              </div>
               <h2 className="text-2xl font-bold text-gray-800">
                 {selectedEpaForDetail?.nombre}
               </h2>
               <Chip
                 color={
                   selectedEpaForDetail?.tipoEnfermedad === 'Enfermedad' ? 'danger' :
-                  selectedEpaForDetail?.tipoEnfermedad === 'Plaga' ? 'warning' :
-                  'success'
+                    selectedEpaForDetail?.tipoEnfermedad === 'Plaga' ? 'warning' :
+                      'success'
                 }
                 variant="flat"
               >
@@ -481,6 +497,39 @@ export default function GestionFitosanitarioPage() {
               Eliminar
             </Button>
           </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal de Imagen Ampliada */}
+      <Modal
+        isOpen={isImageModalOpen}
+        onOpenChange={setIsImageModalOpen}
+        size="5xl"
+        backdrop="blur"
+        placement="center"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center justify-between">
+                <span className="text-lg font-semibold">Vista Ampliada</span>
+              </ModalHeader>
+              <ModalBody className="p-0">
+                <div className="relative w-full flex items-center justify-center bg-gray-100 min-h-[400px] max-h-[80vh]">
+                  <img
+                    src={selectedImage || 'https://placehold.co/600x400'}
+                    alt="Imagen ampliada"
+                    className="max-w-full max-h-[80vh] object-contain"
+                  />
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  Cerrar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
     </div>

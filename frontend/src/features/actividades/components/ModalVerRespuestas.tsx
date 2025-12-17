@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, FileText, Image, File, Check, X as XIcon, DollarSign } from 'lucide-react';
+import { Download, FileText, Image, File, Check, X as XIcon } from 'lucide-react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Table, TableHeader, TableBody, TableRow, TableCell, TableColumn, Chip } from '@heroui/react';
 import type { Actividad, RespuestaActividad } from '../interfaces/actividades';
 import { obtenerRespuestasPorActividad, calificarRespuesta, obtenerPagosPorActividad } from '../api/actividadesapi';
@@ -331,7 +331,7 @@ const ModalVerRespuestas: React.FC<ModalVerRespuestasProps> = ({
             {pasantesPendientes.length > 0 && onOpenPago && (
               <Button
                 color="success"
-                startContent={<DollarSign size={16} />}
+                className="font-bold text-white"
                 onClick={() => {
                   const pasantes = pasantesPendientes.map(r => ({
                     identificacion: r.usuario.identificacion,

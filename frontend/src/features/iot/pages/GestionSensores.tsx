@@ -1808,71 +1808,73 @@ export default function GestionSensoresPage(): ReactElement {
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={320}>
-            {(() => {
-              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+          {(() => {
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
-              // 1. 🔥 LÓGICA DINÁMICA DE SELECCIÓN
-              // Si el usuario seleccionó sensores manualmente, úsalos.
-              // Si NO, usa TODOS los sensores visibles que no sean bombas.
-              const sensoresParaGraficarIds = sensoresGrafica.length > 0
-                ? sensoresGrafica
-                : sensoresParaGrafica.map(s => s.id);
+            // 1. 🔥 LÓGICA DINÁMICA DE SELECCIÓN
+            // Si el usuario seleccionó sensores manualmente, úsalos.
+            // Si NO, usa TODOS los sensores visibles que no sean bombas.
+            const sensoresParaGraficarIds = sensoresGrafica.length > 0
+              ? sensoresGrafica
+              : sensoresParaGrafica.map(s => s.id);
 
-              // 2. Filtrar solo aquellos que tienen historial cargado para evitar líneas vacías
-              const sensoresActivosConDatos = sensoresParaGraficarIds.filter(id =>
-                sensorHistories[id] && sensorHistories[id].length > 0
-              );
+            // 2. Filtrar solo aquellos que tienen historial cargado para evitar líneas vacías
+            const sensoresActivosConDatos = sensoresParaGraficarIds.filter(id =>
+              sensorHistories[id] && sensorHistories[id].length > 0
+            );
 
-              if (sensoresActivosConDatos.length === 0) {
-                return (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
-                    <Activity size={32} className="opacity-20 animate-pulse" />
-                    <span className="text-xs">Esperando flujo de datos...</span>
-                  </div>
-                );
-              }
-
-              // 3. Normalizar longitud de datos (Tomamos el historial más largo como referencia de tiempo)
-              const maxHistoryLength = Math.max(...sensoresActivosConDatos.map(id => sensorHistories[id]?.length || 0));
-
-              // Construimos los datos unificados
-              const chartData = Array.from({ length: maxHistoryLength }, (_, i) => {
-                // Usamos el tiempo del primer sensor disponible como referencia del eje X
-                const refSensorId = sensoresActivosConDatos[0];
-                const timeLabel = sensorHistories[refSensorId]?.[i]?.time || '';
-
-                const dataPoint: any = { time: timeLabel };
-
-                sensoresActivosConDatos.forEach(sensorId => {
-                  const sensor = sensoresFiltrados.find(s => s.id === sensorId);
-                  const history = sensorHistories[sensorId];
-                  const point = history?.[i]; // Obtener el punto en el índice i
-
-                  if (point && sensor) {
-                    const valor = point.valor;
-                    const min = sensor.valor_minimo_alerta || 0;
-                    const max = sensor.valor_maximo_alerta || 100;
-
-                    // 🔥 FORMULA DE PORCENTAJE (0-100%)
-                    // Evitamos división por cero si min == max
-                    const rango = (max - min) === 0 ? 1 : (max - min);
-                    const porcentaje = Math.min(100, Math.max(0, ((valor - min) / rango) * 100));
-
-                    dataPoint[sensorId] = porcentaje;       // Valor graficado (0-100)
-                    dataPoint[`${sensorId}_real`] = valor;  // Valor real para el tooltip
-                    dataPoint[`${sensorId}_name`] = sensor.nombre; // Nombre para tooltip
-
-                    // Si no tenemos etiqueta de tiempo aún, intentar tomarla de este sensor
-                    if (!dataPoint.time && point.time) dataPoint.time = point.time;
-                  } else {
-                    dataPoint[sensorId] = null;
-                  }
-                });
-                return dataPoint;
-              });
-
+            if (sensoresActivosConDatos.length === 0) {
               return (
+                <div className="w-full flex items-center justify-center" style={{ height: 320 }}>
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <Activity size={40} className="text-gray-300 animate-pulse" />
+                    <span className="text-sm font-medium text-gray-500">Esperando flujo de datos...</span>
+                  </div>
+                </div>
+              );
+            }
+
+            // 3. Normalizar longitud de datos (Tomamos el historial más largo como referencia de tiempo)
+            const maxHistoryLength = Math.max(...sensoresActivosConDatos.map(id => sensorHistories[id]?.length || 0));
+
+            // Construimos los datos unificados
+            const chartData = Array.from({ length: maxHistoryLength }, (_, i) => {
+              // Usamos el tiempo del primer sensor disponible como referencia del eje X
+              const refSensorId = sensoresActivosConDatos[0];
+              const timeLabel = sensorHistories[refSensorId]?.[i]?.time || '';
+
+              const dataPoint: any = { time: timeLabel };
+
+              sensoresActivosConDatos.forEach(sensorId => {
+                const sensor = sensoresFiltrados.find(s => s.id === sensorId);
+                const history = sensorHistories[sensorId];
+                const point = history?.[i]; // Obtener el punto en el índice i
+
+                if (point && sensor) {
+                  const valor = point.valor;
+                  const min = sensor.valor_minimo_alerta || 0;
+                  const max = sensor.valor_maximo_alerta || 100;
+
+                  // 🔥 FORMULA DE PORCENTAJE (0-100%)
+                  // Evitamos división por cero si min == max
+                  const rango = (max - min) === 0 ? 1 : (max - min);
+                  const porcentaje = Math.min(100, Math.max(0, ((valor - min) / rango) * 100));
+
+                  dataPoint[sensorId] = porcentaje;       // Valor graficado (0-100)
+                  dataPoint[`${sensorId}_real`] = valor;  // Valor real para el tooltip
+                  dataPoint[`${sensorId}_name`] = sensor.nombre; // Nombre para tooltip
+
+                  // Si no tenemos etiqueta de tiempo aún, intentar tomarla de este sensor
+                  if (!dataPoint.time && point.time) dataPoint.time = point.time;
+                } else {
+                  dataPoint[sensorId] = null;
+                }
+              });
+              return dataPoint;
+            });
+
+            return (
+              <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis
@@ -1939,9 +1941,9 @@ export default function GestionSensoresPage(): ReactElement {
                     );
                   })}
                 </LineChart>
-              );
-            })()}
-          </ResponsiveContainer>
+              </ResponsiveContainer>
+            );
+          })()}
         </div>
       )}
 

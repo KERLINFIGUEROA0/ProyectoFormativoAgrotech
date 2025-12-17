@@ -1,5 +1,3 @@
-// src/modules/usuarios_permisos/usuarios_permisos.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -34,15 +32,12 @@ export class UsuarioPermisoService {
       throw new NotFoundException(`Usuario con id ${userId} no encontrado.`);
     }
 
-    // 1. Obtener todos los permisos del sistema.
     const allPermissions = await this.permisoRepo.find();
 
-    // 2. Obtener los IDs de los permisos que ya vienen del ROL del usuario.
     const rolePermissionIds = new Set(
       (user.tipoUsuario?.rolPermisos || []).map((rp) => rp.permiso.id),
     );
 
-    // 3. Filtrar para obtener solo los permisos que NO provienen del rol (adicionales).
     const additionalPermissions = allPermissions.filter(
       (p) => !rolePermissionIds.has(p.id),
     );

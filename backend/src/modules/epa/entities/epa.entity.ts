@@ -13,7 +13,7 @@ export class Epa {
   @Column({ name: 'Nombre', length: 20, nullable: true })
   nombre: string;
 
-  @Column({ name: 'Descripcion', length: 150, nullable: true })
+  @Column({ name: 'Descripcion', length: 255, nullable: true })
   descripcion: string;
 
   @Column({ name: 'Tipo_Enfermedad', type: 'varchar', length: 50, nullable: true })
