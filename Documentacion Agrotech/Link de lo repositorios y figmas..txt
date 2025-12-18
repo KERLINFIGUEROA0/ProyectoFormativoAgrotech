@@ -1,0 +1,20 @@
+----------------------------------------------------------------------------------------------------------------------
+
+
+Link de repositorio rama oficial "Dev" de Agrotech Web : https://github.com/KERLINFIGUEROA0/ProyectoFormativoAgrotech.git
+
+Link de repositorio de Agrotech Mobile : https://github.com/KERLINFIGUEROA0/AgrotechMobileFormativo.git
+
+el paso a paso esta en los Readme.md de los repositorios para su funcionamiento
+
+-----------------------------------------------------------------------------------------------------------------------
+
+Link de acceso a Figma :
+
+Mobile - Pagina AgrotechMobile : https://www.figma.com/design/b4gt3EGz3wD8bs31i5BEGa/Untitled?node-id=0-1&t=9zstfga8GExz5b4n-1
+
+
+Web - Pagina WebAgrotech : https://www.figma.com/design/b4gt3EGz3wD8bs31i5BEGa/Untitled?node-id=188-821&t=H2zm91TWyQcfvcIH-1
+
+--------------------------------------------------------------------------
+
